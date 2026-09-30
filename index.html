@@ -1378,7 +1378,7 @@
   const AMB_LEVEL = 0.1;           // master level of the whole ambience (keep it discreet)
   const Sfx = (function(){
     let ac=null, master=null, wheelBus=null, noise=null, rub=null;
-    let ambBus=null, sea=null, rush=null, droneNodes=null, engineNodes=null;
+    let ambBus=null, sea=null, rush=null, rainL=null, droneNodes=null, engineNodes=null;
     function init(){
       if(ac){ if(ac.state==='suspended') ac.resume(); return; }
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -1421,6 +1421,7 @@
       sea  = [ {...layer(brown,'lowpass',380,0.5,-0.55,0),   ph:0,   per:7},
                {...layer(brown,'lowpass',380,0.5, 0.55,3.1), ph:0.5, per:8.5} ];
       rush = layer(brown,'lowpass',320,0.5,0,2.2);   // deep, soft water along the hull
+      rainL = layer(pink,'bandpass',2600,0.45,0,1.3); // rain on the sea: a soft, even hiss
       // whirlpool drone: two detuned low saws (slow beating) and a rumble of
       // dark noise, through a resonant low-pass that breathes. Silent until
       // a whirlpool is near; see drone().
@@ -1490,6 +1491,13 @@
       for(let i=0;i<xf;i++){ const k=i/xf; d[i] = d[i]*k + d[n-xf+i]*(1-k); }
       for(let i=0;i<n;i++) d[i] /= peak;
       return buf;
+    }
+    // passing under a shower: the hiss of rain on the water, level 0..1
+    function rain(level){
+      if(!rainL || ac.state!=='running') return;
+      const t0 = ac.currentTime;
+      rainL.g.gain.setTargetAtTime(0.9*level*level, t0, 0.6);
+      rainL.f.frequency.setTargetAtTime(2200 + 900*level, t0, 0.8);
     }
     // whirlpool drone level 0..1 (0 = silent); pitch creeps up a touch when close
     function drone(level){
@@ -1997,7 +2005,7 @@
     }
 
 
-    return {init, tick, thunk, wheel, ambient, pickup, hammer, bell, whirl, type, splash, drone, gull, crash, waveBreak, waveHit, surf, townEvent, chatter, cricket, howl, anchor, buoy, coins, engine};
+    return {init, tick, thunk, wheel, ambient, rain, pickup, hammer, bell, whirl, type, splash, drone, gull, crash, waveBreak, waveHit, surf, townEvent, chatter, cricket, howl, anchor, buoy, coins, engine};
   })();
 
   // ---------- Ship's wheel ----------
@@ -3379,6 +3387,7 @@
     if(!moor && !boat.whirl) boat.angle += TURN_RATE*(sailLevel===SAIL_MIN ? 2 : 1)*(wheelAngle/WHEEL_MAX)*dt;   // slow sail = nimble, safe handling
     wheelSound(dt);
     Sfx.ambient(dt, Math.min(1, boat.speed/MAX_SPEED));
+    Sfx.rain(playing ? rainNear() : 0);
 
     // wind drift (or, under the ruins' spell, always from astern)
     if(boonWindT>0){
@@ -4580,6 +4589,13 @@
     });
     if(clear) clouds.push({x, y, ...makeCloud()});
   }
+  // about a third of the clouds carry rain: a darker underside, and a
+  // shower falling on the sea beneath them
+  clouds.forEach((c,i)=>{
+    c.rain = i%3 === 0;
+    if(!c.rain) return;
+    c.drops = Array.from({length: Math.round(c.W*0.6)}, ()=>{ const a = rand(0,6.3), r = Math.sqrt(Math.random()); return {u: Math.cos(a)*r, v: Math.sin(a)*r, ph: Math.random(), len: rand(6,10)}; });
+  });
   // the cloud's puffs at this moment: each drifts in a slow loop and swells
   // and shrinks; the whole heap leans a little one way, then the other
   function cloudPuffs(c){
@@ -4595,12 +4611,12 @@
       ctx.moveTo(ox+x+dx+rr, oy+y+dy); ctx.ellipse(ox+x+dx, oy+y+dy, rr, ry, 0, 0, Math.PI*2);
     }
   }
-  const CLOUD_ALPHA = 0.45;                   // see-through: the whole cloud is laid over the scene at this opacity
+  const CLOUD_ALPHA = 0.45, CLOUD_CORE = 0.88;  // see-through at the edges, denser toward the middle
   function drawCloudBody(c, P, ox, oy){
     ctx.fillStyle = INKC; puffPath(P, ox, oy, 1.8, 0, 0, 1); ctx.fill();                 // defined inked edge
-    ctx.fillStyle = V(0.66); puffPath(P, ox, oy, 0, 0, 0, 1); ctx.fill();                // the shaded underside of every billow
+    ctx.fillStyle = V(c.rain ? 0.48 : 0.66); puffPath(P, ox, oy, 0, 0, 0, 1); ctx.fill(); // the shaded underside of every billow (heavy with rain: darker)
     ctx.save(); puffPath(P, ox, oy, 0, 0, 0, 1); ctx.clip();
-    ctx.fillStyle = V(0.84); puffPath(P, ox, oy, 0, -c.W*0.02, -c.H*0.07, 0.96); ctx.fill();  // half-lit
+    ctx.fillStyle = V(c.rain ? 0.72 : 0.84); puffPath(P, ox, oy, 0, -c.W*0.02, -c.H*0.07, 0.96); ctx.fill();  // half-lit
     ctx.fillStyle = V(0.95); puffPath(P, ox, oy, 0, -c.W*0.04, -c.H*0.13, 0.8); ctx.fill();   // lit
     ctx.fillStyle = PAPERC;  puffPath(P, ox, oy, 0, -c.W*0.055, -c.H*0.18, 0.6); ctx.fill();  // brightest tops
     // inner billow lines: short inked curves under the crowning bumps, the
@@ -4625,7 +4641,19 @@
       const cv = c[key], saved = ctx;
       ctx = cv.getContext('2d'); ctx.clearRect(0,0,cv.width,cv.height);
       if(!c.P || c.Pt !== t){ c.P = cloudPuffs(c); c.Pt = t; }
-      if(shade) drawCloudShade(c, c.P, cv.width/2, cv.height/2); else drawCloudBody(c, c.P, cv.width/2, cv.height/2);
+      if(shade) drawCloudShade(c, c.P, cv.width/2, cv.height/2);
+      else {
+        drawCloudBody(c, c.P, cv.width/2, cv.height/2);
+        // opacity mask: CLOUD_CORE in the middle, easing out to CLOUD_ALPHA at the rim
+        const r = Math.max(c.W, c.H)*0.62, sy = c.H/c.W*1.25;
+        ctx.save(); ctx.globalCompositeOperation = 'destination-in';
+        ctx.translate(cv.width/2, cv.height/2); ctx.scale(1, sy);
+        const g = ctx.createRadialGradient(0,0,0,0,0,r);
+        g.addColorStop(0, 'rgba(0,0,0,'+CLOUD_CORE+')'); g.addColorStop(0.35, 'rgba(0,0,0,'+(CLOUD_CORE*0.85)+')');
+        g.addColorStop(1, 'rgba(0,0,0,'+CLOUD_ALPHA+')');
+        ctx.fillStyle = g; ctx.fillRect(-cv.width, -cv.height/sy, cv.width*2, cv.height*2/sy);
+        ctx.restore();
+      }
       ctx = saved;
     }
     return c[key];
@@ -4651,8 +4679,51 @@
       const [gx,gy] = cloudGround(c, vcx, vcy);
       const x = vcx + (gx-vcx)*CLOUD_PAR, y = vcy + (gy-vcy)*CLOUD_PAR;   // parallax
       if(x - c.cw/2 > camX+w || y - c.ch/2 > camY+h || x + c.cw/2 < camX || y + c.ch/2 < camY) continue;
-      { const sp = cloudSprite(c, false); ctx.globalAlpha = CLOUD_ALPHA; ctx.drawImage(sp, x - sp.width/2, y - sp.height/2); ctx.globalAlpha = 1; }
+      { const sp = cloudSprite(c, false); ctx.drawImage(sp, x - sp.width/2, y - sp.height/2); }   // opacity is in the sprite
     }
+  }
+  // rain under the rain clouds: short slanting streaks falling on the sea
+  // below the cloud (no parallax: it lands where the cloud's shadow-less
+  // ground point is), each ending in a little splash ring
+  const RAIN_FALL = 0.75;                      // seconds per drop
+  function rainFootprint(c){ return [c.W*0.42, c.H*0.55]; }
+  function drawRain(camX, camY, w, h){
+    const vcx = camX+w/2, vcy = camY+h/2, dw = windAngle + Math.PI, wx = Math.cos(dw), wy = Math.sin(dw);
+    for(const c of clouds){
+      if(!c.rain) continue;
+      const [gx,gy] = cloudGround(c, vcx, vcy), [rx,ry] = rainFootprint(c);
+      if(gx - rx > camX+w || gy - ry > camY+h || gx + rx < camX || gy + ry < camY) continue;
+      const g = ctx.createRadialGradient(gx,gy,0,gx,gy,rx);                  // the grey of the shower
+      g.addColorStop(0,'rgba(0,0,0,0.16)'); g.addColorStop(0.7,'rgba(0,0,0,0.1)'); g.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.save(); ctx.translate(gx,gy); ctx.scale(1, ry/rx); ctx.translate(-gx,-gy);
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(gx,gy,rx,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+      ctx.strokeStyle = INKC; ctx.lineCap = 'round';
+      for(const q of c.drops){
+        const p = (t/RAIN_FALL + q.ph) % 1, bx = gx + q.u*rx, by = gy + q.v*ry;
+        if(p < 0.7){                                                        // falling: a streak coming down onto its spot
+          const k = p/0.7, l = q.len*(1-k*0.6), ox = (1-k)*(-wx*5), oy = (1-k)*(-14 - wy*5);
+          ctx.globalAlpha = 0.9*Math.min(1, k*4); ctx.lineWidth = 1.3;
+          ctx.beginPath(); ctx.moveTo(bx+ox - wx*l*0.4, by+oy - l); ctx.lineTo(bx+ox, by+oy); ctx.stroke();
+        } else {                                                            // landed: a ring spreading and fading
+          const k = (p-0.7)/0.3;
+          ctx.globalAlpha = 0.8*(1-k); ctx.lineWidth = 1.1;
+          ctx.beginPath(); ctx.ellipse(bx, by, 1 + k*3.5, 0.6 + k*1.8, 0, 0, Math.PI*2); ctx.stroke();
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+  // how close the boat is to a shower, 0..1 (for the sound of the rain)
+  function rainNear(){
+    let best = 0;
+    for(const c of clouds){
+      if(!c.rain) continue;
+      const [gx,gy] = cloudGround(c, boat.x, boat.y), [rx] = rainFootprint(c);
+      const d = Math.hypot(gx-boat.x, gy-boat.y);
+      best = Math.max(best, Math.max(0, Math.min(1, 1 - (d - rx*0.6)/(rx + 260))));
+    }
+    return best;
   }
 
   // ---------- Ambient life: gulls ----------
@@ -5101,6 +5172,7 @@
     layer(()=>{ for(const w of rollers) drawRoller(w); });
     layer(()=>{ for(const b of buoys) drawBuoy(b); for(const tr of traders) drawTrader(tr); });   // under the fog
     drawCloudShadowsAll(camX, camY, w, h);                   // cloud shadows fall on sea and land
+    drawRain(camX, camY, w, h);                              // showers under the rain clouds
     drawFog(camX, camY, w, h);
     layer(()=>{ for(const v of VILLAGES) if(inView(v.isl.vl.light.x, v.isl.vl.light.y, BEAM_LEN)) drawBeam(v.isl.vl.light); });
     drawNet();
