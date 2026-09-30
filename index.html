@@ -2701,6 +2701,7 @@
   // ---------- Fishing ----------
   const FISH_STOP = 12;          // px/s: slow enough to count as stopped on a bank
   const FISH_SETTLE = 2;         // seconds stopped before the nets go over
+  const FISH_ANCHOR_SETTLE = 0.25;   // …or this long after the anchor goes down on a bank
   const NET_DROP = 1.4;          // net deploying animation
   const FISH_TIME_MIN = 2, FISH_TIME_MAX = 4;   // seconds with nets out before the haul (random each time)
   const NET_HAUL = 1.1;          // hauling animation
@@ -2726,10 +2727,10 @@
     const steering = turnLeft || turnRight || (wheelPointer!==null && Math.abs(wheelAngle) > 0.35);
     if(!fishing){
       const b = bankUnderBoat();
-      const atAnchor = anchored && weighT <= 0;             // anchor down on a bank: nets over at once
+      const atAnchor = anchored && weighT <= 0;             // anchor down on a bank: nets over almost at once
       if(b && (atAnchor || boat.speed < FISH_STOP)){
         settleT += dt;
-        if(atAnchor || settleT >= FISH_SETTLE){
+        if(settleT >= (atAnchor ? FISH_ANCHOR_SETTLE : FISH_SETTLE)){
           fishing = {bank:b, t:0, phase:'drop', side: Math.random()<0.5?-1:1, dur: rand(FISH_TIME_MIN, FISH_TIME_MAX)};
           Sfx.splash();
           buzz(15);
