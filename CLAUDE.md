@@ -29,7 +29,7 @@ You sail from home to four villages to buy food for a banquet, paying with fish,
   when slack); pulled taut it runs out through the block, clicking (haptic + sound), and past the mark it switches
   sail (full / minimum) with a clack; on release it swings back. Badge on top shows the sail state.
   Oars never come out because of the anchor (nor while getting under way after weighing it).
-  Left button: shopping list overlay. Keyboard: arrows, Space = anchor, S = sail.
+  Left button: shopping list + the hold (purse, every fish as a unit like at the market, food already aboard; live). Keyboard: arrows, Space = anchor, S = sail.
 - **Hazards:** rocks, faraglioni, whirlpools (appear/disappear/wander), rollers (big waves: head-on hurts, from astern = surf boost).
 - **Atmosphere:** macchia (tree-spurge domes + Mediterranean pines), clouds with parallax and shadows, gulls, wind streaks,
   traders (motor boats on A* lanes between villages; they don't avoid the player, a collision just shoves them aside

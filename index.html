@@ -229,8 +229,18 @@
     transform:translate(-50%, -110%); transition:transform .45s cubic-bezier(.2,.8,.2,1);
     padding:calc(14px + env(safe-area-inset-top,0px)) 16px 14px;
     border-top:none; border-radius:0 0 6px 6px;
+    max-height:calc(100% - 120px - env(safe-area-inset-bottom,0px)); overflow-y:auto;
   }
   #shoplist.open{transform:translate(-50%, 0);}
+  /* the boat's hold, under the list: purse, every fish as a unit, the food aboard */
+  #shoplist .hold-head{display:flex; justify-content:space-between; align-items:center; margin:10px 0 7px; padding-top:9px; border-top:1.5px solid var(--ink);}
+  #shoplist h3{margin:0; font-size:15px; font-style:italic;}
+  #shoplist .purse{display:flex; align-items:center; gap:4px; font-size:14px; font-variant-numeric:tabular-nums;}
+  #shoplist .purse .coin{width:13px; height:13px;}
+  #shoplist .hold-items{display:flex; flex-wrap:wrap; gap:4px;}
+  #shoplist .mk-unit.hold{height:34px; cursor:default; touch-action:auto;}
+  #shoplist .mk-unit.hold.food{height:auto;}
+  #shoplist .hold-sub{font-size:12px; font-style:italic; margin:8px 0 5px;}
   #toast{
     position:fixed; left:50%; bottom:calc(262px + env(safe-area-inset-bottom,0px)); z-index:8;   /* just above the wheel */
     transform:translate(-50%, -8px); opacity:0; transition:opacity .5s, transform .5s;
@@ -363,10 +373,10 @@
     </div>
   </div>
 
-  <button id="btn-list" class="helm-btn" type="button" aria-label="Shopping list" aria-expanded="false" aria-controls="shoplist">
+  <button id="btn-list" class="helm-btn" type="button" aria-label="Shopping list and hold" aria-expanded="false" aria-controls="shoplist">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3 H16 L19 6 V21 H6 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M16 3 V6 H19" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M9 10 H16 M9 13.5 H16 M9 17 H13.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
   </button>
-  <div id="shoplist" class="panel" role="region" aria-label="Shopping list"></div>
+  <div id="shoplist" class="panel" role="region" aria-label="Shopping list and hold"></div>
   <div id="toast" class="panel" role="status" aria-live="polite"></div>
   <canvas id="wheel" aria-label="Helm: drag clockwise or anticlockwise to steer"></canvas>
   <canvas id="rope" aria-hidden="true"></canvas>
@@ -3292,8 +3302,27 @@
       return '<li class="'+(v.done?'got':'')+'"><span class="mark">'+(v.done?'●':'○')+'</span>'
         + '<span class="food">'+v.food.charAt(0).toUpperCase()+v.food.slice(1)+'</span>'
         + '<span class="where">from '+v.name+', to the '+dirOf(v)+' · '+FOOD_COINS+' coins. They pay '+COIN_FOREIGN+' a fish, only '+COIN_LOCAL+' for '+local+'</span></li>';
-    }).join('') + '</ul><p class="note">'+(VILLAGES.every(v=>v.done) ? 'All bought: sail home for the banquet!' : 'Then bring it all home.')+'<br>Purse: '+coins+(coins===1?' coin':' coins')+'</p>';
+    }).join('') + '</ul><p class="note">'+(VILLAGES.every(v=>v.done) ? 'All bought: sail home for the banquet!' : 'Then bring it all home.')+'</p>'
+      + holdHTML();
+    listKey = holdKey();
   }
+  // the boat's hold: every fish a unit, as on the barter table, and the
+  // banquet's food already aboard
+  function holdHTML(){
+    const fish = FISH_KEYS.flatMap(k=> Array(counts[k]).fill(k));
+    const food = VILLAGES.filter(v=>v.done);
+    const n = fish.length;
+    return '<div class="hold-head"><h3>The hold</h3><span class="purse" aria-label="Purse: '+coins+' coins">'+COIN_SVG+coins+'</span></div>'
+      + (n ? '<div class="hold-sub">'+n+(n===1?' fish':' fish')+'</div><div class="hold-items">'
+            + fish.map(k=> '<div class="mk-unit hold" title="'+FISH_NAME[k].one+'" aria-label="'+FISH_NAME[k].one+'">'+document.querySelector('#wood .fish-'+k+' svg').outerHTML+'</div>').join('') + '</div>'
+           : '<p class="hold-sub">No fish aboard: stop on a fish bank to cast the nets.</p>')
+      + (food.length ? '<div class="hold-sub">For the banquet</div><div class="hold-items">'
+            + food.map(v=> '<div class="mk-unit food hold">'+FOOD_SVG+'<span class="mk-name">'+v.food+'</span></div>').join('') + '</div>' : '');
+  }
+  let listKey = '';
+  const holdKey = ()=> [coins, ...FISH_KEYS.map(k=>counts[k]), ...VILLAGES.map(v=>v.done)].join('|');
+  // while the list is open, keep the hold up to date (a catch, a repair)
+  function refreshList(){ if(elList.classList.contains('open') && holdKey() !== listKey) renderList(); }
   function toggleList(open){
     const on = open===undefined ? !elList.classList.contains('open') : open;
     if(on) renderList();
@@ -3856,6 +3885,7 @@
     healthShowT = Math.max(0, healthShowT-dt);
     elStatus.classList.toggle('show', healthShowT>0);
     elWood.classList.add('show');                                   // always visible
+    refreshList();
   }
 
   // ---------- 1-bit rendering ----------
