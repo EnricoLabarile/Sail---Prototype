@@ -289,7 +289,7 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   #rope-hit{
     position:fixed;
     right:21px; bottom:calc(16px + env(safe-area-inset-bottom,0px));
-    width:60px; height:336px;
+    width:60px; height:212px;
     touch-action:none; cursor:grab;
     z-index:7;
   }
@@ -2478,8 +2478,11 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   const RP_W = 170, RP_H = 222, RP_CX = RP_W - 32;          // drawing units; the block hangs 32 units from the right edge
   const ROPE_SCALE = 1.6;                                    // drawn this much bigger (crisp: the low-res canvas grows too)
   const RPX_W = Math.round(RP_W*ROPE_SCALE), RPX_H = Math.round(RP_H*ROPE_SCALE);
-  const ROPE_TOP = 66, ROPE_LEN = 70;                        // where the line leaves the block, and how much hangs
-  const ROPE_MAX = 54, ROPE_FIRE = 34, ROPE_TICK = 9;       // most line out, where it switches, px per click
+  // the head (badge, shackle, block) is lowered HEAD_Y units so the badge's top
+  // lines up with the top of the wheel; the rope below it is short
+  const HEAD_Y = 73;
+  const ROPE_TOP = 66 + HEAD_Y, ROPE_LEN = 28;               // where the line leaves the block, and how much hangs
+  const ROPE_MAX = 40, ROPE_FIRE = 18, ROPE_TICK = 6;       // most line out, where it switches, units per click
   const ROPE_REST = ROPE_TOP + ROPE_LEN;
   const rlo = document.createElement('canvas'); rlo.width = RPX_W; rlo.height = RPX_H;
   const rl = rlo.getContext('2d', {willReadFrequently:true});
@@ -2496,7 +2499,7 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   const ropeLocal = ev=>{ const r = ropeCv.getBoundingClientRect(); return [(ev.clientX - r.left)*(RP_W/r.width), (ev.clientY - r.top)*(RP_H/r.height)]; };
   // put the toggle as near (tx,ty) as a rope of fixed length allows
   function ropeTo(tx, ty){
-    tx = Math.max(16, Math.min(RP_W - 10, tx)); ty = Math.max(ROPE_TOP + 6, Math.min(RP_H - 26, ty));
+    tx = Math.max(16, Math.min(RP_W - 10, tx)); ty = Math.max(ROPE_TOP + 6, Math.min(RP_H - 22, ty));
     const dx = tx - RP_CX, dy = ty - ROPE_TOP, d = Math.hypot(dx, dy) || 1;
     if(d <= ROPE_LEN){ rope.x = tx; rope.y = ty; rope.pull = 0; return; }   // slack: it just follows
     const pull = ROPE_MAX*(1 - Math.exp(-(d - ROPE_LEN)/(ROPE_MAX*0.9)));   // taut: line runs out, heavier as it comes
@@ -2556,7 +2559,7 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
     // the badge: which sail is set, in a paper disc (it pops when switched)
     {
       const s = 1 + 0.25*Math.sin(ropeFlash*Math.PI);
-      c.save(); c.translate(RP_CX, 18); c.scale(s, s);
+      c.save(); c.translate(RP_CX, 18 + HEAD_Y); c.scale(s, s);
       c.fillStyle = PAPW; c.strokeStyle = INKW; c.lineWidth = 2;
       c.beginPath(); c.arc(0,0,15,0,Math.PI*2); c.fill(); c.stroke();
       c.lineWidth=1.4; c.beginPath(); c.moveTo(0,-10); c.lineTo(0,10); c.stroke();          // mast
@@ -2599,9 +2602,9 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
     c.stroke(); c.lineCap = 'round';
     // shackle and block (over the rope's top), with a sheave that turns as the line runs
     c.strokeStyle = INKW; c.lineWidth = 2;
-    c.beginPath(); c.moveTo(RP_CX, 33); c.lineTo(RP_CX, 38); c.stroke();
-    c.beginPath(); c.ellipse(RP_CX, 38.5, 3.2, 2.4, 0, 0, Math.PI*2); c.stroke();
-    c.save(); c.translate(RP_CX, 54); c.rotate(Math.atan2(dx, dy)*0.35);   // the block leans a little towards the pull
+    c.beginPath(); c.moveTo(RP_CX, 33 + HEAD_Y); c.lineTo(RP_CX, 38 + HEAD_Y); c.stroke();
+    c.beginPath(); c.ellipse(RP_CX, 38.5 + HEAD_Y, 3.2, 2.4, 0, 0, Math.PI*2); c.stroke();
+    c.save(); c.translate(RP_CX, 54 + HEAD_Y); c.rotate(Math.atan2(dx, dy)*0.35);   // the block leans a little towards the pull
     c.fillStyle = 'rgb(170,170,170)'; c.strokeStyle = INKW; c.lineWidth = 1.8;
     c.beginPath(); c.roundRect(-11, -13, 22, 26, 7); c.fill(); c.stroke();
     c.fillStyle = 'rgb(215,215,215)'; c.beginPath(); c.roundRect(-8.5, -11, 7, 21, 4); c.fill();   // lit cheek
