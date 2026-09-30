@@ -3157,7 +3157,7 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
     return '<div class="mk-unit '+it.kind+(it.side!==it.origin ? ' moved' : '')+'" data-id="'+it.id+'" data-kind="'+it.kind+'" data-origin="'+it.origin+'" role="button" aria-label="'+name+', '+it.value+' coins">'
       + ico + label + '<span class="mk-val">'+it.value+COIN_SVG+'</span></div>';
   }
-  const MK_TIP = "Drag fish from your hold onto the stall to sell them, and drag what you want from the stall into your hold. You can also just tap. Press Trade when the balance adds up.";
+  const MK_TIP = "Drag and drop items between inventories to trade buy and sell.";
   function drawTable(){
     const v = marketV;
     elMkTitle.textContent = v.name + ' market';
