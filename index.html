@@ -219,6 +219,8 @@
   #btn-list svg{width:42px; height:42px; background:var(--paper); border-radius:50%; padding:4px; box-sizing:content-box;}
   #btn-list{left:12px; right:auto; bottom:calc(20px + env(safe-area-inset-bottom,0px));}
   body.at-market #btn-list{display:none;}
+  /* at the barter table the halyard and the compass (with its fish counters) step aside */
+  body.at-market #rope, body.at-market #rope-hit, body.at-market #compass, body.at-market #wood{display:none;}
   #btn-list.open{background-color:var(--ink); background-image:radial-gradient(var(--paper) 0.75px, transparent 0.95px);}
   /* the shopping list: slides down from the top of the screen */
   #shoplist{
@@ -4795,45 +4797,52 @@
       { const sp = cloudSprite(c, false); ctx.drawImage(sp, x - sp.width/2, y - sp.height/2); }   // opacity is in the sprite
     }
   }
-  // rain under the rain clouds: short slanting streaks falling on the sea
-  // below the cloud (no parallax: it lands where the cloud's shadow-less
-  // ground point is), each ending in a little splash ring
+  // rain under the rain clouds: drops leave the cloud's belly and fall all
+  // the way down onto its shadow on the sea (seen from above, the fall runs
+  // from the cloud, which floats up near the camera, to where its shadow
+  // lies), each ending in a little splash ring on the water
   const RAIN_FALL = 0.75;                      // seconds per drop
   function rainFootprint(c){ return [c.W*0.42, c.H*0.55]; }
+  // where a cloud is drawn (with parallax) and where its shadow lies, for a view centred on (vcx,vcy)
+  function cloudAndShadow(c, vcx, vcy){
+    const [gx,gy] = cloudGround(c, vcx, vcy);
+    return [vcx + (gx-vcx)*CLOUD_PAR, vcy + (gy-vcy)*CLOUD_PAR, gx + CLOUD_SHADOW[0], gy + CLOUD_SHADOW[1]];
+  }
   function drawRain(camX, camY, w, h){
-    const vcx = camX+w/2, vcy = camY+h/2, dw = windAngle + Math.PI, wx = Math.cos(dw), wy = Math.sin(dw);
+    const vcx = camX+w/2, vcy = camY+h/2;
     for(const c of clouds){
       if(!c.rain) continue;
-      const [gx,gy] = cloudGround(c, vcx, vcy), [rx,ry] = rainFootprint(c);
-      if(gx - rx > camX+w || gy - ry > camY+h || gx + rx < camX || gy + ry < camY) continue;
-      const g = ctx.createRadialGradient(gx,gy,0,gx,gy,rx);                  // the grey of the shower
-      g.addColorStop(0,'rgba(0,0,0,0.16)'); g.addColorStop(0.7,'rgba(0,0,0,0.1)'); g.addColorStop(1,'rgba(0,0,0,0)');
-      ctx.save(); ctx.translate(gx,gy); ctx.scale(1, ry/rx); ctx.translate(-gx,-gy);
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(gx,gy,rx,0,Math.PI*2); ctx.fill();
+      const [cx,cy,sx,sy] = cloudAndShadow(c, vcx, vcy), [rx,ry] = rainFootprint(c);
+      if(Math.min(cx,sx) - rx > camX+w || Math.min(cy,sy) - ry > camY+h || Math.max(cx,sx) + rx < camX || Math.max(cy,sy) + ry < camY) continue;
+      const g = ctx.createRadialGradient(sx,sy,0,sx,sy,rx);                  // the grey of the shower, on the shadow
+      g.addColorStop(0,'rgba(0,0,0,0.12)'); g.addColorStop(0.7,'rgba(0,0,0,0.07)'); g.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.save(); ctx.translate(sx,sy); ctx.scale(1, ry/rx); ctx.translate(-sx,-sy);
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sx,sy,rx,0,Math.PI*2); ctx.fill();
       ctx.restore();
+      const fx = sx - cx, fy = sy - cy, fl = Math.hypot(fx, fy) || 1, ux = fx/fl, uy = fy/fl;
       ctx.strokeStyle = INKC; ctx.lineCap = 'round';
       for(const q of c.drops){
-        const p = (t/RAIN_FALL + q.ph) % 1, bx = gx + q.u*rx, by = gy + q.v*ry;
-        if(p < 0.7){                                                        // falling: a streak coming down onto its spot
-          const k = p/0.7, l = q.len*(1-k*0.6), ox = (1-k)*(-wx*5), oy = (1-k)*(-14 - wy*5);
-          ctx.globalAlpha = 0.9*Math.min(1, k*4); ctx.lineWidth = 1.3;
-          ctx.beginPath(); ctx.moveTo(bx+ox - wx*l*0.4, by+oy - l); ctx.lineTo(bx+ox, by+oy); ctx.stroke();
+        const p = (t/RAIN_FALL + q.ph) % 1, ox = q.u*rx, oy = q.v*ry;
+        if(p < 0.8){                                                        // falling from the cloud to the shadow, speeding up
+          const k = Math.pow(p/0.8, 1.3), x = cx + ox + fx*k, y = cy + oy + fy*k, l = q.len*(0.8 + 0.8*k);
+          ctx.globalAlpha = 0.9*Math.min(1, k*6); ctx.lineWidth = 1.3;
+          ctx.beginPath(); ctx.moveTo(x - ux*l, y - uy*l); ctx.lineTo(x, y); ctx.stroke();
         } else {                                                            // landed: a ring spreading and fading
-          const k = (p-0.7)/0.3;
+          const k = (p-0.8)/0.2;
           ctx.globalAlpha = 0.8*(1-k); ctx.lineWidth = 1.1;
-          ctx.beginPath(); ctx.ellipse(bx, by, 1 + k*3.5, 0.6 + k*1.8, 0, 0, Math.PI*2); ctx.stroke();
+          ctx.beginPath(); ctx.ellipse(sx + ox, sy + oy, 1 + k*3.5, 0.6 + k*1.8, 0, 0, Math.PI*2); ctx.stroke();
         }
       }
       ctx.globalAlpha = 1;
     }
   }
-  // how close the boat is to a shower, 0..1 (for the sound of the rain)
+  // how close the boat is to a shower (where it lands, on the shadow), 0..1, for the sound of the rain
   function rainNear(){
     let best = 0;
     for(const c of clouds){
       if(!c.rain) continue;
-      const [gx,gy] = cloudGround(c, boat.x, boat.y), [rx] = rainFootprint(c);
-      const d = Math.hypot(gx-boat.x, gy-boat.y);
+      const [gx,gy] = cloudGround(c, boat.x - CLOUD_SHADOW[0], boat.y - CLOUD_SHADOW[1]), [rx] = rainFootprint(c);
+      const d = Math.hypot(gx + CLOUD_SHADOW[0] - boat.x, gy + CLOUD_SHADOW[1] - boat.y);
       best = Math.max(best, Math.max(0, Math.min(1, 1 - (d - rx*0.6)/(rx + 260))));
     }
     return best;
