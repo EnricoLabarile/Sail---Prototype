@@ -105,13 +105,15 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
     z-index:5;
     pointer-events:none;
   }
+  /* the market is a window of its own: centred over a dark shade, with room for everything */
+  #mk-shade{position:fixed; inset:0; z-index:7; background:rgba(0,0,0,.9); display:none;}
+  body.at-market #mk-shade{display:block;}
   #market{
     position:fixed;
-    top:calc(162px + env(safe-area-inset-top,0px));
-    left:50%; transform:translateX(-50%);
+    top:50%; left:50%; transform:translate(-50%,-50%);
     width:min(440px, calc(100vw - 20px));
-    max-height:calc(100% - 150px - 200px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));
-    overflow-y:auto;
+    max-height:calc(100% - 20px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));
+    overflow-y:auto;             /* only as a last resort, with a very full hold on a small screen */
     padding:10px 10px 8px;
     z-index:8;
   }
@@ -149,6 +151,8 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
     cursor:pointer; touch-action:manipulation;
   }
   #market button:active:not(:disabled){transform:translate(2px,2px); box-shadow:1px 1px 0 var(--ink);}
+  #mk-actions{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+  #mk-actions button{margin:0 0 4px;}
   #market button:disabled{box-shadow:none; border-style:dashed; opacity:.7; cursor:default;}
   #market button.done{background:var(--ink); color:var(--paper); opacity:1; border-style:solid;}
   #mk-foot:empty{display:none;}
@@ -220,7 +224,7 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   #btn-list{left:12px; right:auto; bottom:calc(20px + env(safe-area-inset-bottom,0px));}
   body.at-market #btn-list{display:none;}
   /* at the barter table the halyard and the compass (with its fish counters) step aside */
-  body.at-market #rope, body.at-market #rope-hit, body.at-market #compass, body.at-market #wood{display:none;}
+  body.at-market #rope, body.at-market #rope-hit, body.at-market #compass, body.at-market #wood, body.at-market #wheel{display:none;}
   #btn-list.open{background-color:var(--ink); background-image:radial-gradient(var(--paper) 0.75px, transparent 0.95px);}
   /* the shopping list: slides down from the top of the screen */
   #shoplist{
@@ -417,6 +421,7 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
 
   <canvas id="compass" width="72" height="72" aria-label="Compass: points home. Ports visited: none"></canvas>
   <div id="hint" class="panel hidden"></div>
+  <div id="mk-shade"></div>
   <div id="market" class="panel hidden" role="dialog" aria-label="Market">
     <div id="mk-title"></div>
     <div id="mk-text"></div>
@@ -425,7 +430,10 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
       <div class="mk-side" id="mk-them"><div class="mk-head"><span>The stall</span></div><div class="mk-items" id="mk-them-items"></div></div>
     </div>
     <div id="mk-bal"></div>
-    <button id="mk-deal" type="button">Trade</button>
+    <div id="mk-actions">
+      <button id="mk-quit" type="button">Quit</button>
+      <button id="mk-deal" type="button">Trade</button>
+    </div>
     <div id="mk-foot"></div>
   </div>
   <div id="dialog" class="panel hidden" role="status" aria-live="polite">
@@ -3251,8 +3259,10 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
     const note = [...got.map(f=>'+ '+f), bal > 0 ? '+'+bal+' coins' : bal < 0 ? bal+' coins' : ''].filter(Boolean);
     note.forEach((txt,i)=> popups.push({x:boat.x, y:boat.y-26-i*16, text:txt, life:1.8, max:1.8}));
     if(elList.classList.contains('open')) renderList();
-    mkKey = ''; renderMarket();
+    closeMarket();                                                        // done: back to the quay (weigh anchor to leave)
   });
+  // quit: leave the stall without trading; the boat stays tied up at the quay
+  document.getElementById('mk-quit').addEventListener('click', ()=>{ closeMarket(); Sfx.init(); Sfx.type(); buzz(8); });
 
   // ---------- Night sounds ----------
   // After dark: crickets chirping (louder near land) and, now and then,

@@ -30,7 +30,9 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   Drag or tap units across; balance = fish sold − goods taken. Fish sell for coins: 2 if from other waters, 1 if local.
   "Trade" is disabled if the purse can't cover a negative balance; a positive balance goes to the purse.
   Repairs are automatic at any pier (1 fish = +15 hull; at a village it never spends what the next dish will cost).
-  While trading, the halyard and the compass (with its fish counters) are hidden.
+  The market is a centred window over a 90% black shade; while it's open the halyard, compass (with its fish
+  counters) and wheel/anchor are hidden. Buttons: Quit (left) and Trade (right); both close it and leave you moored
+  with the anchor back, so you can linger; a market opens once per docking (leave and come back to trade again).
 - **Intro:** on "Set sail" the card rolls up into a scroll that is tossed into the list button (skipped with reduced motion).
 - **Controls:** wheel (drag in a circle; half a turn = full lock). Hub of the wheel = anchor only:
   **long press 0.5 s = anchor**. At anchor the wheel fades out and only the hub (bigger, dark) remains.
