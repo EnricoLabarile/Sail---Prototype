@@ -234,6 +234,16 @@
     z-index:6;
   }
   #wheel.grabbed{cursor:grabbing;}
+  /* the halyard: a rope hanging from a block on the right; pull it down to switch sail */
+  #rope{
+    position:fixed;
+    right:6px; bottom:calc(10px + env(safe-area-inset-bottom,0px));
+    width:52px; height:210px;
+    touch-action:none; cursor:grab;
+    z-index:7;
+  }
+  #rope.grabbed{cursor:grabbing;}
+  #rope:focus-visible{outline:2px dashed var(--ink); outline-offset:2px;}
 
   /* --- Intro / game over --- */
   #intro, #gameover{
@@ -328,6 +338,7 @@
   <div id="shoplist" class="panel" role="region" aria-label="Shopping list"></div>
   <div id="toast" class="panel" role="status" aria-live="polite"></div>
   <canvas id="wheel" aria-label="Helm: drag clockwise or anticlockwise to steer"></canvas>
+  <canvas id="rope" tabindex="0" role="button" aria-label="Halyard: pull down to switch sail"></canvas>
 
   <div id="intro">
    <div class="card intro-card">
@@ -1254,7 +1265,7 @@
   for(let k=0; lanes.length && k<8; k++){                // 8 traders, two to a lane
     const L = lanes[k % lanes.length];
     traders.push({lane:L, dir: Math.random()<0.5?1:-1, s: rand(0.1,0.9)*L.len, speed: rand(24,32), wait: 0, x:0, y:0, a:0, ph: rand(0,6.3),
-                  off: 0, talkT: 0, talkCool: rand(0,5), marks: [], foam: [], foamT: 0});
+                  kx: 0, ky: 0, kvx: 0, kvy: 0, yaw: 0, yv: 0, bumpCool: 0, talkT: 0, talkCool: rand(0,5), marks: [], foam: [], foamT: 0});
   }
   for(let k=0;k<HOME_BANKS;k++) spawnBank(false, true);
   const SAIL_LEVELS = [
@@ -1332,7 +1343,7 @@
     if(e.key==='ArrowLeft'||e.key==='a'||e.key==='A') turnLeft=true;
     if(e.key==='ArrowRight'||e.key==='d'||e.key==='D') turnRight=true;
     if(e.code==='Space' && !e.repeat){ e.preventDefault(); setAnchor(!anchored); }   // space: anchor
-    if(e.code==='KeyS' && !e.repeat) cycleSail();                                    // S: sail
+    if(e.code==='KeyS' && !e.repeat) pullRope();                                     // S: sail
   });
   window.addEventListener('keyup', e=>{
     if(e.key==='ArrowLeft'||e.key==='a'||e.key==='A') turnLeft=false;
@@ -2007,7 +2018,7 @@
 
   let wheelPointer = null, wheelLast = 0;
   const HUB_R = 21, HUB_HOLD = 500;        // hub radius (unscaled) and how long to hold it, ms
-  let hubHold = null, hubShake = 0, lastTapT = 0, bankHint = false, wheelVis = 1, hubScale = 1;
+  let hubHold = null, hubShake = 0, bankHint = false, wheelVis = 1, hubScale = 1;
   const stowed = ()=> anchored && weighT <= 0;             // at anchor the wheel itself is locked
   function wheelLocal(ev){
     const r = wheelCv.getBoundingClientRect();
@@ -2040,12 +2051,6 @@
   });
   const wheelRelease = ev=>{
     if(ev.pointerId!==wheelPointer) return;
-    // a quick tap on the hub; two in a row switch the sail
-    if(hubHold && !hubHold.done && performance.now() - hubHold.t0 < 260){
-      const now = performance.now();
-      if(now - lastTapT < 380){ cycleSail(); hubShake = 1; buzz([12,40,12]); lastTapT = 0; }
-      else lastTapT = now;
-    }
     wheelPointer = null; hubHold = null;
     wheelCv.classList.remove('grabbed');
   };
@@ -2214,10 +2219,10 @@
     c.strokeStyle=INKW; c.lineWidth=1.2; c.beginPath(); c.arc(0,0,2.4,0,Math.PI*2); c.stroke();
     c.beginPath(); c.moveTo(-2.4,0); c.lineTo(2.4,0); c.stroke();
     c.restore();    c.globalAlpha = 1;                                     // the hub is always drawn solid
-    // the hub: double tap switches the sail, a half-second press drops or
-    // weighs the anchor (a ring fills while it's held, then a little shake)
+    // the hub is the anchor button: a half-second press drops or weighs the
+    // anchor (a ring fills while it's held, then a little shake)
     if(hubHold && !hubHold.done && performance.now() - hubHold.t0 >= HUB_HOLD){
-      hubHold.done = true; lastTapT = 0; hubShake = 1;
+      hubHold.done = true; hubShake = 1;
       setAnchor(!(anchored && weighT <= 0));
     }
     hubShake = Math.max(0, hubShake - 0.06);
@@ -2251,32 +2256,23 @@
       }
       c.strokeStyle = HI; c.fillStyle = HI;
       c.lineCap='round';
-      if(anchored){                                        // at anchor: an anchor
-        c.lineWidth=1.6;
-        c.beginPath(); c.arc(0,-7,1.9,0,Math.PI*2); c.stroke();
-        c.beginPath(); c.moveTo(0,-5); c.lineTo(0,7.5); c.moveTo(-4.5,-2.2); c.lineTo(4.5,-2.2); c.stroke();
-        c.beginPath(); c.moveTo(-6.5,2.5); c.quadraticCurveTo(-5,7.5,0,7.5); c.quadraticCurveTo(5,7.5,6.5,2.5); c.stroke();
-        c.restore();
-      } else {
-      // the sail: set and full, or furled on its yard over a little wave
-      c.lineWidth=1.4; c.beginPath(); c.moveTo(0,-9); c.lineTo(0,9); c.stroke();          // mast
-      c.lineWidth=1.8; c.beginPath(); c.moveTo(-6.5,-6); c.lineTo(6.5,-6); c.stroke();    // yard
-      c.fillStyle=HI;
-      if(sailLevel === SAIL_MIN){
-        c.beginPath(); c.roundRect(-6,-5.6,12,3.4,1.6); c.fill();
-        c.lineWidth=1.2; c.beginPath(); c.moveTo(-6,6.5); c.quadraticCurveTo(-3,4.5,0,6.5); c.quadraticCurveTo(3,8.5,6,6.5); c.stroke();
-      } else {
-        c.beginPath(); c.moveTo(-5.6,-5.2); c.quadraticCurveTo(0,-3.2,5.6,-5.2); c.quadraticCurveTo(7.6,0,5.6,5.2);
-        c.quadraticCurveTo(0,7.2,-5.6,5.2); c.quadraticCurveTo(-7.6,0,-5.6,-5.2); c.fill();
-      }
+      // always an anchor: light hub while sailing, dark knob at anchor
+      c.lineWidth=1.6;
+      c.beginPath(); c.arc(0,-7,1.9,0,Math.PI*2); c.stroke();
+      c.beginPath(); c.moveTo(0,-5); c.lineTo(0,7.5); c.moveTo(-4.5,-2.2); c.lineTo(4.5,-2.2); c.stroke();
+      c.beginPath(); c.moveTo(-6.5,2.5); c.quadraticCurveTo(-5,7.5,0,7.5); c.quadraticCurveTo(5,7.5,6.5,2.5); c.stroke();
       c.restore();
-      }
     }
-    // 1-bit: ordered dither to the game palette; transparent outside
-    const im = c.getImageData(0,0,WH_W,WH_H), dd = im.data, o32 = new Uint32Array(dd.buffer);
-    for(let y=0, p=0; y<WH_H; y++){
+    ditherUI(c, WH_W, WH_H);
+    wctx.clearRect(0,0,wheelCv.width,wheelCv.height);
+    wctx.drawImage(wlo, 0, 0, wheelCv.width, wheelCv.height);
+  }
+  // 1-bit: ordered dither of a UI canvas to the interface palette; transparent outside
+  function ditherUI(c, W, H){
+    const im = c.getImageData(0,0,W,H), dd = im.data, o32 = new Uint32Array(dd.buffer);
+    for(let y=0, p=0; y<H; y++){
       const row = (y&3)*4;
-      for(let x=0; x<WH_W; x++, p++){
+      for(let x=0; x<W; x++, p++){
         const q = p<<2;
         if(dd[q+3] < 110){ o32[p] = 0; continue; }
         const lum = dd[q] * dd[q+3]/255 + 255*(1-dd[q+3]/255);   // alpha edges blend toward paper
@@ -2284,8 +2280,6 @@
       }
     }
     c.putImageData(im,0,0);
-    wctx.clearRect(0,0,wheelCv.width,wheelCv.height);
-    wctx.drawImage(wlo, 0, 0, wheelCv.width, wheelCv.height);
   }
 
 
@@ -2326,15 +2320,144 @@
   // sail: full → medium → minimum. At minimum the sail is all but furled
   // and the oars keep her moving at a slow, steady pace.
   const ROW_SPEED = 9;
-  // the sail switch lives in the hub of the wheel (see drawWheel): hold it
-  // for a second to trim; this just keeps the label in step
+  // the sail is switched with the halyard (see below), the anchor with the
+  // hub of the wheel; this just keeps the labels in step
   function renderSailBtn(){
-    wheelCv.setAttribute('aria-label', 'Helm: drag round to steer. Centre: double tap to switch sail (now ' + SAIL_LEVELS[sailLevel].name + '), hold half a second to ' + (anchored ? 'weigh' : 'drop') + ' anchor.');
+    wheelCv.setAttribute('aria-label', 'Helm: drag round to steer. Centre: hold half a second to ' + (anchored ? 'weigh' : 'drop') + ' anchor.');
+    ropeCv.setAttribute('aria-label', 'Halyard: pull down to switch sail (now ' + SAIL_LEVELS[sailLevel].name + ').');
   }
   // a switch: full sail ↔ minimum
   function cycleSail(){
     sailLevel = sailLevel === 0 ? SAIL_MIN : 0;
     renderSailBtn(); Sfx.init(); Sfx.thunk(0.3); buzz(10);
+  }
+
+  // ---------- Halyard ----------
+  // A rope hanging from a block on the right of the screen. Swipe it down
+  // like pulling a line: it follows the finger (stiffer the further it
+  // goes), clicking through the block as it runs, and past the mark the
+  // sail switches with a clack. Let go and it springs back up.
+  const ropeCv = document.getElementById('rope');
+  const rctx = ropeCv.getContext('2d');
+  const RP_W = 52, RP_H = 210, RP_CX = 26;
+  const ROPE_TOP = 66, ROPE_REST = 136;          // bottom of the block, rest height of the toggle
+  const ROPE_MAX = 54, ROPE_FIRE = 34, ROPE_TICK = 9;   // longest pull, where it switches, px per click
+  const rlo = document.createElement('canvas'); rlo.width = RP_W; rlo.height = RP_H;
+  const rl = rlo.getContext('2d', {willReadFrequently:true});
+  function sizeRope(){
+    const k = Math.max(1, Math.round((window.devicePixelRatio||1)));
+    ropeCv.width = RP_W*k; ropeCv.height = RP_H*k;
+    rctx.imageSmoothingEnabled = false;
+  }
+  sizeRope();
+  window.addEventListener('resize', sizeRope);
+  let ropePull = 0, ropeV = 0, ropePointer = null, ropeY0 = 0, ropeFired = false, ropeTickIdx = 0, ropeLastT = performance.now(), ropeFlash = 0;
+  const ropeLocalY = ev=>{ const r = ropeCv.getBoundingClientRect(); return (ev.clientY - r.top)*(RP_H/r.height); };
+  ropeCv.addEventListener('pointerdown', ev=>{
+    ev.preventDefault();
+    ropePointer = ev.pointerId; ropeCv.setPointerCapture(ev.pointerId); ropeCv.classList.add('grabbed');
+    ropeY0 = ropeLocalY(ev) - Math.max(0, ropePull); ropeFired = false; ropeTickIdx = Math.floor(Math.max(0, ropePull)/ROPE_TICK); ropeV = 0;
+    Sfx.init(); buzz(6);
+  });
+  ropeCv.addEventListener('pointermove', ev=>{
+    if(ev.pointerId !== ropePointer) return;
+    ev.preventDefault();
+    const dy = ropeLocalY(ev) - ropeY0;
+    ropePull = dy <= 0 ? 0 : ROPE_MAX*(1 - Math.exp(-dy/(ROPE_MAX*0.9)));   // it gets heavier as it comes
+    const idx = Math.floor(ropePull/ROPE_TICK);
+    if(idx > ropeTickIdx){ buzz(5); Sfx.tick(0.3, 1.15 + idx*0.06); }     // the line clicking through the block
+    ropeTickIdx = idx;
+    if(!ropeFired && ropePull >= ROPE_FIRE){ ropeFired = true; switchByRope(); }
+  });
+  const ropeRelease = ev=>{
+    if(ev.pointerId !== ropePointer) return;
+    ropePointer = null; ropeCv.classList.remove('grabbed');
+  };
+  ropeCv.addEventListener('pointerup', ropeRelease);
+  ropeCv.addEventListener('pointercancel', ropeRelease);
+  ropeCv.addEventListener('keydown', e=>{ if(e.key==='Enter' && !e.repeat){ e.preventDefault(); pullRope(); } });
+  function switchByRope(){
+    cycleSail(); Sfx.thunk(0.55); buzz([28,40,14]); ropeFlash = 1;
+  }
+  // a pull from the keyboard: the rope jumps down and springs back on its own
+  function pullRope(){ ropePull = ROPE_FIRE + 4; ropeV = 0; switchByRope(); }
+  function drawRope(){
+    const now = performance.now(), dt = Math.min(0.05, (now - ropeLastT)/1000); ropeLastT = now;
+    if(ropePointer === null){                                   // let go: spring back up, a little overshoot
+      ropeV += (-90*ropePull - 11*ropeV)*dt; ropePull += ropeV*dt;
+      if(ropePull < -6){ ropePull = -6; ropeV = 0; }
+      if(Math.abs(ropePull) < 0.05 && Math.abs(ropeV) < 0.5){ ropePull = 0; ropeV = 0; }
+    }
+    ropeFlash = Math.max(0, ropeFlash - dt*2.5);
+    const c = rl, INKW = '#000', PAPW = '#fff', pull = ropePull, hy = ROPE_REST + pull;
+    c.clearRect(0,0,RP_W,RP_H);
+    c.lineCap = 'round'; c.lineJoin = 'round';
+    // the badge: which sail is set, in a paper disc (it pops when switched)
+    {
+      const s = 1 + 0.25*Math.sin(ropeFlash*Math.PI);
+      c.save(); c.translate(RP_CX, 18); c.scale(s, s);
+      c.fillStyle = PAPW; c.strokeStyle = INKW; c.lineWidth = 2;
+      c.beginPath(); c.arc(0,0,15,0,Math.PI*2); c.fill(); c.stroke();
+      c.lineWidth=1.4; c.beginPath(); c.moveTo(0,-10); c.lineTo(0,10); c.stroke();          // mast
+      c.lineWidth=1.8; c.beginPath(); c.moveTo(-7,-7); c.lineTo(7,-7); c.stroke();          // yard
+      c.fillStyle = INKW;
+      if(sailLevel === SAIL_MIN){                                                            // furled, over a little wave
+        c.beginPath(); c.roundRect(-6.5,-6.6,13,3.6,1.7); c.fill();
+        c.lineWidth=1.2; c.beginPath(); c.moveTo(-6.5,7); c.quadraticCurveTo(-3.2,5,0,7); c.quadraticCurveTo(3.2,9,6.5,7); c.stroke();
+      } else {                                                                               // full and drawing
+        c.beginPath(); c.moveTo(-6,-6.2); c.quadraticCurveTo(0,-4.2,6,-6.2); c.quadraticCurveTo(8.2,0,6,6);
+        c.quadraticCurveTo(0,8,-6,6); c.quadraticCurveTo(-8.2,0,-6,-6.2); c.fill();
+      }
+      c.restore();
+    }
+    // shackle and block, with a sheave that turns as the line runs
+    c.strokeStyle = INKW; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(RP_CX, 33); c.lineTo(RP_CX, 38); c.stroke();
+    c.beginPath(); c.ellipse(RP_CX, 38.5, 3.2, 2.4, 0, 0, Math.PI*2); c.stroke();
+    c.fillStyle = 'rgb(170,170,170)'; c.strokeStyle = INKW; c.lineWidth = 1.8;
+    c.beginPath(); c.roundRect(RP_CX-10, 41, 20, 26, 7); c.fill(); c.stroke();
+    c.fillStyle = 'rgb(215,215,215)'; c.beginPath(); c.roundRect(RP_CX-7.5, 43, 7, 21, 4); c.fill();   // lit cheek
+    c.save(); c.translate(RP_CX, 54); c.rotate(pull/6);
+    c.fillStyle = PAPW; c.strokeStyle = INKW; c.lineWidth = 1.4;
+    c.beginPath(); c.arc(0,0,6.5,0,Math.PI*2); c.fill(); c.stroke();
+    c.lineWidth = 1.1; c.beginPath(); for(let k=0;k<3;k++){ const a = k*Math.PI/3; c.moveTo(Math.cos(a)*5.5, Math.sin(a)*5.5); c.lineTo(-Math.cos(a)*5.5, -Math.sin(a)*5.5); } c.stroke();
+    c.fillStyle = INKW; c.beginPath(); c.arc(0,0,1.6,0,Math.PI*2); c.fill();
+    c.restore();
+    // the rope: laid strands that run down through the block as it's pulled
+    const sway = Math.max(-3, Math.min(3, -ropeV*0.012));
+    const rx = y=> RP_CX + sway*Math.sin(Math.PI*(y-ROPE_TOP)/Math.max(1, hy-ROPE_TOP));
+    c.lineWidth = 7; c.strokeStyle = INKW;
+    c.beginPath(); for(let y=ROPE_TOP; y<=hy; y+=3) (y===ROPE_TOP ? c.moveTo(rx(y), y) : c.lineTo(rx(y), y)); c.lineTo(rx(hy), hy); c.stroke();
+    c.lineWidth = 4.2; c.strokeStyle = PAPW;
+    c.beginPath(); for(let y=ROPE_TOP; y<=hy; y+=3) (y===ROPE_TOP ? c.moveTo(rx(y), y) : c.lineTo(rx(y), y)); c.lineTo(rx(hy), hy); c.stroke();
+    c.strokeStyle = INKW; c.lineWidth = 1.1; c.lineCap = 'butt';
+    c.beginPath();
+    for(let y = ROPE_TOP + ((pull % 4) + 4) % 4; y < hy - 1; y += 4){ const x = rx(y); c.moveTo(x-2.1, y-1.4); c.lineTo(x+2.1, y+1.4); }
+    c.stroke(); c.lineCap = 'round';
+    // the toggle: a wooden peg through the rope's end, and a knot below it
+    {
+      const x = rx(hy);
+      c.fillStyle = PAPW; c.strokeStyle = INKW; c.lineWidth = 1.6;                                // knot
+      c.beginPath(); c.arc(x, hy+14.5, 5, 0, Math.PI*2); c.fill(); c.stroke();
+      c.lineWidth = 1; c.beginPath(); c.arc(x-1, hy+14.5, 2.6, -1.2, 2); c.moveTo(x+3.5, hy+11.5); c.lineTo(x-3.5, hy+17.5); c.stroke();
+      c.strokeStyle = INKW; c.lineWidth = 7; c.beginPath(); c.moveTo(x, hy); c.lineTo(x, hy+12); c.stroke();
+      c.strokeStyle = PAPW; c.lineWidth = 4.2; c.beginPath(); c.moveTo(x, hy); c.lineTo(x, hy+11); c.stroke();
+      c.fillStyle = PAPW; c.strokeStyle = INKW; c.lineWidth = 1.8;
+      c.beginPath(); c.roundRect(x-15, hy-1, 30, 9, 4.5); c.fill(); c.stroke();
+      c.fillStyle = 'rgb(175,175,175)'; c.fillRect(x-12, hy+4, 24, 2.2);                        // shaded underside
+      c.fillStyle = INKW; c.fillRect(x-1.6, hy-1, 3.2, 9);                                        // the rope passing through
+    }
+    // idle: two little chevrons under the knot, saying 'pull me'
+    const idle = ropePointer === null && Math.abs(ropePull) < 1;
+    if(idle){
+      const bob = (Math.sin(now*0.004)+1)*1.5;
+      const chev = ()=>{ c.beginPath(); for(const dy of [0, 7]){ const y = hy + 27 + dy + bob; c.moveTo(RP_CX-5, y); c.lineTo(RP_CX, y+4); c.lineTo(RP_CX+5, y); } };
+      c.strokeStyle = PAPW; c.lineWidth = 4; chev(); c.stroke();    // paper halo: reads on dark water
+      c.strokeStyle = INKW; c.lineWidth = 1.6; chev(); c.stroke();
+    }
+    ditherUI(c, RP_W, RP_H);
+    rctx.clearRect(0,0,ropeCv.width,ropeCv.height);
+    rctx.drawImage(rlo, 0, 0, ropeCv.width, ropeCv.height);
   }
   renderSailBtn();
 
@@ -2589,7 +2712,7 @@
       const p = (j*nx+i)*4;
       d[p]=d[p+1]=d[p+2]=0;
       const kk = fci(j0+j)*FOG_N + fci(i0+i);
-      d[p+3] = (explored[kk] || buoyClear[kk]) ? 0 : 255;          // buoys always show through   // solid black: no stray light dots
+      d[p+3] = (explored[kk] || buoyClear[kk]) ? 0 : 255;          // buoys and villages always show through   // solid black: no stray light dots
     }
     fogCtx.putImageData(fogImg,0,0);
     ctx.imageSmoothingEnabled = true;                 // soft edges between cells
@@ -3022,6 +3145,15 @@
       for(let i=Math.floor((b.x-r)/C); i<=Math.floor((b.x+r)/C); i++)
         if(Math.hypot((i+0.5)*C - b.x, (j+0.5)*C - b.y) <= r) buoyClear[fci(j)*FOG_N + fci(i)] = 1;
   }
+  // and a wide one round every village, so the towns can be seen from
+  // afar and steered for
+  const VILLAGE_CLEAR = 340;
+  for(const v of VILLAGES){
+    const C = FOG_CELL, r = VILLAGE_CLEAR, x = v.isl.x, y = v.isl.y;
+    for(let j=Math.floor((y-r)/C); j<=Math.floor((y+r)/C); j++)
+      for(let i=Math.floor((x-r)/C); i<=Math.floor((x+r)/C); i++)
+        if(Math.hypot((i+0.5)*C - x, (j+0.5)*C - y) <= r) buoyClear[fci(j)*FOG_N + fci(i)] = 1;
+  }
   const elToast = document.getElementById('toast');
   let toastT = 0;
   function toast(text){ elToast.textContent = text; elToast.classList.add('show'); toastT = 3.2; }
@@ -3083,27 +3215,37 @@
           tr.lane = L; tr.dir = L.a===port ? 1 : -1; tr.s = tr.dir > 0 ? 0 : L.len;
         }
       } else {
-        // give the player a wide berth: ease off and swing to the far side of the lane
-        const dx = wdx(boat.x, tr.x), dy = wdy(boat.y, tr.y), d = Math.hypot(dx,dy);
-        const near = Math.max(0, 1 - d/110);
-        tr.s += tr.dir*tr.speed*(1 - 0.55*near)*dt;
+        tr.s += tr.dir*tr.speed*dt;                          // she keeps to her lane, whoever is about
         if(tr.s <= 0 || tr.s >= tr.lane.len){ tr.s = Math.max(0, Math.min(tr.lane.len, tr.s)); tr.wait = rand(5,10); }
       }
       const [x,y,a] = lanePoint(tr.lane, tr.s);
-      const ha = tr.dir > 0 ? a : a + Math.PI, px = -Math.sin(ha), py = Math.cos(ha);   // her heading and her right hand
-      {
-        const dx = wdx(boat.x, x), dy = wdy(boat.y, y), d = Math.hypot(dx,dy);
-        if(d > 190 || tr.wait > 0) tr.side = 0;
-        else if(!tr.side){                                          // decide once which way to pass
-          let sd = (dx*px + dy*py) > 0 ? -1 : 1;                    // the side away from the player…
-          if(onLand(wrapX(x+px*sd*50), wrapY(y+py*sd*50), 20)) sd = -sd;   // …unless that's the shore
-          tr.side = sd;
+      const ha = tr.dir > 0 ? a : a + Math.PI;               // her heading
+      // run into her and she's shoved aside: she drifts off, spins a little,
+      // then eases back onto her lane and carries on
+      tr.kvx *= Math.exp(-3*dt); tr.kvy *= Math.exp(-3*dt);
+      tr.kx += tr.kvx*dt; tr.ky += tr.kvy*dt;
+      tr.kx *= Math.exp(-0.5*dt); tr.ky *= Math.exp(-0.5*dt);
+      tr.yv *= Math.exp(-2.5*dt); tr.yaw += tr.yv*dt; tr.yaw *= Math.exp(-0.8*dt);
+      tr.bumpCool = Math.max(0, tr.bumpCool - dt);
+      if((tr.kx || tr.ky) && onLand(wrapX(x + tr.kx), wrapY(y + tr.ky), 10)){ tr.kvx = tr.kvy = 0; tr.kx *= 0.9; tr.ky *= 0.9; }   // never onto the shore
+      tr.x = wrapX(x + tr.kx); tr.y = wrapY(y + tr.ky);
+      if(!moor){
+        const dx = wdx(tr.x, boat.x), dy = wdy(tr.y, boat.y), d = Math.hypot(dx,dy), R = boat.r + 13;   // from the boat to her
+        if(d < R){
+          const nx = d > 0.01 ? dx/d : Math.cos(boat.angle), ny = d > 0.01 ? dy/d : Math.sin(boat.angle);
+          tr.kx += nx*(R-d); tr.ky += ny*(R-d);              // out of the way, at once
+          tr.x = wrapX(x + tr.kx); tr.y = wrapY(y + tr.ky);
+          if(tr.bumpCool <= 0){
+            tr.bumpCool = 0.8;
+            const push = 18 + Math.abs(boat.speed)*0.8;
+            tr.kvx += nx*push; tr.kvy += ny*push;
+            tr.yv += (Math.cos(boat.angle)*ny - Math.sin(boat.angle)*nx > 0 ? 1 : -1)*(0.6 + Math.abs(boat.speed)/MAX_SPEED);
+            boat.speed *= 0.85;                               // a nudge you feel, no harm done
+            boat.rock = Math.min(2.5, (boat.rock||0) + 0.3);
+            buzz([18,30,10]); Sfx.buoy(); Sfx.thunk(0.25);
+          }
         }
-        let want = tr.side ? tr.side*Math.min(55, (180-d)*0.6) : 0;
-        if(want && onLand(wrapX(x+px*want), wrapY(y+py*want), 18)) want *= 0.4;   // squeeze, don't beach
-        tr.off += (want - tr.off)*Math.min(1, dt*2.8);
       }
-      tr.x = wrapX(x + px*tr.off); tr.y = wrapY(y + py*tr.off);
       // foam from the propeller: churned up astern, spreading and fading
       for(let k=tr.foam.length-1;k>=0;k--){ const f = tr.foam[k]; f.age += dt; f.x += f.vx*dt; f.y += f.vy*dt; if(f.age >= f.life) tr.foam.splice(k,1); }
       if(tr.wait <= 0){
@@ -3114,7 +3256,7 @@
           for(const sd of [-1,1]) tr.foam.push({x: sx - sa*sd*2, y: sy + ca*sd*2, vx: -sa*sd*9 - ca*4, vy: ca*sd*9 - sa*4, age: 0, life: rand(1.2,1.8)});
         }
       }
-      if(tr.wait <= 0) tr.a = ha - tr.off*0.004*(tr.dir);
+      if(tr.wait <= 0) tr.a = ha;
       // passing close: a hail across the water (a speech bubble and a voice)
       tr.talkCool = Math.max(0, tr.talkCool - dt); tr.talkT = Math.max(0, tr.talkT - dt);
       const pd = wdist(boat.x, boat.y, tr.x, tr.y);
@@ -3140,7 +3282,7 @@
     ctx.globalAlpha = 1;
     if(!inView(tr.x, tr.y, 30)) return;
     const bob = Math.sin(t*1.4 + tr.ph)*0.5, roll = Math.sin(t*1.9 + tr.ph)*0.04;
-    ctx.save(); ctx.translate(tr.x, tr.y - bob); ctx.rotate(tr.a);
+    ctx.save(); ctx.translate(tr.x, tr.y - bob); ctx.rotate(tr.a + tr.yaw);
     ctx.save(); ctx.scale(1, 1 - Math.abs(roll));
     const hull = ()=>{ ctx.beginPath(); ctx.moveTo(19,0); ctx.quadraticCurveTo(11,-8.5,-4,-8); ctx.lineTo(-14,-6); ctx.quadraticCurveTo(-16,0,-14,6); ctx.lineTo(-4,8); ctx.quadraticCurveTo(11,8.5,19,0); ctx.closePath(); };
     ctx.save(); ctx.translate(2.5,3); ctx.fillStyle=V(0.45); hull(); ctx.fill(); ctx.restore();   // shadow
@@ -4404,7 +4546,7 @@
       ctx.moveTo(ox+x+dx+rr, oy+y+dy); ctx.ellipse(ox+x+dx, oy+y+dy, rr, ry, 0, 0, Math.PI*2);
     }
   }
-  const CLOUD_ALPHA = 0.62;                    // see-through: the whole cloud is laid over the scene at this opacity
+  const CLOUD_ALPHA = 0.45;                   // see-through: the whole cloud is laid over the scene at this opacity
   function drawCloudBody(c, P, ox, oy){
     ctx.fillStyle = INKC; puffPath(P, ox, oy, 1.8, 0, 0, 1); ctx.fill();                 // defined inked edge
     ctx.fillStyle = V(0.66); puffPath(P, ox, oy, 0, 0, 0, 1); ctx.fill();                // the shaded underside of every billow
@@ -4950,6 +5092,7 @@
     sctx.drawImage(obuf, 0, 0, GW, GH, 0, 0, GW*K, GH*K);
 
     drawWheel();
+    drawRope();
     drawCompass();
   }
 

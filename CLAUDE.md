@@ -18,17 +18,21 @@ You sail from home to four villages to buy food for a banquet, paying with fish,
 - **Ruins** on the diagonals: dock there for a random power (friendly wind 60 s, blessed nets ×3, full hull).
 - **Fish:** sardines (N), mackerel (E), red mullet (S), sea bream (W). Banks denser far from home; home waters have all kinds.
   Market price: 4 fish, at most 2 of the village's local kind. Repairs are automatic at any pier (1 fish = +15 hull).
-- **Controls:** wheel (drag in a circle; half a turn = full lock). Hub of the wheel: **double tap = sail** (full / minimum),
+- **Controls:** wheel (drag in a circle; half a turn = full lock). Hub of the wheel = anchor only:
   **long press 0.5 s = anchor**. At anchor the wheel fades out and only the hub (bigger, dark) remains.
+  **Halyard** (rope hanging from a block, bottom right): swipe it down to switch sail (full / minimum); it clicks
+  (haptic + sound) as it runs, clacks when it switches, then springs back. Badge on top shows the sail state.
   Left button: shopping list overlay. Keyboard: arrows, Space = anchor, S = sail.
 - **Hazards:** rocks, faraglioni, whirlpools (appear/disappear/wander), rollers (big waves: head-on hurts, from astern = surf boost).
 - **Atmosphere:** macchia (tree-spurge domes + Mediterranean pines), clouds with parallax and shadows, gulls, wind streaks,
-  traders (motor boats on A* lanes between villages, they avoid the player and hail with a speech bubble), fog of war,
+  traders (motor boats on A* lanes between villages; they don't avoid the player, a collision just shoves them aside
+  with no damage, then they drift back to their lane; they hail with a speech bubble), fog of war (buoys and a
+  340 px radius round each village always show through), see-through clouds,
   day/night palette cycle (6 min) with dark nights lit by lanterns, lighthouses and windows.
 
 ## Map of index.html (search for these section headers: `// ---------- Name ----------`)
 World setup · Islands · Home island · Piers · Villages · Ruins · Rocks · Whirlpools · Fish banks · Boat ·
-Trade routes · Wind · Input · Haptics · Sound · Ship's wheel · Intro · UI refs · Dialog · Fishing · Fog of war ·
+Trade routes · Wind · Input · Haptics · Sound · Ship's wheel · Halyard · Intro · UI refs · Dialog · Fishing · Fog of war ·
 Rollers · Powers from the ruins · Village market · Night sounds · Town sounds · Wind streaks · Shopping list ·
 Buoys · Traders · Update · 1-bit rendering · Day and night · Draw · Villages (pixel art) · Ruins (pixel art) ·
 Cloud shadows (clouds) · Ambient life: gulls
