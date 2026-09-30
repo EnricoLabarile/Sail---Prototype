@@ -21,7 +21,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   (both dishes from at least one village), Banquet (all 8 dishes). See `VILLAGES`, `dinnerTier`, `ENDINGS`.
   **No spoilers:** intro and list name only the four courses; dishes are discovered at the stalls, and the gifts are
   a surprise: never mention them anywhere before one is earned (not in the intro, list, or market).
-  Each has a bay, a wooden pier, a lighthouse with a sweeping beam, a pixel-art town, 24 buoys at ~880 px (`BUOYS_PER_VILLAGE`) (toast "Entering the waters of …").
+  Each has a bay, a wooden pier, a lighthouse with a sweeping beam, a pixel-art town, 24 buoys at ~880 px (`BUOYS_PER_VILLAGE`) (toasts "Entering / Leaving the waters of …"; leaving counts 150 px past the buoys).
 - **Ruins** on the diagonals: dock there for a random power (friendly wind 60 s, blessed nets ×3, full hull).
 - **Fish:** sardines (N), mackerel (E), red mullet (S), sea bream (W). Banks denser far from home; home waters have all kinds.
   Fishing: stop on a bank for 2 s and the nets go over; drop anchor on a bank and they go over after 0.25 s.

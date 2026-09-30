@@ -1350,7 +1350,7 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   const BUOY_R = 880, BUOYS_PER_VILLAGE = 24;
   const buoys = [];
   for(const v of VILLAGES){
-    v.inside = true;                                      // (set properly on the first frame)
+    v.inside = null;                                      // unknown until the first frame (no message then)
     for(let k=0;k<BUOYS_PER_VILLAGE;k++){
       const a = k/BUOYS_PER_VILLAGE*Math.PI*2 + rand(-0.04,0.04);
       for(const dr of [0,40,-40,80,-80,130,-130,180]){
@@ -3525,10 +3525,14 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
     }
     for(const v of VILLAGES){
       const d = wdist(boat.x, boat.y, v.isl.x, v.isl.y);
+      if(v.inside === null){ v.inside = d < BUOY_R; continue; }
       if(!v.inside && d < BUOY_R){
         v.inside = true;
         if(playing){ toast('Entering the waters of ' + v.name); buzz([12,40,12]); }
-      } else if(v.inside && d > BUOY_R + 150) v.inside = false;
+      } else if(v.inside && d > BUOY_R + 150){             // a little past the buoys, so it doesn't flicker
+        v.inside = false;
+        if(playing){ toast('Leaving the waters of ' + v.name); buzz(12); }
+      }
     }
   }
   // a buoy: a striped float riding the swell, a pole with a cone topmark,
