@@ -253,6 +253,9 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   #toast.show{opacity:1; transform:translate(-50%, 0);}
   body.at-market #toast{bottom:auto; top:calc(96px + env(safe-area-inset-top,0px));}   /* the compass is away: say it above the market */
   #shoplist h2{margin:0 0 8px; font-size:17px; font-style:italic;}
+  #shoplist .list-head{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;}
+  #shoplist .list-head h2{margin:0;}
+  #shoplist .day{font-size:14px; font-style:italic; font-variant-numeric:tabular-nums;}
   #shoplist ul{list-style:none; margin:0; padding:0;}
   #shoplist li{display:grid; grid-template-columns:22px 1fr; gap:2px 6px; padding:7px 0; border-top:1.5px dashed var(--ink); font-size:14.5px;}
   #shoplist li:first-child{border-top:none;}
@@ -1342,14 +1345,14 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   // the traders: a few small boats with lateen sails, plying the lanes,
   // pausing at each quay before setting off for somewhere else
   const traders = [];
-  // buoys: eight round each village, well beyond the reach of its
-  // lighthouse, marking the edge of its waters
-  const BUOY_R = 880;
+  // buoys: a ring of them round each village, well beyond the reach of
+  // its lighthouse, marking the edge of its waters
+  const BUOY_R = 880, BUOYS_PER_VILLAGE = 24;
   const buoys = [];
   for(const v of VILLAGES){
     v.inside = true;                                      // (set properly on the first frame)
-    for(let k=0;k<8;k++){
-      const a = k/8*Math.PI*2 + rand(-0.12,0.12);
+    for(let k=0;k<BUOYS_PER_VILLAGE;k++){
+      const a = k/BUOYS_PER_VILLAGE*Math.PI*2 + rand(-0.04,0.04);
       for(const dr of [0,40,-40,80,-80,130,-130,180]){
         const r = BUOY_R + dr, x = wrapX(v.isl.x + Math.cos(a)*r), y = wrapY(v.isl.y + Math.sin(a)*r);
         if(onLand(x,y,30) || rockGrid.query(x,y,30, o=> Math.hypot(wdx(o.x,x),wdy(o.y,y)) < o.r+16)) continue;
@@ -1464,7 +1467,7 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   const AMB_LEVEL = 0.1;           // master level of the whole ambience (keep it discreet)
   const Sfx = (function(){
     let ac=null, master=null, wheelBus=null, noise=null, rub=null;
-    let ambBus=null, sea=null, rush=null, rainL=null, droneNodes=null, engineNodes=null;
+    let ambBus=null, sea=null, rush=null, rainL=null, cicadaOut=null, droneNodes=null, engineNodes=null;
     function init(){
       if(ac){ if(ac.state==='suspended') ac.resume(); return; }
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -1508,6 +1511,28 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
                {...layer(brown,'lowpass',380,0.5, 0.55,3.1), ph:0.5, per:8.5} ];
       rush = layer(brown,'lowpass',320,0.5,0,2.2);   // deep, soft water along the hull
       rainL = layer(pink,'bandpass',2600,0.45,0,1.3); // rain on the sea: a soft, even hiss
+      // cicadas: two voices of bright, narrow noise, each pulsed fast by its
+      // own tymbal rhythm and swelling slowly in and out, like a chorus in
+      // the pines; silent until cicadas() turns them up (by day, near land)
+      {
+        const out = ac.createGain(); out.gain.value = 0; out.connect(ambBus);
+        const voice = (freq, rate, swell, pan, off)=>{
+          const src = ac.createBufferSource(); src.buffer = pink; src.loop = true;
+          const bp = ac.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value = freq; bp.Q.value = 6;
+          const am = ac.createGain(); am.gain.value = 0.5;
+          const pulse = ac.createOscillator(); pulse.type = 'square'; pulse.frequency.value = rate;
+          const pa = ac.createGain(); pa.gain.value = 0.5; pulse.connect(pa); pa.connect(am.gain);
+          const sw = ac.createGain(); sw.gain.value = 0.55;
+          const lfo = ac.createOscillator(); lfo.frequency.value = swell;
+          const la = ac.createGain(); la.gain.value = 0.45; lfo.connect(la); la.connect(sw.gain);
+          src.connect(bp); bp.connect(am); am.connect(sw);
+          if(ac.createStereoPanner){ const p = ac.createStereoPanner(); p.pan.value = pan; sw.connect(p); p.connect(out); } else sw.connect(out);
+          src.start(0, off); pulse.start(); lfo.start();
+        };
+        voice(5400, 46, 0.11, -0.45, 0.4);
+        voice(6300, 53, 0.083, 0.45, 2.9);
+        cicadaOut = out;
+      }
       // whirlpool drone: two detuned low saws (slow beating) and a rumble of
       // dark noise, through a resonant low-pass that breathes. Silent until
       // a whirlpool is near; see drone().
@@ -1577,6 +1602,11 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
       for(let i=0;i<xf;i++){ const k=i/xf; d[i] = d[i]*k + d[n-xf+i]*(1-k); }
       for(let i=0;i<n;i++) d[i] /= peak;
       return buf;
+    }
+    // the cicadas' chorus, level 0..1
+    function cicadas(level){
+      if(!cicadaOut || ac.state!=='running') return;
+      cicadaOut.gain.setTargetAtTime(0.55*level, ac.currentTime, 1.2);
     }
     // passing under a shower: the hiss of rain on the water, level 0..1
     function rain(level){
@@ -2091,7 +2121,7 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
     }
 
 
-    return {init, tick, thunk, wheel, ambient, rain, pickup, hammer, bell, whirl, type, splash, drone, gull, crash, waveBreak, waveHit, surf, townEvent, chatter, cricket, howl, anchor, buoy, coins, engine};
+    return {init, tick, thunk, wheel, ambient, rain, cicadas, pickup, hammer, bell, whirl, type, splash, drone, gull, crash, waveBreak, waveHit, surf, townEvent, chatter, cricket, howl, anchor, buoy, coins, engine};
   })();
 
   // ---------- Ship's wheel ----------
@@ -2673,7 +2703,7 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
     caught = 0; fishing = null; settleT = 0;
     sailLevel = 0; renderSailBtn();
     weighT = 0; anchored = true; anchorUI();             // start at the quay, anchor down
-    dayT = 0.1; howlT = 12;
+    dayT = 0.1; dayNo = 1; howlT = 12;
     boonWindT = 0; boonFish = 0; for(const r of RUINS) r.readyAt = 0;
     rollers.length = 0; rollerT = 6; boat.surfT = 0;
     windAngle = Math.PI/2; shiftDur = 0; windTimer = rand(28,36);
@@ -3264,6 +3294,25 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   // quit: leave the stall without trading; the boat stays tied up at the quay
   document.getElementById('mk-quit').addEventListener('click', ()=>{ closeMarket(); Sfx.init(); Sfx.type(); buzz(8); });
 
+  // ---------- Cicadas ----------
+  // By day a chorus of cicadas hangs over the whole sea, faint out on the
+  // open water and full near the islands (they sing in the pines and the
+  // macchia); it fades at dusk, and the crickets take over at night.
+  let cicadaT = 0, cicadaNear = 0;
+  function updateCicadas(dt){
+    cicadaT -= dt;
+    if(cicadaT <= 0){                                   // how close is land? (a few times a second is plenty)
+      cicadaT = 0.3; let best = 0;
+      islandGrid.query(boat.x, boat.y, 700, isl=>{
+        const d = Math.max(0, Math.hypot(wdx(isl.x, boat.x), wdy(isl.y, boat.y)) - isl.R*0.8);
+        best = Math.max(best, 1 - Math.min(1, d/700));
+      });
+      cicadaNear = best;
+    }
+    const day = Math.max(0, 1 - NIGHT*2.5);             // gone once it's getting dark
+    Sfx.cicadas(playing ? day*(0.25 + 0.75*cicadaNear) : 0);
+  }
+
   // ---------- Night sounds ----------
   // After dark: crickets chirping (louder near land) and, now and then,
   // a howl from some island far off, sometimes answered.
@@ -3400,7 +3449,7 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   const elList = document.getElementById('shoplist'), elListBtn = document.getElementById('btn-list');
   function renderList(){
     // just the courses: crossed off once at least one dish of it is aboard
-    elList.innerHTML = '<h2>The dinner</h2><ul class="courses">' + VILLAGES.map(v=>{
+    elList.innerHTML = '<div class="list-head"><h2>The dinner</h2><span class="day">Day '+dayNo+'</span></div><ul class="courses">' + VILLAGES.map(v=>{
       const got = dishesGot(v) > 0;
       return '<li class="'+(got?'got':'')+'"><span class="mark">'+(got?'●':'○')+'</span><span class="food">'+v.course+'</span></li>';
     }).join('') + '</ul>'
@@ -3422,7 +3471,7 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
             + food.map(([name, ico])=> '<div class="mk-unit food hold">'+ico+'<span class="mk-name">'+name+'</span></div>').join('') + '</div>' : '');
   }
   let listKey = '';
-  const holdKey = ()=> [coins, ...FISH_KEYS.map(k=>counts[k]), ...VILLAGES.map(v=>dishesGot(v)+(v.giftGot?'g':''))].join('|');
+  const holdKey = ()=> [dayNo, coins, ...FISH_KEYS.map(k=>counts[k]), ...VILLAGES.map(v=>dishesGot(v)+(v.giftGot?'g':''))].join('|');
   // while the list is open, keep the hold up to date (a catch, a repair)
   function refreshList(){ if(elList.classList.contains('open') && holdKey() !== listKey) renderList(); }
   function toggleList(open){
@@ -3674,11 +3723,13 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
     updateAnchor(dt);
     updateTownSound(dt);
     updateNightSound(dt);
+    updateCicadas(dt);
     updateWhirlpools(dt);
     reveal(boat.x, boat.y);
     updateDialog(dt);
     updateBoonBadge();
-    dayT = (dayT + dt/DAY_LEN) % 1;
+    dayT += dt/DAY_LEN;
+    if(dayT >= 1){ dayT -= 1; dayNo++; }                  // first light: a new day
     // camera focus: normally the boat; during a village visit it glides over
     // to frame the village below the dialog box, then back to the boat
     let fx = boat.x, fy = boat.y;
@@ -4008,6 +4059,7 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   // drawn exactly the same; only "paper" and "ink" change colour.
   const DAY_LEN = 360;                         // seconds for a whole day
   let dayT = 0.1;                              // 0 = first light; start mid-morning
+  let dayNo = 1;                               // which day of the voyage it is (shown in the list)
   const DAY_KEYS = [                           // [time of day, paper rgb, ink rgb, darkness 0..1]
     [0.00, [214,190,196], [ 44, 32, 48], 0.35], // dawn: rose paper, plum ink
     [0.07, [235,231,220], [ 27, 26, 23], 0],    // day

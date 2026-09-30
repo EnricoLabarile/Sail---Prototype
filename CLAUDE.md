@@ -21,7 +21,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   (both dishes from at least one village), Banquet (all 8 dishes). See `VILLAGES`, `dinnerTier`, `ENDINGS`.
   **No spoilers:** intro and list name only the four courses; dishes are discovered at the stalls, and the gifts are
   a surprise: never mention them anywhere before one is earned (not in the intro, list, or market).
-  Each has a bay, a wooden pier, a lighthouse with a sweeping beam, a pixel-art town, 8 buoys at ~880 px (toast "Entering the waters of …").
+  Each has a bay, a wooden pier, a lighthouse with a sweeping beam, a pixel-art town, 24 buoys at ~880 px (`BUOYS_PER_VILLAGE`) (toast "Entering the waters of …").
 - **Ruins** on the diagonals: dock there for a random power (friendly wind 60 s, blessed nets ×3, full hull).
 - **Fish:** sardines (N), mackerel (E), red mullet (S), sea bream (W). Banks denser far from home; home waters have all kinds.
   Fishing: stop on a bank for 2 s and the nets go over; drop anchor on a bank and they go over after 0.25 s.
@@ -42,19 +42,20 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   is drawn at `ROPE_SCALE` = 1.6 (crisp: the low-res canvas grows too).
   Oars never come out because of the anchor (nor while getting under way after weighing it).
   Left button: the dinner (just the 4 course names, crossed off once one dish of it is aboard) + the hold (purse,
-  every fish as a unit like at the market, dishes and gifts aboard; live). Keyboard: arrows, Space = anchor, S = sail.
+  every fish as a unit like at the market, dishes and gifts aboard; live). The list also shows the day of the voyage
+  (`dayNo`, +1 at each dawn). Keyboard: arrows, Space = anchor, S = sail.
 - **Hazards:** rocks, faraglioni, whirlpools (appear/disappear/wander), rollers (big waves: head-on hurts, from astern = surf boost).
 - **Atmosphere:** macchia (tree-spurge domes + Mediterranean pines), clouds with parallax and shadows, gulls, wind streaks,
   traders (motor boats on A* lanes between villages; they don't avoid the player, a collision just shoves them aside
   with no damage, then they drift back to their lane; they hail with a speech bubble), fog of war (buoys and a
   340 px radius round each village always show through), clouds see-through at the rim and denser in the middle, each with its shadow at a fixed offset down-right,
   a third of them rain clouds (darker; rain falls from the cloud onto its shadow on the sea, with a rain hiss when you're near),
-  day/night palette cycle (6 min) with dark nights lit by lanterns, lighthouses and windows.
+  day/night palette cycle (6 min), daytime cicada chorus (faint at sea, full near land, silent at night) with dark nights lit by lanterns, lighthouses and windows.
 
 ## Map of index.html (search for these section headers: `// ---------- Name ----------`)
 World setup · Islands · Home island · Piers · Villages · Ruins · Rocks · Whirlpools · Fish banks · Boat ·
 Trade routes · Wind · Input · Haptics · Sound · Ship's wheel · Halyard · Intro · UI refs · Dialog · Fishing · Fog of war ·
-Rollers · Powers from the ruins · Village market · Night sounds · Town sounds · Wind streaks · Shopping list ·
+Rollers · Powers from the ruins · Village market · Cicadas · Night sounds · Town sounds · Wind streaks · Shopping list ·
 Buoys · Traders · Update · 1-bit rendering · Day and night · Draw · Villages (pixel art) · Ruins (pixel art) ·
 Cloud shadows (clouds) · Ambient life: gulls
 
