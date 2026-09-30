@@ -4709,7 +4709,7 @@
   clouds.forEach((c,i)=>{
     c.rain = i%3 === 0;
     if(!c.rain) return;
-    c.drops = Array.from({length: Math.round(c.W*0.6)}, ()=>{ const a = rand(0,6.3), r = Math.sqrt(Math.random()); return {u: Math.cos(a)*r, v: Math.sin(a)*r, ph: Math.random(), len: rand(6,10)}; });
+    c.drops = Array.from({length: Math.round(c.W*0.3)}, ()=>{ const a = rand(0,6.3), r = Math.sqrt(Math.random()); return {u: Math.cos(a)*r, v: Math.sin(a)*r, ph: Math.random(), len: rand(6,10)}; });
   });
   // the cloud's puffs at this moment: each drifts in a slow loop and swells
   // and shrinks; the whole heap leans a little one way, then the other
@@ -4823,6 +4823,7 @@
   // drops are batched by opacity: a few paths per cloud instead of one
   // stroke per drop (after the 1-bit dither the steps don't show)
   const RAIN_LEVELS = 4;
+  const RAIN_GREY = 0.72;                      // grey of the drops (1 = sea/paper, 0 = ink)
   function drawRain(camX, camY, w, h){
     const vcx = camX+w/2, vcy = camY+h/2;
     for(const c of clouds){
@@ -4849,11 +4850,11 @@
           P.moveTo(sx + ox + ex, sy + oy); P.ellipse(sx + ox, sy + oy, ex, ey, 0, 0, Math.PI*2);
         }
       }
-      ctx.strokeStyle = INKC; ctx.lineCap = 'round';
+      ctx.strokeStyle = V(RAIN_GREY); ctx.lineCap = 'round';          // pale: barely darker than the sea
       for(let i=0;i<RAIN_LEVELS;i++){
         const a = (i+0.5)/RAIN_LEVELS;
-        ctx.globalAlpha = 0.9*a; ctx.lineWidth = 1.3; ctx.stroke(streaks[i]);
-        ctx.globalAlpha = 0.8*a; ctx.lineWidth = 1.1; ctx.stroke(rings[i]);
+        ctx.globalAlpha = a; ctx.lineWidth = 1.3; ctx.stroke(streaks[i]);
+        ctx.globalAlpha = 0.9*a; ctx.lineWidth = 1.1; ctx.stroke(rings[i]);
       }
       ctx.globalAlpha = 1;
     }
