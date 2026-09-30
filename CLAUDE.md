@@ -34,7 +34,7 @@ You sail from home to four villages to buy food for a banquet, paying with fish,
 - **Atmosphere:** macchia (tree-spurge domes + Mediterranean pines), clouds with parallax and shadows, gulls, wind streaks,
   traders (motor boats on A* lanes between villages; they don't avoid the player, a collision just shoves them aside
   with no damage, then they drift back to their lane; they hail with a speech bubble), fog of war (buoys and a
-  340 px radius round each village always show through), clouds see-through at the rim and denser in the middle,
+  340 px radius round each village always show through), clouds see-through at the rim and denser in the middle, each with its shadow at a fixed offset down-right,
   a third of them rain clouds (darker; rain falls from the cloud onto its shadow on the sea, with a rain hiss when you're near),
   day/night palette cycle (6 min) with dark nights lit by lanterns, lighthouses and windows.
 

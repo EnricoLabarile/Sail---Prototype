@@ -4782,8 +4782,7 @@
   function drawCloudShadowsAll(camX, camY, w, h){
     const vcx = camX+w/2, vcy = camY+h/2;
     for(const c of clouds){
-      const [gx,gy] = cloudGround(c, vcx - CLOUD_SHADOW[0], vcy - CLOUD_SHADOW[1]);
-      const x = gx + CLOUD_SHADOW[0], y = gy + CLOUD_SHADOW[1];
+      const [, , x, y] = cloudAndShadow(c, vcx, vcy);          // always the same step down-right of its cloud
       if(x - c.cw/2 > camX+w || y - c.ch/2 > camY+h || x + c.cw/2 < camX || y + c.ch/2 < camY) continue;
       { const sp = cloudSprite(c, true); ctx.drawImage(sp, x - sp.width/2, y - sp.height/2); }
     }
@@ -4803,10 +4802,13 @@
   // lies), each ending in a little splash ring on the water
   const RAIN_FALL = 0.75;                      // seconds per drop
   function rainFootprint(c){ return [c.W*0.42, c.H*0.55]; }
-  // where a cloud is drawn (with parallax) and where its shadow lies, for a view centred on (vcx,vcy)
+  // where a cloud is drawn (with parallax) and where its shadow lies, for a
+  // view centred on (vcx,vcy): the shadow keeps a fixed offset from the
+  // cloud, down and to the right, so the rain always falls beneath it
   function cloudAndShadow(c, vcx, vcy){
     const [gx,gy] = cloudGround(c, vcx, vcy);
-    return [vcx + (gx-vcx)*CLOUD_PAR, vcy + (gy-vcy)*CLOUD_PAR, gx + CLOUD_SHADOW[0], gy + CLOUD_SHADOW[1]];
+    const x = vcx + (gx-vcx)*CLOUD_PAR, y = vcy + (gy-vcy)*CLOUD_PAR;
+    return [x, y, x + CLOUD_SHADOW[0], y + CLOUD_SHADOW[1]];
   }
   function drawRain(camX, camY, w, h){
     const vcx = camX+w/2, vcy = camY+h/2;
@@ -4841,8 +4843,8 @@
     let best = 0;
     for(const c of clouds){
       if(!c.rain) continue;
-      const [gx,gy] = cloudGround(c, boat.x - CLOUD_SHADOW[0], boat.y - CLOUD_SHADOW[1]), [rx] = rainFootprint(c);
-      const d = Math.hypot(gx + CLOUD_SHADOW[0] - boat.x, gy + CLOUD_SHADOW[1] - boat.y);
+      const [, , sx, sy] = cloudAndShadow(c, boat.x, boat.y), [rx] = rainFootprint(c);   // the camera follows the boat
+      const d = Math.hypot(sx - boat.x, sy - boat.y);
       best = Math.max(best, Math.max(0, Math.min(1, 1 - (d - rx*0.6)/(rx + 260))));
     }
     return best;
