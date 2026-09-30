@@ -19,11 +19,13 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   Cartellate 5, Tiramisu 6, gift Limoncello. The gift is never for sale: the merchant adds it when you buy both dishes.
   **Endings** (dock home with at least one dish of every course): Bare Minimum (one dish per village), Nice Dinner
   (both dishes from at least one village), Banquet (all 8 dishes). See `VILLAGES`, `dinnerTier`, `ENDINGS`.
+  **No spoilers:** intro and list name only the four courses; dishes are discovered at the stalls, and the gifts are
+  a surprise: never mention them anywhere before one is earned (not in the intro, list, or market).
   Each has a bay, a wooden pier, a lighthouse with a sweeping beam, a pixel-art town, 8 buoys at ~880 px (toast "Entering the waters of …").
 - **Ruins** on the diagonals: dock there for a random power (friendly wind 60 s, blessed nets ×3, full hull).
 - **Fish:** sardines (N), mackerel (E), red mullet (S), sea bream (W). Banks denser far from home; home waters have all kinds.
   Fishing: stop on a bank for 2 s and the nets go over; drop anchor on a bank and they go over after 0.25 s.
-  **Market = barter table** (left: your hold, every fish a unit; right: the stall: the dishes not yet bought, the gift (shown, not movable) + 3 local fish).
+  **Market = barter table** (left: your hold, every fish a unit; right: the stall: the dishes not yet bought + 3 local fish).
   Drag or tap units across; balance = fish sold − goods taken. Fish sell for coins: 2 if from other waters, 1 if local.
   "Trade" is disabled if the purse can't cover a negative balance; a positive balance goes to the purse.
   Repairs are automatic at any pier (1 fish = +15 hull; at a village it never spends what the next dish will cost).
@@ -34,7 +36,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   when slack); pulled taut it runs out through the block, clicking (haptic + sound), and past the mark it switches
   sail (full / minimum) with a clack; on release it swings back. Badge on top shows the sail state.
   Oars never come out because of the anchor (nor while getting under way after weighing it).
-  Left button: the dinner (4 courses, their dishes, prices, gifts, progress and current ending) + the hold (purse,
+  Left button: the dinner (just the 4 course names, crossed off once one dish of it is aboard) + the hold (purse,
   every fish as a unit like at the market, dishes and gifts aboard; live). Keyboard: arrows, Space = anchor, S = sail.
 - **Hazards:** rocks, faraglioni, whirlpools (appear/disappear/wander), rollers (big waves: head-on hurts, from astern = surf boost).
 - **Atmosphere:** macchia (tree-spurge domes + Mediterranean pines), clouds with parallax and shadows, gulls, wind streaks,
