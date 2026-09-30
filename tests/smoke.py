@@ -1,4 +1,4 @@
-"""Smoke test for Vento e Vele: full shopping trip, no JS errors.
+"""Smoke test for Vento e Vele: full shopping trip (every dish: Banquet ending), no JS errors.
 Run from the project folder:  python tests/smoke.py
 """
 import pathlib, sys
@@ -31,17 +31,19 @@ def main():
         pg.keyboard.press('Space'); pg.wait_for_timeout(1500)   # weigh anchor, leave home
         assert not pg.evaluate('!!__d.moor'), 'did not leave the home pier'
         for k in range(4):
-            pg.evaluate(f"""()=>{{const v=__d.VILLAGES[{k}]; const other=['sarde','sgombri','triglie','orate'].find(x=>x!==v.own); __d.counts[other]+=4;}}""")
+            pg.evaluate(f"""()=>{{const v=__d.VILLAGES[{k}]; const other=['sarde','sgombri','triglie','orate'].find(x=>x!==v.own); __d.counts[other]+=8;}}""")
             dock_at(pg, f'd.VILLAGES[{k}].pier')
-            # barter table: tap the four foreign fish across to the stall (2 coins
-            # each), tap the food across to the hold (6 coins), then trade
-            for _ in range(4):
+            # barter table: tap the eight foreign fish across to the stall (2 coins
+            # each), tap both dishes across to the hold (at most 14 coins), trade;
+            # buying both brings the gift too
+            for _ in range(8):
                 pg.click('#mk-you-items .mk-unit[data-origin=you]'); pg.wait_for_timeout(50)
-            pg.click('#mk-them-items .mk-unit.food'); pg.wait_for_timeout(50)
+            for _ in range(2):
+                pg.click('#mk-them-items .mk-unit[data-kind=food]'); pg.wait_for_timeout(50)
             pg.click('#mk-deal'); pg.wait_for_timeout(200)
             pg.keyboard.press('Space'); pg.wait_for_timeout(1300)   # weigh anchor
-        bought = pg.evaluate('__d.VILLAGES.map(v=>v.done)')
-        assert all(bought), f'not everything bought: {bought}'
+        bought = pg.evaluate('__d.VILLAGES.map(v=>v.dishes.every(d=>d.bought) && v.giftGot)')
+        assert all(bought), f'not every dish and gift aboard: {bought}'
         dock_at(pg, 'd.PIER')
         pg.wait_for_timeout(11000)                    # banquet text, then the end screen
         title = pg.inner_text('#go-title')

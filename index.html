@@ -136,6 +136,8 @@
   .mk-name{font-size:11px; font-weight:bold; line-height:1.1; text-align:center; pointer-events:none;}
   .mk-val{display:flex; align-items:center; gap:2px; font-size:11.5px; line-height:1; pointer-events:none;}
   .coin{width:11px; height:11px; display:inline-block; vertical-align:-1px;}
+  .mk-unit.gift{border-style:dashed; box-shadow:none; cursor:default; opacity:.8;}
+  .mk-unit.gift .mk-val{font-size:10px; font-style:italic;}
   .mk-unit.moved{border-style:dashed; box-shadow:none; background-image:radial-gradient(var(--ink) 0.6px, transparent 0.8px); background-size:3px 3px;}
   .mk-unit.lifted{opacity:.3;}
   .mk-unit.ghost{position:fixed; z-index:30; pointer-events:none; transform:scale(1.15) rotate(-4deg); box-shadow:4px 4px 0 var(--ink);}
@@ -242,19 +244,25 @@
   #shoplist .mk-unit.hold.food{height:auto;}
   #shoplist .hold-sub{font-size:12px; font-style:italic; margin:8px 0 5px;}
   #toast{
-    position:fixed; left:50%; bottom:calc(262px + env(safe-area-inset-bottom,0px)); z-index:8;   /* just above the wheel */
+    position:fixed; left:50%; bottom:calc(262px + env(safe-area-inset-bottom,0px)); z-index:10;   /* just above the wheel (and over the market) */
     transform:translate(-50%, -8px); opacity:0; transition:opacity .5s, transform .5s;
     padding:6px 14px; font-style:italic; font-size:15px; white-space:nowrap; pointer-events:none;
   }
   #toast.show{opacity:1; transform:translate(-50%, 0);}
+  body.at-market #toast{bottom:auto; top:calc(96px + env(safe-area-inset-top,0px));}   /* the compass is away: say it above the market */
   #shoplist h2{margin:0 0 8px; font-size:17px; font-style:italic;}
   #shoplist ul{list-style:none; margin:0; padding:0;}
   #shoplist li{display:grid; grid-template-columns:22px 1fr; gap:2px 6px; padding:7px 0; border-top:1.5px dashed var(--ink); font-size:14.5px;}
   #shoplist li:first-child{border-top:none;}
   #shoplist .mark{grid-row:span 2; font-size:17px; line-height:1.1;}
   #shoplist .food{font-weight:bold;}
-  #shoplist .where{font-size:12.5px; line-height:1.35;}
-  #shoplist li.got .food{text-decoration:line-through;}
+  #shoplist .from{font-weight:normal; font-style:italic; font-size:12.5px;}
+  #shoplist .dishes{display:flex; flex-direction:column; gap:1px; font-size:13px; line-height:1.35;}
+  #shoplist .dish{display:flex; align-items:center; gap:4px;}
+  #shoplist .dish.bought{font-weight:bold;}
+  #shoplist .dish .price{display:inline-flex; align-items:center; gap:2px; font-size:12px;}
+  #shoplist .dish.gift{font-size:12.5px;}
+  #shoplist .dish.gift i{font-size:11.5px;}
   #shoplist .note{font-size:12px; font-style:italic; margin-top:8px;}
   #wheel{
     transition:opacity .35s;
@@ -384,13 +392,14 @@
 
   <div id="intro">
    <div class="card intro-card">
-    <p>You are planning a big party and require delicacies from the four corners of the world. Here is the shopping list for the banquet:</p>
+    <p>You are hosting a dinner, and every course comes from a different corner of the sea:</p>
     <ul class="shopping">
-      <li>Fried Panzerotti from Nordania</li>
-      <li>Mozzarelle from Sudia</li>
-      <li>Lasagna from Estolia</li>
-      <li>Limoncello from Westa</li>
+      <li>Antipasti from the North (Nordania)</li>
+      <li>Primi from the East (Estolia)</li>
+      <li>Secondi from the South (Sudia)</li>
+      <li>Dessert from the West (Westa)</li>
     </ul>
+    <p>Bring home at least one dish of every course. Each village cooks two: buy both and the merchant adds a gift. The more you bring, the better the dinner.</p>
     <button id="start-btn">Set sail</button>
    </div>
   </div>
@@ -799,19 +808,40 @@
   // ---------- Villages ----------
   // Four market villages toward the edges of the world, one per compass
   // point, each on its own island with a pier facing home and a lighthouse.
-  // Each sells one thing for the banquet back home.
+  // Each cooks one course of the dinner and sells two specialties of it (one
+  // unit each); buy both and the merchant adds a gift that isn't for sale.
   const VILLAGE_DIST = 2475;
   const VILLAGES = [
-    { name:'Nordania', ux:0, uy:-1, food:'fried panzerotti', own:'sarde',
-      line:"The baker on the quay fries panzerotti all day long. He'll trade them for fish, but sardines he has plenty of: everyone catches those up here." },
-    { name:'Estolia', ux:1, uy:0, food:'lasagna', own:'sgombri',
-      line:"In the trattoria by the harbour a lasagna is resting on the sill. The cook takes fish in payment, but mackerel she's sick of: the whole east lives on it." },
-    { name:'Sudia', ux:0, uy:1, food:'mozzarelle', own:'triglie',
-      line:"At the dairy the cheesemaker is still stretching the morning's mozzarelle. He takes any fish you like, except red mullet: he catches those himself at dawn." },
-    { name:'Westa', ux:-1, uy:0, food:'limoncello', own:'orate',
-      line:"Grandma keeps the limoncello in the cool of the cellar. She'll swap a bottle for fish, as long as it isn't sea bream: out west her larder is full of it." }
+    { name:'Nordania', ux:0, uy:-1, course:'Antipasti', own:'sarde',
+      dishes:[{name:'Fiori di Zucca', price:6}, {name:'Mozzarelle', price:5}], gift:'Tarallini',
+      line:"On the quay the grocer sets out the antipasti: fiori di zucca fried golden and mozzarelle still dripping. She takes fish in payment, but sardines she has plenty of: everyone catches those up here." },
+    { name:'Estolia', ux:1, uy:0, course:'Primi', own:'sgombri',
+      dishes:[{name:'Orecchiette con Cime di Rapa', price:6}, {name:'Lasagne', price:7}], gift:'Olio Santo',
+      line:"In the trattoria by the harbour the cook shapes orecchiette with her thumb, and a lasagne rests on the sill. Mackerel she's sick of: the whole east lives on it." },
+    { name:'Sudia', ux:0, uy:1, course:'Secondi', own:'triglie',
+      dishes:[{name:'Zampina', price:6}, {name:'Pesce Arrosto', price:7}], gift:'Vino Rosso',
+      line:"At the grill by the market the butcher turns coils of zampina over the coals, and fish roasts beside them. He'll take any fish except red mullet: he catches those himself at dawn." },
+    { name:'Westa', ux:-1, uy:0, course:'Dessert', own:'orate',
+      dishes:[{name:'Cartellate', price:5}, {name:'Tiramisu', price:6}], gift:'Limoncello',
+      line:"Grandma's pastry shop smells of honey and coffee: cartellate on the tray, a tiramisu in the cool of the cellar. Out west her larder is full of sea bream." }
   ];
-  const BANQUET_TEXT = "On the home pier you unload the panzerotti, the mozzarelle, the lasagna and the limoncello. Someone spreads a tablecloth on the terrace, the lanterns are lit, the wine arrives. The sea is calm and the wind has dropped. The banquet can begin.";
+  const dishesGot = v=> v.dishes.filter(d=>d.bought).length;
+  // the dinner as it stands: 'bare' one dish of every course, 'nice' both
+  // dishes from at least one village, 'banquet' every dish (and every gift)
+  function dinnerTier(){
+    if(!VILLAGES.every(v=>dishesGot(v) > 0)) return null;
+    if(VILLAGES.every(v=>dishesGot(v) === v.dishes.length)) return 'banquet';
+    return VILLAGES.some(v=>dishesGot(v) === v.dishes.length) ? 'nice' : 'bare';
+  }
+  const ENDINGS = {
+    bare: { name:'Bare Minimum', dialog:'Home · a simple supper', title:'Dinner is served: the bare minimum',
+      text:"On the home pier you unload one dish for every course: a plate of antipasti, a primo, a secondo, something sweet. It isn't much, but the friends come anyway, the lanterns are lit and nobody goes home hungry." },
+    nice: { name:'Nice Dinner', dialog:'Home · a nice dinner', title:'A nice dinner',
+      text:"On the home pier you unload the courses, and something more besides. Someone spreads a tablecloth on the terrace, the lanterns are lit, the wine arrives and second helpings go round the table. A nice dinner." },
+    banquet: { name:'Banquet', dialog:'Home · the banquet', title:'The banquet is served',
+      text:"On the home pier you unload everything the four corners of the sea could offer: fiori di zucca and mozzarelle, orecchiette and lasagne, zampina and roast fish, cartellate and tiramisu, and the merchants' gifts on top. The table on the terrace isn't long enough. The banquet can begin." }
+  };
+  function resetDishes(){ for(const v of VILLAGES){ v.done = false; v.giftGot = false; for(const d of v.dishes) d.bought = false; } }
   let won = false;
   // hand-shaped village island: rounded, with a wide clearing at the centre
   function makeVillageIsland(v){
@@ -918,10 +948,6 @@
   }
   for(const r of RUINS) makeRuinIsland(r);
   const SPECIALS = [...VILLAGES, ...RUINS];        // keep rocks and whirlpools away from these
-  function foodsGot(){ return VILLAGES.filter(v=>v.done).length; }
-  function banquetLine(){
-    return 'Banquet:  ' + VILLAGES.map(v=>(v.done?'● ':'○ ')+v.food).join('   ');
-  }
 
   (function genIslands(){
     const N = 180;
@@ -1139,10 +1165,10 @@
   const FISH_KEYS = ['sarde','sgombri','triglie','orate'];
   const FISH_NAME = {}; for(const k in FISH) FISH_NAME[FISH[k].key] = FISH[k];
   // the market: fish are sold for coins, worth more far from the waters
-  // they were caught in; a village's food is bought with coins
+  // they were caught in; the dishes are bought with coins
   const COIN_LOCAL = 1;              // a village's own kind of fish: they have plenty
   const COIN_FOREIGN = 2;            // fish from other waters fetch double
-  const FOOD_COINS = 6;              // price of a village's food
+  // (each dish has its own price: see VILLAGES)
   const MERCHANT_FISH = 3;           // local fish each merchant has for sale
   let coins = 0;                     // the purse
   const counts = { sarde:0, sgombri:0, triglie:0, orate:0 };   // fish in the hold
@@ -2595,7 +2621,7 @@
     playing = true;
     prevWheel = wheelAngle = 0;
     repairT = 0; moor = mooredAtSpawn(); moorLock = null;
-    for(const v of VILLAGES){ v.done = false; v.stock = MERCHANT_FISH; }
+    resetDishes(); for(const v of VILLAGES) v.stock = MERCHANT_FISH;
     coins = 0;
     won = false; closeDialog();
     Sfx.init();
@@ -2699,14 +2725,16 @@
   // tap the box to show the whole text at once (the pause still runs)
   elDlg.addEventListener('pointerdown', ()=>{ if(dlg){ dlg.shown = dlg.text.length; elDlgText.textContent = dlg.text; } });
   const elGoTitle = document.getElementById('go-title');
-  function showWin(){
+  function showWin(tier){
     playing = false;
     boat.speed = 0;
     Sfx.wheel(0); Sfx.drone(0);
     closeDialog();
     const min = Math.floor(voyageTime/60), sec = Math.floor(voyageTime%60);
-    elGoTitle.textContent = 'The banquet is served';
-    elGoStats.textContent = 'You did the shopping in '+min+' min '+sec+' s, catching '+caught+' fish along the way.';
+    const dishes = VILLAGES.reduce((a,v)=>a+dishesGot(v),0), all = VILLAGES.reduce((a,v)=>a+v.dishes.length,0), gifts = VILLAGES.filter(v=>v.giftGot).length;
+    elGoTitle.textContent = ENDINGS[tier].title;
+    elGoStats.textContent = ENDINGS[tier].name+': '+dishes+' of '+all+' dishes'+(gifts ? ', '+gifts+(gifts===1?' gift':' gifts') : '')
+      + '. You did the shopping in '+min+' min '+sec+' s, catching '+caught+' fish along the way.';
     gameover.classList.remove('hidden');
   }
 
@@ -3037,8 +3065,9 @@
   let marketV = null, mkItems = [], mkKey = '';
   const fishValue = (v, k)=> k===v.own ? COIN_LOCAL : COIN_FOREIGN;
   const fishWorth = (v)=> FISH_KEYS.reduce((a,k)=> a + counts[k]*fishValue(v,k), 0);   // the whole hold, sold here
-  const canAfford = (v)=> fishWorth(v) + coins >= FOOD_COINS;
-  const mkState = (v)=> [v.name, v.done, v.stock, coins, ...FISH_KEYS.map(k=>counts[k])].join('|');
+  // the cheapest dish still on the stall (Infinity when everything's bought)
+  const nextPrice = (v)=> Math.min(...v.dishes.filter(d=>!d.bought).map(d=>d.price), Infinity);
+  const mkState = (v)=> [v.name, dishesGot(v), v.stock, coins, ...FISH_KEYS.map(k=>counts[k])].join('|');
   function openMarket(v){
     marketV = v; elMk.classList.remove('hidden');
     document.body.classList.add('at-market');
@@ -3050,7 +3079,9 @@
   function stockTable(v){
     mkItems = [];
     for(const k of FISH_KEYS) for(let n=0;n<counts[k];n++) mkItems.push({kind:'fish', key:k, origin:'you', side:'you', value: fishValue(v,k)});
-    if(!v.done) mkItems.push({kind:'food', origin:'them', side:'them', value: FOOD_COINS});
+    v.dishes.forEach((dsh,i)=>{ if(!dsh.bought) mkItems.push({kind:'food', dish:i, name:dsh.name, origin:'them', side:'them', value: dsh.price}); });
+    // the gift: shown on the stall, not for sale; it comes with both dishes
+    if(!v.giftGot) mkItems.push({kind:'gift', name:v.gift, origin:'them', side:'them', value: 0});
     for(let n=0;n<v.stock;n++) mkItems.push({kind:'fish', key:v.own, origin:'them', side:'them', value: COIN_LOCAL});
     mkItems.forEach((it,i)=> it.id = i);
   }
@@ -3065,9 +3096,12 @@
   const mkBalance = ()=> mkItems.reduce((a,it)=> a + (it.side===it.origin ? 0 : it.origin==='you' ? it.value : -it.value), 0);
   const COIN_SVG = '<svg class="coin" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="var(--paper)" stroke="currentColor" stroke-width="1.4"/><circle cx="6" cy="6" r="2.4" fill="none" stroke="currentColor" stroke-width="1"/></svg>';
   const FOOD_SVG = '<svg viewBox="0 0 30 22" aria-hidden="true"><path d="M3 9 H27 L24 20 H6 Z" fill="var(--paper)" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7 9 Q15 -1 23 9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 12 H22 M9 15.5 H21" stroke="currentColor" stroke-width="1.1"/><circle cx="12" cy="7" r="2.6" fill="currentColor"/><circle cx="18" cy="6.5" r="2.2" fill="url(#sh-mid)" stroke="currentColor" stroke-width="0.8"/></svg>';
+  const GIFT_SVG = '<svg viewBox="0 0 30 22" aria-hidden="true"><rect x="7" y="8" width="16" height="12" fill="var(--paper)" stroke="currentColor" stroke-width="1.6"/><rect x="5.5" y="5.5" width="19" height="4" fill="url(#sh-mid)" stroke="currentColor" stroke-width="1.4"/><path d="M15 5.5 V20" stroke="currentColor" stroke-width="2"/><path d="M15 5.5 Q10 0 9 4 Q9 6 15 5.5 Q20 0 21 4 Q21 6 15 5.5" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>';
   function unitHTML(it){
+    if(it.kind==='gift') return '<div class="mk-unit food gift" data-id="'+it.id+'" data-kind="gift" aria-label="'+it.name+': a gift if you buy both dishes">'
+      + GIFT_SVG + '<span class="mk-name">'+it.name+'</span><span class="mk-val">gift for both</span></div>';
     const ico = it.kind==='food' ? FOOD_SVG : document.querySelector('#wood .fish-'+it.key+' svg').outerHTML;
-    const name = it.kind==='food' ? marketV.food : FISH_NAME[it.key].one;
+    const name = it.kind==='food' ? it.name : FISH_NAME[it.key].one;
     const label = it.kind==='food' ? '<span class="mk-name">'+name+'</span>' : '';
     return '<div class="mk-unit '+it.kind+(it.side!==it.origin ? ' moved' : '')+'" data-id="'+it.id+'" data-kind="'+it.kind+'" data-origin="'+it.origin+'" role="button" aria-label="'+name+', '+it.value+' coins">'
       + ico + label + '<span class="mk-val">'+it.value+COIN_SVG+'</span></div>';
@@ -3075,7 +3109,9 @@
   function drawTable(){
     const v = marketV;
     elMkTitle.textContent = v.name + ' market';
-    elMkText.textContent = v.done ? "You've done your shopping here. The stall still buys fish, if you have any to spare." : v.line;
+    const got = dishesGot(v);
+    elMkText.textContent = got === v.dishes.length ? "You've bought everything they cook here. The stall still buys fish, if you have any to spare."
+      : got ? "The "+v.course.toLowerCase()+" are aboard. There's one more dish on the stall, and a gift for whoever takes both." : v.line;
     // the goods sit on the side they're on now; the ones that crossed go first
     const order = (a,b)=> (b.side!==b.origin) - (a.side!==a.origin) || (a.kind==='food' ? -1 : 0) - (b.kind==='food' ? -1 : 0) || a.id - b.id;
     const on = side=> mkItems.filter(it=>it.side===side).sort(order).map(unitHTML).join('');
@@ -3107,7 +3143,7 @@
     return null;
   }
   elMk.addEventListener('pointerdown', ev=>{
-    const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;
+    const u = ev.target.closest('.mk-unit'); if(!u || !marketV || u.dataset.kind==='gift') return;   // the gift isn't for sale
     ev.preventDefault();
     u.setPointerCapture(ev.pointerId);
     mkDrag = {id: +u.dataset.id, el: u, x0: ev.clientX, y0: ev.clientY, ghost: null, ptr: ev.pointerId};
@@ -3150,11 +3186,17 @@
     for(const it of mkItems){
       if(it.side === it.origin) continue;
       if(it.origin==='you'){ counts[it.key]--; }                          // sold
-      else if(it.kind==='food'){ v.done = true; got.push(v.food); }      // the banquet's share
+      else if(it.kind==='food'){ v.dishes[it.dish].bought = true; v.done = true; got.push(it.name); }   // a dish for the dinner
       else { counts[it.key]++; v.stock--; }                               // bought a fish
     }
     coins += bal;
     Sfx.coins(); buzz([15,40,15,40,55]);                                  // deal done: coins on the counter
+    // both dishes bought: the merchant throws in the gift
+    if(!v.giftGot && dishesGot(v) === v.dishes.length){
+      v.giftGot = true; got.push(v.gift);
+      toast('On the house: ' + v.gift + '!');
+      setTimeout(()=>{ Sfx.bell(); buzz([14,22,14,22,40]); }, 450);
+    }
     const note = [...got.map(f=>'+ '+f), bal > 0 ? '+'+bal+' coins' : bal < 0 ? bal+' coins' : ''].filter(Boolean);
     note.forEach((txt,i)=> popups.push({x:boat.x, y:boat.y-26-i*16, text:txt, life:1.8, max:1.8}));
     if(elList.classList.contains('open')) renderList();
@@ -3296,31 +3338,37 @@
   // ---------- Shopping list ----------
   const elList = document.getElementById('shoplist'), elListBtn = document.getElementById('btn-list');
   function renderList(){
-    const dirOf = v => v.uy<0 ? 'north' : v.uy>0 ? 'south' : v.ux>0 ? 'east' : 'west';
-    elList.innerHTML = '<h2>Shopping list for the banquet</h2><ul>' + VILLAGES.map(v=>{
-      const local = FISH_NAME[v.own].many;
-      return '<li class="'+(v.done?'got':'')+'"><span class="mark">'+(v.done?'●':'○')+'</span>'
-        + '<span class="food">'+v.food.charAt(0).toUpperCase()+v.food.slice(1)+'</span>'
-        + '<span class="where">from '+v.name+', to the '+dirOf(v)+' · '+FOOD_COINS+' coins. They pay '+COIN_FOREIGN+' a fish, only '+COIN_LOCAL+' for '+local+'</span></li>';
-    }).join('') + '</ul><p class="note">'+(VILLAGES.every(v=>v.done) ? 'All bought: sail home for the banquet!' : 'Then bring it all home.')+'</p>'
+    const dirOf = v => v.uy<0 ? 'North' : v.uy>0 ? 'South' : v.ux>0 ? 'East' : 'West';
+    const tier = dinnerTier();
+    elList.innerHTML = '<h2>The dinner</h2><ul>' + VILLAGES.map(v=>{
+      const got = dishesGot(v);
+      return '<li class="'+(got?'got':'')+'"><span class="mark">'+(got===v.dishes.length?'●':got?'◐':'○')+'</span>'
+        + '<span class="food">'+v.course+' <span class="from">from the '+dirOf(v)+' · '+v.name+'</span></span>'
+        + '<span class="dishes">'
+        + v.dishes.map(d=> '<span class="dish'+(d.bought?' bought':'')+'">'+(d.bought?'✓ ':'')+d.name+' <span class="price">'+d.price+COIN_SVG+'</span></span>').join('')
+        + '<span class="dish gift'+(v.giftGot?' bought':'')+'">'+(v.giftGot?'✓ ':'✦ ')+v.gift+(v.giftGot?'':' <i>(gift, with both)</i>')+'</span>'
+        + '</span></li>';
+    }).join('') + '</ul><p class="note">'
+      + (tier ? 'Ready for dinner: sail home. As it stands: <b>'+ENDINGS[tier].name+'</b>.' : 'Buy at least one dish of every course, then sail home.')
+      + '<br>Merchants pay '+COIN_FOREIGN+' coins for fish from other waters, '+COIN_LOCAL+' for their own.</p>'
       + holdHTML();
     listKey = holdKey();
   }
   // the boat's hold: every fish a unit, as on the barter table, and the
-  // banquet's food already aboard
+  // dishes (and gifts) already aboard
   function holdHTML(){
     const fish = FISH_KEYS.flatMap(k=> Array(counts[k]).fill(k));
-    const food = VILLAGES.filter(v=>v.done);
+    const food = VILLAGES.flatMap(v=> [...v.dishes.filter(d=>d.bought).map(d=>[d.name, FOOD_SVG]), ...(v.giftGot ? [[v.gift, GIFT_SVG]] : [])]);
     const n = fish.length;
     return '<div class="hold-head"><h3>The hold</h3><span class="purse" aria-label="Purse: '+coins+' coins">'+COIN_SVG+coins+'</span></div>'
-      + (n ? '<div class="hold-sub">'+n+(n===1?' fish':' fish')+'</div><div class="hold-items">'
+      + (n ? '<div class="hold-sub">'+n+' fish</div><div class="hold-items">'
             + fish.map(k=> '<div class="mk-unit hold" title="'+FISH_NAME[k].one+'" aria-label="'+FISH_NAME[k].one+'">'+document.querySelector('#wood .fish-'+k+' svg').outerHTML+'</div>').join('') + '</div>'
            : '<p class="hold-sub">No fish aboard: stop on a fish bank to cast the nets.</p>')
-      + (food.length ? '<div class="hold-sub">For the banquet</div><div class="hold-items">'
-            + food.map(v=> '<div class="mk-unit food hold">'+FOOD_SVG+'<span class="mk-name">'+v.food+'</span></div>').join('') + '</div>' : '');
+      + (food.length ? '<div class="hold-sub">For the dinner</div><div class="hold-items">'
+            + food.map(([name, ico])=> '<div class="mk-unit food hold">'+ico+'<span class="mk-name">'+name+'</span></div>').join('') + '</div>' : '');
   }
   let listKey = '';
-  const holdKey = ()=> [coins, ...FISH_KEYS.map(k=>counts[k]), ...VILLAGES.map(v=>v.done)].join('|');
+  const holdKey = ()=> [coins, ...FISH_KEYS.map(k=>counts[k]), ...VILLAGES.map(v=>dishesGot(v)+(v.giftGot?'g':''))].join('|');
   // while the list is open, keep the hold up to date (a catch, a repair)
   function refreshList(){ if(elList.classList.contains('open') && holdKey() !== listKey) renderList(); }
   function toggleList(open){
@@ -3646,19 +3694,22 @@
         const village = moor.pier.isl.village, ruin = moor.pier.isl.ruin;
         if(!moor.started){ moor.started = true; moor.skipLock = true; if(village) openMarket(village); if(ruin) startRuin(ruin); }
         if(village) renderMarket();
-        if(!village && !ruin && foodsGot()===VILLAGES.length && !won && !moor.banquet){
-          moor.banquet = true;
-          openDialog('Home · the banquet', BANQUET_TEXT, 6);
+        // home with at least one dish of every course: dinner, as good as the shopping
+        const tier = !village && !ruin && !won && !moor.banquet ? dinnerTier() : null;
+        if(tier){
+          moor.banquet = true; moor.tier = tier;
+          openDialog(ENDINGS[tier].dialog, ENDINGS[tier].text, 6);
         }
-        if(moor.banquet && dlg && dlg.ready && !won){ won = true; setTimeout(showWin, 600); }
+        if(moor.banquet && dlg && dlg.ready && !won){ won = true; const tr = moor.tier; setTimeout(()=>showWin(tr), 600); }
         // repairs: one piece of wood from the hold at a time
         repairT -= dt;
         // at a village, never touch the fish you still need for its food:
         // pay with local fish first, and only while the hold and the purse
         // together still cover the price of the food
         const spare = (k)=>{
-          if(!village || village.done) return true;
-          return fishWorth(village) + coins - fishValue(village, k) >= FOOD_COINS;   // keep what the food will cost
+          const price = village ? nextPrice(village) : Infinity;
+          if(price === Infinity) return true;                               // nothing left to buy here
+          return fishWorth(village) + coins - fishValue(village, k) >= price;   // keep what the next dish will cost
         };
         const payable = FISH_KEYS.filter(k=> counts[k]>0 && spare(k));
         if(!moor.banquet && repairT<=0 && payable.length && boat.health < MAX_HEALTH-0.5){
