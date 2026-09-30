@@ -235,15 +235,24 @@
   }
   #wheel.grabbed{cursor:grabbing;}
   /* the halyard: a rope hanging from a block on the right; pull it down to switch sail */
+  /* the drawing is wider than the grip, so the rope can be dragged about the
+     screen; only the grip (#rope-hit) takes touches */
   #rope{
+    position:fixed;
+    right:0; bottom:calc(-2px + env(safe-area-inset-bottom,0px));
+    width:170px; height:222px;
+    pointer-events:none;
+    z-index:7;
+  }
+  #rope-hit{
     position:fixed;
     right:6px; bottom:calc(10px + env(safe-area-inset-bottom,0px));
     width:52px; height:210px;
     touch-action:none; cursor:grab;
     z-index:7;
   }
-  #rope.grabbed{cursor:grabbing;}
-  #rope:focus-visible{outline:2px dashed var(--ink); outline-offset:2px;}
+  #rope-hit.grabbed{cursor:grabbing;}
+  #rope-hit:focus-visible{outline:2px dashed var(--ink); outline-offset:2px;}
 
   /* --- Intro / game over --- */
   #intro, #gameover{
@@ -338,7 +347,8 @@
   <div id="shoplist" class="panel" role="region" aria-label="Shopping list"></div>
   <div id="toast" class="panel" role="status" aria-live="polite"></div>
   <canvas id="wheel" aria-label="Helm: drag clockwise or anticlockwise to steer"></canvas>
-  <canvas id="rope" tabindex="0" role="button" aria-label="Halyard: pull down to switch sail"></canvas>
+  <canvas id="rope" aria-hidden="true"></canvas>
+  <div id="rope-hit" tabindex="0" role="button" aria-label="Halyard: pull down to switch sail"></div>
 
   <div id="intro">
    <div class="card intro-card">
@@ -2324,7 +2334,7 @@
   // hub of the wheel; this just keeps the labels in step
   function renderSailBtn(){
     wheelCv.setAttribute('aria-label', 'Helm: drag round to steer. Centre: hold half a second to ' + (anchored ? 'weigh' : 'drop') + ' anchor.');
-    ropeCv.setAttribute('aria-label', 'Halyard: pull down to switch sail (now ' + SAIL_LEVELS[sailLevel].name + ').');
+    ropeHit.setAttribute('aria-label', 'Halyard: pull down to switch sail (now ' + SAIL_LEVELS[sailLevel].name + ').');
   }
   // a switch: full sail ↔ minimum
   function cycleSail(){
@@ -2333,15 +2343,18 @@
   }
 
   // ---------- Halyard ----------
-  // A rope hanging from a block on the right of the screen. Swipe it down
-  // like pulling a line: it follows the finger (stiffer the further it
-  // goes), clicking through the block as it runs, and past the mark the
-  // sail switches with a clack. Let go and it springs back up.
-  const ropeCv = document.getElementById('rope');
+  // A rope hanging from a block on the right of the screen. Grab it and it
+  // goes where the finger goes, like a real line: it never stretches, it
+  // swings slack when you move towards the block, and pulled further away
+  // it runs out through the block (heavier the further it comes), clicking
+  // as it goes. Past the mark the sail switches with a clack. Let go and it
+  // swings back to hang where it was.
+  const ropeCv = document.getElementById('rope'), ropeHit = document.getElementById('rope-hit');
   const rctx = ropeCv.getContext('2d');
-  const RP_W = 52, RP_H = 210, RP_CX = 26;
-  const ROPE_TOP = 66, ROPE_REST = 136;          // bottom of the block, rest height of the toggle
-  const ROPE_MAX = 54, ROPE_FIRE = 34, ROPE_TICK = 9;   // longest pull, where it switches, px per click
+  const RP_W = 170, RP_H = 222, RP_CX = RP_W - 32;          // the block hangs 32 px from the right edge
+  const ROPE_TOP = 66, ROPE_LEN = 70;                        // where the line leaves the block, and how much hangs
+  const ROPE_MAX = 54, ROPE_FIRE = 34, ROPE_TICK = 9;       // most line out, where it switches, px per click
+  const ROPE_REST = ROPE_TOP + ROPE_LEN;
   const rlo = document.createElement('canvas'); rlo.width = RP_W; rlo.height = RP_H;
   const rl = rlo.getContext('2d', {willReadFrequently:true});
   function sizeRope(){
@@ -2351,45 +2364,66 @@
   }
   sizeRope();
   window.addEventListener('resize', sizeRope);
-  let ropePull = 0, ropeV = 0, ropePointer = null, ropeY0 = 0, ropeFired = false, ropeTickIdx = 0, ropeLastT = performance.now(), ropeFlash = 0;
-  const ropeLocalY = ev=>{ const r = ropeCv.getBoundingClientRect(); return (ev.clientY - r.top)*(RP_H/r.height); };
-  ropeCv.addEventListener('pointerdown', ev=>{
+  // the toggle at the rope's end: position and velocity, in canvas pixels
+  const rope = {x: RP_CX, y: ROPE_REST, vx: 0, vy: 0, pull: 0, ptr: null, ox: 0, oy: 0, lx: 0, ly: 0, lt: 0};
+  let ropeFired = false, ropeTickIdx = 0, ropeLastT = performance.now(), ropeFlash = 0;
+  const ropeLocal = ev=>{ const r = ropeCv.getBoundingClientRect(); return [(ev.clientX - r.left)*(RP_W/r.width), (ev.clientY - r.top)*(RP_H/r.height)]; };
+  // put the toggle as near (tx,ty) as a rope of fixed length allows
+  function ropeTo(tx, ty){
+    tx = Math.max(16, Math.min(RP_W - 10, tx)); ty = Math.max(ROPE_TOP + 6, Math.min(RP_H - 26, ty));
+    const dx = tx - RP_CX, dy = ty - ROPE_TOP, d = Math.hypot(dx, dy) || 1;
+    if(d <= ROPE_LEN){ rope.x = tx; rope.y = ty; rope.pull = 0; return; }   // slack: it just follows
+    const pull = ROPE_MAX*(1 - Math.exp(-(d - ROPE_LEN)/(ROPE_MAX*0.9)));   // taut: line runs out, heavier as it comes
+    rope.x = RP_CX + dx/d*(ROPE_LEN + pull); rope.y = ROPE_TOP + dy/d*(ROPE_LEN + pull); rope.pull = pull;
+  }
+  ropeHit.addEventListener('pointerdown', ev=>{
     ev.preventDefault();
-    ropePointer = ev.pointerId; ropeCv.setPointerCapture(ev.pointerId); ropeCv.classList.add('grabbed');
-    ropeY0 = ropeLocalY(ev) - Math.max(0, ropePull); ropeFired = false; ropeTickIdx = Math.floor(Math.max(0, ropePull)/ROPE_TICK); ropeV = 0;
+    rope.ptr = ev.pointerId; ropeHit.setPointerCapture(ev.pointerId); ropeHit.classList.add('grabbed');
+    const [x,y] = ropeLocal(ev);
+    rope.ox = rope.x - x; rope.oy = rope.y - y;              // hold it where the finger landed
+    rope.vx = rope.vy = 0; rope.lx = rope.x; rope.ly = rope.y; rope.lt = performance.now();
+    ropeFired = false; ropeTickIdx = Math.floor(rope.pull/ROPE_TICK);
     Sfx.init(); buzz(6);
   });
-  ropeCv.addEventListener('pointermove', ev=>{
-    if(ev.pointerId !== ropePointer) return;
+  ropeHit.addEventListener('pointermove', ev=>{
+    if(ev.pointerId !== rope.ptr) return;
     ev.preventDefault();
-    const dy = ropeLocalY(ev) - ropeY0;
-    ropePull = dy <= 0 ? 0 : ROPE_MAX*(1 - Math.exp(-dy/(ROPE_MAX*0.9)));   // it gets heavier as it comes
-    const idx = Math.floor(ropePull/ROPE_TICK);
-    if(idx > ropeTickIdx){ buzz(5); Sfx.tick(0.3, 1.15 + idx*0.06); }     // the line clicking through the block
+    const [x,y] = ropeLocal(ev);
+    ropeTo(x + rope.ox, y + rope.oy);
+    const now = performance.now(), dtm = Math.max(8, now - rope.lt);   // finger speed, for the swing on release
+    rope.vx = (rope.x - rope.lx)/dtm*1000; rope.vy = (rope.y - rope.ly)/dtm*1000;
+    rope.lx = rope.x; rope.ly = rope.y; rope.lt = now;
+    const idx = Math.floor(rope.pull/ROPE_TICK);
+    if(idx > ropeTickIdx){ buzz(5); Sfx.tick(0.3, 1.15 + idx*0.06); }      // the line clicking through the block
     ropeTickIdx = idx;
-    if(!ropeFired && ropePull >= ROPE_FIRE){ ropeFired = true; switchByRope(); }
+    if(!ropeFired && rope.pull >= ROPE_FIRE){ ropeFired = true; switchByRope(); }
   });
   const ropeRelease = ev=>{
-    if(ev.pointerId !== ropePointer) return;
-    ropePointer = null; ropeCv.classList.remove('grabbed');
+    if(ev.pointerId !== rope.ptr) return;
+    rope.ptr = null; ropeHit.classList.remove('grabbed');
+    const sp = Math.hypot(rope.vx, rope.vy), cap = 500;
+    if(sp > cap){ rope.vx *= cap/sp; rope.vy *= cap/sp; }
   };
-  ropeCv.addEventListener('pointerup', ropeRelease);
-  ropeCv.addEventListener('pointercancel', ropeRelease);
-  ropeCv.addEventListener('keydown', e=>{ if(e.key==='Enter' && !e.repeat){ e.preventDefault(); pullRope(); } });
+  ropeHit.addEventListener('pointerup', ropeRelease);
+  ropeHit.addEventListener('pointercancel', ropeRelease);
+  ropeHit.addEventListener('keydown', e=>{ if(e.key==='Enter' && !e.repeat){ e.preventDefault(); pullRope(); } });
   function switchByRope(){
     cycleSail(); Sfx.thunk(0.55); buzz([28,40,14]); ropeFlash = 1;
   }
-  // a pull from the keyboard: the rope jumps down and springs back on its own
-  function pullRope(){ ropePull = ROPE_FIRE + 4; ropeV = 0; switchByRope(); }
+  // a pull from the keyboard: the rope jumps down and swings back on its own
+  function pullRope(){ ropeTo(RP_CX, ROPE_REST + ROPE_FIRE + 12); rope.vx = rope.vy = 0; switchByRope(); }
   function drawRope(){
     const now = performance.now(), dt = Math.min(0.05, (now - ropeLastT)/1000); ropeLastT = now;
-    if(ropePointer === null){                                   // let go: spring back up, a little overshoot
-      ropeV += (-90*ropePull - 11*ropeV)*dt; ropePull += ropeV*dt;
-      if(ropePull < -6){ ropePull = -6; ropeV = 0; }
-      if(Math.abs(ropePull) < 0.05 && Math.abs(ropeV) < 0.5){ ropePull = 0; ropeV = 0; }
+    if(rope.ptr === null){                                   // let go: it swings back to hang straight
+      rope.vx += (-70*(rope.x - RP_CX) - 6*rope.vx)*dt;
+      rope.vy += (-90*(rope.y - ROPE_REST) - 9*rope.vy)*dt;
+      rope.x += rope.vx*dt; rope.y += rope.vy*dt;
+      const dx = rope.x - RP_CX, dy = rope.y - ROPE_TOP, d = Math.hypot(dx, dy) || 1;
+      rope.pull = Math.max(0, d - ROPE_LEN);
+      if(Math.abs(rope.x - RP_CX) < 0.05 && Math.abs(rope.y - ROPE_REST) < 0.05 && Math.hypot(rope.vx, rope.vy) < 0.5){ rope.x = RP_CX; rope.y = ROPE_REST; rope.vx = rope.vy = 0; rope.pull = 0; }
     }
     ropeFlash = Math.max(0, ropeFlash - dt*2.5);
-    const c = rl, INKW = '#000', PAPW = '#fff', pull = ropePull, hy = ROPE_REST + pull;
+    const c = rl, INKW = '#000', PAPW = '#fff', pull = rope.pull;
     c.clearRect(0,0,RP_W,RP_H);
     c.lineCap = 'round'; c.lineJoin = 'round';
     // the badge: which sail is set, in a paper disc (it pops when switched)
@@ -2410,50 +2444,61 @@
       }
       c.restore();
     }
-    // shackle and block, with a sheave that turns as the line runs
+    // the rope: a curve from the block to the toggle that sags when slack;
+    // its laid strands run out through the block as it's pulled
+    const hx = rope.x, hy = rope.y, dx = hx - RP_CX, dy = hy - ROPE_TOP, d = Math.hypot(dx, dy) || 1;
+    const sag = Math.sqrt(Math.max(0, ROPE_LEN*ROPE_LEN - d*d))*0.55;   // spare length hangs down in a belly
+    const qx = (RP_CX + hx)/2, qy = (ROPE_TOP + hy)/2 + sag;
+    const N = 28, pts = [];
+    for(let i=0;i<=N;i++){ const u = i/N, a = (1-u)*(1-u), b = 2*u*(1-u), e = u*u;
+      pts.push([a*RP_CX + b*qx + e*hx, a*ROPE_TOP + b*qy + e*hy]); }
+    const line = ()=>{ c.beginPath(); pts.forEach(([x,y],i)=> i ? c.lineTo(x,y) : c.moveTo(x,y)); };
+    c.strokeStyle = INKW; c.lineWidth = 11; line(); c.stroke();
+    c.strokeStyle = PAPW; c.lineWidth = 7.4; line(); c.stroke();
+    c.strokeStyle = INKW; c.lineWidth = 1.3; c.lineCap = 'butt';
+    c.beginPath();
+    {
+      let run = -(((pull % 5) + 5) % 5), prev = pts[0];
+      for(let i=1;i<pts.length;i++){
+        const p = pts[i], sl = Math.hypot(p[0]-prev[0], p[1]-prev[1]) || 1, tx = (p[0]-prev[0])/sl, ty = (p[1]-prev[1])/sl;
+        for(let s = 5 - run; s <= sl; s += 5){
+          if(i === pts.length-1 && s > sl - 3) break;
+          const x = prev[0] + tx*s, y = prev[1] + ty*s, nx = -ty, ny = tx;
+          c.moveTo(x - nx*3.4 - tx*2.2, y - ny*3.4 - ty*2.2); c.lineTo(x + nx*3.4 + tx*2.2, y + ny*3.4 + ty*2.2);
+        }
+        run = (run + sl) % 5; prev = p;
+      }
+    }
+    c.stroke(); c.lineCap = 'round';
+    // shackle and block (over the rope's top), with a sheave that turns as the line runs
     c.strokeStyle = INKW; c.lineWidth = 2;
     c.beginPath(); c.moveTo(RP_CX, 33); c.lineTo(RP_CX, 38); c.stroke();
     c.beginPath(); c.ellipse(RP_CX, 38.5, 3.2, 2.4, 0, 0, Math.PI*2); c.stroke();
+    c.save(); c.translate(RP_CX, 54); c.rotate(Math.atan2(dx, dy)*0.35);   // the block leans a little towards the pull
     c.fillStyle = 'rgb(170,170,170)'; c.strokeStyle = INKW; c.lineWidth = 1.8;
-    c.beginPath(); c.roundRect(RP_CX-10, 41, 20, 26, 7); c.fill(); c.stroke();
-    c.fillStyle = 'rgb(215,215,215)'; c.beginPath(); c.roundRect(RP_CX-7.5, 43, 7, 21, 4); c.fill();   // lit cheek
-    c.save(); c.translate(RP_CX, 54); c.rotate(pull/6);
+    c.beginPath(); c.roundRect(-11, -13, 22, 26, 7); c.fill(); c.stroke();
+    c.fillStyle = 'rgb(215,215,215)'; c.beginPath(); c.roundRect(-8.5, -11, 7, 21, 4); c.fill();   // lit cheek
+    c.rotate(pull/6);
     c.fillStyle = PAPW; c.strokeStyle = INKW; c.lineWidth = 1.4;
     c.beginPath(); c.arc(0,0,6.5,0,Math.PI*2); c.fill(); c.stroke();
     c.lineWidth = 1.1; c.beginPath(); for(let k=0;k<3;k++){ const a = k*Math.PI/3; c.moveTo(Math.cos(a)*5.5, Math.sin(a)*5.5); c.lineTo(-Math.cos(a)*5.5, -Math.sin(a)*5.5); } c.stroke();
     c.fillStyle = INKW; c.beginPath(); c.arc(0,0,1.6,0,Math.PI*2); c.fill();
     c.restore();
-    // the rope: laid strands that run down through the block as it's pulled
-    const sway = Math.max(-3, Math.min(3, -ropeV*0.012));
-    const rx = y=> RP_CX + sway*Math.sin(Math.PI*(y-ROPE_TOP)/Math.max(1, hy-ROPE_TOP));
-    c.lineWidth = 7; c.strokeStyle = INKW;
-    c.beginPath(); for(let y=ROPE_TOP; y<=hy; y+=3) (y===ROPE_TOP ? c.moveTo(rx(y), y) : c.lineTo(rx(y), y)); c.lineTo(rx(hy), hy); c.stroke();
-    c.lineWidth = 4.2; c.strokeStyle = PAPW;
-    c.beginPath(); for(let y=ROPE_TOP; y<=hy; y+=3) (y===ROPE_TOP ? c.moveTo(rx(y), y) : c.lineTo(rx(y), y)); c.lineTo(rx(hy), hy); c.stroke();
-    c.strokeStyle = INKW; c.lineWidth = 1.1; c.lineCap = 'butt';
-    c.beginPath();
-    for(let y = ROPE_TOP + ((pull % 4) + 4) % 4; y < hy - 1; y += 4){ const x = rx(y); c.moveTo(x-2.1, y-1.4); c.lineTo(x+2.1, y+1.4); }
-    c.stroke(); c.lineCap = 'round';
-    // the toggle: a wooden peg through the rope's end, and a knot below it
+    // the toggle: a wooden peg across the rope's end, and a knot below it,
+    // turned to follow the rope's last stretch
     {
-      const x = rx(hy);
+      const [ax, ay] = pts[pts.length-2], ang = Math.atan2(hy - ay, hx - ax) - Math.PI/2;
+      c.save(); c.translate(hx, hy); c.rotate(ang);
       c.fillStyle = PAPW; c.strokeStyle = INKW; c.lineWidth = 1.6;                                // knot
-      c.beginPath(); c.arc(x, hy+14.5, 5, 0, Math.PI*2); c.fill(); c.stroke();
-      c.lineWidth = 1; c.beginPath(); c.arc(x-1, hy+14.5, 2.6, -1.2, 2); c.moveTo(x+3.5, hy+11.5); c.lineTo(x-3.5, hy+17.5); c.stroke();
-      c.strokeStyle = INKW; c.lineWidth = 7; c.beginPath(); c.moveTo(x, hy); c.lineTo(x, hy+12); c.stroke();
-      c.strokeStyle = PAPW; c.lineWidth = 4.2; c.beginPath(); c.moveTo(x, hy); c.lineTo(x, hy+11); c.stroke();
+      c.beginPath(); c.arc(0, 16, 6.5, 0, Math.PI*2); c.fill(); c.stroke();
+      c.lineWidth = 1.1; c.beginPath(); c.arc(-1.2, 16, 3.4, -1.2, 2); c.moveTo(4.5, 12); c.lineTo(-4.5, 20); c.stroke();
+      c.strokeStyle = INKW; c.lineWidth = 11; c.beginPath(); c.moveTo(0, 0); c.lineTo(0, 11); c.stroke();
+      c.strokeStyle = PAPW; c.lineWidth = 7.4; c.beginPath(); c.moveTo(0, 0); c.lineTo(0, 10.5); c.stroke();
       c.fillStyle = PAPW; c.strokeStyle = INKW; c.lineWidth = 1.8;
-      c.beginPath(); c.roundRect(x-15, hy-1, 30, 9, 4.5); c.fill(); c.stroke();
-      c.fillStyle = 'rgb(175,175,175)'; c.fillRect(x-12, hy+4, 24, 2.2);                        // shaded underside
-      c.fillStyle = INKW; c.fillRect(x-1.6, hy-1, 3.2, 9);                                        // the rope passing through
-    }
-    // idle: two little chevrons under the knot, saying 'pull me'
-    const idle = ropePointer === null && Math.abs(ropePull) < 1;
-    if(idle){
-      const bob = (Math.sin(now*0.004)+1)*1.5;
-      const chev = ()=>{ c.beginPath(); for(const dy of [0, 7]){ const y = hy + 27 + dy + bob; c.moveTo(RP_CX-5, y); c.lineTo(RP_CX, y+4); c.lineTo(RP_CX+5, y); } };
-      c.strokeStyle = PAPW; c.lineWidth = 4; chev(); c.stroke();    // paper halo: reads on dark water
-      c.strokeStyle = INKW; c.lineWidth = 1.6; chev(); c.stroke();
+      c.beginPath(); c.roundRect(-17, -1, 34, 10, 5); c.fill(); c.stroke();
+      c.fillStyle = 'rgb(175,175,175)'; c.fillRect(-14, 4.5, 28, 2.4);                           // shaded underside
+      c.fillStyle = INKW; c.fillRect(-2.4, -1, 4.8, 10);                                          // the rope passing through
+      c.restore();
     }
     ditherUI(c, RP_W, RP_H);
     rctx.clearRect(0,0,ropeCv.width,ropeCv.height);
@@ -3640,9 +3685,13 @@
     // oars: out when crawling along and steering, back in once under way;
     // they row while the boat is actually turning
     {
-      const low = anchored || boat.speed < 9;
-      const turning = Math.abs(wheelAngle/WHEEL_MAX) > 0.08;
-      const crawling = !anchored && (sailLevel===SAIL_MIN || (boat.speed > 2 && boat.speed < 9));
+      // not when the anchor is what's slowing her, nor while she gathers way
+      // again after weighing it: only a sail that's losing the wind needs them
+      if(anchored) boat.fromAnchor = true;
+      else if(boat.speed >= 9) boat.fromAnchor = false;
+      const low = boat.speed < 9;
+      const turning = !anchored && Math.abs(wheelAngle/WHEEL_MAX) > 0.08;
+      const crawling = !anchored && (sailLevel===SAIL_MIN || (!boat.fromAnchor && boat.speed > 2 && boat.speed < 9));
       const want = !moor && !boat.whirl && ((low && turning) || crawling);
       boat.oarHold = want ? 0.5 : Math.max(0, (boat.oarHold||0) - dt);   // a short grace so they don't flicker
       boat.oarsOut = want || boat.oarHold > 0;
