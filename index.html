@@ -109,21 +109,41 @@
     position:fixed;
     top:calc(162px + env(safe-area-inset-top,0px));
     left:50%; transform:translateX(-50%);
-    width:min(420px, calc(100vw - 28px));
-    padding:12px 14px 12px;
+    width:min(440px, calc(100vw - 20px));
+    max-height:calc(100% - 150px - 200px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));
+    overflow-y:auto;
+    padding:10px 10px 8px;
     z-index:8;
   }
-  #mk-title{font-weight:bold; font-style:italic; font-size:15px; margin-bottom:5px;}
-  #mk-text{font-size:14px; line-height:1.4; margin-bottom:8px;}
-  #mk-price{font-size:13px; line-height:1.45; white-space:pre-line; margin-bottom:10px; padding:6px 8px; border:1.5px dashed var(--ink);}
-  #mk-price:empty{display:none;}
-  #mk-price{white-space:normal;}
-  .mk-row{display:flex; align-items:center; gap:8px; min-height:26px;}
-  .mk-fish svg{width:30px; height:16px; display:block;}
-  .mk-rule{font-size:13.5px; margin-left:4px;}
+  #mk-title{font-weight:bold; font-style:italic; font-size:15px; margin-bottom:4px;}
+  #mk-text{font-size:13px; line-height:1.35; margin-bottom:8px;}
+  /* the barter table: your hold on the left, the merchant's stall on the right */
+  #mk-table{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;}
+  .mk-side{border:1.5px solid var(--ink); border-radius:4px; padding:5px; min-height:104px; transition:background .15s;}
+  .mk-side.drop{background:repeating-linear-gradient(45deg, transparent 0 3px, rgba(27,26,23,.18) 3px 4px);}
+  .mk-head{display:flex; justify-content:space-between; align-items:center; font-size:12.5px; font-weight:bold; font-style:italic; margin-bottom:5px;}
+  #mk-purse{display:flex; align-items:center; gap:3px; font-style:normal; font-variant-numeric:tabular-nums;}
+  .mk-items{display:flex; flex-wrap:wrap; gap:4px; align-content:flex-start;}
+  .mk-empty{font-size:12px; font-style:italic; margin:4px 2px;}
+  .mk-unit{
+    width:42px; height:44px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+    background:var(--paper); border:1.5px solid var(--ink); border-radius:4px; box-shadow:2px 2px 0 var(--ink);
+    touch-action:none; cursor:grab; user-select:none;
+  }
+  .mk-unit > svg{width:30px; height:16px; display:block; pointer-events:none;}
+  .mk-unit.food{width:88px; height:auto; min-height:44px; padding:3px 2px;}
+  .mk-unit.food > svg{width:30px; height:22px;}
+  .mk-name{font-size:11px; font-weight:bold; line-height:1.1; text-align:center; pointer-events:none;}
+  .mk-val{display:flex; align-items:center; gap:2px; font-size:11.5px; line-height:1; pointer-events:none;}
+  .coin{width:11px; height:11px; display:inline-block; vertical-align:-1px;}
+  .mk-unit.moved{border-style:dashed; box-shadow:none; background-image:radial-gradient(var(--ink) 0.6px, transparent 0.8px); background-size:3px 3px;}
+  .mk-unit.lifted{opacity:.3;}
+  .mk-unit.ghost{position:fixed; z-index:30; pointer-events:none; transform:scale(1.15) rotate(-4deg); box-shadow:4px 4px 0 var(--ink);}
+  #mk-bal{font-size:13px; min-height:18px; margin-bottom:7px; display:flex; align-items:center; gap:4px; flex-wrap:wrap;}
+  #mk-bal.short{font-weight:bold;}
   #market button{
-    display:block; width:100%; margin:0 0 8px; padding:10px 10px;
-    font-family:inherit; font-size:15px; text-align:left;
+    display:block; width:100%; margin:0 0 6px; padding:9px 10px;
+    font-family:inherit; font-size:15px; text-align:center;
     background:var(--paper); color:var(--ink);
     border:2px solid var(--ink); border-radius:4px; box-shadow:3px 3px 0 var(--ink);
     cursor:pointer; touch-action:manipulation;
@@ -368,8 +388,12 @@
   <div id="market" class="panel hidden" role="dialog" aria-label="Market">
     <div id="mk-title"></div>
     <div id="mk-text"></div>
-    <div id="mk-price"></div>
-    <button id="mk-buy" type="button"></button>
+    <div id="mk-table">
+      <div class="mk-side" id="mk-you"><div class="mk-head"><span>Your hold</span><span id="mk-purse"></span></div><div class="mk-items" id="mk-you-items"></div></div>
+      <div class="mk-side" id="mk-them"><div class="mk-head"><span>The stall</span></div><div class="mk-items" id="mk-them-items"></div></div>
+    </div>
+    <div id="mk-bal"></div>
+    <button id="mk-deal" type="button">Trade</button>
     <div id="mk-foot"></div>
   </div>
   <div id="dialog" class="panel hidden" role="status" aria-live="polite">
@@ -1102,8 +1126,13 @@
   };
   const FISH_KEYS = ['sarde','sgombri','triglie','orate'];
   const FISH_NAME = {}; for(const k in FISH) FISH_NAME[FISH[k].key] = FISH[k];
-  const FOOD_PRICE = 4;              // fish for a village's food…
-  const LOCAL_MAX = 2;               // …of which at most this many may be the village's own kind
+  // the market: fish are sold for coins, worth more far from the waters
+  // they were caught in; a village's food is bought with coins
+  const COIN_LOCAL = 1;              // a village's own kind of fish: they have plenty
+  const COIN_FOREIGN = 2;            // fish from other waters fetch double
+  const FOOD_COINS = 6;              // price of a village's food
+  const MERCHANT_FISH = 3;           // local fish each merchant has for sale
+  let coins = 0;                     // the purse
   const counts = { sarde:0, sgombri:0, triglie:0, orate:0 };   // fish in the hold
   let caught = 0;                    // fish landed this voyage
   const FISH_HEAL = 15;              // hull points repaired per fish sold at a pier
@@ -2554,7 +2583,8 @@
     playing = true;
     prevWheel = wheelAngle = 0;
     repairT = 0; moor = mooredAtSpawn(); moorLock = null;
-    for(const v of VILLAGES) v.done = false;
+    for(const v of VILLAGES){ v.done = false; v.stock = MERCHANT_FISH; }
+    coins = 0;
     won = false; closeDialog();
     Sfx.init();
   });
@@ -2978,61 +3008,143 @@
   }
 
   // ---------- Village market ----------
-  // Docked at a village: a stall where you trade the fish that village
-  // wants (from the far side of the map) for its food, or sell a fish to
-  // patch the hull. The wheel casts off whenever you like.
+  // Docked at a village: a barter table. On the left your hold (every fish
+  // a unit), on the right the merchant's goods (the village's food and a
+  // few of its own fish). Drag goods across, or tap them, to make an offer;
+  // the balance shows what the deal is worth. Selling fish earns coins, and
+  // fish from other waters are worth more here. A negative balance is paid
+  // from the purse; a positive one is paid to you in coins.
   const elMk = document.getElementById('market');
   const elMkTitle = document.getElementById('mk-title'), elMkText = document.getElementById('mk-text');
-  const elMkBuy = document.getElementById('mk-buy'), elMkFoot = document.getElementById('mk-foot'), elMkPrice = document.getElementById('mk-price');
-  let marketV = null, mkLast = '';
-  // what a village takes: fish from other waters, plus at most LOCAL_MAX of its own
-  const foreignFish = (v, c)=> FISH_KEYS.filter(k=>k!==v.own).reduce((a,k)=>a+(c||counts)[k],0);
-  const usable = (v, c)=> foreignFish(v,c) + Math.min(LOCAL_MAX, (c||counts)[v.own]);
-  const canAfford = (v, c)=> foreignFish(v,c) >= FOOD_PRICE-LOCAL_MAX && usable(v,c) >= FOOD_PRICE;
-  const accepted = (v)=> usable(v);
+  const elMkYou = document.getElementById('mk-you-items'), elMkThem = document.getElementById('mk-them-items');
+  const elMkPurse = document.getElementById('mk-purse'), elMkBal = document.getElementById('mk-bal');
+  const elMkDeal = document.getElementById('mk-deal'), elMkFoot = document.getElementById('mk-foot');
+  for(const v of VILLAGES) v.stock = MERCHANT_FISH;
+  let marketV = null, mkItems = [], mkKey = '';
+  const fishValue = (v, k)=> k===v.own ? COIN_LOCAL : COIN_FOREIGN;
+  const fishWorth = (v)=> FISH_KEYS.reduce((a,k)=> a + counts[k]*fishValue(v,k), 0);   // the whole hold, sold here
+  const canAfford = (v)=> fishWorth(v) + coins >= FOOD_COINS;
+  const mkState = (v)=> [v.name, v.done, v.stock, coins, ...FISH_KEYS.map(k=>counts[k])].join('|');
   function openMarket(v){
-    marketV = v; mkLast=''; elMk.classList.remove('hidden'); renderMarket();
+    marketV = v; elMk.classList.remove('hidden');
     document.body.classList.add('at-market');
     if(elList.classList.contains('open')) toggleList(false);
+    mkKey = ''; renderMarket();
   }
-  function closeMarket(){ marketV = null; elMk.classList.add('hidden'); document.body.classList.remove('at-market'); }
+  function closeMarket(){ marketV = null; mkDrag = null; elMk.classList.add('hidden'); document.body.classList.remove('at-market'); }
+  // lay the table afresh from what's in the hold and on the stall
+  function stockTable(v){
+    mkItems = [];
+    for(const k of FISH_KEYS) for(let n=0;n<counts[k];n++) mkItems.push({kind:'fish', key:k, origin:'you', side:'you', value: fishValue(v,k)});
+    if(!v.done) mkItems.push({kind:'food', origin:'them', side:'them', value: FOOD_COINS});
+    for(let n=0;n<v.stock;n++) mkItems.push({kind:'fish', key:v.own, origin:'them', side:'them', value: COIN_LOCAL});
+    mkItems.forEach((it,i)=> it.id = i);
+  }
+  // called every frame while docked: only redraws when something changed
+  // (a repair can take a fish from the hold)
   function renderMarket(){
     if(!marketV) return;
-    const v = marketV, have = accepted(v);
-    const full = boat.health >= MAX_HEALTH-0.5;
-    const buy = v.done ? '✓ '+v.food+' already aboard' : 'Buy '+v.food+'  ('+Math.min(have,FOOD_PRICE)+'/'+FOOD_PRICE+')';
-    const others = FISH_KEYS.filter(k=>k!==v.own);
-    // told with the same fish icons as the counters round the compass
-    const ico = k => '<span class="mk-fish" title="'+FISH_NAME[k].many+'">'+document.querySelector('#wood .fish-'+k+' svg').outerHTML+'</span>';
-    const price = '<div class="mk-row"><b>Price: '+FOOD_PRICE+' fish</b></div>'
-      + '<div class="mk-row">'+others.map(ico).join('')+'<span class="mk-rule">any</span></div>'
-      + '<div class="mk-row">'+ico(v.own)+'<span class="mk-rule">max '+LOCAL_MAX+'</span></div>';
-    const key = [v.name,buy,price,v.done,have,full,fishTotal()].join('|');
-    if(key===mkLast) return;
-    mkLast = key;
-    elMkTitle.textContent = v.name + ' market';
-    elMkText.textContent = v.done ? "You've done your shopping here. They wave you off from the quay." : v.line;
-    elMkPrice.innerHTML = v.done ? '' : price;
-    elMkBuy.textContent = buy;
-    elMkBuy.disabled = v.done || !canAfford(v);
-    elMkBuy.classList.toggle('done', v.done);
-    elMkFoot.textContent = '';
+    const key = mkState(marketV);
+    if(key === mkKey) return;
+    mkKey = key; stockTable(marketV); drawTable();
   }
-  elMkBuy.addEventListener('click', ()=>{
-    const v = marketV; if(!v || v.done || !canAfford(v)) return;
-    // local fish first (up to the limit: they're worth least here), then the biggest piles
-    let paid = 0;
-    const loc = Math.min(LOCAL_MAX, counts[v.own]);
-    counts[v.own] -= loc; paid += loc;
-    while(paid < FOOD_PRICE){
-      const k = FISH_KEYS.filter(k=>k!==v.own && counts[k]>0).reduce((a,b)=>counts[b]>counts[a]?b:a);
-      counts[k]--; paid++;
+  const mkBalance = ()=> mkItems.reduce((a,it)=> a + (it.side===it.origin ? 0 : it.origin==='you' ? it.value : -it.value), 0);
+  const COIN_SVG = '<svg class="coin" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="var(--paper)" stroke="currentColor" stroke-width="1.4"/><circle cx="6" cy="6" r="2.4" fill="none" stroke="currentColor" stroke-width="1"/></svg>';
+  const FOOD_SVG = '<svg viewBox="0 0 30 22" aria-hidden="true"><path d="M3 9 H27 L24 20 H6 Z" fill="var(--paper)" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7 9 Q15 -1 23 9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 12 H22 M9 15.5 H21" stroke="currentColor" stroke-width="1.1"/><circle cx="12" cy="7" r="2.6" fill="currentColor"/><circle cx="18" cy="6.5" r="2.2" fill="url(#sh-mid)" stroke="currentColor" stroke-width="0.8"/></svg>';
+  function unitHTML(it){
+    const ico = it.kind==='food' ? FOOD_SVG : document.querySelector('#wood .fish-'+it.key+' svg').outerHTML;
+    const name = it.kind==='food' ? marketV.food : FISH_NAME[it.key].one;
+    const label = it.kind==='food' ? '<span class="mk-name">'+name+'</span>' : '';
+    return '<div class="mk-unit '+it.kind+(it.side!==it.origin ? ' moved' : '')+'" data-id="'+it.id+'" data-kind="'+it.kind+'" data-origin="'+it.origin+'" role="button" aria-label="'+name+', '+it.value+' coins">'
+      + ico + label + '<span class="mk-val">'+it.value+COIN_SVG+'</span></div>';
+  }
+  function drawTable(){
+    const v = marketV;
+    elMkTitle.textContent = v.name + ' market';
+    elMkText.textContent = v.done ? "You've done your shopping here. The stall still buys fish, if you have any to spare." : v.line;
+    // the goods sit on the side they're on now; the ones that crossed go first
+    const order = (a,b)=> (b.side!==b.origin) - (a.side!==a.origin) || (a.kind==='food' ? -1 : 0) - (b.kind==='food' ? -1 : 0) || a.id - b.id;
+    const on = side=> mkItems.filter(it=>it.side===side).sort(order).map(unitHTML).join('');
+    elMkYou.innerHTML = on('you') || '<p class="mk-empty">Nothing in the hold.</p>';
+    elMkThem.innerHTML = on('them') || '<p class="mk-empty">The stall is bare.</p>';
+    elMkPurse.innerHTML = COIN_SVG + coins;
+    const bal = mkBalance(), moved = mkItems.some(it=>it.side!==it.origin), ok = moved && coins + bal >= 0;
+    elMkBal.className = bal < 0 && coins + bal < 0 ? 'short' : '';
+    elMkBal.innerHTML = !moved ? 'Drag goods across, or tap them, to make an offer.'
+      : bal > 0 ? 'Balance: <b>+'+bal+'</b> '+COIN_SVG+' you receive '+bal+(bal===1?' coin':' coins')
+      : bal === 0 ? 'Balance: <b>0</b>: a fair swap'
+      : coins + bal >= 0 ? 'Balance: <b>'+bal+'</b> '+COIN_SVG+' paid from your purse'
+      : 'Balance: <b>'+bal+'</b> '+COIN_SVG+' not enough: offer more fish';
+    elMkDeal.disabled = !ok;
+    elMkDeal.textContent = 'Trade';
+  }
+  function moveUnit(it){
+    it.side = it.side==='you' ? 'them' : 'you';
+    Sfx.tick(0.5, it.side==='you' ? 1.2 : 0.95); buzz(10);
+    drawTable();
+  }
+  // drag and drop (a tap moves the unit across too)
+  let mkDrag = null;
+  function mkPaneAt(x, y){
+    for(const [el, side] of [[elMkYou.parentElement,'you'],[elMkThem.parentElement,'them']]){
+      const r = el.getBoundingClientRect();
+      if(x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return side;
     }
-    v.done = true;
-    Sfx.coins(); buzz([15,40,15,40,55]);   // deal done: coins on the counter
+    return null;
+  }
+  elMk.addEventListener('pointerdown', ev=>{
+    const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;
+    ev.preventDefault();
+    u.setPointerCapture(ev.pointerId);
+    mkDrag = {id: +u.dataset.id, el: u, x0: ev.clientX, y0: ev.clientY, ghost: null, ptr: ev.pointerId};
+    Sfx.init(); buzz(5);
+  });
+  elMk.addEventListener('pointermove', ev=>{
+    const d = mkDrag; if(!d || ev.pointerId !== d.ptr) return;
+    if(!d.ghost && Math.hypot(ev.clientX-d.x0, ev.clientY-d.y0) > 7){
+      const r = d.el.getBoundingClientRect();
+      d.ghost = d.el.cloneNode(true); d.ghost.classList.add('ghost');
+      d.ghost.style.width = r.width+'px'; d.ghost.style.height = r.height+'px';
+      d.ox = d.x0 - r.left; d.oy = d.y0 - r.top;
+      document.body.appendChild(d.ghost); d.el.classList.add('lifted');
+    }
+    if(d.ghost){
+      d.ghost.style.left = (ev.clientX - d.ox)+'px'; d.ghost.style.top = (ev.clientY - d.oy)+'px';
+      const it = mkItems[d.id], over = mkPaneAt(ev.clientX, ev.clientY);
+      elMkYou.parentElement.classList.toggle('drop', over==='you' && it.side!=='you');
+      elMkThem.parentElement.classList.toggle('drop', over==='them' && it.side!=='them');
+    }
+  });
+  const mkRelease = ev=>{
+    const d = mkDrag; if(!d || ev.pointerId !== d.ptr) return;
+    mkDrag = null;
+    elMkYou.parentElement.classList.remove('drop'); elMkThem.parentElement.classList.remove('drop');
+    const it = mkItems[d.id];
+    if(d.ghost){
+      d.ghost.remove(); d.el.classList.remove('lifted');
+      const over = ev.type==='pointerup' ? mkPaneAt(ev.clientX, ev.clientY) : null;
+      if(it && over && over !== it.side) moveUnit(it);
+    } else if(it && ev.type==='pointerup') moveUnit(it);      // a tap
+  };
+  elMk.addEventListener('pointerup', mkRelease);
+  elMk.addEventListener('pointercancel', mkRelease);
+  elMkDeal.addEventListener('click', ()=>{
+    const v = marketV; if(!v) return;
+    const bal = mkBalance();
+    if(!mkItems.some(it=>it.side!==it.origin) || coins + bal < 0) return;
+    const got = [];
+    for(const it of mkItems){
+      if(it.side === it.origin) continue;
+      if(it.origin==='you'){ counts[it.key]--; }                          // sold
+      else if(it.kind==='food'){ v.done = true; got.push(v.food); }      // the banquet's share
+      else { counts[it.key]++; v.stock--; }                               // bought a fish
+    }
+    coins += bal;
+    Sfx.coins(); buzz([15,40,15,40,55]);                                  // deal done: coins on the counter
+    const note = [...got.map(f=>'+ '+f), bal > 0 ? '+'+bal+' coins' : bal < 0 ? bal+' coins' : ''].filter(Boolean);
+    note.forEach((txt,i)=> popups.push({x:boat.x, y:boat.y-26-i*16, text:txt, life:1.8, max:1.8}));
     if(elList.classList.contains('open')) renderList();
-    popups.push({x:boat.x, y:boat.y-26, text:'+ '+v.food, life:1.8, max:1.8});
-    renderMarket();
+    mkKey = ''; renderMarket();
   });
 
   // ---------- Night sounds ----------
@@ -3175,8 +3287,8 @@
       const local = FISH_NAME[v.own].many;
       return '<li class="'+(v.done?'got':'')+'"><span class="mark">'+(v.done?'●':'○')+'</span>'
         + '<span class="food">'+v.food.charAt(0).toUpperCase()+v.food.slice(1)+'</span>'
-        + '<span class="where">from '+v.name+', to the '+dirOf(v)+' · '+FOOD_PRICE+' fish, at most '+LOCAL_MAX+' '+local+'</span></li>';
-    }).join('') + '</ul><p class="note">'+(VILLAGES.every(v=>v.done) ? 'All bought: sail home for the banquet!' : 'Then bring it all home.')+'</p>';
+        + '<span class="where">from '+v.name+', to the '+dirOf(v)+' · '+FOOD_COINS+' coins. They pay '+COIN_FOREIGN+' a fish, only '+COIN_LOCAL+' for '+local+'</span></li>';
+    }).join('') + '</ul><p class="note">'+(VILLAGES.every(v=>v.done) ? 'All bought: sail home for the banquet!' : 'Then bring it all home.')+'<br>Purse: '+coins+(coins===1?' coin':' coins')+'</p>';
   }
   function toggleList(open){
     const on = open===undefined ? !elList.classList.contains('open') : open;
@@ -3509,12 +3621,11 @@
         // repairs: one piece of wood from the hold at a time
         repairT -= dt;
         // at a village, never touch the fish you still need for its food:
-        // pay with local fish first, then only what's beyond the price
+        // pay with local fish first, and only while the hold and the purse
+        // together still cover the price of the food
         const spare = (k)=>{
           if(!village || village.done) return true;
-          const c = {...counts}; c[k]--;
-          if(canAfford(village)) return canAfford(village, c);           // don't break a deal you can make
-          return usable(village, c) === usable(village);                  // only fish that don't count here
+          return fishWorth(village) + coins - fishValue(village, k) >= FOOD_COINS;   // keep what the food will cost
         };
         const payable = FISH_KEYS.filter(k=> counts[k]>0 && spare(k));
         if(!moor.banquet && repairT<=0 && payable.length && boat.health < MAX_HEALTH-0.5){

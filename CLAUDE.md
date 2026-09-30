@@ -17,17 +17,23 @@ You sail from home to four villages to buy food for a banquet, paying with fish,
   Each has a bay, a wooden pier, a lighthouse with a sweeping beam, a pixel-art town, 8 buoys at ~880 px (toast "Entering the waters of …").
 - **Ruins** on the diagonals: dock there for a random power (friendly wind 60 s, blessed nets ×3, full hull).
 - **Fish:** sardines (N), mackerel (E), red mullet (S), sea bream (W). Banks denser far from home; home waters have all kinds.
-  Market price: 4 fish, at most 2 of the village's local kind. Repairs are automatic at any pier (1 fish = +15 hull).
+  **Market = barter table** (left: your hold, every fish a unit; right: the stall: the village's food + 3 local fish).
+  Drag or tap units across; balance = fish sold − goods taken. Fish sell for coins: 2 if from other waters, 1 if local.
+  Food costs 6 coins. "Trade" is disabled if the purse can't cover a negative balance; a positive balance goes to the purse.
+  Repairs are automatic at any pier (1 fish = +15 hull; at a village it never spends what the food will cost).
 - **Controls:** wheel (drag in a circle; half a turn = full lock). Hub of the wheel = anchor only:
   **long press 0.5 s = anchor**. At anchor the wheel fades out and only the hub (bigger, dark) remains.
-  **Halyard** (rope hanging from a block, bottom right): swipe it down to switch sail (full / minimum); it clicks
-  (haptic + sound) as it runs, clacks when it switches, then springs back. Badge on top shows the sail state.
+  **Halyard** (rope hanging from a block, bottom right): grab it and it follows the finger at a fixed length (sags
+  when slack); pulled taut it runs out through the block, clicking (haptic + sound), and past the mark it switches
+  sail (full / minimum) with a clack; on release it swings back. Badge on top shows the sail state.
+  Oars never come out because of the anchor (nor while getting under way after weighing it).
   Left button: shopping list overlay. Keyboard: arrows, Space = anchor, S = sail.
 - **Hazards:** rocks, faraglioni, whirlpools (appear/disappear/wander), rollers (big waves: head-on hurts, from astern = surf boost).
 - **Atmosphere:** macchia (tree-spurge domes + Mediterranean pines), clouds with parallax and shadows, gulls, wind streaks,
   traders (motor boats on A* lanes between villages; they don't avoid the player, a collision just shoves them aside
   with no damage, then they drift back to their lane; they hail with a speech bubble), fog of war (buoys and a
-  340 px radius round each village always show through), see-through clouds,
+  340 px radius round each village always show through), clouds see-through at the rim and denser in the middle,
+  a third of them rain clouds (darker, with a shower on the sea below and a rain hiss when you're near),
   day/night palette cycle (6 min) with dark nights lit by lanterns, lighthouses and windows.
 
 ## Map of index.html (search for these section headers: `// ---------- Name ----------`)

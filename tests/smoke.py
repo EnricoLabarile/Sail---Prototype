@@ -33,7 +33,12 @@ def main():
         for k in range(4):
             pg.evaluate(f"""()=>{{const v=__d.VILLAGES[{k}]; const other=['sarde','sgombri','triglie','orate'].find(x=>x!==v.own); __d.counts[other]+=4;}}""")
             dock_at(pg, f'd.VILLAGES[{k}].pier')
-            pg.click('#mk-buy'); pg.wait_for_timeout(200)
+            # barter table: tap the four foreign fish across to the stall (2 coins
+            # each), tap the food across to the hold (6 coins), then trade
+            for _ in range(4):
+                pg.click('#mk-you-items .mk-unit[data-origin=you]'); pg.wait_for_timeout(50)
+            pg.click('#mk-them-items .mk-unit.food'); pg.wait_for_timeout(50)
+            pg.click('#mk-deal'); pg.wait_for_timeout(200)
             pg.keyboard.press('Space'); pg.wait_for_timeout(1300)   # weigh anchor
         bought = pg.evaluate('__d.VILLAGES.map(v=>v.done)')
         assert all(bought), f'not everything bought: {bought}'
