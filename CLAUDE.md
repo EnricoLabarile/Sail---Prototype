@@ -30,11 +30,13 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   "Trade" is disabled if the purse can't cover a negative balance; a positive balance goes to the purse.
   Repairs are automatic at any pier (1 fish = +15 hull; at a village it never spends what the next dish will cost).
   While trading, the halyard and the compass (with its fish counters) are hidden.
+- **Intro:** on "Set sail" the card rolls up into a scroll that is tossed into the list button (skipped with reduced motion).
 - **Controls:** wheel (drag in a circle; half a turn = full lock). Hub of the wheel = anchor only:
   **long press 0.5 s = anchor**. At anchor the wheel fades out and only the hub (bigger, dark) remains.
   **Halyard** (rope hanging from a block, bottom right): grab it and it follows the finger at a fixed length (sags
   when slack); pulled taut it runs out through the block, clicking (haptic + sound), and past the mark it switches
-  sail (full / minimum) with a clack; on release it swings back. Badge on top shows the sail state.
+  sail (full / minimum) with a clack; on release it swings back. Badge on top shows the sail state. The whole halyard
+  is drawn at `ROPE_SCALE` = 1.6 (crisp: the low-res canvas grows too).
   Oars never come out because of the anchor (nor while getting under way after weighing it).
   Left button: the dinner (just the 4 course names, crossed off once one dish of it is aboard) + the hold (purse,
   every fish as a unit like at the market, dishes and gifts aboard; live). Keyboard: arrows, Space = anchor, S = sail.

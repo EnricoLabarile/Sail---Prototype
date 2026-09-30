@@ -271,17 +271,18 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   /* the halyard: a rope hanging from a block on the right; pull it down to switch sail */
   /* the drawing is wider than the grip, so the rope can be dragged about the
      screen; only the grip (#rope-hit) takes touches */
+  /* sizes are the drawing (170×222 units) scaled by ROPE_SCALE (1.6) */
   #rope{
     position:fixed;
-    right:0; bottom:calc(-2px + env(safe-area-inset-bottom,0px));
-    width:170px; height:222px;
+    right:0; bottom:calc(-3px + env(safe-area-inset-bottom,0px));
+    width:272px; height:355px;
     pointer-events:none;
     z-index:7;
   }
   #rope-hit{
     position:fixed;
-    right:6px; bottom:calc(10px + env(safe-area-inset-bottom,0px));
-    width:52px; height:210px;
+    right:21px; bottom:calc(16px + env(safe-area-inset-bottom,0px));
+    width:60px; height:336px;
     touch-action:none; cursor:grab;
     z-index:7;
   }
@@ -289,6 +290,22 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   #rope-hit:focus-visible{outline:2px dashed var(--ink); outline-offset:2px;}
 
   /* --- Intro / game over --- */
+  /* setting sail: the backdrop fades on its own layer while the card rolls into a scroll */
+  #intro.leaving{background:transparent;}
+  .intro-bg{
+    position:fixed; inset:0; z-index:19; pointer-events:none;
+    background-color:var(--paper);
+    background-image:radial-gradient(var(--ink) 0.8px, transparent 1px); background-size:4px 4px;
+  }
+  .scroll-roll{
+    position:fixed; z-index:21; height:24px; pointer-events:none; transform-origin:50% 50%;
+    background:var(--paper); border:2px solid var(--ink); border-radius:12px; box-shadow:3px 3px 0 var(--ink);
+    background-image:repeating-linear-gradient(0deg, transparent 0 5px, rgba(27,26,23,.35) 5px 6px);
+  }
+  .scroll-roll::before, .scroll-roll::after{            /* the wooden rods sticking out of the roll */
+    content:""; position:absolute; top:3px; width:12px; height:14px; border-radius:4px; background:var(--ink);
+  }
+  .scroll-roll::before{left:-9px;} .scroll-roll::after{right:-9px;}
   #intro, #gameover{
     position:fixed;
     inset:0;
@@ -2420,15 +2437,17 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   // swings back to hang where it was.
   const ropeCv = document.getElementById('rope'), ropeHit = document.getElementById('rope-hit');
   const rctx = ropeCv.getContext('2d');
-  const RP_W = 170, RP_H = 222, RP_CX = RP_W - 32;          // the block hangs 32 px from the right edge
+  const RP_W = 170, RP_H = 222, RP_CX = RP_W - 32;          // drawing units; the block hangs 32 units from the right edge
+  const ROPE_SCALE = 1.6;                                    // drawn this much bigger (crisp: the low-res canvas grows too)
+  const RPX_W = Math.round(RP_W*ROPE_SCALE), RPX_H = Math.round(RP_H*ROPE_SCALE);
   const ROPE_TOP = 66, ROPE_LEN = 70;                        // where the line leaves the block, and how much hangs
   const ROPE_MAX = 54, ROPE_FIRE = 34, ROPE_TICK = 9;       // most line out, where it switches, px per click
   const ROPE_REST = ROPE_TOP + ROPE_LEN;
-  const rlo = document.createElement('canvas'); rlo.width = RP_W; rlo.height = RP_H;
+  const rlo = document.createElement('canvas'); rlo.width = RPX_W; rlo.height = RPX_H;
   const rl = rlo.getContext('2d', {willReadFrequently:true});
   function sizeRope(){
     const k = Math.max(1, Math.round((window.devicePixelRatio||1)));
-    ropeCv.width = RP_W*k; ropeCv.height = RP_H*k;
+    ropeCv.width = RPX_W*k; ropeCv.height = RPX_H*k;
     rctx.imageSmoothingEnabled = false;
   }
   sizeRope();
@@ -2493,7 +2512,8 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
     }
     ropeFlash = Math.max(0, ropeFlash - dt*2.5);
     const c = rl, INKW = '#000', PAPW = '#fff', pull = rope.pull;
-    c.clearRect(0,0,RP_W,RP_H);
+    c.setTransform(1,0,0,1,0,0); c.clearRect(0,0,RPX_W,RPX_H);
+    c.setTransform(ROPE_SCALE,0,0,ROPE_SCALE,0,0);          // draw in rope units
     c.lineCap = 'round'; c.lineJoin = 'round';
     // the badge: which sail is set, in a paper disc (it pops when switched)
     {
@@ -2569,7 +2589,8 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
       c.fillStyle = INKW; c.fillRect(-2.4, -1, 4.8, 10);                                          // the rope passing through
       c.restore();
     }
-    ditherUI(c, RP_W, RP_H);
+    c.setTransform(1,0,0,1,0,0);
+    ditherUI(c, RPX_W, RPX_H);
     rctx.clearRect(0,0,ropeCv.width,ropeCv.height);
     rctx.drawImage(rlo, 0, 0, ropeCv.width, ropeCv.height);
   }
@@ -2579,10 +2600,50 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   const intro = document.getElementById('intro');
   document.getElementById('start-btn').addEventListener('click', ()=>{
     buzz([25,50,40]);
-    intro.classList.add('hidden');
     playing = true;
     Sfx.init();
+    rollIntoScroll();
   });
+  // setting sail: the card rolls up into a little scroll, which is tossed
+  // down into the list button (where the dinner's list lives from now on)
+  function rollIntoScroll(){
+    const card = intro.querySelector('.card'), btn = document.getElementById('btn-list');
+    const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if(reduce || !card.animate){ intro.classList.add('hidden'); return; }
+    intro.style.pointerEvents = 'none';
+    // the dotted backdrop fades on its own layer, so the card stays solid while it rolls
+    const bg = document.createElement('div'); bg.className = 'intro-bg'; document.body.appendChild(bg);
+    intro.classList.add('leaving');
+    bg.animate([{opacity:1},{opacity:0}], {duration:500, easing:'ease-out', fill:'forwards'}).onfinish = ()=> bg.remove();
+    const r = card.getBoundingClientRect();
+    // the roll: the paper disappears upward from the bottom edge into a
+    // rolled scroll that climbs to the top of the card
+    const roll = document.createElement('div'); roll.className = 'scroll-roll';
+    Object.assign(roll.style, {left: r.left+'px', top: (r.bottom-12)+'px', width: r.width+'px'});
+    document.body.appendChild(roll);
+    const ROLL = 520;
+    card.animate([{clipPath:'inset(0 0 0 0)'},{clipPath:'inset(0 0 100% 0)'}], {duration:ROLL, easing:'cubic-bezier(.45,0,.55,1)', fill:'forwards'});
+    const up = roll.animate([{transform:'translateY(0)'},{transform:'translateY('+(-(r.height-12))+'px)'}], {duration:ROLL, easing:'cubic-bezier(.45,0,.55,1)', fill:'forwards'});
+    for(let k=1;k<=4;k++) setTimeout(()=>{ Sfx.type(); buzz(4); }, k*ROLL/5);   // the paper crackles as it rolls
+    up.onfinish = ()=>{
+      intro.classList.add('hidden'); intro.classList.remove('leaving'); intro.style.pointerEvents = '';
+      card.getAnimations().forEach(a=>a.cancel());
+      // the toss: a little hop, then down in an arc into the button, shrinking and turning
+      const s = roll.getBoundingClientRect(), b = btn.getBoundingClientRect();
+      const dx = (b.left + b.width/2) - (s.left + s.width/2), dy = (b.top + b.height/2) - (s.top + s.height/2);
+      const k = 46/s.width;                                                   // ends about the size of the list icon
+      const fly = roll.animate([
+        {transform:'translateY('+(-(r.height-12))+'px)', offset:0},
+        {transform:'translate('+(dx*0.25)+'px,'+(-(r.height-12)-50)+'px) rotate(-10deg) scale(0.75)', offset:0.3},
+        {transform:'translate('+dx+'px,'+(dy-(r.height-12))+'px) rotate(-35deg) scale('+k+')', offset:1}
+      ], {duration:760, easing:'cubic-bezier(.45,0,.7,1)', fill:'forwards'});
+      fly.onfinish = ()=>{
+        roll.remove();
+        Sfx.thunk(0.45); buzz([30,40,15]);                                  // it drops in
+        btn.animate([{transform:'scale(1)'},{transform:'scale(1.22)'},{transform:'scale(0.94)'},{transform:'scale(1)'}], {duration:420, easing:'ease-out'});
+      };
+    };
+  }
   const gameover = document.getElementById('gameover');
   const elGoStats = document.getElementById('go-stats');
   let voyageTime = 0;
