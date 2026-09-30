@@ -17,6 +17,7 @@ You sail from home to four villages to buy food for a banquet, paying with fish,
   Each has a bay, a wooden pier, a lighthouse with a sweeping beam, a pixel-art town, 8 buoys at ~880 px (toast "Entering the waters of …").
 - **Ruins** on the diagonals: dock there for a random power (friendly wind 60 s, blessed nets ×3, full hull).
 - **Fish:** sardines (N), mackerel (E), red mullet (S), sea bream (W). Banks denser far from home; home waters have all kinds.
+  Fishing: stop on a bank for 2 s and the nets go over; drop anchor on a bank and they go over at once.
   **Market = barter table** (left: your hold, every fish a unit; right: the stall: the village's food + 3 local fish).
   Drag or tap units across; balance = fish sold − goods taken. Fish sell for coins: 2 if from other waters, 1 if local.
   Food costs 6 coins. "Trade" is disabled if the purse can't cover a negative balance; a positive balance goes to the purse.

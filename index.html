@@ -2726,9 +2726,10 @@
     const steering = turnLeft || turnRight || (wheelPointer!==null && Math.abs(wheelAngle) > 0.35);
     if(!fishing){
       const b = bankUnderBoat();
-      if(b && boat.speed < FISH_STOP){
+      const atAnchor = anchored && weighT <= 0;             // anchor down on a bank: nets over at once
+      if(b && (atAnchor || boat.speed < FISH_STOP)){
         settleT += dt;
-        if(settleT >= FISH_SETTLE){
+        if(atAnchor || settleT >= FISH_SETTLE){
           fishing = {bank:b, t:0, phase:'drop', side: Math.random()<0.5?-1:1, dur: rand(FISH_TIME_MIN, FISH_TIME_MAX)};
           Sfx.splash();
           buzz(15);
