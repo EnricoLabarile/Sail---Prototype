@@ -26,6 +26,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
 - **Fish:** sardines (N), mackerel (E), red mullet (S), sea bream (W). Banks denser far from home; home waters have all kinds.
   Fishing: stop on a bank for 2 s and the nets go over; drop anchor on a bank and they go over after 0.25 s.
   **Market = barter table** (left: your hold, every fish a unit; right: the stall: the dishes not yet bought + 3 local fish).
+  The top of the market panel shows how to trade (`MK_TIP`), not the merchant's flavour line.
   Drag or tap units across; balance = fish sold − goods taken. Fish sell for coins: 2 if from other waters, 1 if local.
   "Trade" is disabled if the purse can't cover a negative balance; a positive balance goes to the purse.
   Repairs are automatic at any pier (1 fish = +15 hull; at a village it never spends what the next dish will cost).

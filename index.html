@@ -3157,12 +3157,12 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
     return '<div class="mk-unit '+it.kind+(it.side!==it.origin ? ' moved' : '')+'" data-id="'+it.id+'" data-kind="'+it.kind+'" data-origin="'+it.origin+'" role="button" aria-label="'+name+', '+it.value+' coins">'
       + ico + label + '<span class="mk-val">'+it.value+COIN_SVG+'</span></div>';
   }
+  const MK_TIP = "Drag fish from your hold onto the stall to sell them, and drag what you want from the stall into your hold. You can also just tap. Press Trade when the balance adds up.";
   function drawTable(){
     const v = marketV;
     elMkTitle.textContent = v.name + ' market';
-    const got = dishesGot(v);
-    elMkText.textContent = got === v.dishes.length ? "You've bought everything they cook here. The stall still buys fish, if you have any to spare."
-      : got ? "The "+v.course.toLowerCase()+" are aboard. There's still something else on the stall, if you fancy it." : v.line;
+    // at the top, how to trade (the merchants' flavour lines stay in VILLAGES, unused for now)
+    elMkText.textContent = MK_TIP;
     // the goods sit on the side they're on now; the ones that crossed go first
     const order = (a,b)=> (b.side!==b.origin) - (a.side!==a.origin) || (a.kind==='food' ? -1 : 0) - (b.kind==='food' ? -1 : 0) || a.id - b.id;
     const on = side=> mkItems.filter(it=>it.side===side).sort(order).map(unitHTML).join('');
@@ -3171,7 +3171,7 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
     elMkPurse.innerHTML = COIN_SVG + coins;
     const bal = mkBalance(), moved = mkItems.some(it=>it.side!==it.origin), ok = moved && coins + bal >= 0;
     elMkBal.className = bal < 0 && coins + bal < 0 ? 'short' : '';
-    elMkBal.innerHTML = !moved ? 'Drag goods across, or tap them, to make an offer.'
+    elMkBal.innerHTML = !moved ? 'Balance: <b>0</b>'
       : bal > 0 ? 'Balance: <b>+'+bal+'</b> '+COIN_SVG+' you receive '+bal+(bal===1?' coin':' coins')
       : bal === 0 ? 'Balance: <b>0</b>: a fair swap'
       : coins + bal >= 0 ? 'Balance: <b>'+bal+'</b> '+COIN_SVG+' paid from your purse'
