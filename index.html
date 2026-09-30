@@ -4800,7 +4800,7 @@
   // the way down onto its shadow on the sea (seen from above, the fall runs
   // from the cloud, which floats up near the camera, to where its shadow
   // lies), each ending in a little splash ring on the water
-  const RAIN_FALL = 0.75;                      // seconds per drop
+  const RAIN_FALL = 1.05;                      // seconds per drop (slow enough to read as a smooth fall on a phone)
   function rainFootprint(c){ return [c.W*0.42, c.H*0.55]; }
   // where a cloud is drawn (with parallax) and where its shadow lies, for a
   // view centred on (vcx,vcy): the shadow keeps a fixed offset from the
@@ -4810,30 +4810,50 @@
     const x = vcx + (gx-vcx)*CLOUD_PAR, y = vcy + (gy-vcy)*CLOUD_PAR;
     return [x, y, x + CLOUD_SHADOW[0], y + CLOUD_SHADOW[1]];
   }
+  // the grey of a shower, painted once per cloud into a small image
+  function rainTint(c){
+    if(c.tint) return c.tint;
+    const [rx,ry] = rainFootprint(c), cv = document.createElement('canvas');
+    cv.width = Math.ceil(rx*2); cv.height = Math.ceil(ry*2);
+    const g2 = cv.getContext('2d'), g = g2.createRadialGradient(rx,rx,0,rx,rx,rx);
+    g.addColorStop(0,'rgba(0,0,0,0.12)'); g.addColorStop(0.7,'rgba(0,0,0,0.07)'); g.addColorStop(1,'rgba(0,0,0,0)');
+    g2.scale(1, ry/rx); g2.fillStyle = g; g2.beginPath(); g2.arc(rx,rx,rx,0,Math.PI*2); g2.fill();
+    return (c.tint = cv);
+  }
+  // drops are batched by opacity: a few paths per cloud instead of one
+  // stroke per drop (after the 1-bit dither the steps don't show)
+  const RAIN_LEVELS = 4;
   function drawRain(camX, camY, w, h){
     const vcx = camX+w/2, vcy = camY+h/2;
     for(const c of clouds){
       if(!c.rain) continue;
       const [cx,cy,sx,sy] = cloudAndShadow(c, vcx, vcy), [rx,ry] = rainFootprint(c);
       if(Math.min(cx,sx) - rx > camX+w || Math.min(cy,sy) - ry > camY+h || Math.max(cx,sx) + rx < camX || Math.max(cy,sy) + ry < camY) continue;
-      const g = ctx.createRadialGradient(sx,sy,0,sx,sy,rx);                  // the grey of the shower, on the shadow
-      g.addColorStop(0,'rgba(0,0,0,0.12)'); g.addColorStop(0.7,'rgba(0,0,0,0.07)'); g.addColorStop(1,'rgba(0,0,0,0)');
-      ctx.save(); ctx.translate(sx,sy); ctx.scale(1, ry/rx); ctx.translate(-sx,-sy);
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sx,sy,rx,0,Math.PI*2); ctx.fill();
-      ctx.restore();
+      ctx.drawImage(rainTint(c), sx - rx, sy - ry);                        // the grey of the shower, on the shadow
       const fx = sx - cx, fy = sy - cy, fl = Math.hypot(fx, fy) || 1, ux = fx/fl, uy = fy/fl;
-      ctx.strokeStyle = INKC; ctx.lineCap = 'round';
+      const streaks = [], rings = [];
+      for(let i=0;i<RAIN_LEVELS;i++){ streaks.push(new Path2D()); rings.push(new Path2D()); }
+      const tt = t/RAIN_FALL;
       for(const q of c.drops){
-        const p = (t/RAIN_FALL + q.ph) % 1, ox = q.u*rx, oy = q.v*ry;
+        const p = (tt + q.ph) % 1, ox = q.u*rx, oy = q.v*ry;
         if(p < 0.8){                                                        // falling from the cloud to the shadow, speeding up
-          const k = Math.pow(p/0.8, 1.3), x = cx + ox + fx*k, y = cy + oy + fy*k, l = q.len*(0.8 + 0.8*k);
-          ctx.globalAlpha = 0.9*Math.min(1, k*6); ctx.lineWidth = 1.3;
-          ctx.beginPath(); ctx.moveTo(x - ux*l, y - uy*l); ctx.lineTo(x, y); ctx.stroke();
+          const k = Math.pow(p/0.8, 1.3), a = Math.min(1, k*6);
+          if(a < 0.12) continue;
+          const x = cx + ox + fx*k, y = cy + oy + fy*k, l = q.len*(1.3 + 1.4*k);   // long streaks: motion blur, so the fall looks continuous
+          const P = streaks[Math.min(RAIN_LEVELS-1, (a*RAIN_LEVELS)|0)];
+          P.moveTo(x - ux*l, y - uy*l); P.lineTo(x, y);
         } else {                                                            // landed: a ring spreading and fading
-          const k = (p-0.8)/0.2;
-          ctx.globalAlpha = 0.8*(1-k); ctx.lineWidth = 1.1;
-          ctx.beginPath(); ctx.ellipse(sx + ox, sy + oy, 1 + k*3.5, 0.6 + k*1.8, 0, 0, Math.PI*2); ctx.stroke();
+          const k = (p-0.8)/0.2, a = 1-k;
+          if(a < 0.12) continue;
+          const P = rings[Math.min(RAIN_LEVELS-1, (a*RAIN_LEVELS)|0)], ex = 1 + k*3.5, ey = 0.6 + k*1.8;
+          P.moveTo(sx + ox + ex, sy + oy); P.ellipse(sx + ox, sy + oy, ex, ey, 0, 0, Math.PI*2);
         }
+      }
+      ctx.strokeStyle = INKC; ctx.lineCap = 'round';
+      for(let i=0;i<RAIN_LEVELS;i++){
+        const a = (i+0.5)/RAIN_LEVELS;
+        ctx.globalAlpha = 0.9*a; ctx.lineWidth = 1.3; ctx.stroke(streaks[i]);
+        ctx.globalAlpha = 0.8*a; ctx.lineWidth = 1.1; ctx.stroke(rings[i]);
       }
       ctx.globalAlpha = 1;
     }
