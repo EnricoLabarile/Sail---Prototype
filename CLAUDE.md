@@ -45,7 +45,9 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
 - **Intro:** on "Set sail" the card rolls up into a scroll that is tossed into the list button (skipped with reduced motion).
 - **Controls:** wheel (drag in a circle; half a turn = full lock). The wheel has no backing disc: the sea shows between the spokes; its wood
   is a mid grey (`WOOD`, `WOOD_SH`, `WOOD_RIM` in drawWheel) so it stands out from the pale sea. Hub of the wheel = anchor only:
-  **long press 0.5 s = anchor**. At anchor the wheel fades out and only the hub (bigger, dark) remains.
+  **long press 0.5 s = anchor**. At anchor the wheel fades out and only the hub (bigger, dark) remains. The hub is
+  shaded in greys and dithered like the rest of the UI: sailing, a light face (r 14.5) with a big ink anchor; at
+  anchor, a single dark knob with one light rim and a paper anchor.
   **Halyard** (bottom right: a rope tied straight under the sail badge, no block): grab it and it follows the finger at a
   fixed length (sags when slack); pulled taut more line slides out from under the badge, clicking (haptic + sound), and past the mark it switches
   sail (full / minimum) with a clack; on release it swings back. Badge on top shows the sail state. The whole halyard
