@@ -1,4 +1,4 @@
-const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -214,18 +214,23 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   .helm-btn:active{transform:translate(2px,2px); box-shadow: inset 0 0 0 4px var(--paper), inset 0 0 0 5.5px var(--ink), 1px 1px 0 var(--ink);}
   .helm-btn:focus-visible{outline:2px dashed var(--ink); outline-offset:3px;}
   /* the logbook icon: a closed book whose cover swings open (on its spine) when the panel opens */
-  #btn-list .logbook{position:relative; display:block; width:56px; height:56px; perspective:160px;
-    background:var(--paper); border-radius:50%; box-shadow:0 0 0 3px var(--paper);}   /* a plain paper disc behind the icon, for contrast */
-  #btn-list .logbook canvas{position:absolute; left:0; top:0; width:56px; height:56px; image-rendering:pixelated;}
+  /* the logbook button is just the book: no round knob; a thin paper halo keeps it readable on any water */
+  #btn-list{width:80px; height:80px; background:none; border:none; box-shadow:none; border-radius:0; right:11px;}
+  #btn-list:active{box-shadow:none;}
+  #btn-list .logbook{position:relative; display:block; width:76px; height:76px; perspective:200px;
+    filter:drop-shadow(1.5px 0 0 var(--paper)) drop-shadow(-1.5px 0 0 var(--paper)) drop-shadow(0 1.5px 0 var(--paper)) drop-shadow(0 -1.5px 0 var(--paper)) drop-shadow(3px 4px 0 rgba(0,0,0,.3));}
+  #btn-list .logbook canvas.log-mini{left:24px; top:20px; width:26px; height:26px; transition:opacity .15s;}   /* over the well in the cover */
+  #btn-list.open .logbook canvas.log-mini{opacity:0;}
+  #btn-list:not(.open) .logbook canvas.log-mini{transition:opacity .2s .35s;}
+  #btn-list .logbook canvas{position:absolute; left:0; top:0; width:76px; height:76px; image-rendering:pixelated;}
   #btn-list .log-cover{transform-origin:22% 50%; transition:transform .45s cubic-bezier(.3,.7,.3,1), opacity .2s .25s; backface-visibility:hidden;}
   #btn-list .log-pages{opacity:0; transform:scale(.85); transition:opacity .25s .12s, transform .35s .12s;}
   #btn-list.open .log-cover{transform:rotateY(-160deg); opacity:0;}
   #btn-list.open .log-pages{opacity:1; transform:none;}
-  #btn-list{right:12px; left:auto; bottom:calc(246px + env(safe-area-inset-bottom,0px));}   /* right side, just above the sail badge (centred over it) */
+  #btn-list{left:auto; bottom:calc(246px + env(safe-area-inset-bottom,0px));}   /* right side, just above the sail badge (centred over it) */
   body.at-market #btn-list{display:none;}
   /* at the barter table the halyard and the compass (with its fish counters) step aside */
   body.at-market #rope, body.at-market #rope-hit, body.at-market #compass, body.at-market #wood, body.at-market #wheel{display:none;}
-  #btn-list.open{background-color:var(--ink); background-image:radial-gradient(var(--paper) 0.75px, transparent 0.95px);}
   /* the shopping list: slides down from the top of the screen */
   /* the logbook, open: dark grained leather with a stitched edge and metal corners,
      framing two pages either side of a crease */
@@ -437,6 +442,7 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
     <span class="logbook" aria-hidden="true">
       <canvas class="log-pages"></canvas>
       <canvas class="log-cover"></canvas>
+      <canvas class="log-mini"></canvas>   <!-- a small working compass set into the cover -->
     </span>
   </button>
   <!-- the logbook, open: a sturdy leather cover with metal corners framing two pages;
@@ -3653,15 +3659,16 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   // bands, metal corners, an embossed compass rose, a strap and clasp) and the
   // open book shown while the panel is down. Drawn once, on the first frame.
   let logIconDone = false;
+  const LOG_PX = 76;                           // the logbook icon's size, CSS px
   function drawLogbookIcon(){
     logIconDone = true;
-    const S = 56, k = Math.max(1, Math.round(window.devicePixelRatio||1));
+    const S = LOG_PX, k = Math.max(1, Math.round(window.devicePixelRatio||1));   // drawn in 56 units, scaled up crisply
     const g = v=> 'rgb('+v+','+v+','+v+')', INKW = '#000', PAPW = '#fff';
     const paint = (cv, fn)=>{
       const lo = document.createElement('canvas'); lo.width = S; lo.height = S;
       const c = lo.getContext('2d', {willReadFrequently:true});
-      c.lineJoin = 'round'; c.lineCap = 'round';
-      fn(c); ditherUI(c, S, S);
+      c.lineJoin = 'round'; c.lineCap = 'round'; c.setTransform(S/56, 0, 0, S/56, 0, 0);
+      fn(c); c.setTransform(1, 0, 0, 1, 0, 0); ditherUI(c, S, S);
       cv.width = S*k; cv.height = S*k;
       const x = cv.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(lo, 0, 0, cv.width, cv.height);
     };
@@ -3678,14 +3685,7 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
       c.fillStyle = INKW; c.beginPath(); c.roundRect(9, 5, 7, 40, [3.5, 0, 0, 3.5]); c.fill();          // the spine
       c.strokeStyle = g(200); c.lineWidth = 1.2;                                                          // raised bands
       for(const y of [11, 19, 31, 39]){ c.beginPath(); c.moveTo(9.5, y); c.lineTo(15.5, y); c.stroke(); }
-      c.save(); c.translate(27, 24); c.scale(1.3, 1.3);                                                 // compass rose, bold
-      c.fillStyle = PAPW; c.beginPath();
-      for(let i=0;i<8;i++){ const a = i*Math.PI/4 - Math.PI/2, r = i%2 ? 3.4 : 7.8, b = a + Math.PI/8;
-        c.lineTo(Math.cos(a)*r, Math.sin(a)*r); c.lineTo(Math.cos(b)*1.6, Math.sin(b)*1.6); }
-      c.closePath(); c.fill();
-      c.strokeStyle = PAPW; c.lineWidth = 1.1; c.beginPath(); c.arc(0, 0, 5.4, 0, Math.PI*2); c.stroke();
-      c.fillStyle = INKW; c.beginPath(); c.arc(0, 0, 1.1, 0, Math.PI*2); c.fill();
-      c.restore();
+      c.fillStyle = g(15); c.beginPath(); c.arc(27, 24, 10.5, 0, Math.PI*2); c.fill();                  // the well the mini compass sits in
       const corner = (x, y, sx, sy)=>{                                                                    // metal corners
         c.save(); c.translate(x, y); c.scale(sx, sy);
         c.fillStyle = g(235); c.strokeStyle = INKW; c.lineWidth = 1.1;
@@ -3717,6 +3717,35 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
       }
       c.strokeStyle = INKW; c.lineWidth = 1.4; c.beginPath(); c.moveTo(28, 15); c.lineTo(28, 41); c.stroke();   // the crease
     });
+  }
+  // the little working compass set into the logbook's cover: a brass rim, a
+  // paper card and a needle pointing home (at home: a dot in the middle).
+  // Drawn every frame while the book is shut, in greys, then dithered.
+  const MINI_PX = 26;
+  const miniLo = document.createElement('canvas'); miniLo.width = MINI_PX; miniLo.height = MINI_PX;
+  const miniL = miniLo.getContext('2d', {willReadFrequently:true});
+  function drawMiniCompass(){
+    const cv = elListBtn.querySelector('.log-mini'), k = Math.max(1, Math.round(window.devicePixelRatio||1));
+    if(cv.width !== MINI_PX*k){ cv.width = MINI_PX*k; cv.height = MINI_PX*k; }
+    const c = miniL, r = MINI_PX/2, INKW = '#000', PAPW = '#fff';
+    c.clearRect(0,0,MINI_PX,MINI_PX);
+    c.fillStyle = 'rgb(175,175,175)'; c.beginPath(); c.arc(r, r, r-0.5, 0, Math.PI*2); c.fill();       // brass rim
+    c.strokeStyle = INKW; c.lineWidth = 1.2; c.stroke();
+    c.fillStyle = PAPW; c.beginPath(); c.arc(r, r, r-3.5, 0, Math.PI*2); c.fill(); c.stroke();          // the card
+    c.lineWidth = 1;
+    for(let i=0;i<4;i++){ const a = i*Math.PI/2; c.beginPath(); c.moveTo(r+Math.cos(a)*(r-5.5), r+Math.sin(a)*(r-5.5)); c.lineTo(r+Math.cos(a)*(r-3.5), r+Math.sin(a)*(r-3.5)); c.stroke(); }
+    const dx = wdx(START.x, boat.x), dy = wdy(START.y, boat.y);
+    if(Math.hypot(dx, dy) < 140){ c.fillStyle = INKW; c.beginPath(); c.arc(r, r, 2.6, 0, Math.PI*2); c.fill(); }   // home
+    else {
+      c.save(); c.translate(r, r); c.rotate(Math.atan2(dy, dx));
+      c.fillStyle = INKW; c.beginPath(); c.moveTo(7.5, 0); c.lineTo(-1.5, -2.8); c.lineTo(-1.5, 2.8); c.closePath(); c.fill();   // toward home
+      c.fillStyle = PAPW; c.strokeStyle = INKW; c.lineWidth = 0.9;
+      c.beginPath(); c.moveTo(-1.5, -2.8); c.lineTo(-7.5, 0); c.lineTo(-1.5, 2.8); c.closePath(); c.fill(); c.stroke();
+      c.restore();
+      c.fillStyle = INKW; c.beginPath(); c.arc(r, r, 1.4, 0, Math.PI*2); c.fill();
+    }
+    ditherUI(c, MINI_PX, MINI_PX);
+    const x = cv.getContext('2d'); x.imageSmoothingEnabled = false; x.clearRect(0, 0, cv.width, cv.height); x.drawImage(miniLo, 0, 0, cv.width, cv.height);
   }
   // opening: the shut book slides down ('open'), then its cover swings open
   // ('unfold'). Closing: the cover folds shut, then the book slides back up.
@@ -5823,6 +5852,7 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
     drawWheel();
     drawRope();
     if(!logIconDone) drawLogbookIcon();                     // once (it needs the dither table, ready by now)
+    if(!bookOpen) drawMiniCompass();                        // the little compass on the shut logbook's cover
     if(elList.classList.contains('open')) drawCompass();   // only drawn while the logbook is open
   }
 

@@ -51,9 +51,10 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   the top of the wheel; a ~35 px pull switches the sail.
   The boat gathers way slowly (`BOAT_ACCEL` = 0.4, a quarter of the original 1.6; slowing down unchanged).
   Oars never come out because of the anchor (nor while getting under way after weighing it).
-  The **logbook** button (right side, just above the sail badge): a 56 px book icon drawn like the wheel (greys,
-  then dithered: leather, spine bands, metal corners, compass rose, strap; `drawLogbookIcon`), whose cover swings open
-  to an open-book icon (dark leather with light details, on a paper disc, for contrast). Its panel is an open book
+  The **logbook** button (right side, just above the sail badge) is just the book, no round knob: a 76 px icon
+  (`LOG_PX`) drawn like the wheel (greys, then dithered: dark leather, spine bands, metal corners, strap; drawn in 56
+  units and scaled; `drawLogbookIcon`) with a thin paper halo, and a **working mini compass** set into the cover
+  (`drawMiniCompass`, every frame while shut, points home). Its cover swings open to an open-book icon. Its panel is an open book
   that arrives in two steps: the shut book slides down centred (cover up), then the front cover swings open on the
   spine (`.leaf`, its inside is the left page) as the book re-centres; closing reverses it (`toggleList`). The book: stitched leather cover with metal corners (`#book-corner`), the
   dinner list on the left page (4 course names, crossed off once a dish of it is aboard), a crease, the compass on the
