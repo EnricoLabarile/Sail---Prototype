@@ -36,7 +36,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   The market is a centred window over a 90% black shade; while it's open the halyard, compass (with its fish
   counters) and wheel/anchor are hidden. Buttons: Quit (left) and Trade (right); both close it and leave you moored
   with the anchor back, so you can linger; a market opens once per docking (leave and come back to trade again).
-- **Compass** (124 px, inside the logbook card, to the right of the course list; not in the main view; drawn only
+- **Compass** (124 px, on the right page of the open logbook; not in the main view; drawn only
   while the logbook is open): points home, a dot per village filled once a dish is bought there; drawn like the
   wheel (greys into a low-res canvas, then dithered): brass bezel with rivets, shaded card, wind rose, glass glare.
   The old fish counters round it are hidden (`#wood`); the hold is shown only at the market.
@@ -51,8 +51,11 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   the top of the wheel; a ~35 px pull switches the sail.
   The boat gathers way slowly (`BOAT_ACCEL` = 0.4, a quarter of the original 1.6; slowing down unchanged).
   Oars never come out because of the anchor (nor while getting under way after weighing it).
-  The **logbook** button (right side, just above the sail badge; a leather book whose cover swings open): a compact
-  card with the dinner (just the 4 course names, crossed off once one dish of it is aboard) and the compass on the right.
+  The **logbook** button (right side, just above the sail badge): a 56 px book icon drawn like the wheel (greys,
+  then dithered: leather, spine bands, metal corners, compass rose, strap; `drawLogbookIcon`), whose cover swings open
+  to an open-book icon. Its panel is an open book: stitched leather cover with metal corners (`#book-corner`), the
+  dinner list on the left page (4 course names, crossed off once a dish of it is aboard), a crease, the compass on the
+  right page.
   Opening/closing it plays `Sfx.book(open)`: paper flutter, and the cover's thump on closing. The list also shows the day of the voyage
   (`dayNo`, +1 at each dawn). Keyboard: arrows, Space = anchor, S = sail.
 - **Hazards:** rocks, faraglioni, whirlpools (appear/disappear/wander), rollers (big waves: within ~66° of their travel = surf boost (`SURF_COS`), otherwise they hurt).
