@@ -90,21 +90,18 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   }
   #wood .res-item{opacity:0; transition:opacity .6s; }
   #wood .res-item.has{opacity:1;}
-  #compass.nudge{animation:nudge .55s ease-in-out;}
-  @keyframes nudge{0%,100%{transform:translateX(-50%) rotate(0)} 20%{transform:translateX(-50%) rotate(-7deg)} 45%{transform:translateX(-50%) rotate(6deg)} 70%{transform:translateX(-50%) rotate(-3deg)}}
   #wood .res-item{background:var(--paper); border:2px solid var(--ink); border-radius:12px; padding:1px 7px; box-shadow:2px 2px 0 var(--ink);}
   #wood .fish-orate{justify-self:end;} #wood .fish-sgombri{justify-self:start;}
   #wood .fish-sarde{grid-area:n;} #wood .fish-sgombri{grid-area:e;} #wood .fish-triglie{grid-area:s;} #wood .fish-orate{grid-area:w;}
 
   #wood .res-item{display:flex; align-items:center; gap:3px;}
+  /* the compass sits at the foot of the logbook, under a rule */
   #compass{
-    position:fixed;
-    top:calc(30px + env(safe-area-inset-top,0px));
-    left:50%; transform:translateX(-50%);
+    display:block; margin:10px auto 2px;
     width:124px; height:124px;
-    z-index:5;
     pointer-events:none;
   }
+  #shoplist-body{border-bottom:1.5px solid var(--ink); padding-bottom:8px;}
   #wood{display:none !important;}      /* the fish counters round the compass are retired: the hold is in the logbook */
   /* the market is a window of its own: centred over a dark shade, with room for everything */
   #mk-shade{position:fixed; inset:0; z-index:7; background:rgba(0,0,0,.9); display:none;}
@@ -414,7 +411,11 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
       <svg class="log-cover" viewBox="0 0 24 24"><rect x="7.6" y="4.4" width="12.6" height="16.6" rx="1.2" fill="var(--paper)" stroke="currentColor" stroke-width="1.2"/><path d="M19.2 6.5 V19.8 M8.8 19.9 H19" stroke="currentColor" stroke-width="0.6"/><rect x="5" y="3" width="13" height="17" rx="1.6" fill="currentColor"/><rect x="5" y="3" width="2.6" height="17" rx="1" fill="url(#sh-mid)" stroke="currentColor" stroke-width="0.8"/><path d="M12.3 7.2 L13.2 10.4 L16.4 11.3 L13.2 12.2 L12.3 15.4 L11.4 12.2 L8.2 11.3 L11.4 10.4 Z" fill="var(--paper)"/><circle cx="12.3" cy="11.3" r="0.9" fill="currentColor"/><rect x="16.2" y="9.9" width="4.6" height="2.8" rx="0.8" fill="var(--paper)" stroke="currentColor" stroke-width="1"/><circle cx="19.4" cy="11.3" r="0.6" fill="currentColor"/></svg>
     </span>
   </button>
-  <div id="shoplist" class="panel" role="region" aria-label="Logbook"></div>
+  <div id="shoplist" class="panel" role="region" aria-label="Logbook">
+    <div id="shoplist-body"></div>
+    <!-- the compass lives at the foot of the logbook (moved here from the main view) -->
+    <canvas id="compass" aria-label="Compass: points home. Ports visited: none"></canvas>
+  </div>
   <div id="toast" class="panel" role="status" aria-live="polite"></div>
   <canvas id="wheel" aria-label="Helm: drag clockwise or anticlockwise to steer"></canvas>
   <canvas id="rope" aria-hidden="true"></canvas>
@@ -434,7 +435,6 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
    </div>
   </div>
 
-  <canvas id="compass" width="72" height="72" aria-label="Compass: points home. Ports visited: none"></canvas>
   <div id="hint" class="panel hidden"></div>
   <div id="mk-shade"></div>
   <div id="market" class="panel hidden" role="dialog" aria-label="Market">
@@ -3553,10 +3553,10 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   }
 
   // ---------- Shopping list ----------
-  const elList = document.getElementById('shoplist'), elListBtn = document.getElementById('btn-list');
+  const elList = document.getElementById('shoplist'), elListBody = document.getElementById('shoplist-body'), elListBtn = document.getElementById('btn-list');
   function renderList(){
     // just the courses: crossed off once at least one dish of it is aboard
-    elList.innerHTML = '<div class="list-head"><h2>The dinner</h2><span class="day">Day '+dayNo+'</span></div><ul class="courses">' + VILLAGES.map(v=>{
+    elListBody.innerHTML = '<div class="list-head"><h2>The dinner</h2><span class="day">Day '+dayNo+'</span></div><ul class="courses">' + VILLAGES.map(v=>{
       const got = dishesGot(v) > 0;
       return '<li class="'+(got?'got':'')+'"><span class="mark">'+(got?'●':'○')+'</span><span class="food">'+v.course+'</span></li>';
     }).join('') + '</ul>'
@@ -4142,7 +4142,6 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
       const has = counts[k] > 0, item = elFish[k].parentElement;
       if(has !== item.classList.contains('has')){
         item.classList.toggle('has', has);
-        if(has){ cmp.classList.remove('nudge'); void cmp.offsetWidth; cmp.classList.add('nudge'); }   // a first catch of this kind
       }
     }
     const hp = Math.ceil(boat.health);
@@ -5675,7 +5674,7 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
 
     drawWheel();
     drawRope();
-    drawCompass();
+    if(elList.classList.contains('open')) drawCompass();   // only drawn while the logbook is open
   }
 
   function loop(now){
