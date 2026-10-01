@@ -40,10 +40,10 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   The market is a centred window over a 90% black shade; while it's open the halyard, compass (with its fish
   counters) and wheel/anchor are hidden. Buttons: Quit (left) and Trade (right); both close it and leave you moored
   with the anchor back, so you can linger; a market opens once per docking (leave and come back to trade again).
-- **Compass** (124 px, on the right page of the open logbook; not in the main view; drawn only
-  while the logbook is open): points home, a dot per village filled once a dish is bought there; drawn like the
+- **Compass** (124 px, top centre of the main view; the open logbook covers it; hidden in the tutorial
+  until the halyard step): points home, a dot per village filled once a dish is bought there; drawn like the
   wheel (greys into a low-res canvas, then dithered): brass bezel with rivets, shaded card, wind rose, glass glare.
-  The old fish counters round it are hidden (`#wood`); the hold is shown only at the market.
+  The old fish counters round it are hidden (`#wood`); the hold is shown on the logbook's right page.
 - **Intro:** on "Set sail" the card rolls up into a scroll that is tossed into the list button (skipped with reduced motion).
 - **Tutorial** (first voyage, `tut` in the Tutorial section): controls appear one at a time, hidden and disabled
   (keys too) until their step: logbook shimmers (open and close it) -> halyard appears, glows and swings (pull it)
@@ -70,8 +70,8 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   wiggle, class `news`) until the logbook is opened; there the new line is drawn across live (`freshCourses`). Its panel is an open book
   that arrives in two steps: the shut book slides down centred (cover up), then the front cover swings open on the
   spine (`.leaf`, its inside is the left page) as the book re-centres; closing reverses it (`toggleList`). The book: stitched leather cover with metal corners (`#book-corner`), the
-  dinner list on the left page (4 course names, crossed off once a dish of it is aboard), a crease, the compass on the
-  right page.
+  dinner list on the left page (4 course names, crossed off once a dish of it is aboard), a crease, and the boat's hold on the
+  right page (`holdHTML`: purse, every fish as a small icon, every dish and gift bought; the book grows to fit).
   Opening/closing it plays `Sfx.book(open)`: paper flutter, and the cover's thump on closing. The list also shows the day of the voyage
   (`dayNo`, +1 at each dawn). Keyboard: arrows, Space = anchor, S = sail.
 - **Hazards:** rocks, faraglioni, whirlpools (appear/disappear/wander), rollers (big waves: within ~66° of their travel = surf boost (`SURF_COS`), otherwise they hurt).

@@ -96,7 +96,9 @@
 
   #wood .res-item{display:flex; align-items:center; gap:3px;}
   /* the logbook is a compact card: the list on the left, the compass on the right */
-  #compass{display:block; width:124px; height:124px; pointer-events:none;}
+  #compass{position:fixed; top:calc(10px + env(safe-area-inset-top,0px)); left:50%; transform:translateX(-50%);
+    width:124px; height:124px; z-index:5; pointer-events:none; transition:opacity .5s;}
+  body.tut-no-compass #compass{opacity:0;}
   #wood{display:none !important;}      /* the fish counters round the compass are retired: the hold is in the logbook */
   /* the market is a window of its own: centred over a dark shade, with room for everything */
   #mk-shade{position:fixed; inset:0; z-index:7; background:rgba(0,0,0,.9); display:none;}
@@ -279,7 +281,7 @@
   #shoplist .leaf-back svg{width:64px; height:64px;}
   #shoplist .page{flex:1; min-width:0; background:var(--paper); padding:10px 10px 12px; position:relative; min-height:150px;}
   #shoplist .page.left{border-radius:6px 0 0 6px; box-shadow:-2px 2px 0 var(--paper), -3px 3px 0 var(--ink), -5px 5px 0 var(--paper), -6px 6px 0 var(--ink);}   /* the edges of the pages beneath */
-  #shoplist .page.right{border-radius:0 6px 6px 0; display:flex; align-items:center; justify-content:center;
+  #shoplist .page.right{border-radius:0 6px 6px 0;
     box-shadow:2px 2px 0 var(--paper), 3px 3px 0 var(--ink), 5px 5px 0 var(--paper), 6px 6px 0 var(--ink);}
   #shoplist .crease{                    /* the gutter: the pages curve down into it */
     flex:none; width:16px; position:relative; background-color:var(--paper);
@@ -315,6 +317,17 @@
     animation:strikeIn .5s .55s ease-out forwards;}
   @keyframes strikeIn{to{background-size:100% 2px}}
   #shoplist .note{font-size:12px; font-style:italic; margin-top:8px;}
+  /* the hold, on the right page: small icons that stay inside the page */
+  #hold-page .hold-head{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px;}
+  #hold-page h3{margin:0; font-size:16px; font-style:italic;}
+  #hold-page .purse{display:flex; align-items:center; gap:3px; font-size:13px; font-variant-numeric:tabular-nums;}
+  #hold-page .purse .coin{width:12px; height:12px;}
+  #hold-page .hold-fish{display:flex; flex-wrap:wrap; gap:2px 3px; margin-bottom:6px;}
+  #hold-page .hold-fish svg{width:24px; height:13px; display:block;}
+  #hold-page .hold-empty{font-size:12px; font-style:italic; margin:2px 0 6px;}
+  #hold-page .hold-goods{list-style:none; margin:0; padding:5px 0 0; border-top:1.5px dashed var(--ink);}
+  #hold-page .hold-goods li{display:flex; align-items:center; gap:4px; font-size:11.5px; line-height:1.2; padding:1px 0;}
+  #hold-page .hold-goods svg{width:17px; height:12px; flex:none;}
   #wheel{
     transition:opacity .35s;
     position:fixed;
@@ -480,9 +493,11 @@
         <div class="leaf-back" aria-hidden="true"><svg viewBox="0 0 24 24"><g fill="var(--paper)"><path d="M12 1.5 L13.6 9.2 L21 12 L13.6 14.8 L12 22.5 L10.4 14.8 L3 12 L10.4 9.2 Z"/><path d="M12 6 L13 11 L18 12 L13 13 L12 18 L11 13 L6 12 L11 11 Z" transform="rotate(45 12 12)" opacity=".7"/></g><circle cx="12" cy="12" r="6.6" fill="none" stroke="var(--paper)" stroke-width="0.9"/><circle cx="12" cy="12" r="1.2" fill="var(--ink)"/></svg></div>
       </div>
       <div class="crease" aria-hidden="true"></div>
-      <div class="page right"><canvas id="compass" aria-label="Compass: points home. Ports visited: none"></canvas></div>
+      <div class="page right" id="hold-page"></div>
     </div>
   </div>
+  <!-- the compass, top centre of the main view (not interactive; the open logbook may cover it) -->
+  <canvas id="compass" aria-label="Compass: points home. Ports visited: none"></canvas>
   <div id="toast" class="panel" role="status" aria-live="polite"></div>
   <canvas id="wheel" aria-label="Helm: drag clockwise or anticlockwise to steer"></canvas>
   <canvas id="rope" aria-hidden="true"></canvas>
@@ -2936,6 +2951,7 @@
   function tutSet(stage){
     tut = stage;
     document.body.classList.toggle('tut-no-rope', !tutAt('rope'));
+    document.body.classList.toggle('tut-no-compass', !tutAt('rope'));   // the compass arrives with the halyard
     document.body.classList.toggle('tut-no-wheel', !tutAt('anchor'));
     document.body.classList.toggle('tut-rope', stage === 'rope');
     if(stage === 'book') elListBtn.classList.add('news');                       // the logbook shimmers
@@ -3759,7 +3775,20 @@
       return '<li class="'+(got?'got':'')+(freshCourses.has(v.course)?' fresh':'')+'"><span class="mark">'+(got?'●':'○')+'</span><span class="food">'+v.course+'</span></li>';
     }).join('') + '</ul>'
       + (VILLAGES.every(v=>dishesGot(v) > 0) ? '<p class="note">Every course is aboard: sail home.</p>' : '');
+    elHoldPage.innerHTML = holdHTML();
     listKey = holdKey();
+  }
+  // the right page: the boat's hold. The purse, every fish aboard (small, as
+  // at the market) and everything bought on the voyage (dishes, and any gift)
+  const elHoldPage = document.getElementById('hold-page');
+  function holdHTML(){
+    const fish = FISH_KEYS.flatMap(k=> Array(counts[k]).fill(k));
+    const goods = VILLAGES.flatMap(v=> [...v.dishes.filter(d=>d.bought).map(d=>d.name), ...(v.giftGot ? [v.gift] : [])]);
+    return '<div class="hold-head"><h3>The hold</h3><span class="purse" aria-label="Purse: '+coins+' coins">'+COIN_SVG+coins+'</span></div>'
+      + (fish.length
+          ? '<div class="hold-fish">'+fish.map(k=> '<span title="'+FISH_NAME[k].one+'">'+document.querySelector('#wood .fish-'+k+' svg').outerHTML+'</span>').join('')+'</div>'
+          : '<p class="hold-empty">No fish aboard.</p>')
+      + (goods.length ? '<ul class="hold-goods">'+goods.map(n=> '<li>'+FOOD_SVG+'<span>'+n+'</span></li>').join('')+'</ul>' : '');
   }
   const freshCourses = new Set();              // courses crossed off since the logbook was last opened
   let listKey = '';
@@ -5980,7 +6009,7 @@
     drawRope();
     if(!logIconDone) drawLogbookIcon();                     // once (it needs the dither table, ready by now)
     if(!bookOpen) drawMiniCompass();                        // the little compass on the shut logbook's cover
-    if(elList.classList.contains('open')) drawCompass();   // only drawn while the logbook is open
+    if(tutAt('rope')) drawCompass();                       // shown from the tutorial's halyard step on
   }
 
   function loop(now){
