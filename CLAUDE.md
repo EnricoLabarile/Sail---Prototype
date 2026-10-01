@@ -41,6 +41,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   sail (full / minimum) with a clack; on release it swings back. Badge on top shows the sail state. The whole halyard
   is drawn at `ROPE_SCALE` = 1.6 (crisp: the low-res canvas grows too). Its head is lowered (`HEAD_Y`) so the badge's top lines
   up with the top of the wheel; the rope below is short (~45 px), a ~35 px pull switches the sail.
+  The boat gathers way slowly (`BOAT_ACCEL` = 0.8, half the old rate; slowing down unchanged).
   Oars never come out because of the anchor (nor while getting under way after weighing it).
   Left button: the dinner (just the 4 course names, crossed off once one dish of it is aboard) + the hold (purse,
   every fish as a unit like at the market, dishes and gifts aboard; live). The list also shows the day of the voyage

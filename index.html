@@ -1393,6 +1393,7 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   const TURN_RATE = 0.42; // rad/s at full rudder
   const MAX_SPEED = 50; // px/s (reference speed)
   const WIND_BOOST = 1.05;            // how much the wind actually gives (30% down from 1.5)
+  const BOAT_ACCEL = 0.8;             // how fast she picks up speed (was 1.6: halved)
 
   // polar-ish speed curve: [angleDeg, factor]
   const POLAR = [
@@ -3829,7 +3830,9 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
     // surfing a roller from astern: a temporary push above normal top speed
     const surf = boat.surfT>0 ? SURF_BOOST*Math.min(1, boat.surfT/0.8) : 0;
     boat.surfT = Math.max(0, (boat.surfT||0) - dt);
-    boat.speed += (targetSpeed + surf - boat.speed)*Math.min(1,dt*(anchored ? 4 : surf>0 ? 3 : 1.6));   // the anchor bites quickly
+    // she gathers way slowly (BOAT_ACCEL), loses it at the old pace; the anchor bites quickly
+    const gaining = targetSpeed + surf > boat.speed;
+    boat.speed += (targetSpeed + surf - boat.speed)*Math.min(1,dt*(anchored ? 4 : surf>0 ? 3 : gaining ? BOAT_ACCEL : 1.6));
 
     const hullR = boat.r*0.75;
     // ---- mooring at the home pier ----
