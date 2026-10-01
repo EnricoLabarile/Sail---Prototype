@@ -1518,6 +1518,9 @@
   // Wind holds steady, then every so often shifts to a new direction over a
   // few seconds (smoothstep tween), then holds again.
   let windTimer = rand(28,36);     // seconds of steady wind before next shift (long at the start)
+  // at the start of the voyage the wind guides you: it blows from wherever you
+  // are toward the northern village, until you've tied up there
+  let guideWind = true;
   let shiftFrom = windAngle, shiftDelta = 0, shiftT = 0, shiftDur = 0;
   let windStrength = 1;
   let windStrengthT = 0;
@@ -2908,7 +2911,7 @@
     dayT = 0.1; dayNo = 1; howlT = 12;
     boonWindT = 0; boonFish = 0; for(const r of RUINS) r.readyAt = 0;
     rollers.length = 0; rollerT = 6; boat.surfT = 0;
-    windAngle = Math.PI/2; shiftDur = 0; windTimer = rand(28,36);
+    windAngle = Math.PI/2; shiftDur = 0; windTimer = rand(28,36); guideWind = true;
     explored.fill(0);
     wake.length = 0; popups.length = 0;
     voyageTime = 0; hurtFlash = 0; shake = 0;
@@ -3997,6 +4000,10 @@
       const want = boat.angle + Math.PI;           // wind FROM behind the boat
       windAngle += Math.atan2(Math.sin(want-windAngle), Math.cos(want-windAngle))*Math.min(1, dt*2.5);
       if(boonWindT<=0) windTimer = rand(10,18);
+    } else if(guideWind){
+      const nv = VILLAGES[0].isl;                  // Nordania
+      const want = Math.atan2(wdy(boat.y, nv.y), wdx(boat.x, nv.x));   // wind FROM the far side: it pushes toward the village
+      windAngle += Math.atan2(Math.sin(want-windAngle), Math.cos(want-windAngle))*Math.min(1, dt*1.2);
     } else if(shiftDur>0){
       shiftT += dt;
       const k = Math.min(1, shiftT/shiftDur);
@@ -4105,6 +4112,7 @@
       } else {
         boat.x = moor.bx; boat.y = moor.by; boat.angle = moor.ba;
         const village = moor.pier.isl.village, ruin = moor.pier.isl.ruin;
+        if(!moor.started && guideWind && village === VILLAGES[0]){ guideWind = false; windTimer = rand(14,22); }   // reached the north: the wind is free again
         if(!moor.started){ moor.started = true; moor.skipLock = true; if(village) openMarket(village); if(ruin) startRuin(ruin); }
         if(village) renderMarket();
         // home with at least one dish of every course: dinner, as good as the shopping

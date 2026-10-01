@@ -25,6 +25,8 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   **No spoilers:** intro and list name only the four courses; dishes are discovered at the stalls, and the gifts are
   a surprise: never mention them anywhere before one is earned (not in the intro, list, or market).
   Each has a bay, a wooden pier, a lighthouse with a sweeping beam, a pixel-art town, 24 buoys at ~880 px (`BUOYS_PER_VILLAGE`) (toasts "Entering / Leaving the waters of …"; leaving counts 150 px past the buoys).
+- **Guiding wind:** from the start until you first tie up at Nordania, the wind always blows toward Nordania from
+  wherever you are (shortest way round the torus; `guideWind`); after that the normal shifting winds apply.
 - **Ruins** on the diagonals: dock there for a random power (friendly wind 60 s, blessed nets ×3, full hull).
 - **Fish:** sardines (N), mackerel (E), red mullet (S), sea bream (W). Banks denser far from home; home waters have all kinds.
   Fishing: stop on a bank for 2 s and the nets go over; drop anchor on a bank and they go over after 0.25 s.
