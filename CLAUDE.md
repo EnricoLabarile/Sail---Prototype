@@ -36,10 +36,10 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   The market is a centred window over a 90% black shade; while it's open the halyard, compass (with its fish
   counters) and wheel/anchor are hidden. Buttons: Quit (left) and Trade (right); both close it and leave you moored
   with the anchor back, so you can linger; a market opens once per docking (leave and come back to trade again).
-- **Compass** (124 px, hanging just below the logbook panel, outside its frame, sliding with it; not in the main view;
-  drawn only while the logbook is open): points home, a dot per village filled once a dish is bought there; drawn like the
+- **Compass** (124 px, inside the logbook card, to the right of the course list; not in the main view; drawn only
+  while the logbook is open): points home, a dot per village filled once a dish is bought there; drawn like the
   wheel (greys into a low-res canvas, then dithered): brass bezel with rivets, shaded card, wind rose, glass glare.
-  The old fish counters round it are hidden (`#wood`); the hold is in the logbook.
+  The old fish counters round it are hidden (`#wood`); the hold is shown only at the market.
 - **Intro:** on "Set sail" the card rolls up into a scroll that is tossed into the list button (skipped with reduced motion).
 - **Controls:** wheel (drag in a circle; half a turn = full lock). The wheel has no backing disc: the sea shows between the spokes. Hub of the wheel = anchor only:
   **long press 0.5 s = anchor**. At anchor the wheel fades out and only the hub (bigger, dark) remains.
@@ -50,8 +50,8 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   the top of the wheel; a ~35 px pull switches the sail.
   The boat gathers way slowly (`BOAT_ACCEL` = 0.4, a quarter of the original 1.6; slowing down unchanged).
   Oars never come out because of the anchor (nor while getting under way after weighing it).
-  The **logbook** button (right side, just above the sail badge) (a leather book icon; its cover swings open on the spine while the panel is open): the dinner (just the 4 course names, crossed off once one dish of it is aboard) + the hold (purse,
-  every fish as a unit like at the market, dishes and gifts aboard; live). The list also shows the day of the voyage
+  The **logbook** button (right side, just above the sail badge; a leather book whose cover swings open): a compact
+  card with the dinner (just the 4 course names, crossed off once one dish of it is aboard) and the compass on the right. The list also shows the day of the voyage
   (`dayNo`, +1 at each dawn). Keyboard: arrows, Space = anchor, S = sail.
 - **Hazards:** rocks, faraglioni, whirlpools (appear/disappear/wander), rollers (big waves: within ~66° of their travel = surf boost (`SURF_COS`), otherwise they hurt).
 - **Atmosphere:** macchia (tree-spurge domes + Mediterranean pines), clouds with parallax and shadows, gulls, wind streaks,

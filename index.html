@@ -95,15 +95,9 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   #wood .fish-sarde{grid-area:n;} #wood .fish-sgombri{grid-area:e;} #wood .fish-triglie{grid-area:s;} #wood .fish-orate{grid-area:w;}
 
   #wood .res-item{display:flex; align-items:center; gap:3px;}
-  /* the compass hangs just below the logbook's frame (outside it) and slides
-     down with it; hidden while the logbook is closed */
-  #compass{
-    position:absolute; left:50%; top:calc(100% + 10px); transform:translateX(-50%);
-    width:124px; height:124px;
-    pointer-events:none;
-    visibility:hidden; transition:visibility 0s .45s;
-  }
-  #shoplist.open #compass{visibility:visible; transition:none;}
+  /* the logbook is a compact card: the list on the left, the compass on the right */
+  #shoplist .log-row{display:flex; align-items:center; gap:12px;}
+  #compass{flex:none; width:124px; height:124px; pointer-events:none;}
   #wood{display:none !important;}      /* the fish counters round the compass are retired: the hold is in the logbook */
   /* the market is a window of its own: centred over a dark shade, with room for everything */
   #mk-shade{position:fixed; inset:0; z-index:7; background:rgba(0,0,0,.9); display:none;}
@@ -240,19 +234,9 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
     transform:translate(-50%, -110%); transition:transform .45s cubic-bezier(.2,.8,.2,1);
     padding:calc(14px + env(safe-area-inset-top,0px)) 16px 14px;
     border-top:none; border-radius:0 0 6px 6px;
-    overflow:visible;               /* the compass hangs below the frame; the content scrolls inside */
   }
-  #shoplist-body{max-height:calc(100vh - 120px - 150px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)); overflow-y:auto;}
+  #shoplist-body{flex:1; min-width:0;}
   #shoplist.open{transform:translate(-50%, 0);}
-  /* the boat's hold, under the list: purse, every fish as a unit, the food aboard */
-  #shoplist .hold-head{display:flex; justify-content:space-between; align-items:center; margin:10px 0 7px; padding-top:9px; border-top:1.5px solid var(--ink);}
-  #shoplist h3{margin:0; font-size:15px; font-style:italic;}
-  #shoplist .purse{display:flex; align-items:center; gap:4px; font-size:14px; font-variant-numeric:tabular-nums;}
-  #shoplist .purse .coin{width:13px; height:13px;}
-  #shoplist .hold-items{display:flex; flex-wrap:wrap; gap:4px;}
-  #shoplist .mk-unit.hold{height:34px; cursor:default; touch-action:auto;}
-  #shoplist .mk-unit.hold.food{height:auto;}
-  #shoplist .hold-sub{font-size:12px; font-style:italic; margin:8px 0 5px;}
   #toast{
     position:fixed; left:50%; bottom:calc(262px + env(safe-area-inset-bottom,0px)); z-index:10;   /* just above the wheel (and over the market) */
     transform:translate(-50%, -8px); opacity:0; transition:opacity .5s, transform .5s;
@@ -415,9 +399,11 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
     </span>
   </button>
   <div id="shoplist" class="panel" role="region" aria-label="Logbook">
-    <div id="shoplist-body"></div>
-    <!-- the compass lives at the foot of the logbook (moved here from the main view) -->
-    <canvas id="compass" aria-label="Compass: points home. Ports visited: none"></canvas>
+    <div class="log-row">
+      <div id="shoplist-body"></div>
+      <!-- the compass sits inside the logbook, to the right of the list -->
+      <canvas id="compass" aria-label="Compass: points home. Ports visited: none"></canvas>
+    </div>
   </div>
   <div id="toast" class="panel" role="status" aria-live="polite"></div>
   <canvas id="wheel" aria-label="Helm: drag clockwise or anticlockwise to steer"></canvas>
@@ -3290,7 +3276,6 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   const mkBalance = ()=> mkItems.reduce((a,it)=> a + (it.side===it.origin ? 0 : it.origin==='you' ? it.value : -it.value), 0);
   const COIN_SVG = '<svg class="coin" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="var(--paper)" stroke="currentColor" stroke-width="1.4"/><circle cx="6" cy="6" r="2.4" fill="none" stroke="currentColor" stroke-width="1"/></svg>';
   const FOOD_SVG = '<svg viewBox="0 0 30 22" aria-hidden="true"><path d="M3 9 H27 L24 20 H6 Z" fill="var(--paper)" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7 9 Q15 -1 23 9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 12 H22 M9 15.5 H21" stroke="currentColor" stroke-width="1.1"/><circle cx="12" cy="7" r="2.6" fill="currentColor"/><circle cx="18" cy="6.5" r="2.2" fill="url(#sh-mid)" stroke="currentColor" stroke-width="0.8"/></svg>';
-  const GIFT_SVG = '<svg viewBox="0 0 30 22" aria-hidden="true"><rect x="7" y="8" width="16" height="12" fill="var(--paper)" stroke="currentColor" stroke-width="1.6"/><rect x="5.5" y="5.5" width="19" height="4" fill="url(#sh-mid)" stroke="currentColor" stroke-width="1.4"/><path d="M15 5.5 V20" stroke="currentColor" stroke-width="2"/><path d="M15 5.5 Q10 0 9 4 Q9 6 15 5.5 Q20 0 21 4 Q21 6 15 5.5" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>';
   function unitHTML(it){
     const ico = it.kind==='food' ? FOOD_SVG : document.querySelector('#wood .fish-'+it.key+' svg').outerHTML;
     const name = it.kind==='food' ? it.name : FISH_NAME[it.key].one;
@@ -3563,22 +3548,8 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
       const got = dishesGot(v) > 0;
       return '<li class="'+(got?'got':'')+'"><span class="mark">'+(got?'●':'○')+'</span><span class="food">'+v.course+'</span></li>';
     }).join('') + '</ul>'
-      + (VILLAGES.every(v=>dishesGot(v) > 0) ? '<p class="note">Every course is aboard: sail home.</p>' : '')
-      + holdHTML();
+      + (VILLAGES.every(v=>dishesGot(v) > 0) ? '<p class="note">Every course is aboard: sail home.</p>' : '');
     listKey = holdKey();
-  }
-  // the boat's hold: every fish a unit, as on the barter table, and the
-  // dishes (and gifts) already aboard
-  function holdHTML(){
-    const fish = FISH_KEYS.flatMap(k=> Array(counts[k]).fill(k));
-    const food = VILLAGES.flatMap(v=> [...v.dishes.filter(d=>d.bought).map(d=>[d.name, FOOD_SVG]), ...(v.giftGot ? [[v.gift, GIFT_SVG]] : [])]);
-    const n = fish.length;
-    return '<div class="hold-head"><h3>The hold</h3><span class="purse" aria-label="Purse: '+coins+' coins">'+COIN_SVG+coins+'</span></div>'
-      + (n ? '<div class="hold-sub">'+n+' fish</div><div class="hold-items">'
-            + fish.map(k=> '<div class="mk-unit hold" title="'+FISH_NAME[k].one+'" aria-label="'+FISH_NAME[k].one+'">'+document.querySelector('#wood .fish-'+k+' svg').outerHTML+'</div>').join('') + '</div>'
-           : '<p class="hold-sub">No fish aboard: stop on a fish bank to cast the nets.</p>')
-      + (food.length ? '<div class="hold-sub">For the dinner</div><div class="hold-items">'
-            + food.map(([name, ico])=> '<div class="mk-unit food hold">'+ico+'<span class="mk-name">'+name+'</span></div>').join('') + '</div>' : '');
   }
   let listKey = '';
   const holdKey = ()=> [dayNo, coins, ...FISH_KEYS.map(k=>counts[k]), ...VILLAGES.map(v=>dishesGot(v)+(v.giftGot?'g':''))].join('|');
