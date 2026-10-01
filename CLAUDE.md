@@ -13,6 +13,9 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
 - **Look:** 1-bit. Everything is drawn in greys into a low-res buffer, then ordered-dithered (Bayer 4×4) to two colours
   (`PAPER32` / `INK32`, shifted by the day/night palette). UI panels use fixed colours `#ebe7dc` / `#1b1a17`.
 - **World:** 7200×7200 torus (wraps on all sides). Home at the centre. Use `wdx/wdy/wdist/wrapX/wrapY` for any distance.
+  Regions: `archipelago(x,y)` is a smooth field (new each game, tiles the torus): ~1 = archipelago (more, slightly
+  smaller islands, tight channels ~40–90 px), ~0 = open sea (few islands, wide water, most whirlpools, big waves up to
+  ~2× as often). It multiplies the older rule that the sea gets wilder with distance from home (`danger`).
 - **Villages** (cardinal, ~2475 px from home), one course each, two specialties (1 unit each, price in coins) + a gift:
   Nordania (N) Antipasti: Fiori di Zucca 6, Mozzarelle 5, gift Tarallini. Estolia (E) Primi: Orecchiette con Cime di Rapa 6,
   Lasagne 7, gift Olio Santo. Sudia (S) Secondi: Zampina 6, Pesce Arrosto 7, gift Vino Rosso. Westa (W) Dessert:
