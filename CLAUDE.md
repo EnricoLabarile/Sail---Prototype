@@ -41,7 +41,8 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   wheel (greys into a low-res canvas, then dithered): brass bezel with rivets, shaded card, wind rose, glass glare.
   The old fish counters round it are hidden (`#wood`); the hold is shown only at the market.
 - **Intro:** on "Set sail" the card rolls up into a scroll that is tossed into the list button (skipped with reduced motion).
-- **Controls:** wheel (drag in a circle; half a turn = full lock). The wheel has no backing disc: the sea shows between the spokes. Hub of the wheel = anchor only:
+- **Controls:** wheel (drag in a circle; half a turn = full lock). The wheel has no backing disc: the sea shows between the spokes; its wood
+  is a mid grey (`WOOD`, `WOOD_SH`, `WOOD_RIM` in drawWheel) so it stands out from the pale sea. Hub of the wheel = anchor only:
   **long press 0.5 s = anchor**. At anchor the wheel fades out and only the hub (bigger, dark) remains.
   **Halyard** (bottom right: a rope tied straight under the sail badge, no block): grab it and it follows the finger at a
   fixed length (sags when slack); pulled taut more line slides out from under the badge, clicking (haptic + sound), and past the mark it switches
@@ -51,7 +52,8 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   The boat gathers way slowly (`BOAT_ACCEL` = 0.4, a quarter of the original 1.6; slowing down unchanged).
   Oars never come out because of the anchor (nor while getting under way after weighing it).
   The **logbook** button (right side, just above the sail badge; a leather book whose cover swings open): a compact
-  card with the dinner (just the 4 course names, crossed off once one dish of it is aboard) and the compass on the right. The list also shows the day of the voyage
+  card with the dinner (just the 4 course names, crossed off once one dish of it is aboard) and the compass on the right.
+  Opening/closing it plays `Sfx.book(open)`: paper flutter, and the cover's thump on closing. The list also shows the day of the voyage
   (`dayNo`, +1 at each dawn). Keyboard: arrows, Space = anchor, S = sail.
 - **Hazards:** rocks, faraglioni, whirlpools (appear/disappear/wander), rollers (big waves: within ~66° of their travel = surf boost (`SURF_COS`), otherwise they hurt).
 - **Atmosphere:** macchia (tree-spurge domes + Mediterranean pines), clouds with parallax and shadows, gulls, wind streaks,
