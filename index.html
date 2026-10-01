@@ -1339,7 +1339,7 @@
     oarK: 0, oarsOut: false, oarPh: 0,   // oars: how far out (0..1), and rowing phase
     whirl: null,      // set while caught in a whirlpool
     sailPower: 0,
-    sailAmount: 1,    // smoothed sail area (0..1)
+    sailAmount: 0.2,  // smoothed sail area (0..1); starts furled
     sailSide: 1,      // which side the boom is on (+1 / -1), with hysteresis
     boomSigned: 0,    // smoothed angle the square sail faces (boat frame)
     r: 16
@@ -1457,7 +1457,7 @@
     {name:'full',    amount:1.0},
     {name:'minimum', amount:0.2}
   ];
-  let sailLevel = 0;                  // 0 full sail, 1 minimum (rowing pace)
+  let sailLevel = 1;                  // 0 full sail, 1 minimum (rowing pace); the voyage starts with it furled
   const SAIL_MIN = 1;
   const MAX_HEALTH = 100;
   const HIT_MAX_DAMAGE = 25;       // damage of a head-on hit at full speed
@@ -2698,9 +2698,12 @@
   // the badge is lowered HEAD_Y units so its top lines up with the top of
   // the wheel; the rope hangs straight from it
   const HEAD_Y = 73;
-  const ROPE_TOP = 30 + HEAD_Y, ROPE_LEN = 64;               // where the line leaves the badge (tied under it), and how much hangs
+  // how much line hangs: long with the sail open, short with it furled (the
+  // line hauled in); it eases between the two when the sail switches
+  const ROPE_TOP = 30 + HEAD_Y, ROPE_LEN_OPEN = 64, ROPE_LEN_FURLED = 38;
+  let ROPE_LEN = ROPE_LEN_FURLED;                          // (the voyage starts with the sail furled)
   const ROPE_MAX = 40, ROPE_FIRE = 18, ROPE_TICK = 6;       // most line out, where it switches, units per click
-  const ROPE_REST = ROPE_TOP + ROPE_LEN;
+  let ROPE_REST = ROPE_TOP + ROPE_LEN;
   const rlo = document.createElement('canvas'); rlo.width = RPX_W; rlo.height = RPX_H;
   const rl = rlo.getContext('2d', {willReadFrequently:true});
   function sizeRope(){
@@ -2760,6 +2763,8 @@
   function pullRope(){ ropeTo(RP_CX, ROPE_REST + ROPE_FIRE + 12); rope.vx = rope.vy = 0; switchByRope(); }
   function drawRope(){
     const now = performance.now(), dt = Math.min(0.05, (now - ropeLastT)/1000); ropeLastT = now;
+    const lenWant = sailLevel === SAIL_MIN ? ROPE_LEN_FURLED : ROPE_LEN_OPEN;
+    ROPE_LEN += (lenWant - ROPE_LEN)*Math.min(1, dt*5); ROPE_REST = ROPE_TOP + ROPE_LEN;
     if(rope.ptr === null){                                   // let go: it swings back to hang straight
       rope.vx += (-70*(rope.x - RP_CX) - 6*rope.vx)*dt;
       rope.vy += (-90*(rope.y - ROPE_REST) - 9*rope.vy)*dt;
@@ -2908,7 +2913,7 @@
     boat.oarK = 0; boat.oarsOut = false;
     for(const k in counts) counts[k] = 0;
     caught = 0; fishing = null; settleT = 0;
-    sailLevel = 0; renderSailBtn();
+    sailLevel = SAIL_MIN; boat.sailAmount = SAIL_LEVELS[SAIL_MIN].amount; renderSailBtn();
     weighT = 0; anchored = true; anchorUI();             // start at the quay, anchor down
     dayT = 0.1; dayNo = 1; howlT = 12;
     boonWindT = 0; boonFish = 0; for(const r of RUINS) r.readyAt = 0;

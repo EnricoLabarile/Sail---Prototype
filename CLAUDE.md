@@ -52,7 +52,8 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   fixed length (sags when slack); pulled taut more line slides out from under the badge, clicking (haptic + sound), and past the mark it switches
   sail (full / minimum) with a clack; on release it swings back. Badge on top shows the sail state. The whole halyard
   is drawn at `ROPE_SCALE` = 1.6 (crisp: the low-res canvas grows too). The badge is lowered (`HEAD_Y`) so its top lines up with
-  the top of the wheel; a ~35 px pull switches the sail.
+  the top of the wheel; a ~35 px pull switches the sail. The voyage starts with the sail furled; the rope hangs short
+  while furled (`ROPE_LEN_FURLED`) and long with the sail open (`ROPE_LEN_OPEN`), easing between the two.
   The boat gathers way slowly (`BOAT_ACCEL` = 0.4, a quarter of the original 1.6; slowing down unchanged).
   Oars never come out because of the anchor (nor while getting under way after weighing it).
   The **logbook** button (right side, just above the sail badge) is just the book, no round knob: a 76 px icon
