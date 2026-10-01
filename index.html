@@ -2700,7 +2700,7 @@
   const HEAD_Y = 73;
   // how much line hangs: long with the sail open, short with it furled (the
   // line hauled in); it eases between the two when the sail switches
-  const ROPE_TOP = 30 + HEAD_Y, ROPE_LEN_OPEN = 64, ROPE_LEN_FURLED = 38;
+  const ROPE_TOP = 30 + HEAD_Y, ROPE_LEN_OPEN = 64, ROPE_LEN_FURLED = 10;   // furled: the handle hangs just under the badge
   let ROPE_LEN = ROPE_LEN_FURLED;                          // (the voyage starts with the sail furled)
   const ROPE_MAX = 40, ROPE_FIRE = 18, ROPE_TICK = 6;       // most line out, where it switches, units per click
   let ROPE_REST = ROPE_TOP + ROPE_LEN;
