@@ -16,10 +16,10 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   Regions: `archipelago(x,y)` is a smooth field (new each game, tiles the torus): ~1 = archipelago (more, slightly
   smaller islands, tight channels ~40–90 px), ~0 = open sea (few islands, wide water, most whirlpools, big waves up to
   ~2× as often). It multiplies the older rule that the sea gets wilder with distance from home (`danger`).
-- **Villages** (cardinal, ~2475 px from home), one course each, two specialties (1 unit each, price in coins) + a gift:
-  Nordania (N) Antipasti: Fiori di Zucca 6, Mozzarelle 5, gift Tarallini. Estolia (E) Primi: Orecchiette con Cime di Rapa 6,
-  Lasagne 7, gift Olio Santo. Sudia (S) Secondi: Zampina 6, Pesce Arrosto 7, gift Vino Rosso. Westa (W) Dessert:
-  Cartellate 5, Tiramisu 6, gift Limoncello. The gift is never for sale: the merchant adds it when you buy both dishes.
+- **Villages** (cardinal, ~2475 px from home), one course each, two specialties (1 unit each, all at `DISH_PRICE` = 6
+  coins) + a gift: Nordania (N) Antipasti: Fiori di Zucca, Mozzarelle, gift Tarallini. Estolia (E) Primi: Orecchiette
+  con Cime di Rapa, Lasagne, gift Olio Santo. Sudia (S) Secondi: Zampina, Pesce Arrosto, gift Vino Rosso. Westa (W)
+  Dessert: Cartellate, Tiramisu, gift Limoncello. The gift is never for sale: the merchant adds it when you buy both dishes.
   **Endings** (dock home with at least one dish of every course): Bare Minimum (one dish per village), Nice Dinner
   (both dishes from at least one village), Banquet (all 8 dishes). See `VILLAGES`, `dinnerTier`, `ENDINGS`.
   **No spoilers:** intro and list name only the four courses; dishes are discovered at the stalls, and the gifts are

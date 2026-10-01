@@ -918,18 +918,19 @@
   // Each cooks one course of the dinner and sells two specialties of it (one
   // unit each); buy both and the merchant adds a gift that isn't for sale.
   const VILLAGE_DIST = 2475;
+  const DISH_PRICE = 6;               // every specialty costs the same, in coins
   const VILLAGES = [
     { name:'Nordania', ux:0, uy:-1, course:'Antipasti', own:'sarde',
-      dishes:[{name:'Fiori di Zucca', price:6}, {name:'Mozzarelle', price:5}], gift:'Tarallini',
+      dishes:[{name:'Fiori di Zucca', price:DISH_PRICE}, {name:'Mozzarelle', price:DISH_PRICE}], gift:'Tarallini',
       line:"On the quay the grocer sets out the antipasti: fiori di zucca fried golden and mozzarelle still dripping. She takes fish in payment, but sardines she has plenty of: everyone catches those up here." },
     { name:'Estolia', ux:1, uy:0, course:'Primi', own:'sgombri',
-      dishes:[{name:'Orecchiette con Cime di Rapa', price:6}, {name:'Lasagne', price:7}], gift:'Olio Santo',
+      dishes:[{name:'Orecchiette con Cime di Rapa', price:DISH_PRICE}, {name:'Lasagne', price:DISH_PRICE}], gift:'Olio Santo',
       line:"In the trattoria by the harbour the cook shapes orecchiette with her thumb, and a lasagne rests on the sill. Mackerel she's sick of: the whole east lives on it." },
     { name:'Sudia', ux:0, uy:1, course:'Secondi', own:'triglie',
-      dishes:[{name:'Zampina', price:6}, {name:'Pesce Arrosto', price:7}], gift:'Vino Rosso',
+      dishes:[{name:'Zampina', price:DISH_PRICE}, {name:'Pesce Arrosto', price:DISH_PRICE}], gift:'Vino Rosso',
       line:"At the grill by the market the butcher turns coils of zampina over the coals, and fish roasts beside them. He'll take any fish except red mullet: he catches those himself at dawn." },
     { name:'Westa', ux:-1, uy:0, course:'Dessert', own:'orate',
-      dishes:[{name:'Cartellate', price:5}, {name:'Tiramisu', price:6}], gift:'Limoncello',
+      dishes:[{name:'Cartellate', price:DISH_PRICE}, {name:'Tiramisu', price:DISH_PRICE}], gift:'Limoncello',
       line:"Grandma's pastry shop smells of honey and coffee: cartellate on the tray, a tiramisu in the cool of the cellar. Out west her larder is full of sea bream." }
   ];
   const dishesGot = v=> v.dishes.filter(d=>d.bought).length;
