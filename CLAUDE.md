@@ -33,6 +33,9 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   The market is a centred window over a 90% black shade; while it's open the halyard, compass (with its fish
   counters) and wheel/anchor are hidden. Buttons: Quit (left) and Trade (right); both close it and leave you moored
   with the anchor back, so you can linger; a market opens once per docking (leave and come back to trade again).
+- **Compass** (top centre, 124 px): points home, a dot per village filled once a dish is bought there; drawn like the
+  wheel (greys into a low-res canvas, then dithered): brass bezel with rivets, shaded card, wind rose, glass glare.
+  The old fish counters round it are hidden (`#wood`); the hold is in the logbook.
 - **Intro:** on "Set sail" the card rolls up into a scroll that is tossed into the list button (skipped with reduced motion).
 - **Controls:** wheel (drag in a circle; half a turn = full lock). Hub of the wheel = anchor only:
   **long press 0.5 s = anchor**. At anchor the wheel fades out and only the hub (bigger, dark) remains.
@@ -52,7 +55,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   with no damage, then they drift back to their lane; they hail with a speech bubble), fog of war (buoys and a
   340 px radius round each village always show through), clouds see-through at the rim and denser in the middle, each with its shadow at a fixed offset down-right,
   a third of them rain clouds (darker; rain falls from the cloud onto its shadow on the sea, with a rain hiss when you're near),
-  day/night palette cycle (6 min), afternoon cicada chorus (only within ~220 px of a wild island's shore, never on village islands,
+  day/night palette cycle (6 min), afternoon cicada chorus (kept low; only within ~220 px of a wild island's shore, never at home or on village islands,
   from early afternoon to before the golden hour: 3 Cicada orni + 1 Lyristes plebejus,
   pulsed ~5–8 times a second around 4–5 kHz, in bouts with rests; see `cicadas()` in Sound) with dark nights lit by lanterns, lighthouses and windows.
 
