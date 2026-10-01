@@ -214,7 +214,8 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   .helm-btn:active{transform:translate(2px,2px); box-shadow: inset 0 0 0 4px var(--paper), inset 0 0 0 5.5px var(--ink), 1px 1px 0 var(--ink);}
   .helm-btn:focus-visible{outline:2px dashed var(--ink); outline-offset:3px;}
   /* the logbook icon: a closed book whose cover swings open (on its spine) when the panel opens */
-  #btn-list .logbook{position:relative; display:block; width:56px; height:56px; perspective:160px;}
+  #btn-list .logbook{position:relative; display:block; width:56px; height:56px; perspective:160px;
+    background:var(--paper); border-radius:50%; box-shadow:0 0 0 3px var(--paper);}   /* a plain paper disc behind the icon, for contrast */
   #btn-list .logbook canvas{position:absolute; left:0; top:0; width:56px; height:56px; image-rendering:pixelated;}
   #btn-list .log-cover{transform-origin:22% 50%; transition:transform .45s cubic-bezier(.3,.7,.3,1), opacity .2s .25s; backface-visibility:hidden;}
   #btn-list .log-pages{opacity:0; transform:scale(.85); transition:opacity .25s .12s, transform .35s .12s;}
@@ -231,7 +232,9 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   #shoplist{
     position:fixed; left:50%; top:calc(8px + env(safe-area-inset-top,0px)); z-index:9;
     width:min(420px, calc(100vw - 14px));
-    transform:translate(-50%, calc(-100% - 30px)); transition:transform .45s cubic-bezier(.2,.8,.2,1);
+    /* closed: only the right half shows (the book shut, cover up), centred and above the screen */
+    transform:translate(-75%, calc(-100% - 30px)); clip-path:inset(-12px -12px -12px 50%);
+    transition:transform .5s cubic-bezier(.2,.8,.2,1), clip-path .6s cubic-bezier(.4,.1,.3,1);
     padding:12px 12px 15px;
     color:var(--ink);
     background-color:var(--ink);
@@ -248,7 +251,17 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   #shoplist .corner.tr{right:-3px; top:-3px; transform:scaleX(-1);}
   #shoplist .corner.bl{left:-3px; bottom:-3px; transform:scaleY(-1);}
   #shoplist .corner.br{right:-3px; bottom:-3px; transform:scale(-1,-1);}
-  #shoplist .pages{position:relative; display:flex; align-items:stretch;}
+  #shoplist .pages{position:relative; display:flex; align-items:stretch; perspective:1100px;}
+  /* the front cover swings on the spine (the middle of the crease): folded it lies over the
+     right page showing its leather; open, its inside is the left page */
+  #shoplist .leaf{flex:1; min-width:0; display:flex; position:relative; z-index:2; transform-style:preserve-3d;
+    transform-origin:calc(100% + 8px) 50%; transform:rotateY(180deg); transition:transform .6s cubic-bezier(.4,.1,.3,1);}
+  #shoplist.unfold .leaf{transform:rotateY(0deg);}
+  #shoplist .leaf > .page{backface-visibility:hidden; -webkit-backface-visibility:hidden;}
+  #shoplist .leaf-back{position:absolute; inset:-2px; transform:rotateY(180deg); backface-visibility:hidden; -webkit-backface-visibility:hidden;
+    display:flex; align-items:center; justify-content:center; border-radius:0 7px 7px 0; border:2px solid var(--ink);
+    background-color:var(--ink); background-image:radial-gradient(rgba(235,231,220,.38) 0.7px, transparent 0.95px); background-size:3px 3px;}
+  #shoplist .leaf-back svg{width:64px; height:64px;}
   #shoplist .page{flex:1; min-width:0; background:var(--paper); padding:10px 10px 12px; position:relative; min-height:150px;}
   #shoplist .page.left{border-radius:6px 0 0 6px; box-shadow:-2px 2px 0 var(--paper), -3px 3px 0 var(--ink), -5px 5px 0 var(--paper), -6px 6px 0 var(--ink);}   /* the edges of the pages beneath */
   #shoplist .page.right{border-radius:0 6px 6px 0; display:flex; align-items:center; justify-content:center;
@@ -261,7 +274,8 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
     background-size:100% 100%, 3px 3px;
   }
   #shoplist .crease::after{content:""; position:absolute; left:50%; top:0; bottom:0; width:2px; margin-left:-1px; background:var(--ink);}
-  #shoplist.open{transform:translate(-50%, 0);}
+  #shoplist.open{transform:translate(-75%, 0);}                                   /* 1: the shut book comes down */
+  #shoplist.open.unfold{transform:translate(-50%, 0); clip-path:inset(-12px);}   /* 2: it opens, re-centring */
   #toast{
     position:fixed; left:50%; bottom:calc(262px + env(safe-area-inset-bottom,0px)); z-index:10;   /* just above the wheel (and over the market) */
     transform:translate(-50%, -8px); opacity:0; transition:opacity .5s, transform .5s;
@@ -433,7 +447,11 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
     <svg class="corner bl" aria-hidden="true"><use href="#book-corner"/></svg>
     <svg class="corner br" aria-hidden="true"><use href="#book-corner"/></svg>
     <div class="pages">
-      <div class="page left" id="shoplist-body"></div>
+      <!-- the front cover: its inside is the left page; folded shut it lies over the right page, leather side up -->
+      <div class="leaf">
+        <div class="page left" id="shoplist-body"></div>
+        <div class="leaf-back" aria-hidden="true"><svg viewBox="0 0 24 24"><g fill="var(--paper)"><path d="M12 1.5 L13.6 9.2 L21 12 L13.6 14.8 L12 22.5 L10.4 14.8 L3 12 L10.4 9.2 Z"/><path d="M12 6 L13 11 L18 12 L13 13 L12 18 L11 13 L6 12 L11 11 Z" transform="rotate(45 12 12)" opacity=".7"/></g><circle cx="12" cy="12" r="6.6" fill="none" stroke="var(--paper)" stroke-width="0.9"/><circle cx="12" cy="12" r="1.2" fill="var(--ink)"/></svg></div>
+      </div>
       <div class="crease" aria-hidden="true"></div>
       <div class="page right"><canvas id="compass" aria-label="Compass: points home. Ports visited: none"></canvas></div>
     </div>
@@ -3655,32 +3673,30 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
       c.strokeStyle = g(150); c.lineWidth = 0.8;
       for(let y = 11; y < 45; y += 2.2){ c.beginPath(); c.moveTo(40, y); c.lineTo(43.2, y); c.stroke(); }
       const cover = ()=>{ c.beginPath(); c.roundRect(9, 5, 31, 40, 3.5); };
-      const lg = c.createLinearGradient(9, 5, 40, 45); lg.addColorStop(0, g(165)); lg.addColorStop(1, g(100));   // leather, lit from the top left
+      const lg = c.createLinearGradient(9, 5, 40, 45); lg.addColorStop(0, g(78)); lg.addColorStop(1, g(30));   // dark leather, a little lighter top left
       c.fillStyle = lg; cover(); c.fill();
-      c.fillStyle = g(70); c.beginPath(); c.roundRect(9, 5, 7, 40, [3.5, 0, 0, 3.5]); c.fill();           // the spine
+      c.fillStyle = INKW; c.beginPath(); c.roundRect(9, 5, 7, 40, [3.5, 0, 0, 3.5]); c.fill();          // the spine
       c.strokeStyle = g(200); c.lineWidth = 1.2;                                                          // raised bands
       for(const y of [11, 19, 31, 39]){ c.beginPath(); c.moveTo(9.5, y); c.lineTo(15.5, y); c.stroke(); }
-      c.strokeStyle = g(60); c.lineWidth = 1; c.setLineDash([1.5, 1.5]);                                 // blind-tooled frame
-      c.beginPath(); c.roundRect(18.5, 8.5, 18.5, 33, 2); c.stroke(); c.setLineDash([]);
-      c.save(); c.translate(27.5, 23.5);                                                                  // compass rose
+      c.save(); c.translate(27, 24); c.scale(1.3, 1.3);                                                 // compass rose, bold
       c.fillStyle = PAPW; c.beginPath();
-      for(let i=0;i<8;i++){ const a = i*Math.PI/4 - Math.PI/2, r = i%2 ? 3.2 : 7.5, b = a + Math.PI/8;
+      for(let i=0;i<8;i++){ const a = i*Math.PI/4 - Math.PI/2, r = i%2 ? 3.4 : 7.8, b = a + Math.PI/8;
         c.lineTo(Math.cos(a)*r, Math.sin(a)*r); c.lineTo(Math.cos(b)*1.6, Math.sin(b)*1.6); }
       c.closePath(); c.fill();
-      c.strokeStyle = PAPW; c.lineWidth = 1; c.beginPath(); c.arc(0, 0, 5.2, 0, Math.PI*2); c.stroke();
+      c.strokeStyle = PAPW; c.lineWidth = 1.1; c.beginPath(); c.arc(0, 0, 5.4, 0, Math.PI*2); c.stroke();
       c.fillStyle = INKW; c.beginPath(); c.arc(0, 0, 1.1, 0, Math.PI*2); c.fill();
       c.restore();
       const corner = (x, y, sx, sy)=>{                                                                    // metal corners
         c.save(); c.translate(x, y); c.scale(sx, sy);
-        c.fillStyle = g(205); c.strokeStyle = INKW; c.lineWidth = 1.1;
+        c.fillStyle = g(235); c.strokeStyle = INKW; c.lineWidth = 1.1;
         c.beginPath(); c.moveTo(0, 7); c.quadraticCurveTo(0, 0, 7, 0); c.lineTo(9, 0); c.lineTo(0, 9); c.closePath(); c.fill(); c.stroke();
         c.fillStyle = INKW; c.beginPath(); c.arc(2.6, 2.6, 0.9, 0, Math.PI*2); c.fill();
         c.restore();
       };
       corner(40, 5, -1, 1); corner(40, 45, -1, -1);
-      c.fillStyle = g(185); c.strokeStyle = INKW; c.lineWidth = 1.1;                                      // strap and clasp
+      c.fillStyle = g(225); c.strokeStyle = INKW; c.lineWidth = 1.1;                                      // strap and clasp
       c.beginPath(); c.roundRect(34, 21, 12, 6, 1.5); c.fill(); c.stroke();
-      c.fillStyle = g(235); c.beginPath(); c.roundRect(41, 20, 5, 8, 1.2); c.fill(); c.stroke();
+      c.fillStyle = PAPW; c.beginPath(); c.roundRect(41, 20, 5, 8, 1.2); c.fill(); c.stroke();
       c.fillStyle = INKW; c.beginPath(); c.arc(43.5, 24, 0.9, 0, Math.PI*2); c.fill();
       c.strokeStyle = INKW; c.lineWidth = 1.6; cover(); c.stroke();
     });
@@ -3702,13 +3718,24 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
       c.strokeStyle = INKW; c.lineWidth = 1.4; c.beginPath(); c.moveTo(28, 15); c.lineTo(28, 41); c.stroke();   // the crease
     });
   }
+  // opening: the shut book slides down ('open'), then its cover swings open
+  // ('unfold'). Closing: the cover folds shut, then the book slides back up.
+  let bookOpen = false, bookT = null;
+  const BOOK_DROP = 480, BOOK_FOLD = 600;      // ms: matched to the CSS transitions
   function toggleList(open){
-    const on = open===undefined ? !elList.classList.contains('open') : open;
-    if(on) renderList();
-    elList.classList.toggle('open', on);
+    const on = open===undefined ? !bookOpen : open;
+    if(on === bookOpen) return;
+    bookOpen = on; clearTimeout(bookT);
     elListBtn.classList.toggle('open', on);
     elListBtn.setAttribute('aria-expanded', on ? 'true' : 'false');
-    Sfx.init(); Sfx.book(on); buzz(on ? [6,40,4] : [4,60,14]);    // paper, and on closing the cover's thump
+    Sfx.init();
+    if(on){
+      renderList(); elList.classList.add('open');
+      bookT = setTimeout(()=>{ elList.classList.add('unfold'); Sfx.book(true); buzz([6,40,4]); }, BOOK_DROP);   // landed: open it
+    } else {
+      elList.classList.remove('unfold'); Sfx.book(false); buzz([4,60,14]);                                 // the cover folds shut
+      bookT = setTimeout(()=> elList.classList.remove('open'), BOOK_FOLD);                               // then up it goes
+    }
   }
   elListBtn.addEventListener('click', ()=>{ toggleList(); elListBtn.blur(); });
 

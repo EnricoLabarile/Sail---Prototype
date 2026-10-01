@@ -53,7 +53,9 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   Oars never come out because of the anchor (nor while getting under way after weighing it).
   The **logbook** button (right side, just above the sail badge): a 56 px book icon drawn like the wheel (greys,
   then dithered: leather, spine bands, metal corners, compass rose, strap; `drawLogbookIcon`), whose cover swings open
-  to an open-book icon. Its panel is an open book: stitched leather cover with metal corners (`#book-corner`), the
+  to an open-book icon (dark leather with light details, on a paper disc, for contrast). Its panel is an open book
+  that arrives in two steps: the shut book slides down centred (cover up), then the front cover swings open on the
+  spine (`.leaf`, its inside is the left page) as the book re-centres; closing reverses it (`toggleList`). The book: stitched leather cover with metal corners (`#book-corner`), the
   dinner list on the left page (4 course names, crossed off once a dish of it is aboard), a crease, the compass on the
   right page.
   Opening/closing it plays `Sfx.book(open)`: paper flutter, and the cover's thump on closing. The list also shows the day of the voyage
