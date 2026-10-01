@@ -765,6 +765,9 @@
   function addIsland(isl){ islands.push(isl); islandGrid.add(isl, isl.x, isl.y, isl.rmax); }
 
   const START = {x:WORLD.w/2, y:WORLD.h/2};   // centre of the home island
+  // home waters are a safe harbour: no whirlpools and no big waves within
+  // SAFE_R of home; a ring of buoys marks the edge
+  const SAFE_R = 950;
   // 0 at home, 1 from DANGER_RING outwards: drives island, rock, whirlpool
   // and fish-bank density, so the far seas are richer but more treacherous
   const DANGER_RING = 3400;
@@ -1184,7 +1187,7 @@
     for(let tries=0; tries<600; tries++){
       const x = rand(0, WORLD.w), y = rand(0, WORLD.h);
       const dg = danger(x,y);
-      if(wdist(x,y,START.x,START.y) < 620) continue;
+      if(wdist(x,y,START.x,START.y) < SAFE_R + 170) continue;        // not in home waters (pull ring included)
       if(SPECIALS.some(v=>wdist(x,y,v.isl.x,v.isl.y) < 460)) continue;
       if(Math.random() > Math.pow(dg,1.5)*(0.3 + 1.4*(1 - archipelago(x,y)))) continue;   // far out, and mostly in open seas
       const r = rand(120, 155);            // outer edge of the pull ring (wide)
@@ -1214,7 +1217,7 @@
   })();
   // may a whirlpool's eye be here? open water, clear of home and villages
   function whirlWaterOK(x,y,core){
-    if(wdist(x,y,START.x,START.y) < 620) return false;
+    if(wdist(x,y,START.x,START.y) < SAFE_R + 170) return false;
     if(SPECIALS.some(v=>wdist(x,y,v.isl.x,v.isl.y) < 460)) return false;
     if(onLand(x,y,core+50)) return false;
     if(pierDist(x,y).d < 240) return false;                 // keep out of harbour mouths
@@ -1447,6 +1450,18 @@
       }
     }
   }
+  // and a ring round home waters (SAFE_R): inside, no whirlpools and no big waves
+  const HOME_BUOYS = 32;
+  for(let k=0;k<HOME_BUOYS;k++){
+    const a = k/HOME_BUOYS*Math.PI*2 + rand(-0.03,0.03);
+    for(const dr of [0,30,-30,60,-60,100,-100]){
+      const r = SAFE_R + dr, x = wrapX(START.x + Math.cos(a)*r), y = wrapY(START.y + Math.sin(a)*r);
+      if(onLand(x,y,30) || rockGrid.query(x,y,30, o=> Math.hypot(wdx(o.x,x),wdy(o.y,y)) < o.r+16)) continue;
+      buoys.push({x, y, v: null, ph: rand(0,6.3)});
+      break;
+    }
+  }
+  let homeInside = null;
   for(let k=0; lanes.length && k<8; k++){                // 8 traders, two to a lane
     const L = lanes[k % lanes.length];
     traders.push({lane:L, dir: Math.random()<0.5?1:-1, s: rand(0.1,0.9)*L.len, speed: rand(24,32), wait: 0, x:0, y:0, a:0, ph: rand(0,6.3),
@@ -3176,6 +3191,7 @@
       const back = rand(60, 360), side = rand(-260, 260);
       const x = boat.x - ux*back - uy*side, y = boat.y - uy*back + ux*side;
       if(pierDist(wrapX(x),wrapY(y)).d < 280) continue;          // never inside or at a harbour
+      if(wdist(wrapX(x),wrapY(y),START.x,START.y) < SAFE_R + 120) continue;   // never in home waters
       // needs a bit of open water ahead of it (not right on a beach)
       let clear = true;
       for(let k=0;k<=2 && clear;k++) if(onLand(wrapX(x+ux*k*120), wrapY(y+uy*k*120), 70)) clear = false;
@@ -3201,6 +3217,7 @@
       w.x += w.ux*w.speed*dt; w.y += w.uy*w.speed*dt;
       if(onLand(wrapX(w.x+w.ux*40), wrapY(w.y+w.uy*40), 60) || pierDist(wrapX(w.x),wrapY(w.y)).d < 170)
         w.t = Math.max(w.t, w.dur*0.75);                  // dies on shoaling water or at a harbour mouth
+      if(wdist(wrapX(w.x),wrapY(w.y),START.x,START.y) < SAFE_R + 60){ w.hit = true; w.t = Math.max(w.t, w.dur*0.8); }   // home waters: it dies down harmlessly
       const s = rollerStrength(w);
       const dx = wdx(boat.x, w.x), dy = wdy(boat.y, w.y);
       const dist = Math.hypot(dx,dy);
@@ -3831,6 +3848,12 @@
         b.wdir = Math.sign(dx*Math.sin(boat.angle) - dy*Math.cos(boat.angle)) || 1;   // tips away from the hull
         buzz([22,35,14]); Sfx.buoy();
       }
+    }
+    { // home waters, the same way
+      const d = wdist(boat.x, boat.y, START.x, START.y);
+      if(homeInside === null) homeInside = d < SAFE_R;
+      else if(!homeInside && d < SAFE_R){ homeInside = true; if(playing){ toast('Back in home waters'); buzz([12,40,12]); } }
+      else if(homeInside && d > SAFE_R + 150){ homeInside = false; if(playing){ toast('Leaving home waters'); buzz(12); } }
     }
     for(const v of VILLAGES){
       const d = wdist(boat.x, boat.y, v.isl.x, v.isl.y);
