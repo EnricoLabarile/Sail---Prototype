@@ -223,6 +223,16 @@
   #btn-list.open .logbook canvas.log-mini{opacity:0;}
   #btn-list:not(.open) .logbook canvas.log-mini{transition:opacity .15s .2s;}
   #btn-list .logbook canvas{position:absolute; left:0; top:0; width:76px; height:76px; image-rendering:pixelated;}
+  /* news: something was just crossed off. A glint sweeps the cover and the book gives a little
+     wiggle every couple of seconds, until the logbook is opened */
+  #btn-list .glint{position:absolute; left:12px; top:7px; width:50px; height:54px; overflow:hidden; border-radius:5px; pointer-events:none; display:none;}
+  #btn-list.news:not(.open) .glint{display:block;}
+  #btn-list .glint::before{content:""; position:absolute; top:-30%; bottom:-30%; left:-34px; width:12px;
+    background:linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.95), rgba(255,255,255,0)); transform:skewX(-22deg);
+    animation:logGlint 2.2s ease-in-out infinite;}
+  @keyframes logGlint{0%{left:-34px} 40%,100%{left:72px}}
+  #btn-list.news:not(.open) .logbook{animation:logWiggle 2.2s ease-in-out infinite;}
+  @keyframes logWiggle{0%,55%,100%{transform:none} 63%{transform:rotate(-7deg) scale(1.07)} 72%{transform:rotate(6deg) scale(1.07)} 81%{transform:rotate(-3deg) scale(1.03)} 90%{transform:none}}
   #btn-list .log-cover{transform-origin:22% 50%; transition:transform .3s cubic-bezier(.3,.7,.3,1), opacity .15s .15s; backface-visibility:hidden;}
   #btn-list .log-pages{opacity:0; transform:scale(.85); transition:opacity .25s .12s, transform .35s .12s;}
   #btn-list.open .log-cover{transform:rotateY(-160deg); opacity:0;}
@@ -300,6 +310,10 @@
   #shoplist .courses li{align-items:center;}
   #shoplist .courses .mark{grid-row:auto;}
   #shoplist li.got .food{text-decoration:line-through;}
+  /* a course crossed off since the last look: its line is drawn across as the book opens */
+  #shoplist li.got.fresh .food{text-decoration:none; background:linear-gradient(currentColor,currentColor) 0 58%/0% 2px no-repeat;
+    animation:strikeIn .5s .55s ease-out forwards;}
+  @keyframes strikeIn{to{background-size:100% 2px}}
   #shoplist .note{font-size:12px; font-style:italic; margin-top:8px;}
   #wheel{
     transition:opacity .35s;
@@ -443,6 +457,7 @@
       <canvas class="log-pages"></canvas>
       <canvas class="log-cover"></canvas>
       <canvas class="log-mini"></canvas>   <!-- a small working compass set into the cover -->
+      <span class="glint"></span>         <!-- a glint that sweeps the cover when something new is crossed off -->
     </span>
   </button>
   <!-- the logbook, open: a sturdy leather cover with metal corners framing two pages;
@@ -2901,7 +2916,7 @@
     playing = true;
     prevWheel = wheelAngle = 0;
     repairT = 0; moor = mooredAtSpawn(); moorLock = null;
-    resetDishes();
+    resetDishes(); freshCourses.clear(); elListBtn.classList.remove('news');
     coins = 0;
     won = false; closeDialog();
     Sfx.init();
@@ -3457,12 +3472,13 @@
     const v = marketV; if(!v) return;
     const bal = mkBalance();
     if(!mkItems.some(it=>it.side!==it.origin) || coins + bal < 0) return;
-    const got = [];
+    const got = [], wasCrossed = dishesGot(v) > 0;
     for(const it of mkItems){
       if(it.side === it.origin) continue;
       if(it.origin==='you'){ counts[it.key]--; }                          // sold
       else { v.dishes[it.dish].bought = true; v.done = true; got.push(it.name); }   // a dish for the dinner
     }
+    if(!wasCrossed && dishesGot(v) > 0){ freshCourses.add(v.course); elListBtn.classList.add('news'); }   // a course crossed off: the logbook shimmers
     coins += bal;
     Sfx.coins(); buzz([15,40,15,40,55]);                                  // deal done: coins on the counter
     // both dishes bought: the merchant throws in the gift
@@ -3644,11 +3660,12 @@
     // just the courses: crossed off once at least one dish of it is aboard
     elListBody.innerHTML = '<div class="list-head"><h2>The dinner</h2><span class="day">Day '+dayNo+'</span></div><ul class="courses">' + VILLAGES.map(v=>{
       const got = dishesGot(v) > 0;
-      return '<li class="'+(got?'got':'')+'"><span class="mark">'+(got?'●':'○')+'</span><span class="food">'+v.course+'</span></li>';
+      return '<li class="'+(got?'got':'')+(freshCourses.has(v.course)?' fresh':'')+'"><span class="mark">'+(got?'●':'○')+'</span><span class="food">'+v.course+'</span></li>';
     }).join('') + '</ul>'
       + (VILLAGES.every(v=>dishesGot(v) > 0) ? '<p class="note">Every course is aboard: sail home.</p>' : '');
     listKey = holdKey();
   }
+  const freshCourses = new Set();              // courses crossed off since the logbook was last opened
   let listKey = '';
   const holdKey = ()=> [dayNo, coins, ...FISH_KEYS.map(k=>counts[k]), ...VILLAGES.map(v=>dishesGot(v)+(v.giftGot?'g':''))].join('|');
   // while the list is open, keep the hold up to date (a catch, a repair)
@@ -3759,7 +3776,8 @@
     elListBtn.setAttribute('aria-expanded', on ? 'true' : 'false');
     Sfx.init();
     if(on){
-      renderList(); elList.classList.add('open');
+      renderList(); freshCourses.clear(); elListBtn.classList.remove('news');   // seen: stop the shimmer
+      elList.classList.add('open');
       bookT = setTimeout(()=>{ elList.classList.add('unfold'); Sfx.book(true); buzz([6,40,4]); }, BOOK_DROP);   // landed: open it
     } else {
       elList.classList.remove('unfold'); Sfx.book(false); buzz([4,60,14]);                                 // the cover folds shut

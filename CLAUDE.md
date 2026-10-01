@@ -54,7 +54,9 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   The **logbook** button (right side, just above the sail badge) is just the book, no round knob: a 76 px icon
   (`LOG_PX`) drawn like the wheel (greys, then dithered: dark leather, spine bands, metal corners, strap; drawn in 56
   units and scaled; `drawLogbookIcon`) with a thin paper halo, and a **working mini compass** set into the cover
-  (`drawMiniCompass`, every frame while shut, points home). Its cover swings open to an open-book icon. Its panel is an open book
+  (`drawMiniCompass`, every frame while shut, points home). Its cover swings open to an open-book icon.
+  When a course is first crossed off (its first dish bought), the book shimmers (a glint across the cover and a
+  wiggle, class `news`) until the logbook is opened; there the new line is drawn across live (`freshCourses`). Its panel is an open book
   that arrives in two steps: the shut book slides down centred (cover up), then the front cover swings open on the
   spine (`.leaf`, its inside is the left page) as the book re-centres; closing reverses it (`toggleList`). The book: stitched leather cover with metal corners (`#book-corner`), the
   dinner list on the left page (4 course names, crossed off once a dish of it is aboard), a crease, the compass on the
