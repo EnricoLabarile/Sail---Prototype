@@ -1191,7 +1191,6 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   const COIN_LOCAL = 1;              // a village's own kind of fish: they have plenty
   const COIN_FOREIGN = 2;            // fish from other waters fetch double
   // (each dish has its own price: see VILLAGES)
-  const MERCHANT_FISH = 3;           // local fish each merchant has for sale
   let coins = 0;                     // the purse
   const counts = { sarde:0, sgombri:0, triglie:0, orate:0 };   // fish in the hold
   let caught = 0;                    // fish landed this voyage
@@ -1467,7 +1466,7 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   const AMB_LEVEL = 0.1;           // master level of the whole ambience (keep it discreet)
   const Sfx = (function(){
     let ac=null, master=null, wheelBus=null, noise=null, rub=null;
-    let ambBus=null, sea=null, rush=null, rainL=null, cicadaOut=null, droneNodes=null, engineNodes=null;
+    let ambBus=null, sea=null, rush=null, rainL=null, cicadaOut=null, cicadaSingers=[], droneNodes=null, engineNodes=null;
     function init(){
       if(ac){ if(ac.state==='suspended') ac.resume(); return; }
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -1511,26 +1510,36 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
                {...layer(brown,'lowpass',380,0.5, 0.55,3.1), ph:0.5, per:8.5} ];
       rush = layer(brown,'lowpass',320,0.5,0,2.2);   // deep, soft water along the hull
       rainL = layer(pink,'bandpass',2600,0.45,0,1.3); // rain on the sea: a soft, even hiss
-      // cicadas: two voices of bright, narrow noise, each pulsed fast by its
-      // own tymbal rhythm and swelling slowly in and out, like a chorus in
-      // the pines; silent until cicadas() turns them up (by day, near land)
+      // cicadas: a small chorus of singers modelled on the two common
+      // Mediterranean species. Each is a band of noise around 4–5 kHz with
+      // a fast buzzy grain, opened and closed in short pulses ('echemes')
+      // by the scheduler in cicadas(). Cicada orni: ~80 ms echemes, 5–8 a
+      // second. Lyristes plebejus: a continuous buzz under ~6 pulses a
+      // second, in phrases of single, double and long pulses.
       {
-        const out = ac.createGain(); out.gain.value = 0; out.connect(ambBus);
-        const voice = (freq, rate, swell, pan, off)=>{
+        const out = ac.createGain(); out.gain.value = 0;
+        const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 6500; lp.Q.value = 0.5;   // no shrill top
+        out.connect(lp); lp.connect(ambBus);
+        const singer = (kind)=>{
+          const orni = kind === 'orni';
           const src = ac.createBufferSource(); src.buffer = pink; src.loop = true;
-          const bp = ac.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value = freq; bp.Q.value = 6;
-          const am = ac.createGain(); am.gain.value = 0.5;
-          const pulse = ac.createOscillator(); pulse.type = 'square'; pulse.frequency.value = rate;
-          const pa = ac.createGain(); pa.gain.value = 0.5; pulse.connect(pa); pa.connect(am.gain);
-          const sw = ac.createGain(); sw.gain.value = 0.55;
-          const lfo = ac.createOscillator(); lfo.frequency.value = swell;
-          const la = ac.createGain(); la.gain.value = 0.45; lfo.connect(la); la.connect(sw.gain);
-          src.connect(bp); bp.connect(am); am.connect(sw);
-          if(ac.createStereoPanner){ const p = ac.createStereoPanner(); p.pan.value = pan; sw.connect(p); p.connect(out); } else sw.connect(out);
-          src.start(0, off); pulse.start(); lfo.start();
+          const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = orni ? 2.2 : 3;
+          const base = orni ? rand(4100, 4700) : rand(4800, 5300);
+          bp.frequency.value = base;
+          const grain = ac.createGain(); grain.gain.value = 0.55;                    // the tymbals' rasp inside each pulse
+          const go = ac.createOscillator(); go.type = 'square'; go.frequency.value = orni ? rand(150, 210) : rand(210, 280);
+          const ga = ac.createGain(); ga.gain.value = 0.45; go.connect(ga); ga.connect(grain.gain);
+          const env = ac.createGain(); env.gain.value = 0;
+          src.connect(bp); bp.connect(grain); grain.connect(env);
+          let dest = out;
+          if(ac.createStereoPanner){ const p = ac.createStereoPanner(); p.pan.value = rand(-0.8, 0.8); p.connect(out); dest = p; }
+          env.connect(dest);
+          let bed = null;
+          if(!orni){ bed = ac.createGain(); bed.gain.value = 0; grain.connect(bed); bed.connect(dest); }   // plebejus' steady buzz
+          src.start(0, rand(0, 5)); go.start();
+          return {orni, env, bp, bed, base, next: 0, boutStart: 0, boutEnd: 0, resting: false, amp: 1, rate: 6, phrase: 0, phraseEnd: 0};
         };
-        voice(5400, 46, 0.11, -0.45, 0.4);
-        voice(6300, 53, 0.083, 0.45, 2.9);
+        cicadaSingers = [singer('orni'), singer('orni'), singer('orni'), singer('plebejus')];
         cicadaOut = out;
       }
       // whirlpool drone: two detuned low saws (slow beating) and a rumble of
@@ -1603,10 +1612,52 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
       for(let i=0;i<n;i++) d[i] /= peak;
       return buf;
     }
-    // the cicadas' chorus, level 0..1
+    // the cicadas' chorus, level 0..1. Schedules each singer's pulses a
+    // little ahead: bouts of song (5–18 s) with rests between, a gentle
+    // crescendo at the start of each bout, slightly uneven timing, and for
+    // plebejus a cycle of phrases (single, double, long pulses)
+    const CIC_AHEAD = 0.3;
+    function cicadaPulse(env, t, len, a){
+      const up = Math.min(0.012, len/3), down = Math.min(0.02, len/3);
+      env.gain.setValueAtTime(0, t);
+      env.gain.linearRampToValueAtTime(a, t + up);
+      env.gain.setValueAtTime(a, t + len - down);
+      env.gain.linearRampToValueAtTime(0, t + len);
+    }
     function cicadas(level){
       if(!cicadaOut || ac.state!=='running') return;
-      cicadaOut.gain.setTargetAtTime(0.55*level, ac.currentTime, 1.2);
+      const now = ac.currentTime;
+      cicadaOut.gain.setTargetAtTime(0.9*level, now, 1.2);
+      if(level < 0.01){ for(const s of cicadaSingers) s.next = 0; return; }   // silent: nothing to schedule
+      for(const s of cicadaSingers){
+        if(!s.next || s.next < now) s.next = now + rand(0, 0.6);
+        while(s.next < now + CIC_AHEAD){
+          const t0 = s.next;
+          if(t0 >= s.boutEnd){
+            if(s.boutEnd && !s.resting){                                       // bout over: a rest
+              s.resting = true; s.next = t0 + rand(1.5, 7);
+              if(s.bed) s.bed.gain.setTargetAtTime(0, t0, 0.3);
+              continue;
+            }
+            s.resting = false; s.boutStart = t0; s.boutEnd = t0 + rand(5, 18);  // a new bout
+            s.amp = rand(0.45, 1); s.rate = s.orni ? rand(5, 8) : rand(4.5, 7.6);
+            s.bp.frequency.setTargetAtTime(s.base*rand(0.96, 1.04), t0, 0.5);
+            if(s.bed) s.bed.gain.setTargetAtTime(0.16*s.amp, t0, 0.8);
+            s.phrase = 0; s.phraseEnd = t0 + rand(2, 5);
+          }
+          const a = s.amp*Math.min(1, 0.3 + (t0 - s.boutStart)/1.5);          // crescendo into the bout
+          const period = (1/s.rate)*(1 + rand(-0.08, 0.08));
+          if(s.orni){
+            cicadaPulse(s.env, t0, rand(0.06, 0.1), a);
+            s.next = t0 + period;
+          } else {
+            if(t0 >= s.phraseEnd){ s.phrase = (s.phrase + 1) % 3; s.phraseEnd = t0 + rand(2, 5); }
+            if(s.phrase === 0){ cicadaPulse(s.env, t0, 0.05, a); s.next = t0 + period; }                     // single
+            else if(s.phrase === 1){ cicadaPulse(s.env, t0, 0.028, a); cicadaPulse(s.env, t0 + 0.06, 0.028, a*0.9); s.next = t0 + period*1.1; }   // double
+            else { cicadaPulse(s.env, t0, rand(0.12, 0.16), a); s.next = t0 + period*1.25; }                   // long
+          }
+        }
+      }
     }
     // passing under a shower: the hiss of rain on the water, level 0..1
     function rain(level){
@@ -2717,7 +2768,7 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
     playing = true;
     prevWheel = wheelAngle = 0;
     repairT = 0; moor = mooredAtSpawn(); moorLock = null;
-    resetDishes(); for(const v of VILLAGES) v.stock = MERCHANT_FISH;
+    resetDishes();
     coins = 0;
     won = false; closeDialog();
     Sfx.init();
@@ -3147,8 +3198,8 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
 
   // ---------- Village market ----------
   // Docked at a village: a barter table. On the left your hold (every fish
-  // a unit), on the right the merchant's goods (the village's food and a
-  // few of its own fish). Drag goods across, or tap them, to make an offer;
+  // a unit), on the right the stall with the village's dishes (one of each).
+  // Drag goods across, or tap them, to make an offer;
   // the balance shows what the deal is worth. Selling fish earns coins, and
   // fish from other waters are worth more here. A negative balance is paid
   // from the purse; a positive one is paid to you in coins.
@@ -3157,13 +3208,12 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   const elMkYou = document.getElementById('mk-you-items'), elMkThem = document.getElementById('mk-them-items');
   const elMkPurse = document.getElementById('mk-purse'), elMkBal = document.getElementById('mk-bal');
   const elMkDeal = document.getElementById('mk-deal'), elMkFoot = document.getElementById('mk-foot');
-  for(const v of VILLAGES) v.stock = MERCHANT_FISH;
   let marketV = null, mkItems = [], mkKey = '';
   const fishValue = (v, k)=> k===v.own ? COIN_LOCAL : COIN_FOREIGN;
   const fishWorth = (v)=> FISH_KEYS.reduce((a,k)=> a + counts[k]*fishValue(v,k), 0);   // the whole hold, sold here
   // the cheapest dish still on the stall (Infinity when everything's bought)
   const nextPrice = (v)=> Math.min(...v.dishes.filter(d=>!d.bought).map(d=>d.price), Infinity);
-  const mkState = (v)=> [v.name, dishesGot(v), v.stock, coins, ...FISH_KEYS.map(k=>counts[k])].join('|');
+  const mkState = (v)=> [v.name, dishesGot(v), coins, ...FISH_KEYS.map(k=>counts[k])].join('|');
   function openMarket(v){
     marketV = v; elMk.classList.remove('hidden');
     document.body.classList.add('at-market');
@@ -3176,7 +3226,6 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
     mkItems = [];
     for(const k of FISH_KEYS) for(let n=0;n<counts[k];n++) mkItems.push({kind:'fish', key:k, origin:'you', side:'you', value: fishValue(v,k)});
     v.dishes.forEach((dsh,i)=>{ if(!dsh.bought) mkItems.push({kind:'food', dish:i, name:dsh.name, origin:'them', side:'them', value: dsh.price}); });
-    for(let n=0;n<v.stock;n++) mkItems.push({kind:'fish', key:v.own, origin:'them', side:'them', value: COIN_LOCAL});
     mkItems.forEach((it,i)=> it.id = i);
   }
   // called every frame while docked: only redraws when something changed
@@ -3278,8 +3327,7 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
     for(const it of mkItems){
       if(it.side === it.origin) continue;
       if(it.origin==='you'){ counts[it.key]--; }                          // sold
-      else if(it.kind==='food'){ v.dishes[it.dish].bought = true; v.done = true; got.push(it.name); }   // a dish for the dinner
-      else { counts[it.key]++; v.stock--; }                               // bought a fish
+      else { v.dishes[it.dish].bought = true; v.done = true; got.push(it.name); }   // a dish for the dinner
     }
     coins += bal;
     Sfx.coins(); buzz([15,40,15,40,55]);                                  // deal done: coins on the counter

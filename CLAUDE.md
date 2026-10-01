@@ -25,7 +25,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
 - **Ruins** on the diagonals: dock there for a random power (friendly wind 60 s, blessed nets ×3, full hull).
 - **Fish:** sardines (N), mackerel (E), red mullet (S), sea bream (W). Banks denser far from home; home waters have all kinds.
   Fishing: stop on a bank for 2 s and the nets go over; drop anchor on a bank and they go over after 0.25 s.
-  **Market = barter table** (left: your hold, every fish a unit; right: the stall: the dishes not yet bought + 3 local fish).
+  **Market = barter table** (left: your hold, every fish a unit; right: the stall: only the dishes not yet bought; no fish for sale).
   The top of the market panel shows how to trade (`MK_TIP`), not the merchant's flavour line.
   Drag or tap units across; balance = fish sold − goods taken. Fish sell for coins: 2 if from other waters, 1 if local.
   "Trade" is disabled if the purse can't cover a negative balance; a positive balance goes to the purse.
@@ -51,7 +51,8 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   with no damage, then they drift back to their lane; they hail with a speech bubble), fog of war (buoys and a
   340 px radius round each village always show through), clouds see-through at the rim and denser in the middle, each with its shadow at a fixed offset down-right,
   a third of them rain clouds (darker; rain falls from the cloud onto its shadow on the sea, with a rain hiss when you're near),
-  day/night palette cycle (6 min), daytime cicada chorus (faint at sea, full near land, silent at night) with dark nights lit by lanterns, lighthouses and windows.
+  day/night palette cycle (6 min), daytime cicada chorus (faint at sea, full near land, silent at night: 3 Cicada orni + 1 Lyristes plebejus,
+  pulsed ~5–8 times a second around 4–5 kHz, in bouts with rests; see `cicadas()` in Sound) with dark nights lit by lanterns, lighthouses and windows.
 
 ## Map of index.html (search for these section headers: `// ---------- Name ----------`)
 World setup · Islands · Home island · Piers · Villages · Ruins · Rocks · Whirlpools · Fish banks · Boat ·
