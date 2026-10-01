@@ -220,7 +220,14 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   }
   .helm-btn:active{transform:translate(2px,2px); box-shadow: inset 0 0 0 4px var(--paper), inset 0 0 0 5.5px var(--ink), 1px 1px 0 var(--ink);}
   .helm-btn:focus-visible{outline:2px dashed var(--ink); outline-offset:3px;}
-  #btn-list svg{width:42px; height:42px; background:var(--paper); border-radius:50%; padding:4px; box-sizing:content-box;}
+  /* the logbook icon: a closed book whose cover swings open (on its spine) when the panel opens */
+  #btn-list .logbook{position:relative; display:block; width:42px; height:42px; padding:4px; box-sizing:content-box;
+    background:var(--paper); border-radius:50%; perspective:140px;}
+  #btn-list .logbook svg{position:absolute; left:4px; top:4px; width:42px; height:42px;}
+  #btn-list .log-cover{transform-origin:21% 50%; transition:transform .45s cubic-bezier(.3,.7,.3,1), opacity .2s .25s; backface-visibility:hidden;}
+  #btn-list .log-pages{opacity:0; transform:scale(.85); transition:opacity .25s .12s, transform .35s .12s;}
+  #btn-list.open .log-cover{transform:rotateY(-160deg); opacity:0;}
+  #btn-list.open .log-pages{opacity:1; transform:none;}
   #btn-list{left:12px; right:auto; bottom:calc(20px + env(safe-area-inset-bottom,0px));}
   body.at-market #btn-list{display:none;}
   /* at the barter table the halyard and the compass (with its fish counters) step aside */
@@ -399,10 +406,14 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
     </div>
   </div>
 
-  <button id="btn-list" class="helm-btn" type="button" aria-label="Shopping list and hold" aria-expanded="false" aria-controls="shoplist">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3 H16 L19 6 V21 H6 Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M16 3 V6 H19" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M9 10 H16 M9 13.5 H16 M9 17 H13.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+  <button id="btn-list" class="helm-btn" type="button" aria-label="Logbook" aria-expanded="false" aria-controls="shoplist">
+    <!-- the logbook: a leather-bound book; tapping it swings the cover open on its spine and shows the written pages -->
+    <span class="logbook" aria-hidden="true">
+      <svg class="log-pages" viewBox="0 0 24 24"><path d="M12 6.5 Q8 4.6 2.5 5.6 V19 Q8 18 12 19.8 Q16 18 21.5 19 V5.6 Q16 4.6 12 6.5 Z" fill="var(--paper)" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 6.5 V19.8" stroke="currentColor" stroke-width="1.3"/><path d="M4.5 9 Q7.5 8.4 10 9.2 M4.5 11.6 Q7.5 11 10 11.8 M4.5 14.2 Q7 13.7 9 14.3 M14 9.2 Q16.5 8.4 19.5 9 M14 11.8 Q16.5 11 19.5 11.6 M14 14.4 Q16 13.9 18 14.2" fill="none" stroke="currentColor" stroke-width="0.9" stroke-linecap="round"/></svg>
+      <svg class="log-cover" viewBox="0 0 24 24"><rect x="7.6" y="4.4" width="12.6" height="16.6" rx="1.2" fill="var(--paper)" stroke="currentColor" stroke-width="1.2"/><path d="M19.2 6.5 V19.8 M8.8 19.9 H19" stroke="currentColor" stroke-width="0.6"/><rect x="5" y="3" width="13" height="17" rx="1.6" fill="currentColor"/><rect x="5" y="3" width="2.6" height="17" rx="1" fill="url(#sh-mid)" stroke="currentColor" stroke-width="0.8"/><path d="M12.3 7.2 L13.2 10.4 L16.4 11.3 L13.2 12.2 L12.3 15.4 L11.4 12.2 L8.2 11.3 L11.4 10.4 Z" fill="var(--paper)"/><circle cx="12.3" cy="11.3" r="0.9" fill="currentColor"/><rect x="16.2" y="9.9" width="4.6" height="2.8" rx="0.8" fill="var(--paper)" stroke="currentColor" stroke-width="1"/><circle cx="19.4" cy="11.3" r="0.6" fill="currentColor"/></svg>
+    </span>
   </button>
-  <div id="shoplist" class="panel" role="region" aria-label="Shopping list and hold"></div>
+  <div id="shoplist" class="panel" role="region" aria-label="Logbook"></div>
   <div id="toast" class="panel" role="status" aria-live="polite"></div>
   <canvas id="wheel" aria-label="Helm: drag clockwise or anticlockwise to steer"></canvas>
   <canvas id="rope" aria-hidden="true"></canvas>
@@ -1393,7 +1404,7 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   const TURN_RATE = 0.42; // rad/s at full rudder
   const MAX_SPEED = 50; // px/s (reference speed)
   const WIND_BOOST = 1.05;            // how much the wind actually gives (30% down from 1.5)
-  const BOAT_ACCEL = 0.8;             // how fast she picks up speed (was 1.6: halved)
+  const BOAT_ACCEL = 0.4;             // how fast she picks up speed (was 1.6, halved twice)
 
   // polar-ish speed curve: [angleDeg, factor]
   const POLAR = [
