@@ -45,13 +45,14 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   Left button: the dinner (just the 4 course names, crossed off once one dish of it is aboard) + the hold (purse,
   every fish as a unit like at the market, dishes and gifts aboard; live). The list also shows the day of the voyage
   (`dayNo`, +1 at each dawn). Keyboard: arrows, Space = anchor, S = sail.
-- **Hazards:** rocks, faraglioni, whirlpools (appear/disappear/wander), rollers (big waves: head-on hurts, from astern = surf boost).
+- **Hazards:** rocks, faraglioni, whirlpools (appear/disappear/wander), rollers (big waves: within ~66° of their travel = surf boost (`SURF_COS`), otherwise they hurt).
 - **Atmosphere:** macchia (tree-spurge domes + Mediterranean pines), clouds with parallax and shadows, gulls, wind streaks,
   traders (motor boats on A* lanes between villages; they don't avoid the player, a collision just shoves them aside
   with no damage, then they drift back to their lane; they hail with a speech bubble), fog of war (buoys and a
   340 px radius round each village always show through), clouds see-through at the rim and denser in the middle, each with its shadow at a fixed offset down-right,
   a third of them rain clouds (darker; rain falls from the cloud onto its shadow on the sea, with a rain hiss when you're near),
-  day/night palette cycle (6 min), daytime cicada chorus (faint at sea, full near land, silent at night: 3 Cicada orni + 1 Lyristes plebejus,
+  day/night palette cycle (6 min), afternoon cicada chorus (only within ~220 px of a wild island's shore, never on village islands,
+  from early afternoon to before the golden hour: 3 Cicada orni + 1 Lyristes plebejus,
   pulsed ~5–8 times a second around 4–5 kHz, in bouts with rests; see `cicadas()` in Sound) with dark nights lit by lanterns, lighthouses and windows.
 
 ## Map of index.html (search for these section headers: `// ---------- Name ----------`)

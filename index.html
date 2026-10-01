@@ -2997,6 +2997,7 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   // crest head-on or broadside hurts; catching it from astern lets you surf.
   const rollers = [];
   const SURF_BOOST = 32;            // extra px/s while surfing
+  const SURF_COS = 0.4;             // surf if the heading is within ~66° of the wave's travel (else it hurts)
   let rollerT = 6;
   // crest offset (along the direction of travel) at u in -1..1: the middle
   // runs ahead, a slow swell rolls along the crest, the ends drag behind
@@ -3057,7 +3058,7 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
       if(Math.abs(across - crest) > half) continue;
       w.hit = true;
       const c = Math.cos(boat.angle)*w.ux + Math.sin(boat.angle)*w.uy;   // 1 = sailing with the wave
-      if(c > 0.55){
+      if(c > SURF_COS){
         boat.surfT = 2.6;
         popups.push({x:boat.x, y:boat.y-24, text:'surf!', life:1.4, max:1.4});
         Sfx.surf();
@@ -3346,22 +3347,30 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   document.getElementById('mk-quit').addEventListener('click', ()=>{ closeMarket(); Sfx.init(); Sfx.type(); buzz(8); });
 
   // ---------- Cicadas ----------
-  // By day a chorus of cicadas hangs over the whole sea, faint out on the
-  // open water and full near the islands (they sing in the pines and the
-  // macchia); it fades at dusk, and the crickets take over at night.
+  // In the afternoon a chorus of cicadas sings on the wild islands (in the
+  // pines and the macchia): heard only when the boat is close to a shore,
+  // never on the village islands (the town is heard there), and quiet by
+  // evening; the crickets take over at night.
+  const CICADA_REACH = 220;                    // heard only this close to a shore
   let cicadaT = 0, cicadaNear = 0;
+  // they sing in the afternoon: in from early afternoon, quiet by evening
+  // (dayT: 0 first light, 0.5 midday-ish, 0.58 golden hour, 0.66 night)
+  function cicadaHours(){
+    const ss = (a,b,x)=>{ const k = Math.max(0, Math.min(1, (x-a)/(b-a))); return k*k*(3-2*k); };
+    return ss(0.28, 0.34, dayT) * (1 - ss(0.5, 0.57, dayT));
+  }
   function updateCicadas(dt){
     cicadaT -= dt;
     if(cicadaT <= 0){                                   // how close is land? (a few times a second is plenty)
       cicadaT = 0.3; let best = 0;
-      islandGrid.query(boat.x, boat.y, 700, isl=>{
-        const d = Math.max(0, Math.hypot(wdx(isl.x, boat.x), wdy(isl.y, boat.y)) - isl.R*0.8);
-        best = Math.max(best, 1 - Math.min(1, d/700));
+      islandGrid.query(boat.x, boat.y, CICADA_REACH + 200, isl=>{
+        if(isl.village) return;                         // town islands: their own sounds come first
+        const d = Math.max(0, Math.hypot(wdx(isl.x, boat.x), wdy(isl.y, boat.y)) - isl.rmax*0.9);   // ≈ distance from the shore
+        best = Math.max(best, 1 - Math.min(1, d/CICADA_REACH));
       });
       cicadaNear = best;
     }
-    const day = Math.max(0, 1 - NIGHT*2.5);             // gone once it's getting dark
-    Sfx.cicadas(playing ? day*(0.25 + 0.75*cicadaNear) : 0);
+    Sfx.cicadas(playing ? cicadaHours()*cicadaNear*cicadaNear : 0);
   }
 
   // ---------- Night sounds ----------
