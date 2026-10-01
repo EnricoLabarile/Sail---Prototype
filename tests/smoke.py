@@ -9,7 +9,9 @@ GAME = pathlib.Path(__file__).resolve().parent.parent / 'index.html'
 # expose a few internals to the test (the game keeps its state in a closure)
 HOOK = ('requestAnimationFrame(loop);\n})();',
         'globalThis.__d={boat,counts,VILLAGES,PIER,get moor(){return moor},'
-        'unmoor(){moor=null;moorLock=null;}};requestAnimationFrame(loop);\n})();')
+        'unmoor(){moor=null;moorLock=null;}};'
+        'tutSet("done");'                  # skip the tutorial: the test drives the controls directly
+        'requestAnimationFrame(loop);\n})();')
 
 def dock_at(pg, pier_expr):
     pg.evaluate(f"""()=>{{const d=__d; d.unmoor(); const pr={pier_expr}; const a=pr.total-20;

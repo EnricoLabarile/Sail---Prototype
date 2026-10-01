@@ -344,6 +344,12 @@
     z-index:7;
   }
   #rope-hit.grabbed{cursor:grabbing;}
+  /* tutorial: controls not reached yet are hidden and can't be touched; they fade in when their turn comes */
+  #rope, #rope-hit{transition:opacity .5s;}
+  body.tut-no-rope #rope, body.tut-no-rope #rope-hit, body.tut-no-wheel #wheel{opacity:0; pointer-events:none;}
+  /* the halyard's turn: it glows (a light and a dark halo, so it shows on pale sea and dark fog) */
+  body.tut-rope #rope{animation:tutGlow 1.4s ease-in-out infinite;}
+  @keyframes tutGlow{0%,100%{filter:none} 50%{filter:drop-shadow(0 0 3px #fff) drop-shadow(0 0 2px #fff) drop-shadow(0 0 1px rgba(0,0,0,.7))}}
   #rope-hit:focus-visible{outline:2px dashed var(--ink); outline-offset:2px;}
 
   /* --- Intro / game over --- */
@@ -1546,8 +1552,8 @@
   window.addEventListener('keydown', e=>{
     if(e.key==='ArrowLeft'||e.key==='a'||e.key==='A') turnLeft=true;
     if(e.key==='ArrowRight'||e.key==='d'||e.key==='D') turnRight=true;
-    if(e.code==='Space' && !e.repeat){ e.preventDefault(); setAnchor(!anchored); }   // space: anchor
-    if(e.code==='KeyS' && !e.repeat) pullRope();                                     // S: sail
+    if(e.code==='Space' && !e.repeat){ e.preventDefault(); if(tutAt('anchor')) setAnchor(!anchored); }   // space: anchor (once the tutorial shows it)
+    if(e.code==='KeyS' && !e.repeat && tutAt('rope')) pullRope();                // S: sail (once the tutorial shows it)
   });
   window.addEventListener('keyup', e=>{
     if(e.key==='ArrowLeft'||e.key==='a'||e.key==='A') turnLeft=false;
@@ -2629,6 +2635,7 @@
       c.restore();
       c.restore();
     }
+    drawTutorialHints(c);
     ditherUI(c, WH_W, WH_H);
     wctx.clearRect(0,0,wheelCv.width,wheelCv.height);
     wctx.drawImage(wlo, 0, 0, wheelCv.width, wheelCv.height);
@@ -2679,6 +2686,7 @@
       weighT -= dt;
       if(weighT <= 0){
         weighT = 0; anchored = false; anchorUI();
+        if(tut === 'anchor') tutSet('wheel');                               // tutorial: now steer
       }
     }
   }
@@ -2773,6 +2781,7 @@
   ropeHit.addEventListener('keydown', e=>{ if(e.key==='Enter' && !e.repeat){ e.preventDefault(); pullRope(); } });
   function switchByRope(){
     cycleSail(); Sfx.thunk(0.55); buzz([28,40,14]); ropeFlash = 1;
+    if(tut === 'rope') tutSet('anchor');                                   // tutorial: now weigh anchor
   }
   // a pull from the keyboard: the rope jumps down and swings back on its own
   function pullRope(){ ropeTo(RP_CX, ROPE_REST + ROPE_FIRE + 12); rope.vx = rope.vy = 0; switchByRope(); }
@@ -2789,6 +2798,9 @@
       if(Math.abs(rope.x - RP_CX) < 0.05 && Math.abs(rope.y - ROPE_REST) < 0.05 && Math.hypot(rope.vx, rope.vy) < 0.5){ rope.x = RP_CX; rope.y = ROPE_REST; rope.vx = rope.vy = 0; rope.pull = 0; }
     }
     ropeFlash = Math.max(0, ropeFlash - dt*2.5);
+    if(tut === 'rope' && rope.ptr === null){                  // tutorial: a little swing now and then, to catch the eye
+      tutSwingT -= dt; if(tutSwingT <= 0){ tutSwingT = 2.2; rope.vx += 150; }
+    }
     const c = rl, INKW = '#000', PAPW = '#fff', pull = rope.pull;
     c.setTransform(1,0,0,1,0,0); c.clearRect(0,0,RPX_W,RPX_H);
     c.setTransform(ROPE_SCALE,0,0,ROPE_SCALE,0,0);          // draw in rope units
@@ -2874,7 +2886,7 @@
   function rollIntoScroll(){
     const card = intro.querySelector('.card'), btn = document.getElementById('btn-list');
     const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if(reduce || !card.animate){ intro.classList.add('hidden'); return; }
+    if(reduce || !card.animate){ intro.classList.add('hidden'); if(tut === 'intro') tutSet('book'); return; }
     intro.style.pointerEvents = 'none';
     // the dotted backdrop fades on its own layer, so the card stays solid while it rolls
     const bg = document.createElement('div'); bg.className = 'intro-bg'; document.body.appendChild(bg);
@@ -2906,8 +2918,65 @@
         roll.remove();
         Sfx.thunk(0.45); buzz([30,40,15]);                                  // it drops in
         btn.animate([{transform:'scale(1)'},{transform:'scale(1.22)'},{transform:'scale(0.94)'},{transform:'scale(1)'}], {duration:420, easing:'ease-out'});
+        if(tut === 'intro') tutSet('book');                               // tutorial: now open the logbook
       };
     };
+  }
+  // ---------- Tutorial ----------
+  // The first voyage teaches the controls one at a time. Until each step is
+  // reached its control is hidden and disabled (keys included):
+  //   'intro'  the intro card is up
+  //   'book'   the logbook shimmers: open it, then close it
+  //   'rope'   the halyard appears and shimmers: pull it to set the sail
+  //   'anchor' the wheel's hub (the anchor) appears and pulses: hold it to weigh
+  //   'wheel'  arrows on the wheel show it turns; a few seconds, then 'done'
+  let tut = 'intro', tutBookSeen = false, tutWheelT0 = 0, tutSwingT = 0;
+  const TUT_ORDER = ['intro','book','rope','anchor','wheel','done'];
+  const tutAt = (stage)=> TUT_ORDER.indexOf(tut) >= TUT_ORDER.indexOf(stage);   // reached this step yet?
+  function tutSet(stage){
+    tut = stage;
+    document.body.classList.toggle('tut-no-rope', !tutAt('rope'));
+    document.body.classList.toggle('tut-no-wheel', !tutAt('anchor'));
+    document.body.classList.toggle('tut-rope', stage === 'rope');
+    if(stage === 'book') elListBtn.classList.add('news');                       // the logbook shimmers
+    if(stage === 'rope' || stage === 'anchor'){ buzz([10,50,10]); }              // something new to touch
+    if(stage === 'wheel') tutWheelT0 = performance.now();
+  }
+  tutSet('intro');
+  // tutorial hints drawn into the wheel's canvas (before it's dithered):
+  // rings pulsing out of the hub when it's time to weigh anchor, then two
+  // curved arrows over the wheel that sway, showing it turns both ways
+  function drawTutorialHints(c){
+    const INKW = '#000', PAPW = '#fff', now = performance.now();
+    if(tut === 'anchor'){
+      const base = 13*WH_S*hubScale + 3;
+      for(const off of [0, 0.5]){
+        const k = (now/1300 + off) % 1, r = base + k*22;
+        c.globalAlpha = 1 - k;
+        c.strokeStyle = PAPW; c.lineWidth = 4.5; c.beginPath(); c.arc(WH_CX, WH_CY, r, 0, Math.PI*2); c.stroke();
+        c.strokeStyle = INKW; c.lineWidth = 2;   c.beginPath(); c.arc(WH_CX, WH_CY, r, 0, Math.PI*2); c.stroke();
+      }
+      c.globalAlpha = 1;
+    }
+    if(tut === 'wheel'){
+      const el = now - tutWheelT0;
+      if(el > 4500 || Math.abs(wheelAngle) > 0.8){ tutSet('done'); return; }   // seen it, or already steering
+      const R = 88, sway = Math.sin(el/1000*Math.PI*1.2)*0.25;
+      c.save(); c.translate(WH_CX, WH_CY); c.globalAlpha = Math.min(1, el/400, (4500 - el)/500);
+      c.lineCap = 'round'; c.lineJoin = 'round';
+      const arrow = (a0, a1)=>{
+        const dir = Math.sign(a1 - a0), lo = Math.min(a0, a1), hi = Math.max(a0, a1);
+        const hx = Math.cos(a1)*R, hy = Math.sin(a1)*R, tx = -Math.sin(a1)*dir, ty = Math.cos(a1)*dir, nx = Math.cos(a1), ny = Math.sin(a1);
+        const head = (g)=>{ c.beginPath(); c.moveTo(hx + tx*(10+g), hy + ty*(10+g)); c.lineTo(hx + nx*(8+g) - tx*g, hy + ny*(8+g) - ty*g); c.lineTo(hx - nx*(8+g) - tx*g, hy - ny*(8+g) - ty*g); c.closePath(); };
+        c.strokeStyle = PAPW; c.lineWidth = 8; c.beginPath(); c.arc(0, 0, R, lo, hi); c.stroke();   // paper halo
+        c.fillStyle = PAPW; head(2.5); c.fill();
+        c.strokeStyle = INKW; c.lineWidth = 3.5; c.beginPath(); c.arc(0, 0, R, lo, hi); c.stroke();
+        c.fillStyle = INKW; head(0); c.fill();
+      };
+      arrow(-Math.PI/2 + 0.22 + sway, -Math.PI/2 + 1.0 + sway);   // clockwise, top right
+      arrow(-Math.PI/2 - 0.22 + sway, -Math.PI/2 - 1.0 + sway);   // anticlockwise, top left
+      c.restore();
+    }
   }
   const gameover = document.getElementById('gameover');
   const elGoStats = document.getElementById('go-stats');
@@ -3804,11 +3873,13 @@
     Sfx.init();
     if(on){
       renderList(); freshCourses.clear(); elListBtn.classList.remove('news');   // seen: stop the shimmer
+      if(tut === 'book') tutBookSeen = true;
       elList.classList.add('open');
       bookT = setTimeout(()=>{ elList.classList.add('unfold'); Sfx.book(true); buzz([6,40,4]); }, BOOK_DROP);   // landed: open it
     } else {
       elList.classList.remove('unfold'); Sfx.book(false); buzz([4,60,14]);                                 // the cover folds shut
       bookT = setTimeout(()=> elList.classList.remove('open'), BOOK_FOLD);                               // then up it goes
+      if(tut === 'book' && tutBookSeen) setTimeout(()=>{ if(tut === 'book') tutSet('rope'); }, BOOK_FOLD + 150);   // tutorial: now the halyard
     }
   }
   elListBtn.addEventListener('click', ()=>{ toggleList(); elListBtn.blur(); });
