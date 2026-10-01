@@ -95,13 +95,15 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   #wood .fish-sarde{grid-area:n;} #wood .fish-sgombri{grid-area:e;} #wood .fish-triglie{grid-area:s;} #wood .fish-orate{grid-area:w;}
 
   #wood .res-item{display:flex; align-items:center; gap:3px;}
-  /* the compass sits at the foot of the logbook, under a rule */
+  /* the compass hangs just below the logbook's frame (outside it) and slides
+     down with it; hidden while the logbook is closed */
   #compass{
-    display:block; margin:10px auto 2px;
+    position:absolute; left:50%; top:calc(100% + 10px); transform:translateX(-50%);
     width:124px; height:124px;
     pointer-events:none;
+    visibility:hidden; transition:visibility 0s .45s;
   }
-  #shoplist-body{border-bottom:1.5px solid var(--ink); padding-bottom:8px;}
+  #shoplist.open #compass{visibility:visible; transition:none;}
   #wood{display:none !important;}      /* the fish counters round the compass are retired: the hold is in the logbook */
   /* the market is a window of its own: centred over a dark shade, with room for everything */
   #mk-shade{position:fixed; inset:0; z-index:7; background:rgba(0,0,0,.9); display:none;}
@@ -238,8 +240,9 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
     transform:translate(-50%, -110%); transition:transform .45s cubic-bezier(.2,.8,.2,1);
     padding:calc(14px + env(safe-area-inset-top,0px)) 16px 14px;
     border-top:none; border-radius:0 0 6px 6px;
-    max-height:calc(100% - 120px - env(safe-area-inset-bottom,0px)); overflow-y:auto;
+    overflow:visible;               /* the compass hangs below the frame; the content scrolls inside */
   }
+  #shoplist-body{max-height:calc(100vh - 120px - 150px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)); overflow-y:auto;}
   #shoplist.open{transform:translate(-50%, 0);}
   /* the boat's hold, under the list: purse, every fish as a unit, the food aboard */
   #shoplist .hold-head{display:flex; justify-content:space-between; align-items:center; margin:10px 0 7px; padding-top:9px; border-top:1.5px solid var(--ink);}

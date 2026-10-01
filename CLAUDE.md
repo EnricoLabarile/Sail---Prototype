@@ -36,7 +36,8 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   The market is a centred window over a 90% black shade; while it's open the halyard, compass (with its fish
   counters) and wheel/anchor are hidden. Buttons: Quit (left) and Trade (right); both close it and leave you moored
   with the anchor back, so you can linger; a market opens once per docking (leave and come back to trade again).
-- **Compass** (124 px, at the foot of the logbook panel, not in the main view; drawn only while the logbook is open): points home, a dot per village filled once a dish is bought there; drawn like the
+- **Compass** (124 px, hanging just below the logbook panel, outside its frame, sliding with it; not in the main view;
+  drawn only while the logbook is open): points home, a dot per village filled once a dish is bought there; drawn like the
   wheel (greys into a low-res canvas, then dithered): brass bezel with rivets, shaded card, wind rose, glass glare.
   The old fish counters round it are hidden (`#wood`); the hold is in the logbook.
 - **Intro:** on "Set sail" the card rolls up into a scroll that is tossed into the list button (skipped with reduced motion).
