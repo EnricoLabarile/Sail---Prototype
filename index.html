@@ -2397,15 +2397,11 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
     if(Math.abs(rudder)<0.04){ c.fillStyle=PAPW; c.fill(); c.lineWidth=1.8; c.stroke(); }
     else { c.fillStyle=INKW; c.fill(); }
 
-    // wheel: ink woodcut look on a paper disc so it reads over any terrain
+    // wheel: ink woodcut look; every part has an ink outline so it reads over any terrain
     c.save();
     c.translate(WH_CX, WH_CY);
     c.scale(WH_S, WH_S);
-    c.fillStyle='rgb(168,168,168)';                          // backing disc: a darker dotted shade
-    c.beginPath(); c.arc(0,0,64,0,Math.PI*2); c.fill();      // so the wheel stands off the water
-    c.strokeStyle='#000'; c.lineWidth=1.5; c.stroke();
-    c.strokeStyle='rgb(95,95,95)'; c.lineWidth=11;             // the rim's shadow on the disc
-    c.beginPath(); c.arc(1.5,2.5,55,0.1*Math.PI,1.1*Math.PI); c.stroke();
+    // no backing disc: the gaps between the spokes are open, so the sea shows through
     c.rotate(wheelAngle);
     c.lineCap='round'; c.lineJoin='round';
     // a spoke/handle profile along +x, turned like a lathe piece: symmetric
