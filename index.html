@@ -229,7 +229,7 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   #btn-list .log-pages{opacity:0; transform:scale(.85); transition:opacity .25s .12s, transform .35s .12s;}
   #btn-list.open .log-cover{transform:rotateY(-160deg); opacity:0;}
   #btn-list.open .log-pages{opacity:1; transform:none;}
-  #btn-list{left:12px; right:auto; bottom:calc(20px + env(safe-area-inset-bottom,0px));}
+  #btn-list{right:12px; left:auto; bottom:calc(246px + env(safe-area-inset-bottom,0px));}   /* right side, just above the sail badge (centred over it) */
   body.at-market #btn-list{display:none;}
   /* at the barter table the halyard and the compass (with its fish counters) step aside */
   body.at-market #rope, body.at-market #rope-hit, body.at-market #compass, body.at-market #wood, body.at-market #wheel{display:none;}
@@ -2579,10 +2579,10 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
   const RP_W = 170, RP_H = 222, RP_CX = RP_W - 32;          // drawing units; the block hangs 32 units from the right edge
   const ROPE_SCALE = 1.6;                                    // drawn this much bigger (crisp: the low-res canvas grows too)
   const RPX_W = Math.round(RP_W*ROPE_SCALE), RPX_H = Math.round(RP_H*ROPE_SCALE);
-  // the head (badge, shackle, block) is lowered HEAD_Y units so the badge's top
-  // lines up with the top of the wheel; the rope below it is short
+  // the badge is lowered HEAD_Y units so its top lines up with the top of
+  // the wheel; the rope hangs straight from it
   const HEAD_Y = 73;
-  const ROPE_TOP = 66 + HEAD_Y, ROPE_LEN = 28;               // where the line leaves the block, and how much hangs
+  const ROPE_TOP = 30 + HEAD_Y, ROPE_LEN = 64;               // where the line leaves the badge (tied under it), and how much hangs
   const ROPE_MAX = 40, ROPE_FIRE = 18, ROPE_TICK = 6;       // most line out, where it switches, units per click
   const ROPE_REST = ROPE_TOP + ROPE_LEN;
   const rlo = document.createElement('canvas'); rlo.width = RPX_W; rlo.height = RPX_H;
@@ -2657,26 +2657,8 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
     c.setTransform(1,0,0,1,0,0); c.clearRect(0,0,RPX_W,RPX_H);
     c.setTransform(ROPE_SCALE,0,0,ROPE_SCALE,0,0);          // draw in rope units
     c.lineCap = 'round'; c.lineJoin = 'round';
-    // the badge: which sail is set, in a paper disc (it pops when switched)
-    {
-      const s = 1 + 0.25*Math.sin(ropeFlash*Math.PI);
-      c.save(); c.translate(RP_CX, 18 + HEAD_Y); c.scale(s, s);
-      c.fillStyle = PAPW; c.strokeStyle = INKW; c.lineWidth = 2;
-      c.beginPath(); c.arc(0,0,15,0,Math.PI*2); c.fill(); c.stroke();
-      c.lineWidth=1.4; c.beginPath(); c.moveTo(0,-10); c.lineTo(0,10); c.stroke();          // mast
-      c.lineWidth=1.8; c.beginPath(); c.moveTo(-7,-7); c.lineTo(7,-7); c.stroke();          // yard
-      c.fillStyle = INKW;
-      if(sailLevel === SAIL_MIN){                                                            // furled, over a little wave
-        c.beginPath(); c.roundRect(-6.5,-6.6,13,3.6,1.7); c.fill();
-        c.lineWidth=1.2; c.beginPath(); c.moveTo(-6.5,7); c.quadraticCurveTo(-3.2,5,0,7); c.quadraticCurveTo(3.2,9,6.5,7); c.stroke();
-      } else {                                                                               // full and drawing
-        c.beginPath(); c.moveTo(-6,-6.2); c.quadraticCurveTo(0,-4.2,6,-6.2); c.quadraticCurveTo(8.2,0,6,6);
-        c.quadraticCurveTo(0,8,-6,6); c.quadraticCurveTo(-8.2,0,-6,-6.2); c.fill();
-      }
-      c.restore();
-    }
-    // the rope: a curve from the block to the toggle that sags when slack;
-    // its laid strands run out through the block as it's pulled
+    // the rope: a curve from the badge to the toggle that sags when slack;
+    // its laid strands slide out from under the badge as it's pulled
     const hx = rope.x, hy = rope.y, dx = hx - RP_CX, dy = hy - ROPE_TOP, d = Math.hypot(dx, dy) || 1;
     const sag = Math.sqrt(Math.max(0, ROPE_LEN*ROPE_LEN - d*d))*0.55;   // spare length hangs down in a belly
     const qx = (RP_CX + hx)/2, qy = (ROPE_TOP + hy)/2 + sag;
@@ -2701,20 +2683,25 @@ const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;<!DOCTYPE htm
       }
     }
     c.stroke(); c.lineCap = 'round';
-    // shackle and block (over the rope's top), with a sheave that turns as the line runs
-    c.strokeStyle = INKW; c.lineWidth = 2;
-    c.beginPath(); c.moveTo(RP_CX, 33 + HEAD_Y); c.lineTo(RP_CX, 38 + HEAD_Y); c.stroke();
-    c.beginPath(); c.ellipse(RP_CX, 38.5 + HEAD_Y, 3.2, 2.4, 0, 0, Math.PI*2); c.stroke();
-    c.save(); c.translate(RP_CX, 54 + HEAD_Y); c.rotate(Math.atan2(dx, dy)*0.35);   // the block leans a little towards the pull
-    c.fillStyle = 'rgb(170,170,170)'; c.strokeStyle = INKW; c.lineWidth = 1.8;
-    c.beginPath(); c.roundRect(-11, -13, 22, 26, 7); c.fill(); c.stroke();
-    c.fillStyle = 'rgb(215,215,215)'; c.beginPath(); c.roundRect(-8.5, -11, 7, 21, 4); c.fill();   // lit cheek
-    c.rotate(pull/6);
-    c.fillStyle = PAPW; c.strokeStyle = INKW; c.lineWidth = 1.4;
-    c.beginPath(); c.arc(0,0,6.5,0,Math.PI*2); c.fill(); c.stroke();
-    c.lineWidth = 1.1; c.beginPath(); for(let k=0;k<3;k++){ const a = k*Math.PI/3; c.moveTo(Math.cos(a)*5.5, Math.sin(a)*5.5); c.lineTo(-Math.cos(a)*5.5, -Math.sin(a)*5.5); } c.stroke();
-    c.fillStyle = INKW; c.beginPath(); c.arc(0,0,1.6,0,Math.PI*2); c.fill();
-    c.restore();
+    // the badge: which sail is set, in a paper disc over the rope's top (the
+    // rope is tied to it); it pops when the sail switches
+    {
+      const s = 1 + 0.25*Math.sin(ropeFlash*Math.PI);
+      c.save(); c.translate(RP_CX, 18 + HEAD_Y); c.scale(s, s);
+      c.fillStyle = PAPW; c.strokeStyle = INKW; c.lineWidth = 2;
+      c.beginPath(); c.arc(0,0,15,0,Math.PI*2); c.fill(); c.stroke();
+      c.lineWidth=1.4; c.beginPath(); c.moveTo(0,-10); c.lineTo(0,10); c.stroke();          // mast
+      c.lineWidth=1.8; c.beginPath(); c.moveTo(-7,-7); c.lineTo(7,-7); c.stroke();          // yard
+      c.fillStyle = INKW;
+      if(sailLevel === SAIL_MIN){                                                            // furled, over a little wave
+        c.beginPath(); c.roundRect(-6.5,-6.6,13,3.6,1.7); c.fill();
+        c.lineWidth=1.2; c.beginPath(); c.moveTo(-6.5,7); c.quadraticCurveTo(-3.2,5,0,7); c.quadraticCurveTo(3.2,9,6.5,7); c.stroke();
+      } else {                                                                               // full and drawing
+        c.beginPath(); c.moveTo(-6,-6.2); c.quadraticCurveTo(0,-4.2,6,-6.2); c.quadraticCurveTo(8.2,0,6,6);
+        c.quadraticCurveTo(0,8,-6,6); c.quadraticCurveTo(-8.2,0,-6,-6.2); c.fill();
+      }
+      c.restore();
+    }
     // the toggle: a wooden peg across the rope's end, and a knot below it,
     // turned to follow the rope's last stretch
     {
