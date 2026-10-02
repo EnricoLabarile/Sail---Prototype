@@ -1507,8 +1507,8 @@
   const popups = [];               // floating "+15" / "-8" texts
   const TURN_RATE = 0.42; // rad/s at full rudder
   const MAX_SPEED = 50; // px/s (reference speed)
-  const WIND_BOOST = 0.8;             // how much the wind actually gives (was 1.5, then 1.05)
-  const BOAT_ACCEL = 0.4;             // how fast she picks up speed (was 1.6, halved twice)
+  const WIND_BOOST = 0.96;            // how much the wind actually gives (was 1.5, then 1.05, then 0.8): sets the top speed
+  const BOAT_ACCEL = 0.4/1.2;         // how fast she picks up speed: the same push in px/s² as before the +20% top speed (was 1.6, halved twice, then 0.4)
 
   // polar-ish speed curve: [angleDeg, factor]
   const POLAR = [

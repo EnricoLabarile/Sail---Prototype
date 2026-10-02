@@ -71,8 +71,8 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   (`thumbPos` 0..1; a click and buzz passing the middle; let go past the middle and it switches with a clack, else it
   springs back); a tap toggles too, so do Enter/Space on it and S. The track (dithered pill with a groove) is light
   with the sail set, dark when furled. In the tutorial the thumb nudges upward. The voyage starts with the sail furled.
-  The boat gathers way slowly (`BOAT_ACCEL` = 0.4, a quarter of the original 1.6; slowing down unchanged).
-  Top speed is kept modest (`WIND_BOOST` = 0.8; running dead downwind adds only up to +10%, `downwindBonus`).
+  The boat gathers way slowly (`BOAT_ACCEL` = 0.4/1.2: the speed approaches its target at that rate, so it was divided by 1.2 when the top speed went up 20%, keeping the same push in px/s²; slowing down unchanged).
+  Top speed is kept modest (`WIND_BOOST` = 0.96, ~52 px/s dead downwind in full wind; running dead downwind adds only up to +10%, `downwindBonus`).
   Oars never come out because of the anchor (nor while getting under way after weighing it).
   The **logbook** button (bottom left corner, under the compass) is just the book, no round knob: a 76 px icon
   (`LOG_PX`) drawn like the wheel (greys, then dithered: dark leather, spine bands, metal corners, strap; drawn in 56
