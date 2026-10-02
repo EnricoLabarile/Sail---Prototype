@@ -544,17 +544,74 @@
 (function(){
   "use strict";
 
-  const canvas = document.getElementById('c');
-  const sctx = canvas.getContext('2d');
+  let canvas = document.getElementById('c');
   // low-res game buffer: 1 game pixel ≈ 1 CSS px on phones (Playdate-like
   // density), 2 on big screens. It's shown at an integer number of device
   // pixels per game pixel, so the dither stays crisp.
   // The scene is drawn in greys into a low-res buffer (one pixel per game
-  // pixel), dithered to two colours into a second one, then scaled up.
+  // pixel), then turned into the two colours on the graphics card: a tiny
+  // WebGL shader does the ordered dither (and the night's darkness) for every
+  // pixel at once, straight onto the screen canvas. Without WebGL it falls
+  // back to doing it in JavaScript (a pixel loop into a second buffer, then
+  // scaled up), which is much slower (see ditherPass).
+  // the shader, its quad and textures; run again if the browser drops and
+  // restores the WebGL context (Android can, when the app goes to the background)
+  function glSetup(g){
+    const sh = (type, src)=>{ const s = g.createShader(type); g.shaderSource(s, src); g.compileShader(s); if(!g.getShaderParameter(s, g.COMPILE_STATUS)) throw new Error(g.getShaderInfoLog(s)); return s; };
+    const prog = g.createProgram();
+    g.attachShader(prog, sh(g.VERTEX_SHADER, 'attribute vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }'));
+    g.attachShader(prog, sh(g.FRAGMENT_SHADER, [
+      'precision highp float;',
+      'uniform sampler2D uImg, uMask, uBayer;',
+      'uniform vec2 uGrid, uOff, uMaskSize;',      // game pixels across/down; dither offset (0..3); light mask size
+      'uniform float uK, uH, uNight, uMB;',        // device px per game px; canvas height; darkness; mask block
+      'uniform vec3 uPaper, uInk;',
+      'void main(){',
+      '  vec2 gp = floor(vec2(gl_FragCoord.x, uH - gl_FragCoord.y) / uK);',          // this game pixel (top-left origin)
+      '  float lum = floor(texture2D(uImg, (gp + 0.5) / uGrid).r * 255.0 + 0.5);',
+      '  if(uNight > 0.01) lum *= 1.0 - uNight*(1.0 - texture2D(uMask, (floor(gp / uMB) + 0.5) / uMaskSize).r);',
+      '  float th = texture2D(uBayer, (mod(gp + uOff, 4.0) + 0.5) / 4.0).r * 255.0;',
+      '  gl_FragColor = vec4(lum > th ? uPaper : uInk, 1.0);',
+      '}'].join('\n')));
+    g.linkProgram(prog);
+    if(!g.getProgramParameter(prog, g.LINK_STATUS)) throw new Error(g.getProgramInfoLog(prog));
+    g.useProgram(prog);
+    const vb = g.createBuffer(); g.bindBuffer(g.ARRAY_BUFFER, vb);
+    g.bufferData(g.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), g.STATIC_DRAW);
+    const aPos = g.getAttribLocation(prog, 'aPos'); g.enableVertexAttribArray(aPos); g.vertexAttribPointer(aPos, 2, g.FLOAT, false, 0, 0);
+    const tex = (unit, wrap)=>{ const t = g.createTexture(); g.activeTexture(g.TEXTURE0 + unit); g.bindTexture(g.TEXTURE_2D, t);
+      g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MIN_FILTER, g.NEAREST); g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MAG_FILTER, g.NEAREST);
+      g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_S, wrap); g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_T, wrap); return t; };
+    g.pixelStorei(g.UNPACK_ALIGNMENT, 1);
+    const U = {}; for(const n of ['uImg','uMask','uBayer','uGrid','uOff','uMaskSize','uK','uH','uNight','uMB','uPaper','uInk']) U[n] = g.getUniformLocation(prog, n);
+    tex(2, g.REPEAT);                                             // the 4×4 Bayer thresholds (same as BAYER below)
+    g.texImage2D(g.TEXTURE_2D, 0, g.LUMINANCE, 4, 4, 0, g.LUMINANCE, g.UNSIGNED_BYTE,
+      new Uint8Array([0,8,2,10, 12,4,14,6, 3,11,1,9, 15,7,13,5].map(b=>(b+0.5)*16)));
+    tex(1, g.CLAMP_TO_EDGE);                                      // the night's light mask (filled when it's dark)
+    g.texImage2D(g.TEXTURE_2D, 0, g.LUMINANCE, 1, 1, 0, g.LUMINANCE, g.UNSIGNED_BYTE, new Uint8Array([255]));
+    tex(0, g.CLAMP_TO_EDGE);                                      // the grey scene, uploaded every frame
+    g.uniform1i(U.uImg, 0); g.uniform1i(U.uMask, 1); g.uniform1i(U.uBayer, 2);
+    return U;
+  }
+  // set up on a fresh canvas and swapped in only if it all works, so the
+  // plain 2D fallback can still have the original one
+  let gl = null;
+  try{
+    const cv = document.createElement('canvas');
+    const g = cv.getContext('webgl', {antialias:false, alpha:false, depth:false, stencil:false, preserveDrawingBuffer:false, powerPreference:'high-performance'});
+    if(g){ g.U = glSetup(g); cv.id = canvas.id; canvas.replaceWith(cv); canvas = cv; gl = g; }
+  }catch(e){ console.warn('WebGL dither unavailable, using the JS one:', e); }
+  if(gl){
+    canvas.addEventListener('webglcontextlost', e=> e.preventDefault());   // (so it can come back)
+    canvas.addEventListener('webglcontextrestored', ()=>{ try{ gl.U = glSetup(gl); maskBytes = null; resize(); }catch(e){ console.warn(e); } });
+  }
+  const sctx = gl ? null : canvas.getContext('2d');
   const buf = document.createElement('canvas');
-  let ctx = buf.getContext('2d', {willReadFrequently:true});   // swapped briefly when baking island images
-  const obuf = document.createElement('canvas');       // final 1-bit frame, screen size
-  const octx = obuf.getContext('2d');
+  // without WebGL the scene is read back every frame, so keep it in memory;
+  // with WebGL it's only ever uploaded as a texture
+  let ctx = buf.getContext('2d', gl ? {} : {willReadFrequently:true});   // swapped briefly when baking island images
+  const obuf = document.createElement('canvas');       // (fallback) final 1-bit frame, screen size
+  const octx = gl ? null : obuf.getContext('2d');
   let PX = 1, K = 1, GW = 1, GH = 1, outImg = null;
   function resize(){
     const w = window.innerWidth, h = window.innerHeight;
@@ -564,10 +621,15 @@
     PX = K/dpr;
     GW = Math.ceil(w/PX); GH = Math.ceil(h/PX);
     buf.width = GW; buf.height = GH;
-    obuf.width = GW; obuf.height = GH;
     canvas.width = GW*K; canvas.height = GH*K;
     canvas.style.width = (GW*PX)+'px'; canvas.style.height = (GH*PX)+'px';
-    outImg = octx.createImageData(GW, GH);
+    if(gl){
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.uniform2f(gl.U.uGrid, GW, GH); gl.uniform1f(gl.U.uK, K); gl.uniform1f(gl.U.uH, canvas.height);
+    } else {
+      obuf.width = GW; obuf.height = GH;
+      outImg = octx.createImageData(GW, GH);
+    }
   }
   window.addEventListener('resize', resize);
   resize();
@@ -1198,6 +1260,8 @@
   // A whirlpool lives a while in one spot, fades out, and some time later
   // opens up somewhere else. While faded out it has no effect at all.
   const WHIRL_FADE = 3;                   // seconds to open up / die down
+  const WHIRL_FROM_DAY = 2;               // the first day is calm: whirlpools only start opening from day 2
+  const whirlAsleep = (w)=>{ w.phase = 'off'; w.s = 0; w.timer = rand(2, 40); };   // shut, waking at a staggered time
   const bankList = [];                    // fish banks (filled further down)
   function findWhirlSpot(avoidBoat){
     for(let tries=0; tries<600; tries++){
@@ -1223,12 +1287,11 @@
     for(let k=0; k<N*3 && whirlpools.length<N; k++){
       const sp = findWhirlSpot(false);
       if(!sp) continue;
-      const on = Math.random()<0.65;                 // start out of step with each other
-      whirlpools.push({...sp, dir: Math.random()<0.5?-1:1, rot: rand(0,Math.PI*2),
-                       hd: rand(0,Math.PI*2), vel: rand(5,9),
-                       speed: rand(1.4,2.2), armed: true, escaping: false,
-                       phase: on ? 'on' : 'off', s: on ? 1 : 0,
-                       timer: on ? rand(5,60) : rand(2,25)});
+      const w = {...sp, dir: Math.random()<0.5?-1:1, rot: rand(0,Math.PI*2),
+                 hd: rand(0,Math.PI*2), vel: rand(5,9),
+                 speed: rand(1.4,2.2), armed: true, escaping: false};
+      whirlAsleep(w);                                // all shut on day 1 (out of step with each other later)
+      whirlpools.push(w);
     }
   })();
   // may a whirlpool's eye be here? open water, clear of home and villages
@@ -1268,6 +1331,7 @@
       else if(w.phase==='on'){ w.timer -= dt; if(w.timer<=0 && !holding) w.phase='out'; }
       else if(w.phase==='out'){ if(!holding) w.s = Math.max(0, w.s - dt/WHIRL_FADE); if(w.s<=0){ w.phase='off'; w.timer=rand(4,12); } }
       else if(w.phase==='off'){
+        if(dayNo < WHIRL_FROM_DAY) continue;                       // day 1: none open
         w.timer -= dt;
         if(w.timer<=0){
           w.phase = 'wait';                                       // mark as free while searching
@@ -3063,6 +3127,7 @@
   document.getElementById('restart-btn').addEventListener('click', ()=>{
     boat.x = SPAWN.x; boat.y = SPAWN.y; boat.angle = SPAWN.angle;
     boat.speed = 0; boat.health = MAX_HEALTH; boat.kx = boat.ky = 0; boat.whirl = null;
+    for(const w of whirlpools) whirlAsleep(w);           // a calm first day again
     boat.oarK = 0; boat.oarsOut = false;
     for(const k in counts) counts[k] = 0;
     caught = 0; fishing = null; settleT = 0;
@@ -4654,13 +4719,33 @@
   const INKC = V(0), PAPERC = V(1);
   // 1-bit ordered dither of the grey buffer into the screen frame (and, at
   // night, darkness outside the pools of light)
+  let maskBytes = null;
   function ditherPass(ox, oy){
     dayPalette(); uiPalette();
-    const d = ctx.getImageData(0,0,GW,GH).data;
-    const out = new Uint32Array(outImg.data.buffer);
     ox = ((ox%4)+4)%4; oy = ((oy%4)+4)%4;
     const night = NIGHT;
-    if(night > 0.01 && (frameNo % 2 === 0 || !lightMask || lmW !== Math.ceil(GW/MB))) buildLightMask();   // mask every other frame
+    const remask = night > 0.01 && (frameNo % 2 === 0 || !lightMask || lmW !== Math.ceil(GW/MB));
+    if(remask) buildLightMask();                                     // mask every other frame
+    if(gl){                                                          // on the graphics card: upload and draw one quad
+      const U = gl.U;
+      if(remask){
+        if(!maskBytes || maskBytes.length !== lightMask.length) maskBytes = new Uint8Array(lightMask.length);
+        for(let i = 0; i < lightMask.length; i++) maskBytes[i] = (lightMask[i]*255 + 0.5) | 0;
+        gl.activeTexture(gl.TEXTURE1);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, lmW, lmH, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, maskBytes);
+        gl.uniform2f(U.uMaskSize, lmW, lmH); gl.uniform1f(U.uMB, MB);
+      }
+      gl.uniform1f(U.uNight, night); gl.uniform2f(U.uOff, ox, oy);
+      const col = (c)=> [(c & 255)/255, ((c >> 8) & 255)/255, ((c >> 16) & 255)/255];
+      gl.uniform3fv(U.uPaper, col(PAPER32)); gl.uniform3fv(U.uInk, col(INK32));
+      gl.activeTexture(gl.TEXTURE0);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      return;
+    }
+    // fallback: the same dither, pixel by pixel in JavaScript
+    const d = ctx.getImageData(0,0,GW,GH).data;
+    const out = new Uint32Array(outImg.data.buffer);
     let p = 0;
     for(let y=0;y<GH;y++){
       const row = ((y+oy)&3)*4;
@@ -6075,8 +6160,7 @@
 
     nightCamX = camX; nightCamY = camY;
     ditherPass(gx, gy);
-    sctx.imageSmoothingEnabled = false;
-    sctx.drawImage(obuf, 0, 0, GW, GH, 0, 0, GW*K, GH*K);
+    if(!gl){ sctx.imageSmoothingEnabled = false; sctx.drawImage(obuf, 0, 0, GW, GH, 0, 0, GW*K, GH*K); }   // (the WebGL pass draws straight to the screen)
 
     drawWheel();
     drawSail();
