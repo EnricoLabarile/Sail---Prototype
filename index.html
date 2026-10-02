@@ -2698,7 +2698,7 @@
       weighT -= dt;
       if(weighT <= 0){
         weighT = 0; anchored = false; anchorUI();
-        if(tut === 'anchor') tutSet('wheel');                               // tutorial: now steer
+        if(tut === 'anchor') tutNext('wheel');                                 // tutorial: now steer
       }
     }
   }
@@ -2737,7 +2737,7 @@
   window.addEventListener('resize', sizeSail);
   function switchSail(){
     cycleSail(); Sfx.thunk(0.55); buzz([28,40,14]); sailFlash = 1;
-    if(tut === 'rope') tutSet('anchor');                                   // tutorial: now weigh anchor
+    if(tut === 'rope') tutNext('anchor');                                   // tutorial: now weigh anchor
   }
   sailCv.addEventListener('pointerdown', ev=>{ ev.preventDefault(); Sfx.init(); switchSail(); });
   sailCv.addEventListener('keydown', e=>{ if((e.key==='Enter' || e.key===' ') && !e.repeat){ e.preventDefault(); e.stopPropagation(); switchSail(); } });
@@ -2852,6 +2852,16 @@
     if(stage === 'wheel') tutWheelT0 = performance.now();
   }
   tutSet('intro');
+  // a step done: its highlight (bubble, wiggle, rings) goes at once, and the
+  // next step is shown after a pause, so the player isn't rushed
+  const TUT_PAUSE = 1500;
+  let tutWait = false;
+  function tutNext(stage){
+    if(tutWait) return;
+    tutWait = true;
+    document.body.classList.remove('tut-rope');
+    setTimeout(()=>{ tutWait = false; tutSet(stage); }, TUT_PAUSE);
+  }
   // a speech bubble by the control being taught, saying in a few words what
   // it does; it follows the control (placed from its layout box, so the
   // wiggle doesn't shake it) and fades out when the step is done
@@ -2863,7 +2873,7 @@
     wheel:  'Drag the wheel round to steer.',
   };
   function placeTip(){
-    const text = TUT_TIPS[tut];
+    const text = tutWait ? null : TUT_TIPS[tut];
     elTip.classList.toggle('show', !!text);
     if(!text) return;
     if(elTip.textContent !== text) elTip.textContent = text;
@@ -2888,6 +2898,7 @@
   // rings pulsing out of the hub when it's time to weigh anchor, then two
   // curved arrows over the wheel that sway, showing it turns both ways
   function drawTutorialHints(c){
+    if(tutWait) return;                                  // between steps: nothing to point at
     const INKW = '#000', PAPW = '#fff', now = performance.now();
     if(tut === 'anchor'){
       const base = 13*WH_S*hubScale + 3;
@@ -3836,7 +3847,7 @@
     } else {
       elList.classList.remove('unfold'); Sfx.book(false); buzz([4,60,14]);                                 // the cover folds shut
       bookT = setTimeout(()=> elList.classList.remove('open'), BOOK_FOLD);                               // then up it goes
-      if(tut === 'book' && tutBookSeen) setTimeout(()=>{ if(tut === 'book') tutSet('rope'); }, BOOK_FOLD + 150);   // tutorial: now the sail badge
+      if(tut === 'book' && tutBookSeen) tutNext('rope');   // tutorial: now the sail badge
     }
   }
   elListBtn.addEventListener('click', ()=>{ toggleList(); elListBtn.blur(); });
