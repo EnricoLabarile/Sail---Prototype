@@ -259,6 +259,8 @@
     border:2px solid var(--ink); border-radius:10px;
     box-shadow:4px 5px 0 rgba(0,0,0,.35);
   }
+  #fps{position:absolute; right:34px; bottom:1px; font:9px/12px ui-monospace, monospace; color:var(--paper); opacity:.45;
+    font-variant-numeric:tabular-nums; letter-spacing:.04em; pointer-events:none; z-index:2;}
   #shoplist::before{                    /* stitching round the cover */
     content:""; position:absolute; inset:4px; border:1.5px dashed rgba(235,231,220,.55); border-radius:7px; pointer-events:none;
   }
@@ -471,6 +473,7 @@
   <!-- the logbook, open: a sturdy leather cover with metal corners framing two pages;
        the dinner list on the left page, the compass on the right -->
   <div id="shoplist" role="region" aria-label="Logbook">
+    <span id="fps" aria-hidden="true"></span>   <!-- a small frame-rate counter, tucked into the leather at the bottom -->
     <svg class="corner tl" aria-hidden="true"><use href="#book-corner"/></svg>
     <svg class="corner tr" aria-hidden="true"><use href="#book-corner"/></svg>
     <svg class="corner bl" aria-hidden="true"><use href="#book-corner"/></svg>
@@ -6082,12 +6085,16 @@
     if(tutAt('compass')) drawCompass();                    // shown from the tutorial's compass step on
   }
 
+  const elFps = document.getElementById('fps');
+  let fpsN = 0, fpsT0 = 0;
   function loop(now){
     const dt = Math.min(0.05, (now-last)/1000);
     last = now;
     t += dt;
     if(playing) update(dt);
     draw();
+    fpsN++;                                                 // frame rate, shown in the logbook (only while it's open)
+    if(now - fpsT0 >= 500){ if(bookOpen) elFps.textContent = Math.round(fpsN*1000/(now - fpsT0)) + ' fps'; fpsN = 0; fpsT0 = now; }
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);
