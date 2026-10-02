@@ -1847,28 +1847,17 @@
         }
       }
     }
-    // one raindrop: mostly a soft tick of patter (a short burst of noise at
-    // its own pitch); now and then the drop traps a little air bubble that
-    // rings for a moment, its pitch sliding up (the watery "plip"), kept short
-    // and quiet so it seasons the shower rather than dripping
+    // one raindrop: a soft tick of patter, a short burst of noise at its own
+    // pitch (no watery bubbles: those were too much)
     function rainDrop(t, amp){
       let out = rainBus;
       if(ac.createStereoPanner){ const p = ac.createStereoPanner(); p.pan.value = rand(-0.75, 0.75); p.connect(rainBus); out = p; }
-      if(Math.random() < 0.33){                                 // a bubble
-        const f0 = rand(1100, 2600), dur = rand(0.012, 0.03);
-        const o = ac.createOscillator(); o.type = 'sine';
-        o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f0*rand(1.1, 1.3), t + dur);
-        const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t);
-        g.gain.exponentialRampToValueAtTime(amp*0.55, t + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-        o.connect(g); g.connect(out); o.start(t); o.stop(t + dur + 0.02);
-      } else {                                                  // a tick of patter
-        const dur = rand(0.008, 0.02);
-        const s = ac.createBufferSource(); s.buffer = noise;
-        const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = rand(1500, 3800); bp.Q.value = 1.2;
-        const g = ac.createGain(); g.gain.setValueAtTime(amp, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-        s.connect(bp); bp.connect(g); g.connect(out);
-        s.start(t, Math.random()*0.9, dur + 0.01);
-      }
+      const dur = rand(0.008, 0.02);
+      const s = ac.createBufferSource(); s.buffer = noise;
+      const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = rand(1500, 3800); bp.Q.value = 1.2;
+      const g = ac.createGain(); g.gain.setValueAtTime(amp, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      s.connect(bp); bp.connect(g); g.connect(out);
+      s.start(t, Math.random()*0.9, dur + 0.01);
     }
     // passing under a shower, level 0..1: a soft wash that comes and goes in
     // gusts, and a patter of single drops, sparse at the edge, thick beneath
