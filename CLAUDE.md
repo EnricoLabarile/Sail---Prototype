@@ -5,6 +5,10 @@
 - Keep changes small and focused; after every change run the smoke test (see below).
 - I test on an Android phone: haptics (Vibration API) matter, iOS ignores them.
 - Commit after every working change with a short message in English.
+- **Keep the Tuning block up to date.** All the main gameplay knobs live in one place, the `// ---------- Tuning ----------`
+  section at the top of the script (boat, hull and dangers, fishing and market, world, ruins' powers, tutorial, look),
+  one line of comment each. Enrico edits them by hand. When a feature adds or changes a main knob, declare it there (not
+  deep in the code), keep its comment current, and mark with (world) the ones that change world generation.
 
 ## What the game is
 A top-down sailing game in a single HTML file (`index.html`, no dependencies, canvas 2D + Web Audio).
@@ -118,7 +122,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   pulsed ~5–8 times a second around 4–5 kHz, in bouts with rests; see `cicadas()` in Sound) with dark nights lit by lanterns, lighthouses and windows.
 
 ## Map of index.html (search for these section headers: `// ---------- Name ----------`)
-Seed · World setup · Islands · Home island · Piers · Villages · Ruins · Rocks · Whirlpools · Fish banks · Boat ·
+Seed · Tuning · World setup · Islands · Home island · Piers · Villages · Ruins · Rocks · Whirlpools · Fish banks · Boat ·
 Trade routes · Wind · Input · Haptics · Sound · Ship's wheel · Sail switch · Intro · Tutorial · UI refs · Dialog · Fishing · Fog of war ·
 Rollers · Powers from the ruins · Village market · Cicadas · Night sounds · Town sounds · Wind streaks · Shopping list ·
 Buoys · Traders · Update · 1-bit rendering · Day and night · Draw · Villages (pixel art) · Ruins (pixel art) ·

@@ -552,6 +552,75 @@
     return function(){ a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
   })(SEED);
 
+  // ---------- Tuning ----------
+  // The game's main knobs, all in one place: change a number, save, reload.
+  // Each one is used further down (search for its name to see how). When a
+  // new feature brings a new knob, it goes here too. Note: the knobs marked
+  // (world) change how the world is generated, so an older saved voyage won't
+  // load after changing them (the game starts fresh instead).
+
+  // -- Boat --
+  const MAX_SPEED = 50;              // px/s: reference speed (collision damage is scaled by it too)
+  const WIND_BOOST = 0.96;           // how much the wind gives: sets the top speed (~52 px/s dead downwind in full wind)
+  const BOAT_ACCEL = 0.4/1.2;        // how quickly she gathers way (higher = quicker); slowing down is separate
+  const TURN_RATE = 0.42;            // rad/s at full rudder
+  const ROW_SPEED = 9;               // px/s on the oars (sail at minimum)
+  const WHEEL_MAX = Math.PI;         // how far the wheel turns for full lock (π = half a turn each way)
+  const SURF_BOOST = 32;             // extra px/s while surfing a big wave
+  const SURF_COS = 0.4;              // surf if the heading is within ~66° of the wave's travel (else the wave hurts)
+
+  // -- Hull and dangers --
+  const MAX_HEALTH = 100;            // a full hull
+  const HIT_MAX_DAMAGE = 25;         // damage of a head-on hit at full speed (grazes do less)
+  const REPAIR_EVERY = 0.5;          // seconds between patches at a pier (repairs are free)
+  const FISH_HEAL = 15;              // hull points per patch
+  const WHIRL_COUNT = 200;           // whirlpools in the world (world)
+  const WHIRL_FROM_DAY = 2;          // the first day is calm: whirlpools only start opening from this day
+  const WHIRL_DAMAGE = 10;           // hull damage when caught in a whirlpool's core
+  const WHIRL_PULL = 22;             // px/s pull at the edge of the core…
+  const WHIRL_CURVE = 4;             // …rising exponentially from ~0 at the rim
+  const WHIRL_FADE = 3;              // seconds for a whirlpool to open up / die down
+  const ROLLER_RATE = 1;             // how often big waves come (2 = twice as often, 0.5 = half)
+
+  // -- Fishing and market --
+  const BANK_COUNT = 240;            // fish banks out at sea (world)
+  const HOME_WATERS = 950;           // radius of home waters (all kinds of fish there)
+  const HOME_BANKS = 18;             // fish banks in home waters, refilled as they are fished (world)
+  const FISH_CATCH_MIN = 1, FISH_CATCH_MAX = 2;   // fish per haul (random in between)
+  const FISH_REACH = 1.35;           // a bank counts out to this × its radius (a little past its circle)
+  const FISH_STOP = 12;              // px/s: slow enough to count as stopped on a bank
+  const FISH_SETTLE = 2;             // seconds stopped on a bank before the nets go over
+  const FISH_ANCHOR_SETTLE = 0.25;   // …or this long after dropping anchor on a bank
+  const FISH_TIME_MIN = 2, FISH_TIME_MAX = 4;   // seconds with the nets out before the haul
+  const COIN_LOCAL = 1;              // a village pays this for its own kind of fish
+  const COIN_FOREIGN = 3;            // …and this for fish from other waters
+  const DISH_PRICE = 6;              // coins per specialty dish
+
+  // -- World --
+  const ISLAND_COUNT = 210;          // islands (world)
+  const VILLAGE_DIST = 2475;         // px from home to each village (world)
+  const SAFE_R = 950;                // home waters: no whirlpools, no big waves
+  const LAGOON_R = 650;              // calm lagoon round home: no islands, no rocks (world)
+  const DANGER_RING = 3400;          // the sea gets wilder out to this distance from home (world)
+  const DAY_LEN = 360;               // seconds for a whole day (dawn to dawn)
+  const SIGHT = 220;                 // px of fog uncovered round the boat
+  const CLOUD_COUNT = 12;            // clouds in the sky (world)
+  const RAIN_CLOUD_EVERY = 3;        // one cloud in this many carries rain (world)
+
+  // -- Ruins' powers --
+  const BOON_WIND_T = 60;            // seconds of friendly wind (its text says "a minute")
+  const BOON_FISH_HAULS = 3;         // hauls with blessed nets (its text says "three")
+
+  // -- Tutorial --
+  const TUT_PAUSE = 1500;            // ms between one step and the next
+  const TUT_COMPASS_T = 4500;        // ms the compass step lasts (no input needed)
+  const TUT_DROP_WAIT = 3000, TUT_DROP_T = 3000;   // after the wheel: wait, then the optional drop-anchor tip for a while (ms)
+  const HUB_HOLD = 500;              // ms to hold the hub to drop or weigh anchor
+
+  // -- Look --
+  const UI_TINT = 0.5;               // how much the interface takes on the day/night colours (0 = never, 1 = like the world)
+  const CLOUD_ALPHA = 0.45, CLOUD_CORE = 0.88;   // clouds: see-through at the rim, denser in the middle
+
   let canvas = document.getElementById('c');
   // low-res game buffer: 1 game pixel ≈ 1 CSS px on phones (Playdate-like
   // density), 2 on big screens. It's shown at an integer number of device
@@ -850,13 +919,10 @@
   const START = {x:WORLD.w/2, y:WORLD.h/2};   // centre of the home island
   // home waters are a safe harbour: no whirlpools and no big waves within
   // SAFE_R of home; a ring of buoys marks the edge
-  const SAFE_R = 950;
   // a calm lagoon round the home island: no islands and no rocks within
   // LAGOON_R of home, room to learn the wheel before the first coast
-  const LAGOON_R = 650;
   // 0 at home, 1 from DANGER_RING outwards: drives island, rock, whirlpool
   // and fish-bank density, so the far seas are richer but more treacherous
-  const DANGER_RING = 3400;
   function danger(x,y){ return Math.min(1, wdist(x,y,START.x,START.y)/DANGER_RING); }
   // the sea's character, region by region: a smooth field over the whole
   // (wrapping) world, new every game. 1 = archipelago (crowded islands, tight
@@ -1006,8 +1072,6 @@
   // point, each on its own island with a pier facing home and a lighthouse.
   // Each cooks one course of the dinner and sells two specialties of it (one
   // unit each); buy both and the merchant adds a gift that isn't for sale.
-  const VILLAGE_DIST = 2475;
-  const DISH_PRICE = 6;               // every specialty costs the same, in coins
   const VILLAGES = [
     { name:'Nordania', ux:0, uy:-1, course:'Antipasti', own:'sarde',
       dishes:[{name:'Fiori di Zucca', price:DISH_PRICE}, {name:'Mozzarelle', price:DISH_PRICE}], gift:'Tarallini',
@@ -1147,7 +1211,7 @@
   const SPECIALS = [...VILLAGES, ...RUINS];        // keep rocks and whirlpools away from these
 
   (function genIslands(){
-    const N = 210;
+    const N = ISLAND_COUNT;
     let attempts=0;
     while(islands.length<N && attempts<60000){
       attempts++;
@@ -1267,8 +1331,6 @@
   const whirlpools = [];
   // A whirlpool lives a while in one spot, fades out, and some time later
   // opens up somewhere else. While faded out it has no effect at all.
-  const WHIRL_FADE = 3;                   // seconds to open up / die down
-  const WHIRL_FROM_DAY = 2;               // the first day is calm: whirlpools only start opening from day 2
   const whirlAsleep = (w)=>{ w.phase = 'off'; w.s = 0; w.timer = rand(2, 40); };   // shut, waking at a staggered time
   const bankList = [];                    // fish banks (filled further down)
   function findWhirlSpot(avoidBoat){
@@ -1291,7 +1353,7 @@
     return null;
   }
   (function genWhirlpools(){
-    const N = 200;
+    const N = WHIRL_COUNT;
     for(let k=0; k<N*3 && whirlpools.length<N; k++){
       const sp = findWhirlSpot(false);
       if(!sp) continue;
@@ -1366,14 +1428,10 @@
   const FISH_NAME = {}; for(const k in FISH) FISH_NAME[FISH[k].key] = FISH[k];
   // the market: fish are sold for coins, worth more far from the waters
   // they were caught in; the dishes are bought with coins
-  const COIN_LOCAL = 1;              // a village's own kind of fish: they have plenty
-  const COIN_FOREIGN = 3;            // fish from other waters fetch three times as much
   // (each dish has its own price: see VILLAGES)
   let coins = 0;                     // the purse
   const counts = { sarde:0, sgombri:0, triglie:0, orate:0 };   // fish in the hold
   let caught = 0;                    // fish landed this voyage
-  const FISH_HEAL = 15;              // hull points repaired per patch at a pier (free)
-  const BANK_COUNT = 240;
   function sectorAt(x,y){
     const dx = wdx(x,START.x), dy = wdy(y,START.y);
     if(Math.abs(dx) > Math.abs(dy)) return dx>0 ? 'est' : 'ovest';
@@ -1390,7 +1448,6 @@
   // away: keep new banks out of the player's sight
   // the waters round home (where north, east, south and west meet) keep
   // their own, denser set of banks, with every kind of fish in them
-  const HOME_WATERS = 950, HOME_BANKS = 18;   // plenty of banks in home waters (was 11)
   function spawnBank(away, home){
     for(let tries=0; tries<900; tries++){
       let x, y;
@@ -1561,12 +1618,6 @@
   ];
   let sailLevel = 1;                  // 0 full sail, 1 minimum (rowing pace); the voyage starts with it furled
   const SAIL_MIN = 1;
-  const MAX_HEALTH = 100;
-  const HIT_MAX_DAMAGE = 25;       // damage of a head-on hit at full speed
-  const WHIRL_DAMAGE = 10;         // hull damage when caught in a whirlpool's core
-  const WHIRL_PULL = 22;           // px/s pull at the edge of the core…
-  const WHIRL_CURVE = 4;           // …rising exponentially from ~0 at the rim
-  const REPAIR_EVERY = 0.5;        // seconds between pieces used at the pier
   let repairT = 0;
   // mooring: null while sailing; {phase:'approach'|'moored', …} at the pier
   const MOOR_TIME = 1.4;           // seconds to glide alongside
@@ -1579,10 +1630,6 @@
   let hitCooldown = 0, hurtFlash = 0, shake = 0;
   let playing = false;
   const popups = [];               // floating "+15" / "-8" texts
-  const TURN_RATE = 0.42; // rad/s at full rudder
-  const MAX_SPEED = 50; // px/s (reference speed)
-  const WIND_BOOST = 0.96;            // how much the wind actually gives (was 1.5, then 1.05, then 0.8): sets the top speed
-  const BOAT_ACCEL = 0.4/1.2;         // how fast she picks up speed: the same push in px/s² as before the +20% top speed (was 1.6, halved twice, then 0.4)
 
   // polar-ish speed curve: [angleDeg, factor]
   const POLAR = [
@@ -2424,7 +2471,6 @@
   // ---------- Ship's wheel ----------
   // The wheel self-centres when released (see update). Wheel angle maps linearly
   // to rudder: ±WHEEL_MAX (1.25 turns) = full rudder. Clockwise = starboard.
-  const WHEEL_MAX = Math.PI;                   // half a turn each way is full lock
   const WHEEL_KEY_RATE = Math.PI*1.1;          // rad/s when using arrow keys
   let wheelAngle = 0;
   const wheelCv = document.getElementById('wheel');
@@ -2449,7 +2495,7 @@
   window.addEventListener('resize', sizeWheel);
 
   let wheelPointer = null, wheelLast = 0;
-  const HUB_R = 21, HUB_HOLD = 500;        // hub radius (unscaled) and how long to hold it, ms
+  const HUB_R = 21;                        // hub radius (unscaled); how long to hold it: HUB_HOLD (Tuning)
   const HUB_SAIL_R = 16.5;                  // the hub's grip while sailing (it's drawn big now: keep the wheel around it to steer)
   let hubHold = null, hubShake = 0, bankHint = false, wheelVis = 1, hubScale = 2;
   const stowed = ()=> anchored && weighT <= 0;             // at anchor the wheel itself is locked
@@ -2874,7 +2920,6 @@
   anchored = true;                       // the voyage begins at the quay, anchor down
   // sail: full → medium → minimum. At minimum the sail is all but furled
   // and the oars keep her moving at a slow, steady pace.
-  const ROW_SPEED = 9;
   // the sail is switched with the badge (see Sail badge), the anchor with the
   // hub of the wheel; this just keeps the labels in step
   function renderSailBtn(){
@@ -3086,9 +3131,6 @@
   tutSet('intro');
   // a step done: its highlight (bubble, wiggle, rings) goes at once, and the
   // next step is shown after a pause, so the player isn't rushed
-  const TUT_PAUSE = 1500;
-  const TUT_COMPASS_T = 4500;                  // how long the compass step lasts (no input needed)
-  const TUT_DROP_WAIT = 3000, TUT_DROP_T = 3000;   // after the wheel arrows: wait, then the anchor tip for a while
   let tutWait = false;
   function tutNext(stage, pause = TUT_PAUSE){
     if(tutWait) return;
@@ -3320,13 +3362,8 @@
   }
 
   // ---------- Fishing ----------
-  const FISH_STOP = 12;          // px/s: slow enough to count as stopped on a bank
-  const FISH_SETTLE = 2;         // seconds stopped before the nets go over
-  const FISH_ANCHOR_SETTLE = 0.25;   // …or this long after the anchor goes down on a bank
   const NET_DROP = 1.4;          // net deploying animation
-  const FISH_TIME_MIN = 2, FISH_TIME_MAX = 4;   // seconds with nets out before the haul (random each time)
   const NET_HAUL = 1.1;          // hauling animation
-  const FISH_REACH = 1.35;        // a bank counts out to this × its radius: a little past its circle, to be forgiving
   const NET_THROW_MIN = 24, NET_THROW_MAX = 46;   // how far the net is thrown, toward the middle of the bank
   let fishing = null;            // {bank, t, phase:'drop'|'wait'|'haul'|'cancel', ...}
   let settleT = 0;
@@ -3375,7 +3412,7 @@
       if(steering){ f.phase='cancel'; f.t=0; popups.push({x:boat.x, y:boat.y-22, text:'nets hauled in', life:1.3, max:1.3}); }
       else if(f.t>=f.dur){
         f.phase='haul'; f.t=0;
-        let n = 1 + (Math.random()<0.5 ? 1 : 0);
+        let n = FISH_CATCH_MIN + Math.floor(Math.random()*(FISH_CATCH_MAX - FISH_CATCH_MIN + 1));
         if(boonFish>0){ n *= 2; boonFish--; }
         const kind = FISH[f.bank.sec];
         counts[kind.key] += n; caught += n;
@@ -3400,7 +3437,6 @@
   // The world is split into cells; the ones the boat has come within sight
   // of are remembered. Everything else sits under a soft, dotted fog.
   const FOG_CELL = 48, FOG_N = Math.round(WORLD.w/FOG_CELL);   // 7200/48 = 150 cells a side
-  const SIGHT = 220;                   // how far around the boat you uncover
   const explored = new Uint8Array(FOG_N*FOG_N);
   const fci = (i)=>((i%FOG_N)+FOG_N)%FOG_N;
   function reveal(x,y){
@@ -3437,8 +3473,6 @@
   // It builds up, breaks into tumbling foam, then fades out. Crossing its
   // crest head-on or broadside hurts; catching it from astern lets you surf.
   const rollers = [];
-  const SURF_BOOST = 32;            // extra px/s while surfing
-  const SURF_COS = 0.4;             // surf if the heading is within ~66° of the wave's travel (else it hurts)
   let rollerT = 6;
   // crest offset (along the direction of travel) at u in -1..1: the middle
   // runs ahead, a slow swell rolls along the crest, the ends drag behind
@@ -3475,7 +3509,7 @@
       if(rollerT<=0){
         const dg = danger(boat.x, boat.y);
         const open = 1 - archipelago(boat.x, boat.y);
-        rollerT = rand(0.8,1.2) * (5.5 - 3.2*dg) * (1.6 - 1.1*open);   // rarer near home and among islands, frequent far out on open sea
+        rollerT = rand(0.8,1.2) * (5.5 - 3.2*dg) * (1.6 - 1.1*open) / ROLLER_RATE;   // rarer near home and among islands, frequent far out on open sea
         if(rollers.length < (open > 0.6 ? 9 : 6) && dg > 0.05) spawnRoller();
       }
     }
@@ -3633,8 +3667,8 @@
     r.readyAt = now + RUIN_COOLDOWN;
     const keys = Object.keys(BOONS), k = keys[Math.floor(Math.random()*keys.length)];
     const b = BOONS[k];
-    if(k==='wind'){ boonWindT = 60; shiftDur = 0; }
-    if(k==='fish') boonFish = 3;
+    if(k==='wind'){ boonWindT = BOON_WIND_T; shiftDur = 0; }
+    if(k==='fish') boonFish = BOON_FISH_HAULS;
     if(k==='heal'){ boat.health = MAX_HEALTH; showHealth(); }
     Sfx.bell(); buzz([14,22,14,22,14,22,14,22,14,22,40]);   // the ruins' power: a quick flutter
     openDialog(r.name + ' · ' + b.title,
@@ -4672,7 +4706,6 @@
   // ---------- Day and night ----------
   // Palette only: the two 1-bit colours drift through a day. Everything is
   // drawn exactly the same; only "paper" and "ink" change colour.
-  const DAY_LEN = 360;                         // seconds for a whole day
   let dayT = 0.1;                              // 0 = first light; start mid-morning
   let dayNo = 1;                               // which day of the voyage it is (shown in the list)
   const DAY_KEYS = [                           // [time of day, paper rgb, ink rgb, darkness 0..1]
@@ -4697,7 +4730,6 @@
   }
   // the interface follows the light too, but only partway (UI_TINT): the
   // dithered widgets and the HTML panels (--paper / --ink) share the colours
-  const UI_TINT = 0.5;
   let uiPalKey = '';
   function uiPalette(){
     const P = [PAPER32&255, (PAPER32>>8)&255, (PAPER32>>16)&255], I = [INK32&255, (INK32>>8)&255, (INK32>>16)&255];
@@ -5535,7 +5567,7 @@
             shear: rand(0,6.3), cw, ch: chh};
   }
   const clouds = [];
-  for(let tries=0; tries<1500 && clouds.length<12; tries++){
+  for(let tries=0; tries<1500 && clouds.length<CLOUD_COUNT; tries++){
     const x = rand(0,CLOUD_P), y = rand(0,CLOUD_P);
     const clear = clouds.every(c=>{
       const dx = Math.abs(c.x-x), dy = Math.abs(c.y-y);
@@ -5546,7 +5578,7 @@
   // about a third of the clouds carry rain: a darker underside, and a
   // shower falling on the sea beneath them
   clouds.forEach((c,i)=>{
-    c.rain = i%3 === 0;
+    c.rain = i % RAIN_CLOUD_EVERY === 0;
     if(!c.rain) return;
     c.drops = Array.from({length: Math.round(c.W*0.3)}, ()=>{ const a = rand(0,6.3), r = Math.sqrt(Math.random()); return {u: Math.cos(a)*r, v: Math.sin(a)*r, ph: Math.random(), len: rand(6,10)}; });
   });
@@ -5565,7 +5597,6 @@
       ctx.moveTo(ox+x+dx+rr, oy+y+dy); ctx.ellipse(ox+x+dx, oy+y+dy, rr, ry, 0, 0, Math.PI*2);
     }
   }
-  const CLOUD_ALPHA = 0.45, CLOUD_CORE = 0.88;  // see-through at the edges, denser toward the middle
   function drawCloudBody(c, P, ox, oy){
     ctx.fillStyle = INKC; puffPath(P, ox, oy, 1.8, 0, 0, 1); ctx.fill();                 // defined inked edge
     ctx.fillStyle = V(c.rain ? 0.48 : 0.66); puffPath(P, ox, oy, 0, 0, 0, 1); ctx.fill(); // the shaded underside of every billow (heavy with rain: darker)
