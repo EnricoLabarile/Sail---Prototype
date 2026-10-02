@@ -42,7 +42,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   The market is a centred window over a 90% black shade; while it's open the halyard, compass (with its fish
   counters) and wheel/anchor are hidden. Buttons: Quit (left) and Trade (right); both close it and leave you moored
   with the anchor back, so you can linger; a market opens once per docking (leave and come back to trade again).
-- **Compass** (124 px, top centre of the main view; the open logbook covers it; hidden in the tutorial
+- **Compass** (76 px, `CMP_PX`, right side just above the logbook icon, same width; hidden in the tutorial
   until the halyard step): points home, a dot per village filled once a dish is bought there; drawn like the
   wheel (greys into a low-res canvas, then dithered): brass bezel with rivets, shaded card, wind rose, glass glare.
   The old fish counters round it are hidden (`#wood`); the cargo is shown on the logbook's right page.
@@ -67,8 +67,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   Oars never come out because of the anchor (nor while getting under way after weighing it).
   The **logbook** button (right side, just above the sail badge) is just the book, no round knob: a 76 px icon
   (`LOG_PX`) drawn like the wheel (greys, then dithered: dark leather, spine bands, metal corners, strap; drawn in 56
-  units and scaled; `drawLogbookIcon`) with a thin paper halo, and a **working mini compass** set into the cover
-  (`drawMiniCompass`, every frame while shut, points home). Its cover swings open to an open-book icon.
+  units and scaled; `drawLogbookIcon`) with a thin paper halo and an embossed compass rose on the cover. Its cover swings open to an open-book icon.
   When a course is first crossed off (its first dish bought), the book shimmers (a glint across the cover and a
   wiggle, class `news`) until the logbook is opened; there the new line is drawn across live (`freshCourses`). Its panel is an open book
   that arrives in two steps: the shut book slides down centred (cover up), then the front cover swings open on the
