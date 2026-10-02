@@ -39,33 +39,33 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   Drag or tap units across; balance = fish sold − goods taken. Fish sell for coins: 2 if from other waters, 1 if local.
   "Trade" is disabled if the purse can't cover a negative balance; a positive balance goes to the purse.
   Repairs are automatic at any pier (1 fish = +15 hull; at a village it never spends what the next dish will cost).
-  The market is a centred window over a 90% black shade; while it's open the halyard, compass (with its fish
+  The market is a centred window over a 90% black shade; while it's open the sail badge, compass (with its fish
   counters) and wheel/anchor are hidden. Buttons: Quit (left) and Trade (right); both close it and leave you moored
   with the anchor back, so you can linger; a market opens once per docking (leave and come back to trade again).
 - **Compass** (76 px, `CMP_PX`, bottom left, just above the logbook icon, same width, straddling the dashboard rail; hidden in the tutorial
-  until the halyard step): points home, a dot per village filled once a dish is bought there; drawn like the
+  until the sail step): points home, a dot per village filled once a dish is bought there; drawn like the
   wheel (greys into a low-res canvas, then dithered): brass bezel with rivets, shaded card, wind rose, glass glare.
   The old fish counters round it are hidden (`#wood`); the cargo is shown on the logbook's right page.
 - **Intro:** on "Set sail" the card rolls up into a scroll that is tossed into the list button (skipped with reduced motion).
 - **Tutorial** (first voyage, `tut` in the Tutorial section): controls appear one at a time, hidden and disabled
-  (keys too) until their step: logbook shimmers (open and close it) -> halyard appears, glows and swings (pull it)
+  (keys too) until their step: logbook shimmers (open and close it) -> the sail badge appears and glows (tap it)
   -> the anchor hub appears with pulsing rings (weigh anchor) -> two curved arrows on the wheel for ~4.5 s (or until
   you steer) -> free. The smoke test skips it with `tutSet("done")`.
 - **Controls:** wheel (drag in a circle; half a turn = full lock). The wheel has no backing disc: the sea shows between the spokes; its wood
   is a mid grey (`WOOD`, `WOOD_SH`, `WOOD_RIM` in drawWheel) so it stands out from the pale sea.
-  **Dashboard** (`drawDash`, `#dash`): a wooden panel across the bottom (`DASH_H` = 112 px + safe area), like a car's
-  dash under the windscreen: dark planks with grain, butt joints and nails, a light rounded rail on top; dithered like
-  the UI, repainted on resize and when the light changes. The wheel's hub sits just above the rail (its lower half rests
-  on the wood); the camera is shifted by `DASH_H/2` so the boat stays centred in the visible sea. Hub of the wheel = anchor only:
+  **Dashboard** (`drawDash`, `#dash`, a 192 px canvas `DASH_BOX` + safe area), like a car's dash under the windscreen:
+  dark planks with grain, butt joints and nails, a light rounded rail along its top edge; dithered like the UI, repainted
+  on resize and when the light changes. Its outline follows the controls: a raised pod on the left (`POD_H` = 176) for the
+  compass and logbook, then the rail drops to `DASH_H` = 108, just under the wheel's hub (the wheel's lower half rests on the
+  wood), and runs on over the sail badge to the right edge. The camera is shifted by `DASH_H/2` so the boat stays centred
+  in the visible sea. Layout: compass over logbook bottom left, wheel centre, sail badge bottom right (level with the logbook).
+  Hub of the wheel = anchor only:
   **long press 0.5 s = anchor**. At anchor the wheel fades out and only the hub (bigger, dark) remains. The hub is
   shaded in greys and dithered like the rest of the UI: sailing, a light face (r 14.5) with a big ink anchor; at
   anchor, a single dark knob with one light rim and a paper anchor.
-  **Halyard** (bottom right: a rope tied straight under the sail badge, no block): grab it and it follows the finger at a
-  fixed length (sags when slack); pulled taut more line slides out from under the badge, clicking (haptic + sound), and past the mark it switches
-  sail (full / minimum) with a clack; on release it swings back. Badge on top shows the sail state. The whole halyard
-  is drawn at `ROPE_SCALE` = 1.6 (crisp: the low-res canvas grows too). The badge is lowered (`HEAD_Y`) so its top lines up with
-  the top of the wheel; a ~35 px pull switches the sail. The voyage starts with the sail furled; the rope hangs short
-  while furled (`ROPE_LEN_FURLED` = 10: the handle just under the badge) and long with the sail open (`ROPE_LEN_OPEN`), easing between the two.
+  **Sail badge** (`#sail`, `drawSail`, section "Sail badge"; the old halyard rope is gone): a paper disc set into the
+  dashboard bottom right, 76 px, showing the sail state; tap it (or Enter/Space on it, or S) to switch sail (full /
+  minimum) with a clack and a buzz; it pops when it switches. The voyage starts with the sail furled.
   The boat gathers way slowly (`BOAT_ACCEL` = 0.4, a quarter of the original 1.6; slowing down unchanged).
   Top speed is kept modest (`WIND_BOOST` = 0.8; running dead downwind adds only up to +10%, `downwindBonus`).
   Oars never come out because of the anchor (nor while getting under way after weighing it).
@@ -93,7 +93,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
 
 ## Map of index.html (search for these section headers: `// ---------- Name ----------`)
 World setup · Islands · Home island · Piers · Villages · Ruins · Rocks · Whirlpools · Fish banks · Boat ·
-Trade routes · Wind · Input · Haptics · Sound · Ship's wheel · Dashboard · Halyard · Intro · Tutorial · UI refs · Dialog · Fishing · Fog of war ·
+Trade routes · Wind · Input · Haptics · Sound · Ship's wheel · Dashboard · Sail badge · Intro · Tutorial · UI refs · Dialog · Fishing · Fog of war ·
 Rollers · Powers from the ruins · Village market · Cicadas · Night sounds · Town sounds · Wind streaks · Shopping list ·
 Buoys · Traders · Update · 1-bit rendering · Day and night · Draw · Villages (pixel art) · Ruins (pixel art) ·
 Cloud shadows (clouds) · Ambient life: gulls

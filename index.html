@@ -239,8 +239,8 @@
   #btn-list.open .log-pages{opacity:1; transform:none;}
   #btn-list{left:9px; right:auto; bottom:calc(10px + env(safe-area-inset-bottom,0px));}   /* bottom left, on the dashboard; the compass sits above it */
   body.at-market #btn-list{display:none;}
-  /* at the barter table the halyard and the compass (with its fish counters) step aside */
-  body.at-market #rope, body.at-market #rope-hit, body.at-market #compass, body.at-market #wood, body.at-market #wheel{display:none;}
+  /* at the barter table the sail badge and the compass (with its fish counters) step aside */
+  body.at-market #sail, body.at-market #compass, body.at-market #wood, body.at-market #wheel{display:none;}
   /* the shopping list: slides down from the top of the screen */
   /* the logbook, open: dark grained leather with a stitched edge and metal corners,
      framing two pages either side of a crease */
@@ -326,7 +326,7 @@
   #hold-page .hold-goods{display:flex; flex-wrap:wrap; gap:4px; padding-top:6px; border-top:1.5px dashed var(--ink);}
   #hold-page .hold-goods svg{width:26px; height:26px; display:block;}
   /* the dashboard: a wooden panel along the bottom (the cockpit); the controls sit on it */
-  #dash{position:fixed; left:0; bottom:0; width:100%; height:calc(112px + env(safe-area-inset-bottom,0px)); z-index:5; pointer-events:none; image-rendering:pixelated;}
+  #dash{position:fixed; left:0; bottom:0; width:100%; height:calc(192px + env(safe-area-inset-bottom,0px)); z-index:5; pointer-events:none; image-rendering:pixelated;}
   #wheel{
     transition:opacity .35s;
     position:fixed;
@@ -337,32 +337,15 @@
     z-index:6;
   }
   #wheel.grabbed{cursor:grabbing;}
-  /* the halyard: a rope hanging from a block on the right; pull it down to switch sail */
-  /* the drawing is wider than the grip, so the rope can be dragged about the
-     screen; only the grip (#rope-hit) takes touches */
-  /* sizes are the drawing (170×222 units) scaled by ROPE_SCALE (1.6) */
-  #rope{
-    position:fixed;
-    right:0; bottom:calc(-3px + env(safe-area-inset-bottom,0px));
-    width:272px; height:355px;
-    pointer-events:none;
-    z-index:7;
-  }
-  #rope-hit{
-    position:fixed;
-    right:21px; bottom:calc(16px + env(safe-area-inset-bottom,0px));
-    width:60px; height:212px;
-    touch-action:none; cursor:grab;
-    z-index:7;
-  }
-  #rope-hit.grabbed{cursor:grabbing;}
+  /* the sail badge: bottom right, set into the dashboard (mirroring the logbook); tap it to switch sail */
+  #sail{position:fixed; right:13px; bottom:calc(12px + env(safe-area-inset-bottom,0px)); width:76px; height:76px;
+    z-index:7; cursor:pointer; touch-action:manipulation; image-rendering:pixelated; transition:opacity .5s;}
+  #sail:focus-visible{outline:2px dashed var(--ink); outline-offset:-4px; border-radius:50%;}
   /* tutorial: controls not reached yet are hidden and can't be touched; they fade in when their turn comes */
-  #rope, #rope-hit{transition:opacity .5s;}
-  body.tut-no-rope #rope, body.tut-no-rope #rope-hit, body.tut-no-wheel #wheel{opacity:0; pointer-events:none;}
-  /* the halyard's turn: it glows (a light and a dark halo, so it shows on pale sea and dark fog) */
-  body.tut-rope #rope{animation:tutGlow 1.4s ease-in-out infinite;}
+  body.tut-no-rope #sail, body.tut-no-wheel #wheel{opacity:0; pointer-events:none;}
+  /* the sail's turn: the badge glows (a light and a dark halo, so it shows on pale sea and dark fog) */
+  body.tut-rope #sail{animation:tutGlow 1.4s ease-in-out infinite;}
   @keyframes tutGlow{0%,100%{filter:none} 50%{filter:drop-shadow(0 0 3px #fff) drop-shadow(0 0 2px #fff) drop-shadow(0 0 1px rgba(0,0,0,.7))}}
-  #rope-hit:focus-visible{outline:2px dashed var(--ink); outline-offset:2px;}
 
   /* --- Intro / game over --- */
   /* setting sail: the backdrop fades on its own layer while the card rolls into a scroll */
@@ -499,8 +482,7 @@
   <div id="toast" class="panel" role="status" aria-live="polite"></div>
   <canvas id="dash" aria-hidden="true"></canvas>   <!-- the wooden dashboard the controls sit on -->
   <canvas id="wheel" aria-label="Helm: drag clockwise or anticlockwise to steer"></canvas>
-  <canvas id="rope" aria-hidden="true"></canvas>
-  <div id="rope-hit" tabindex="0" role="button" aria-label="Halyard: pull down to switch sail"></div>
+  <canvas id="sail" tabindex="0" role="button" aria-label="Sail: tap to switch"></canvas>   <!-- the sail badge on the dashboard -->
 
   <div id="intro">
    <div class="card intro-card">
@@ -1570,7 +1552,7 @@
     if(e.key==='ArrowLeft'||e.key==='a'||e.key==='A') turnLeft=true;
     if(e.key==='ArrowRight'||e.key==='d'||e.key==='D') turnRight=true;
     if(e.code==='Space' && !e.repeat){ e.preventDefault(); if(tutAt('anchor')) setAnchor(!anchored); }   // space: anchor (once the tutorial shows it)
-    if(e.code==='KeyS' && !e.repeat && tutAt('rope')) pullRope();                // S: sail (once the tutorial shows it)
+    if(e.code==='KeyS' && !e.repeat && tutAt('rope')) switchSail();                // S: sail (once the tutorial shows it)
   });
   window.addEventListener('keyup', e=>{
     if(e.key==='ArrowLeft'||e.key==='a'||e.key==='A') turnLeft=false;
@@ -2712,11 +2694,11 @@
   // sail: full → medium → minimum. At minimum the sail is all but furled
   // and the oars keep her moving at a slow, steady pace.
   const ROW_SPEED = 9;
-  // the sail is switched with the halyard (see below), the anchor with the
+  // the sail is switched with the badge (see Sail badge), the anchor with the
   // hub of the wheel; this just keeps the labels in step
   function renderSailBtn(){
     wheelCv.setAttribute('aria-label', 'Helm: drag round to steer. Centre: hold half a second to ' + (anchored ? 'weigh' : 'drop') + ' anchor.');
-    ropeHit.setAttribute('aria-label', 'Halyard: pull down to switch sail (now ' + SAIL_LEVELS[sailLevel].name + ').');
+    sailCv.setAttribute('aria-label', 'Sail: tap to switch (now ' + SAIL_LEVELS[sailLevel].name + ').');
   }
   // a switch: full sail ↔ minimum
   function cycleSail(){
@@ -2731,7 +2713,9 @@
   // the other controls are set into it. Drawn in greys (planks, grain, butt
   // joints, nails, a rounded rail along the top), then dithered like the rest
   // of the interface; painted again on resize and when the light changes.
-  const DASH_H = 112;                          // CSS px above the safe area (the hub sits just over the rail)
+  const DASH_H = 108;                          // CSS px above the safe area to the rail's line (the hub sits just over it)
+  const POD_H = 176;                           // the raised pod on the left, under the compass and the logbook
+  const DASH_BOX = 192;                        // the canvas height above the safe area (see #dash in the CSS)
   const dashCv = document.getElementById('dash');
   let dashDone = false;
   window.addEventListener('resize', ()=>{ dashDone = false; });
@@ -2743,10 +2727,23 @@
     const c = lo.getContext('2d', {willReadFrequently:true});
     const g = v=> 'rgb('+v+','+v+','+v+')', INKW = '#000';
     const hash = (n)=>{ const s = Math.sin(n*127.1+311.7)*43758.5453; return s - Math.floor(s); };   // stable "random"
-    const RAIL = 13, PLANK = 30;
+    // the outline follows the controls: a raised pod on the left for the
+    // compass and the logbook, then the rail drops to just under the wheel's
+    // hub and runs on over the sail badge to the right edge (heights are
+    // measured from the bottom, above the safe area)
+    const base = DASH_BOX, yPod = base - POD_H, yRail = base - DASH_H, POD_W = 102, CR = 16;
+    const edge = ()=>{
+      c.moveTo(-10, yPod);
+      c.lineTo(POD_W - CR, yPod); c.quadraticCurveTo(POD_W, yPod, POD_W + 4, yPod + CR*0.7);
+      c.bezierCurveTo(POD_W + 12, yRail - 6, POD_W + 16, yRail, POD_W + 34, yRail);
+      c.lineTo(W + 10, yRail);
+    };
+    const shape = ()=>{ c.beginPath(); edge(); c.lineTo(W + 10, H + 10); c.lineTo(-10, H + 10); c.closePath(); };
+    c.save(); shape(); c.clip();
     c.fillStyle = g(104); c.fillRect(0, 0, W, H);                                  // dark oiled wood
     // planks: grain, butt joints (staggered) and a nail either side of each joint
-    for(let row = 0, y = RAIL+3; y < H; row++, y += PLANK){
+    const PLANK = 30;
+    for(let row = 0, y = yPod + 10; y < H; row++, y += PLANK){
       c.strokeStyle = g(74); c.lineWidth = 1;
       for(let n = 0; n < 4; n++){
         const yy = y + 5 + n*6.5 + hash(row*9+n)*3, ph = hash(row*13+n)*6, amp = 0.8 + hash(row*7+n)*1.4;
@@ -2766,184 +2763,70 @@
         }
       }
     }
-    // the rail along the top: a rounded, lighter moulding with a highlight,
-    // and a shadow cast on the planks below it
-    c.fillStyle = g(58); c.fillRect(0, RAIL, W, 4);
-    const rg = c.createLinearGradient(0, 0, 0, RAIL);
-    rg.addColorStop(0, g(205)); rg.addColorStop(0.35, g(170)); rg.addColorStop(1, g(105));
-    c.fillStyle = rg; c.fillRect(0, 0, W, RAIL);
-    c.fillStyle = INKW; c.fillRect(0, 0, W, 1.6); c.fillRect(0, RAIL-0.5, W, 1.5);
-    c.fillStyle = g(240); c.fillRect(0, 3, W, 1);
+    c.fillStyle = g(58); c.save(); c.translate(0, 9); c.beginPath(); edge(); c.lineTo(W+10, -50); c.lineTo(-10, -50); c.closePath(); c.fill(); c.restore();   // the rail's shadow on the planks
+    c.restore();
+    // the rail along the top edge: a rounded moulding, ink-edged, with a highlight
+    c.lineJoin = 'round'; c.lineCap = 'butt';
+    c.strokeStyle = INKW; c.lineWidth = 15; c.beginPath(); edge(); c.stroke();
+    c.strokeStyle = g(150); c.lineWidth = 12; c.beginPath(); edge(); c.stroke();
+    c.strokeStyle = g(185); c.lineWidth = 7; c.save(); c.translate(0, -1.5); c.beginPath(); edge(); c.stroke(); c.restore();
+    c.strokeStyle = g(240); c.lineWidth = 1.2; c.save(); c.translate(0, -3); c.beginPath(); edge(); c.stroke(); c.restore();
     ditherUI(c, W, H);
     if(dashCv.width !== W*k || dashCv.height !== H*k){ dashCv.width = W*k; dashCv.height = H*k; }
     const x = dashCv.getContext('2d'); x.imageSmoothingEnabled = false; x.clearRect(0, 0, dashCv.width, dashCv.height);
     x.drawImage(lo, 0, 0, dashCv.width, dashCv.height);
   }
 
-  // ---------- Halyard ----------
-  // A rope hanging from a block on the right of the screen. Grab it and it
-  // goes where the finger goes, like a real line: it never stretches, it
-  // swings slack when you move towards the block, and pulled further away
-  // it runs out through the block (heavier the further it comes), clicking
-  // as it goes. Past the mark the sail switches with a clack. Let go and it
-  // swings back to hang where it was.
-  const ropeCv = document.getElementById('rope'), ropeHit = document.getElementById('rope-hit');
-  const rctx = ropeCv.getContext('2d');
-  const RP_W = 170, RP_H = 222, RP_CX = RP_W - 32;          // drawing units; the block hangs 32 units from the right edge
-  const ROPE_SCALE = 1.6;                                    // drawn this much bigger (crisp: the low-res canvas grows too)
-  const RPX_W = Math.round(RP_W*ROPE_SCALE), RPX_H = Math.round(RP_H*ROPE_SCALE);
-  // the badge is lowered HEAD_Y units so its top lines up with the top of
-  // the wheel; the rope hangs straight from it
-  const HEAD_Y = 73;
-  // how much line hangs: long with the sail open, short with it furled (the
-  // line hauled in); it eases between the two when the sail switches
-  const ROPE_TOP = 30 + HEAD_Y, ROPE_LEN_OPEN = 64, ROPE_LEN_FURLED = 10;   // furled: the handle hangs just under the badge
-  let ROPE_LEN = ROPE_LEN_FURLED;                          // (the voyage starts with the sail furled)
-  const ROPE_MAX = 40, ROPE_FIRE = 18, ROPE_TICK = 6;       // most line out, where it switches, units per click
-  let ROPE_REST = ROPE_TOP + ROPE_LEN;
-  const rlo = document.createElement('canvas'); rlo.width = RPX_W; rlo.height = RPX_H;
-  const rl = rlo.getContext('2d', {willReadFrequently:true});
-  function sizeRope(){
-    const k = Math.max(1, Math.round((window.devicePixelRatio||1)));
-    ropeCv.width = RPX_W*k; ropeCv.height = RPX_H*k;
-    rctx.imageSmoothingEnabled = false;
+  // ---------- Sail badge ----------
+  // The sail's state in a paper disc set into the dashboard (bottom right):
+  // tap it to switch between full sail and minimum, with a clack and a buzz;
+  // it pops when it switches. Drawn like the other controls: greys into a
+  // low-res canvas (38 units, ×2), then dithered.
+  const sailCv = document.getElementById('sail');
+  const sbctx = sailCv.getContext('2d');
+  const SAIL_PX = 76, SAIL_K = 2;
+  const slo = document.createElement('canvas'); slo.width = SAIL_PX; slo.height = SAIL_PX;
+  const sl = slo.getContext('2d', {willReadFrequently:true});
+  let sailFlash = 0, sailLastT = performance.now();
+  function sizeSail(){
+    const k = Math.max(1, Math.round(window.devicePixelRatio||1));
+    sailCv.width = SAIL_PX*k; sailCv.height = SAIL_PX*k; sbctx.imageSmoothingEnabled = false;
   }
-  sizeRope();
-  window.addEventListener('resize', sizeRope);
-  // the toggle at the rope's end: position and velocity, in canvas pixels
-  const rope = {x: RP_CX, y: ROPE_REST, vx: 0, vy: 0, pull: 0, ptr: null, ox: 0, oy: 0, lx: 0, ly: 0, lt: 0};
-  let ropeFired = false, ropeTickIdx = 0, ropeLastT = performance.now(), ropeFlash = 0;
-  const ropeLocal = ev=>{ const r = ropeCv.getBoundingClientRect(); return [(ev.clientX - r.left)*(RP_W/r.width), (ev.clientY - r.top)*(RP_H/r.height)]; };
-  // put the toggle as near (tx,ty) as a rope of fixed length allows
-  function ropeTo(tx, ty){
-    tx = Math.max(16, Math.min(RP_W - 10, tx)); ty = Math.max(ROPE_TOP + 6, Math.min(RP_H - 22, ty));
-    const dx = tx - RP_CX, dy = ty - ROPE_TOP, d = Math.hypot(dx, dy) || 1;
-    if(d <= ROPE_LEN){ rope.x = tx; rope.y = ty; rope.pull = 0; return; }   // slack: it just follows
-    const pull = ROPE_MAX*(1 - Math.exp(-(d - ROPE_LEN)/(ROPE_MAX*0.9)));   // taut: line runs out, heavier as it comes
-    rope.x = RP_CX + dx/d*(ROPE_LEN + pull); rope.y = ROPE_TOP + dy/d*(ROPE_LEN + pull); rope.pull = pull;
-  }
-  ropeHit.addEventListener('pointerdown', ev=>{
-    ev.preventDefault();
-    rope.ptr = ev.pointerId; ropeHit.setPointerCapture(ev.pointerId); ropeHit.classList.add('grabbed');
-    const [x,y] = ropeLocal(ev);
-    rope.ox = rope.x - x; rope.oy = rope.y - y;              // hold it where the finger landed
-    rope.vx = rope.vy = 0; rope.lx = rope.x; rope.ly = rope.y; rope.lt = performance.now();
-    ropeFired = false; ropeTickIdx = Math.floor(rope.pull/ROPE_TICK);
-    Sfx.init(); buzz(6);
-  });
-  ropeHit.addEventListener('pointermove', ev=>{
-    if(ev.pointerId !== rope.ptr) return;
-    ev.preventDefault();
-    const [x,y] = ropeLocal(ev);
-    ropeTo(x + rope.ox, y + rope.oy);
-    const now = performance.now(), dtm = Math.max(8, now - rope.lt);   // finger speed, for the swing on release
-    rope.vx = (rope.x - rope.lx)/dtm*1000; rope.vy = (rope.y - rope.ly)/dtm*1000;
-    rope.lx = rope.x; rope.ly = rope.y; rope.lt = now;
-    const idx = Math.floor(rope.pull/ROPE_TICK);
-    if(idx > ropeTickIdx){ buzz(5); Sfx.tick(0.3, 1.15 + idx*0.06); }      // the line clicking through the block
-    ropeTickIdx = idx;
-    if(!ropeFired && rope.pull >= ROPE_FIRE){ ropeFired = true; switchByRope(); }
-  });
-  const ropeRelease = ev=>{
-    if(ev.pointerId !== rope.ptr) return;
-    rope.ptr = null; ropeHit.classList.remove('grabbed');
-    const sp = Math.hypot(rope.vx, rope.vy), cap = 500;
-    if(sp > cap){ rope.vx *= cap/sp; rope.vy *= cap/sp; }
-  };
-  ropeHit.addEventListener('pointerup', ropeRelease);
-  ropeHit.addEventListener('pointercancel', ropeRelease);
-  ropeHit.addEventListener('keydown', e=>{ if(e.key==='Enter' && !e.repeat){ e.preventDefault(); pullRope(); } });
-  function switchByRope(){
-    cycleSail(); Sfx.thunk(0.55); buzz([28,40,14]); ropeFlash = 1;
+  sizeSail();
+  window.addEventListener('resize', sizeSail);
+  function switchSail(){
+    cycleSail(); Sfx.thunk(0.55); buzz([28,40,14]); sailFlash = 1;
     if(tut === 'rope') tutSet('anchor');                                   // tutorial: now weigh anchor
   }
-  // a pull from the keyboard: the rope jumps down and swings back on its own
-  function pullRope(){ ropeTo(RP_CX, ROPE_REST + ROPE_FIRE + 12); rope.vx = rope.vy = 0; switchByRope(); }
-  function drawRope(){
-    const now = performance.now(), dt = Math.min(0.05, (now - ropeLastT)/1000); ropeLastT = now;
-    const lenWant = sailLevel === SAIL_MIN ? ROPE_LEN_FURLED : ROPE_LEN_OPEN;
-    ROPE_LEN += (lenWant - ROPE_LEN)*Math.min(1, dt*5); ROPE_REST = ROPE_TOP + ROPE_LEN;
-    if(rope.ptr === null){                                   // let go: it swings back to hang straight
-      rope.vx += (-70*(rope.x - RP_CX) - 6*rope.vx)*dt;
-      rope.vy += (-90*(rope.y - ROPE_REST) - 9*rope.vy)*dt;
-      rope.x += rope.vx*dt; rope.y += rope.vy*dt;
-      const dx = rope.x - RP_CX, dy = rope.y - ROPE_TOP, d = Math.hypot(dx, dy) || 1;
-      rope.pull = Math.max(0, d - ROPE_LEN);
-      if(Math.abs(rope.x - RP_CX) < 0.05 && Math.abs(rope.y - ROPE_REST) < 0.05 && Math.hypot(rope.vx, rope.vy) < 0.5){ rope.x = RP_CX; rope.y = ROPE_REST; rope.vx = rope.vy = 0; rope.pull = 0; }
-    }
-    ropeFlash = Math.max(0, ropeFlash - dt*2.5);
-    if(tut === 'rope' && rope.ptr === null){                  // tutorial: a little swing now and then, to catch the eye
-      tutSwingT -= dt; if(tutSwingT <= 0){ tutSwingT = 2.2; rope.vx += 150; }
-    }
-    const c = rl, INKW = '#000', PAPW = '#fff', pull = rope.pull;
-    c.setTransform(1,0,0,1,0,0); c.clearRect(0,0,RPX_W,RPX_H);
-    c.setTransform(ROPE_SCALE,0,0,ROPE_SCALE,0,0);          // draw in rope units
+  sailCv.addEventListener('pointerdown', ev=>{ ev.preventDefault(); Sfx.init(); switchSail(); });
+  sailCv.addEventListener('keydown', e=>{ if((e.key==='Enter' || e.key===' ') && !e.repeat){ e.preventDefault(); e.stopPropagation(); switchSail(); } });
+  function drawSail(){
+    const now = performance.now(), dt = Math.min(0.05, (now - sailLastT)/1000); sailLastT = now;
+    sailFlash = Math.max(0, sailFlash - dt*2.5);
+    const c = sl, INKW = '#000', PAPW = '#fff';
+    c.setTransform(1,0,0,1,0,0); c.clearRect(0,0,SAIL_PX,SAIL_PX);
+    c.setTransform(SAIL_K,0,0,SAIL_K,0,0);
     c.lineCap = 'round'; c.lineJoin = 'round';
-    // the rope: a curve from the badge to the toggle that sags when slack;
-    // its laid strands slide out from under the badge as it's pulled
-    const hx = rope.x, hy = rope.y, dx = hx - RP_CX, dy = hy - ROPE_TOP, d = Math.hypot(dx, dy) || 1;
-    const sag = Math.sqrt(Math.max(0, ROPE_LEN*ROPE_LEN - d*d))*0.55;   // spare length hangs down in a belly
-    const qx = (RP_CX + hx)/2, qy = (ROPE_TOP + hy)/2 + sag;
-    const N = 28, pts = [];
-    for(let i=0;i<=N;i++){ const u = i/N, a = (1-u)*(1-u), b = 2*u*(1-u), e = u*u;
-      pts.push([a*RP_CX + b*qx + e*hx, a*ROPE_TOP + b*qy + e*hy]); }
-    const line = ()=>{ c.beginPath(); pts.forEach(([x,y],i)=> i ? c.lineTo(x,y) : c.moveTo(x,y)); };
-    c.strokeStyle = INKW; c.lineWidth = 11; line(); c.stroke();
-    c.strokeStyle = PAPW; c.lineWidth = 7.4; line(); c.stroke();
-    c.strokeStyle = INKW; c.lineWidth = 1.3; c.lineCap = 'butt';
-    c.beginPath();
-    {
-      let run = -(((pull % 5) + 5) % 5), prev = pts[0];
-      for(let i=1;i<pts.length;i++){
-        const p = pts[i], sl = Math.hypot(p[0]-prev[0], p[1]-prev[1]) || 1, tx = (p[0]-prev[0])/sl, ty = (p[1]-prev[1])/sl;
-        for(let s = 5 - run; s <= sl; s += 5){
-          if(i === pts.length-1 && s > sl - 3) break;
-          const x = prev[0] + tx*s, y = prev[1] + ty*s, nx = -ty, ny = tx;
-          c.moveTo(x - nx*3.4 - tx*2.2, y - ny*3.4 - ty*2.2); c.lineTo(x + nx*3.4 + tx*2.2, y + ny*3.4 + ty*2.2);
-        }
-        run = (run + sl) % 5; prev = p;
-      }
-    }
-    c.stroke(); c.lineCap = 'round';
-    // the badge: which sail is set, in a paper disc over the rope's top (the
-    // rope is tied to it); it pops when the sail switches
-    {
-      const s = 1 + 0.25*Math.sin(ropeFlash*Math.PI);
-      c.save(); c.translate(RP_CX, 18 + HEAD_Y); c.scale(s, s);
-      c.fillStyle = PAPW; c.strokeStyle = INKW; c.lineWidth = 2;
-      c.beginPath(); c.arc(0,0,15,0,Math.PI*2); c.fill(); c.stroke();
-      c.lineWidth=1.4; c.beginPath(); c.moveTo(0,-10); c.lineTo(0,10); c.stroke();          // mast
-      c.lineWidth=1.8; c.beginPath(); c.moveTo(-7,-7); c.lineTo(7,-7); c.stroke();          // yard
-      c.fillStyle = INKW;
-      if(sailLevel === SAIL_MIN){                                                            // furled, over a little wave
-        c.beginPath(); c.roundRect(-6.5,-6.6,13,3.6,1.7); c.fill();
-        c.lineWidth=1.2; c.beginPath(); c.moveTo(-6.5,7); c.quadraticCurveTo(-3.2,5,0,7); c.quadraticCurveTo(3.2,9,6.5,7); c.stroke();
-      } else {                                                                               // full and drawing
-        c.beginPath(); c.moveTo(-6,-6.2); c.quadraticCurveTo(0,-4.2,6,-6.2); c.quadraticCurveTo(8.2,0,6,6);
-        c.quadraticCurveTo(0,8,-6,6); c.quadraticCurveTo(-8.2,0,-6,-6.2); c.fill();
-      }
-      c.restore();
-    }
-    // the toggle: a wooden peg across the rope's end, and a knot below it,
-    // turned to follow the rope's last stretch
-    {
-      const [ax, ay] = pts[pts.length-2], ang = Math.atan2(hy - ay, hx - ax) - Math.PI/2;
-      c.save(); c.translate(hx, hy); c.rotate(ang);
-      c.fillStyle = PAPW; c.strokeStyle = INKW; c.lineWidth = 1.6;                                // knot
-      c.beginPath(); c.arc(0, 16, 6.5, 0, Math.PI*2); c.fill(); c.stroke();
-      c.lineWidth = 1.1; c.beginPath(); c.arc(-1.2, 16, 3.4, -1.2, 2); c.moveTo(4.5, 12); c.lineTo(-4.5, 20); c.stroke();
-      c.strokeStyle = INKW; c.lineWidth = 11; c.beginPath(); c.moveTo(0, 0); c.lineTo(0, 11); c.stroke();
-      c.strokeStyle = PAPW; c.lineWidth = 7.4; c.beginPath(); c.moveTo(0, 0); c.lineTo(0, 10.5); c.stroke();
-      c.fillStyle = PAPW; c.strokeStyle = INKW; c.lineWidth = 1.8;
-      c.beginPath(); c.roundRect(-17, -1, 34, 10, 5); c.fill(); c.stroke();
-      c.fillStyle = 'rgb(175,175,175)'; c.fillRect(-14, 4.5, 28, 2.4);                           // shaded underside
-      c.fillStyle = INKW; c.fillRect(-2.4, -1, 4.8, 10);                                          // the rope passing through
-      c.restore();
+    c.translate(19, 19);
+    c.fillStyle = 'rgb(55,55,55)'; c.beginPath(); c.arc(0.6, 1, 16.8, 0, Math.PI*2); c.fill();   // the socket in the wood
+    const s = 1 + 0.18*Math.sin(sailFlash*Math.PI);
+    c.scale(s, s);
+    c.fillStyle = PAPW; c.strokeStyle = INKW; c.lineWidth = 2;
+    c.beginPath(); c.arc(0,0,15,0,Math.PI*2); c.fill(); c.stroke();
+    c.lineWidth=1.4; c.beginPath(); c.moveTo(0,-10); c.lineTo(0,10); c.stroke();          // mast
+    c.lineWidth=1.8; c.beginPath(); c.moveTo(-7,-7); c.lineTo(7,-7); c.stroke();          // yard
+    c.fillStyle = INKW;
+    if(sailLevel === SAIL_MIN){                                                            // furled, over a little wave
+      c.beginPath(); c.roundRect(-6.5,-6.6,13,3.6,1.7); c.fill();
+      c.lineWidth=1.2; c.beginPath(); c.moveTo(-6.5,7); c.quadraticCurveTo(-3.2,5,0,7); c.quadraticCurveTo(3.2,9,6.5,7); c.stroke();
+    } else {                                                                               // full and drawing
+      c.beginPath(); c.moveTo(-6,-6.2); c.quadraticCurveTo(0,-4.2,6,-6.2); c.quadraticCurveTo(8.2,0,6,6);
+      c.quadraticCurveTo(0,8,-6,6); c.quadraticCurveTo(-8.2,0,-6,-6.2); c.fill();
     }
     c.setTransform(1,0,0,1,0,0);
-    ditherUI(c, RPX_W, RPX_H);
-    rctx.clearRect(0,0,ropeCv.width,ropeCv.height);
-    rctx.drawImage(rlo, 0, 0, ropeCv.width, ropeCv.height);
+    ditherUI(c, SAIL_PX, SAIL_PX);
+    sbctx.clearRect(0,0,sailCv.width,sailCv.height);
+    sbctx.drawImage(slo, 0, 0, sailCv.width, sailCv.height);
   }
   renderSailBtn();
 
@@ -3001,7 +2884,7 @@
   // reached its control is hidden and disabled (keys included):
   //   'intro'  the intro card is up
   //   'book'   the logbook shimmers: open it, then close it
-  //   'rope'   the halyard appears and shimmers: pull it to set the sail
+  //   'rope'   the sail badge appears and glows: tap it to set the sail
   //   'anchor' the wheel's hub (the anchor) appears and pulses: hold it to weigh
   //   'wheel'  arrows on the wheel show it turns; a few seconds, then 'done'
   let tut = 'intro', tutBookSeen = false, tutWheelT0 = 0, tutSwingT = 0;
@@ -3010,7 +2893,7 @@
   function tutSet(stage){
     tut = stage;
     document.body.classList.toggle('tut-no-rope', !tutAt('rope'));
-    document.body.classList.toggle('tut-no-compass', !tutAt('rope'));   // the compass arrives with the halyard
+    document.body.classList.toggle('tut-no-compass', !tutAt('rope'));   // the compass arrives with the sail badge
     document.body.classList.toggle('tut-no-wheel', !tutAt('anchor'));
     document.body.classList.toggle('tut-rope', stage === 'rope');
     if(stage === 'book') elListBtn.classList.add('news');                       // the logbook shimmers
@@ -3970,7 +3853,7 @@
     } else {
       elList.classList.remove('unfold'); Sfx.book(false); buzz([4,60,14]);                                 // the cover folds shut
       bookT = setTimeout(()=> elList.classList.remove('open'), BOOK_FOLD);                               // then up it goes
-      if(tut === 'book' && tutBookSeen) setTimeout(()=>{ if(tut === 'book') tutSet('rope'); }, BOOK_FOLD + 150);   // tutorial: now the halyard
+      if(tut === 'book' && tutBookSeen) setTimeout(()=>{ if(tut === 'book') tutSet('rope'); }, BOOK_FOLD + 150);   // tutorial: now the sail badge
     }
   }
   elListBtn.addEventListener('click', ()=>{ toggleList(); elListBtn.blur(); });
@@ -6086,10 +5969,10 @@
     sctx.drawImage(obuf, 0, 0, GW, GH, 0, 0, GW*K, GH*K);
 
     drawWheel();
-    drawRope();
+    drawSail();
     if(!logIconDone) drawLogbookIcon();                     // once (it needs the dither table, ready by now)
     if(!dashDone) drawDash();                               // the wooden dashboard (on resize and when the light changes)
-    if(tutAt('rope')) drawCompass();                       // shown from the tutorial's halyard step on
+    if(tutAt('rope')) drawCompass();                       // shown from the tutorial's sail step on
   }
 
   function loop(now){
