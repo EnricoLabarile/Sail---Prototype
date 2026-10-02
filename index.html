@@ -3268,12 +3268,14 @@
   const NET_DROP = 1.4;          // net deploying animation
   const FISH_TIME_MIN = 2, FISH_TIME_MAX = 4;   // seconds with nets out before the haul (random each time)
   const NET_HAUL = 1.1;          // hauling animation
+  const FISH_REACH = 1.35;        // a bank counts out to this × its radius: a little past its circle, to be forgiving
+  const NET_THROW_MIN = 24, NET_THROW_MAX = 46;   // how far the net is thrown, toward the middle of the bank
   let fishing = null;            // {bank, t, phase:'drop'|'wait'|'haul'|'cancel', ...}
   let settleT = 0;
   function bankUnderBoat(){
     for(const b of banks){
       if(b.state!=='live') continue;
-      if(wdist(boat.x,boat.y,b.x,b.y) < b.r*0.9) return b;
+      if(wdist(boat.x,boat.y,b.x,b.y) < b.r*FISH_REACH) return b;
     }
     return null;
   }
@@ -3294,7 +3296,12 @@
       if(b && (atAnchor || boat.speed < FISH_STOP)){
         settleT += dt;
         if(settleT >= (atAnchor ? FISH_ANCHOR_SETTLE : FISH_SETTLE)){
-          fishing = {bank:b, t:0, phase:'drop', side: Math.random()<0.5?-1:1, dur: rand(FISH_TIME_MIN, FISH_TIME_MAX)};
+          // the net is thrown at the fish: toward the bank's middle (a side if right on top of it)
+          const dx = wdx(b.x, boat.x), dy = wdy(b.y, boat.y), d = Math.hypot(dx, dy);
+          const a = d > 4 ? Math.atan2(dy, dx) : boat.angle + (Math.random()<0.5 ? 1 : -1)*Math.PI/2;
+          const ux = Math.cos(a), uy = Math.sin(a), thr = Math.max(NET_THROW_MIN, Math.min(NET_THROW_MAX, d));
+          const side = (-Math.sin(boat.angle)*ux + Math.cos(boat.angle)*uy) < 0 ? -1 : 1;   // which gunwale it goes over
+          fishing = {bank:b, t:0, phase:'drop', side, ux, uy, thr, dur: rand(FISH_TIME_MIN, FISH_TIME_MAX)};
           Sfx.splash();
           buzz(15);
         }
@@ -5887,9 +5894,16 @@
     }
     ctx.globalAlpha = 1;
   }
-  // the net hangs off the boat's side, astern
-  function netCentreX(){ const s = fishing ? fishing.side : 1; return boat.x - Math.cos(boat.angle)*14 - Math.sin(boat.angle)*s*20; }
-  function netCentreY(){ const s = fishing ? fishing.side : 1; return boat.y - Math.sin(boat.angle)*14 + Math.cos(boat.angle)*s*20; }
+  // the net: thrown from the boat toward the bank's middle, flying out in a
+  // little arc as it opens; hauled back in to the boat
+  function netPos(){
+    const f = fishing; if(!f) return [boat.x, boat.y];
+    const k = netAmount(), e = k*k*(3-2*k), dist = 8 + (f.thr - 8)*e;
+    const lift = f.phase==='drop' ? Math.sin(Math.PI*Math.min(1, f.t/NET_DROP))*9 : 0;   // in the air on the way out
+    return [boat.x + f.ux*dist, boat.y + f.uy*dist - lift];
+  }
+  function netCentreX(){ return netPos()[0]; }
+  function netCentreY(){ return netPos()[1]; }
   // net: a wobbly mesh with a ring of bobbing floats and two lines to the boat
   function drawNet(){
     const k = netAmount();
