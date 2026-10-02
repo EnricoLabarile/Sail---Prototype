@@ -44,7 +44,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
 - **Compass** (124 px, top centre of the main view; the open logbook covers it; hidden in the tutorial
   until the halyard step): points home, a dot per village filled once a dish is bought there; drawn like the
   wheel (greys into a low-res canvas, then dithered): brass bezel with rivets, shaded card, wind rose, glass glare.
-  The old fish counters round it are hidden (`#wood`); the hold is shown on the logbook's right page.
+  The old fish counters round it are hidden (`#wood`); the cargo is shown on the logbook's right page.
 - **Intro:** on "Set sail" the card rolls up into a scroll that is tossed into the list button (skipped with reduced motion).
 - **Tutorial** (first voyage, `tut` in the Tutorial section): controls appear one at a time, hidden and disabled
   (keys too) until their step: logbook shimmers (open and close it) -> halyard appears, glows and swings (pull it)
@@ -72,8 +72,9 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   wiggle, class `news`) until the logbook is opened; there the new line is drawn across live (`freshCourses`). Its panel is an open book
   that arrives in two steps: the shut book slides down centred (cover up), then the front cover swings open on the
   spine (`.leaf`, its inside is the left page) as the book re-centres; closing reverses it (`toggleList`). The book: stitched leather cover with metal corners (`#book-corner`), the
-  dinner list on the left page (4 course names, crossed off once a dish of it is aboard), a crease, and the boat's hold on the
-  right page (`holdHTML`: purse, every fish as a small icon, every dish and gift bought; the book grows to fit).
+  dinner list on the left page (4 course names, crossed off once a dish of it is aboard), a crease, and the **Cargo** on the
+  right page (`holdHTML`: purse, every fish as a small icon, then every dish and gift bought as an icon only, name on
+  hover; the book grows to fit). Each dish and gift has its own 24×24 ink icon (`ITEM_ICONS`, `itemIcon(name)`), used at the market stall too.
   Opening/closing it plays `Sfx.book(open)`: paper flutter, and the cover's thump on closing. The list also shows the day of the voyage
   (`dayNo`, +1 at each dawn). Keyboard: arrows, Space = anchor, S = sail.
 - **Hazards:** rocks, faraglioni, whirlpools (appear/disappear/wander), rollers (big waves: within ~66° of their travel = surf boost (`SURF_COS`), otherwise they hurt).

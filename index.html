@@ -325,9 +325,8 @@
   #hold-page .hold-fish{display:flex; flex-wrap:wrap; gap:2px 3px; margin-bottom:6px;}
   #hold-page .hold-fish svg{width:24px; height:13px; display:block;}
   #hold-page .hold-empty{font-size:12px; font-style:italic; margin:2px 0 6px;}
-  #hold-page .hold-goods{list-style:none; margin:0; padding:5px 0 0; border-top:1.5px dashed var(--ink);}
-  #hold-page .hold-goods li{display:flex; align-items:center; gap:4px; font-size:11.5px; line-height:1.2; padding:1px 0;}
-  #hold-page .hold-goods svg{width:17px; height:12px; flex:none;}
+  #hold-page .hold-goods{display:flex; flex-wrap:wrap; gap:4px; padding-top:6px; border-top:1.5px dashed var(--ink);}
+  #hold-page .hold-goods svg{width:26px; height:26px; display:block;}
   #wheel{
     transition:opacity .35s;
     position:fixed;
@@ -3504,8 +3503,41 @@
   const mkBalance = ()=> mkItems.reduce((a,it)=> a + (it.side===it.origin ? 0 : it.origin==='you' ? it.value : -it.value), 0);
   const COIN_SVG = '<svg class="coin" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="var(--paper)" stroke="currentColor" stroke-width="1.4"/><circle cx="6" cy="6" r="2.4" fill="none" stroke="currentColor" stroke-width="1"/></svg>';
   const FOOD_SVG = '<svg viewBox="0 0 30 22" aria-hidden="true"><path d="M3 9 H27 L24 20 H6 Z" fill="var(--paper)" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7 9 Q15 -1 23 9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 12 H22 M9 15.5 H21" stroke="currentColor" stroke-width="1.1"/><circle cx="12" cy="7" r="2.6" fill="currentColor"/><circle cx="18" cy="6.5" r="2.2" fill="url(#sh-mid)" stroke="currentColor" stroke-width="0.8"/></svg>';
+  // one small icon per dish and gift (24×24, ink on paper), so the cargo in
+  // the logbook and the goods on the stall can be told apart at a glance
+  const ITEM_ICONS = (()=>{
+  const ICO = (body)=> '<svg class="item-ico" viewBox="0 0 24 24" aria-hidden="true" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round">'+body+'</svg>';
+  const P = 'fill="var(--paper)"', M = 'fill="url(#sh-mid)"', L = 'fill="url(#sh-light)"', I = 'fill="currentColor"', N = 'fill="none"';
+  return {
+    // a squash blossom: a pointed trumpet of petals on its stem
+    'Fiori di Zucca': ICO('<path d="M3.5 22 Q6 19.5 8.5 17" '+N+' stroke-width="1.8"/><path d="M8.5 15 C7.5 10.5 9 6 11 2.5 C12.5 4.5 14 4.8 15.5 4 C16 6.2 17.5 7.4 20 7 C19.2 9.2 19.6 11 21.5 12.5 C17.5 15 13 16 9.5 16.5 Z" '+P+'/><path d="M10 15.5 L13 5.5 M10.3 15.8 L17.3 7.5 M10.5 16 L19.5 12" '+N+' stroke-width="0.9"/><circle cx="8.8" cy="16.2" r="2.2" '+M+'/>'),
+    // two fresh balls on a plate, one with its knot
+    'Mozzarelle': ICO('<ellipse cx="12" cy="19.5" rx="10" ry="2.8" '+M+'/><circle cx="8" cy="13.5" r="4.8" '+P+'/><circle cx="16" cy="13" r="4.8" '+P+'/><path d="M16 8.2 Q17 5 19.5 6" '+N+'/><path d="M5.5 12 Q6 10.5 7.5 10" '+N+' stroke-width="0.9"/>'),
+    // little rings of bread
+    'Tarallini': ICO('<circle cx="8" cy="8.5" r="4.3" '+N+' stroke-width="3"/><circle cx="16" cy="9.5" r="4.3" '+N+' stroke-width="3"/><circle cx="11.5" cy="16.5" r="4.3" '+N+' stroke-width="3"/>'),
+    // a bowl of little ears with a leaf of turnip tops
+    'Orecchiette con Cime di Rapa': ICO('<path d="M11 10 Q13 2 21 2.5 Q18 10 11 10 Z" '+M+'/><path d="M2 12 H22 Q21 21 12 21 Q3 21 2 12 Z" '+P+'/><ellipse cx="7.5" cy="10.5" rx="2.7" ry="1.9" '+P+'/><ellipse cx="12.5" cy="10" rx="2.7" ry="1.9" '+P+'/><ellipse cx="17" cy="11" rx="2.7" ry="1.9" '+P+'/><circle cx="7.5" cy="10.5" r="0.7" '+I+' stroke="none"/><circle cx="12.5" cy="10" r="0.7" '+I+' stroke="none"/><circle cx="17" cy="11" r="0.7" '+I+' stroke="none"/>'),
+    // a layered slice standing on its baking dish
+    'Lasagne': ICO('<path d="M5 5 Q7 3.5 9 5 T13 5 T17 5 T19 5 V13 H5 Z" '+P+'/><path d="M5 7.8 H19 M5 10.4 H19" '+N+'/><path d="M2 13 H22 M3 13 V19 Q3 20.5 4.5 20.5 H19.5 Q21 20.5 21 19 V13" '+M+'/><path d="M1 14.5 H3 M21 14.5 H23" '+N+' stroke-width="1.8"/>'),
+    // a round cruet of oil with a chili inside
+    'Olio Santo': ICO('<path d="M9.5 9 Q4 12 5.5 18.5 Q12 22.5 18.5 18.5 Q20 12 14.5 9 Z" '+P+'/><rect x="9.8" y="4.5" width="4.4" height="4.5" '+P+'/><rect x="9.3" y="1.8" width="5.4" height="2.7" '+I+'/><path d="M6 14 H18" '+N+' stroke-width="0.9" stroke-dasharray="1.2 1.2"/><path d="M9 18 Q11.5 12.5 15.5 11.5 Q14.5 15 10 18.8 Z" '+I+'/><path d="M15.3 11.6 Q16.3 10.3 17.3 10.8" '+N+' stroke-width="1"/>'),
+    // a coiled sausage
+    'Zampina': ICO('<path d="M10.5 12 a1.5 1.5 0 1 1 3 0 a3.5 3.5 0 1 1 -7 0 a5.5 5.5 0 1 1 11 0 a7.5 7.5 0 1 1 -15 0" '+N+' stroke-width="3.6"/><path d="M10.5 12 a1.5 1.5 0 1 1 3 0 a3.5 3.5 0 1 1 -7 0 a5.5 5.5 0 1 1 11 0 a7.5 7.5 0 1 1 -15 0" '+N+' stroke="var(--paper)" stroke-width="1.2"/>'),
+    // a grilled fish on a plate, with the grill's marks
+    'Pesce Arrosto': ICO('<ellipse cx="12" cy="19.5" rx="10.5" ry="2.8" '+N+'/><path d="M2.5 11 Q9.5 4 16.5 11 Q9.5 18 2.5 11 Z" '+P+'/><path d="M16.5 11 L22 7 L22 15 Z" '+M+'/><path d="M7.5 8 L9.5 14.5 M10.5 7.5 L12.5 14.8 M13.5 8.5 L14.8 13.2" '+N+' stroke-width="1.1"/><circle cx="5.6" cy="10" r="1" '+I+' stroke="none"/>'),
+    // a dark bottle and a glass of red
+    'Vino Rosso': ICO('<path d="M4 21 V10 Q4 7.5 6 6.5 V2 H9 V6.5 Q11 7.5 11 10 V21 Z" '+I+'/><rect x="5.3" y="12.5" width="4.4" height="4.5" '+P+' stroke-width="0.8"/><path d="M14 7 H22 Q22 14 18 14 Q14 14 14 7 Z" '+P+'/><path d="M14.4 10 H21.6 Q21.2 14 18 14 Q14.8 14 14.4 10 Z" '+I+'/><path d="M18 14 V20.5 M15 21 H21" '+N+'/>'),
+    // a ruffled rosette of fried pastry glazed with vincotto
+    'Cartellate': ICO([0,1,2,3,4,5,6,7].map(k=>{ const a=k*Math.PI/4; return '<circle cx="'+(12+Math.cos(a)*6.6).toFixed(1)+'" cy="'+(12+Math.sin(a)*6.6).toFixed(1)+'" r="3.2" '+P+'/>'; }).join('')+'<circle cx="12" cy="12" r="6.3" '+M+'/><path d="M11 12 a1 1 0 1 1 2 0 a2.5 2.5 0 1 1 -5 0 a4 4 0 1 1 8 0" '+N+' stroke="var(--paper)" stroke-width="1.2"/>'),
+    // layers in a glass: cocoa, cream and soaked biscuits, a spoon in it
+    'Tiramisu': ICO('<path d="M15 5 L20 0.5" '+N+' stroke-width="1.8"/><path d="M5 5 H19 L17.5 20 Q12 21.5 6.5 20 Z" '+P+'/><path d="M5 5 H19 L18.75 7.5 H5.25 Z" '+I+'/><path d="M5.65 11 H18.35 L18.05 14 H5.95 Z" '+M+'/><path d="M6.35 17 H17.65 L17.5 19.6 Q12 21 6.5 19.6 Z" '+M+'/>'),
+    // a pale bottle and a lemon with its leaf
+    'Limoncello': ICO('<path d="M3.5 21 V10 L5.5 7 V2 H8.5 V7 L10.5 10 V21 Z" '+L+'/><path d="M12.5 17 Q13.5 12.8 17.5 13 Q22 13 22.5 17 Q21.5 21 17.5 21 Q13.5 21 12.5 17 Z" '+P+'/><path d="M17.5 13 Q19 9 23 8.5 Q22 12.5 17.5 13 Z" '+I+'/><path d="M12.5 17 H11.6 M22.5 17 H23.3" '+N+'/>'),
+  };
+  })();
+  const itemIcon = (name)=> ITEM_ICONS[name] || FOOD_SVG;
   function unitHTML(it){
-    const ico = it.kind==='food' ? FOOD_SVG : document.querySelector('#wood .fish-'+it.key+' svg').outerHTML;
+    const ico = it.kind==='food' ? itemIcon(it.name) : document.querySelector('#wood .fish-'+it.key+' svg').outerHTML;
     const name = it.kind==='food' ? it.name : FISH_NAME[it.key].one;
     const label = it.kind==='food' ? '<span class="mk-name">'+name+'</span>' : '';
     return '<div class="mk-unit '+it.kind+(it.side!==it.origin ? ' moved' : '')+'" data-id="'+it.id+'" data-kind="'+it.kind+'" data-origin="'+it.origin+'" role="button" aria-label="'+name+', '+it.value+' coins">'
@@ -3787,11 +3819,11 @@
   function holdHTML(){
     const fish = FISH_KEYS.flatMap(k=> Array(counts[k]).fill(k));
     const goods = VILLAGES.flatMap(v=> [...v.dishes.filter(d=>d.bought).map(d=>d.name), ...(v.giftGot ? [v.gift] : [])]);
-    return '<div class="hold-head"><h3>The hold</h3><span class="purse" aria-label="Purse: '+coins+' coins">'+COIN_SVG+coins+'</span></div>'
+    return '<div class="hold-head"><h3>Cargo</h3><span class="purse" aria-label="Purse: '+coins+' coins">'+COIN_SVG+coins+'</span></div>'
       + (fish.length
           ? '<div class="hold-fish">'+fish.map(k=> '<span title="'+FISH_NAME[k].one+'">'+document.querySelector('#wood .fish-'+k+' svg').outerHTML+'</span>').join('')+'</div>'
           : '<p class="hold-empty">No fish aboard.</p>')
-      + (goods.length ? '<ul class="hold-goods">'+goods.map(n=> '<li>'+FOOD_SVG+'<span>'+n+'</span></li>').join('')+'</ul>' : '');
+      + (goods.length ? '<div class="hold-goods">'+goods.map(n=> '<span title="'+n+'" role="img" aria-label="'+n+'">'+itemIcon(n)+'</span>').join('')+'</div>' : '');
   }
   const freshCourses = new Set();              // courses crossed off since the logbook was last opened
   let listKey = '';
