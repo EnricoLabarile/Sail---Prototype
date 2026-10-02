@@ -49,14 +49,6 @@
     padding:0 14px;
   }
   #wood{font-size:15px;}
-  #andatura-box{
-    padding:4px 9px;
-    font-size:11.5px;
-    min-width:0;
-    text-align:center;
-    line-height:1.25;
-  }
-  #andatura-label{font-weight:bold; font-size:13.5px; white-space:nowrap;}
   #status{
     position:fixed;
     top:calc(162px + env(safe-area-inset-top,0px));
@@ -447,10 +439,6 @@
       <div class="res-item fish-orate" title="Sea bream"><svg class="log-ico" viewBox="0 0 22 12" aria-label="sea bream"><path d="M2 6 Q8 0.5 15 6 Q8 11.5 2 6 Z" fill="currentColor" stroke="currentColor" stroke-width="1.6"/><path d="M15 6 L21 2 L21 10 Z" fill="currentColor"/><circle cx="6" cy="5.2" r="1.2" fill="var(--paper)"/></svg><span id="f-orate">0</span></div>
     </div>
     <div id="boon" class="panel" aria-live="polite"></div>
-    <div id="andatura-box" class="panel" hidden>
-      <div id="andatura-label">—</div>
-      <div id="andatura-speed">speed: 0%</div>
-    </div>
   </div>
 
 
@@ -1366,7 +1354,6 @@
   let caught = 0;                    // fish landed this voyage
   const FISH_HEAL = 15;              // hull points repaired per fish sold at a pier
   const BANK_COUNT = 240;
-  function fishTotal(){ return FISH_KEYS.reduce((a,k)=>a+counts[k],0); }
   function sectorAt(x,y){
     const dx = wdx(x,START.x), dy = wdy(y,START.y);
     if(Math.abs(dx) > Math.abs(dy)) return dx>0 ? 'est' : 'ovest';
@@ -1598,15 +1585,6 @@
   function downwindBonus(relDeg){
     const a = Math.abs(relDeg), k = Math.max(0, Math.min(1, (a-120)/60));
     return 1 + 0.1*k*k*(3-2*k);
-  }
-  function andaturaName(relDeg){
-    relDeg = Math.abs(relDeg);
-    if(relDeg<25) return {name:"In irons", color:"#c0453a"};
-    if(relDeg<50) return {name:"Close-hauled", color:"#c98a3e"};
-    if(relDeg<80) return {name:"Close reach", color:"#c9b23e"};
-    if(relDeg<100) return {name:"Beam reach", color:"#9ac93e"};
-    if(relDeg<150) return {name:"Broad reach", color:"#6fbf5a"};
-    return {name:"Running", color:"#3ec98a"};
   }
 
   // ---------- Wind ----------
@@ -2515,7 +2493,17 @@
   }
   cmp.addEventListener('click', ()=>{ Sfx.init(); toggleLid(); });
   cmp.addEventListener('keydown', e=>{ if((e.key==='Enter' || e.key===' ') && !e.repeat){ e.preventDefault(); e.stopPropagation(); toggleLid(); } });
+  let cmpKey = '';
   function drawCompass(){
+    {
+      const dx = wdx(START.x, boat.x), dy = wdy(START.y, boat.y);
+      const seam = Math.min(WORLD.w/2 - Math.abs(dx), WORLD.h/2 - Math.abs(dy));
+      const busy = Math.abs(lidT - (lidOpen ? 0 : 1)) > 0.002 || dotPop.some(p=> p > 0) || VILLAGES.some((v,i)=> v.done !== dotState[i])
+        || (lidT < 0.98 && seam < 600);                                 // near the seam the needle trembles
+      const key = (lidT >= 0.98 ? 'shut' : Math.round(Math.atan2(dy, dx)*120) + '|' + (Math.hypot(dx, dy) < 140)) + '|' + uiPalKey;
+      if(!busy && key === cmpKey){ lidLastT = performance.now(); return; }
+      cmpKey = key;
+    }
     const c = cmpL, INKW='#000', PAPW='#fff', g = v=> 'rgb('+v+','+v+','+v+')';
     c.setTransform(1,0,0,1,0,0); c.clearRect(0,0,CMP_PX,CMP_PX);
     c.setTransform(CMP_K,0,0,CMP_K,0,0);
@@ -2634,6 +2622,7 @@
     c.restore();
   }
 
+  let wheelKey = '';
   function drawWheel(){
     const c = wl, INKW='#000', PAPW='#fff';
     // the wood is a mid grey (dithered to a dotted tone), so the wheel stands out from the pale sea
@@ -2644,6 +2633,15 @@
     // at anchor the wheel (and its rudder gauge) is put away: it fades out
     // and only the hub stays, to weigh anchor or switch sail
     wheelVis += ((stowed() ? 0 : 1) - wheelVis) * 0.15;
+    // skip the redraw (and its dither) while nothing on it moves: same angle,
+    // same state, no animation running (a hold, a shake, the bank ring, a tutorial hint)
+    {
+      const busy = hubHold || hubShake > 0 || bankHint || Math.abs(wheelVis - (stowed() ? 0 : 1)) > 0.002
+        || ((tut === 'anchor' || tut === 'drop' || tut === 'wheel') && !tutWait);
+      const key = wheelAngle.toFixed(4) + '|' + wheelVis.toFixed(3) + '|' + anchored + '|' + uiPalKey;
+      if(!busy && key === wheelKey) return;
+      wheelKey = key;
+    }
     c.globalAlpha = wheelVis;
     // rudder indicator: paper track, ink tick and marker
     const barW = 140, bx = WH_CX-barW/2, by = 8;
@@ -2917,6 +2915,7 @@
   sailCv.addEventListener('pointerup', thumbRelease);
   sailCv.addEventListener('pointercancel', thumbRelease);
   sailCv.addEventListener('keydown', e=>{ if((e.key==='Enter' || e.key===' ') && !e.repeat){ e.preventDefault(); e.stopPropagation(); switchSail(); } });
+  let sailKey = '';
   function drawSail(){
     const now = performance.now(), dt = Math.min(0.05, (now - sailLastT)/1000); sailLastT = now;
     sailFlash = Math.max(0, sailFlash - dt*2.5);
@@ -2924,6 +2923,12 @@
     let nudge = 0;                                                          // tutorial: it nudges up, to show it slides
     if(tut === 'rope' && !tutWait && !thumbDrag){ const ph = (now/1600) % 1; nudge = ph < 0.3 ? Math.sin(ph/0.3*Math.PI)*0.14 : 0; }
     const ty = BOT_Y + (TOP_Y - BOT_Y)*Math.min(1, thumbPos + nudge);
+    {                                                                       // nothing moving: keep the last picture
+      const busy = thumbDrag || sailFlash > 0 || nudge > 0 || Math.abs(thumbPos - (sailUp() ? 1 : 0)) > 0.001;
+      const key = sailUp() + '|' + thumbPos.toFixed(3) + '|' + uiPalKey;
+      if(!busy && key === sailKey) return;
+      sailKey = key;
+    }
     const INKW = '#000', PAPW = '#fff', g = v=> 'rgb('+v+','+v+','+v+')';
     // the track: a pill with an ink edge (and a paper halo outside, for dark
     // water), light dotted with the sail set, dark when furled, a groove down the middle
@@ -3034,7 +3039,7 @@
   //   'wheel'  arrows on the wheel show it turns; a few seconds, then 'drop'
   //   'drop'   3 s later the hub pulses again: hold it to drop anchor (optional;
   //            gone after 3 s, or as soon as the anchor goes down), then 'done'
-  let tut = 'intro', tutBookSeen = false, tutWheelT0 = 0, tutSwingT = 0;
+  let tut = 'intro', tutBookSeen = false, tutWheelT0 = 0;
   const TUT_ORDER = ['intro','book','compass','rope','anchor','wheel','drop','done'];
   const tutAt = (stage)=> TUT_ORDER.indexOf(tut) >= TUT_ORDER.indexOf(stage);   // reached this step yet?
   function tutSet(stage){
@@ -3075,6 +3080,7 @@
     wheel:  'Drag the wheel round to steer.',
     drop:   'Hold here to drop anchor and stop.',
   };
+  let tipPos = '';
   function placeTip(){
     const text = tutWait ? null : TUT_TIPS[tut];
     elTip.classList.toggle('show', !!text);
@@ -3094,9 +3100,11 @@
     const vw = window.innerWidth, vh = window.innerHeight, w = elTip.offsetWidth;
     let left = align === 'left' ? x - 30 : align === 'right' ? x - w + 30 : x - w/2;
     left = Math.max(8, Math.min(vw - w - 8, left));
-    elTip.style.left = Math.round(left) + 'px';
-    elTip.style.bottom = Math.round(vh - top + 12) + 'px';
-    elTip.style.setProperty('--tail', Math.round(Math.max(14, Math.min(w - 14, x - left))) + 'px');
+    const pos = Math.round(left) + '|' + Math.round(vh - top + 12) + '|' + Math.round(Math.max(14, Math.min(w - 14, x - left)));
+    if(pos === tipPos) return;                                  // only touch the page when it moves
+    tipPos = pos;
+    const [pl, pb, pt] = pos.split('|');
+    elTip.style.left = pl + 'px'; elTip.style.bottom = pb + 'px'; elTip.style.setProperty('--tail', pt + 'px');
   }
   // tutorial hints drawn into the wheel's canvas (before it's dithered):
   // rings pulsing out of the hub when it's time to weigh anchor, then two
@@ -3174,9 +3182,6 @@
   });
 
   // ---------- UI refs ----------
-  const elAndaturaLabel = document.getElementById('andatura-label');
-  const elAndaturaSpeed = document.getElementById('andatura-speed');
-  const elFish = {}; for(const k of ['sarde','sgombri','triglie','orate']) elFish[k] = document.getElementById('f-'+k);
   const elHint = document.getElementById('hint');
   const elStatus = document.getElementById('status');
   // hull meter is hidden; it pops up for a few seconds on damage or repair
@@ -4260,6 +4265,7 @@
 
   // ---------- Update ----------
   let last = performance.now();
+  let lastHp = -1;
   function update(dt){
     const helmFree = !(anchored && weighT <= 0);          // the wheel is stowed while at anchor
     if(turnLeft && helmFree)  wheelAngle = Math.max(-WHEEL_MAX, wheelAngle - WHEEL_KEY_RATE*dt);
@@ -4617,22 +4623,15 @@
 
     if(boat.health<=0) sink();
 
-    // UI text
-    const info = andaturaName(relDeg);
-    elAndaturaLabel.textContent = info.name;
-    elAndaturaSpeed.textContent = anchored ? "at anchor" : sailLevel===SAIL_MIN ? "rowing" : "speed: "+Math.round(sf*100)+"%";
-    for(const k in elFish){
-      elFish[k].textContent = counts[k];
-      const has = counts[k] > 0, item = elFish[k].parentElement;
-      if(has !== item.classList.contains('has')){
-        item.classList.toggle('has', has);
-      }
-    }
+    // hull meter: touch the page only when the number changes
     const hp = Math.ceil(boat.health);
-    elHpNum.textContent = hp;
-    elHpFill.style.width = (boat.health/MAX_HEALTH*100)+'%';
-    elStatus.classList.toggle('low', hp<=25);
-    elHpMeter.setAttribute('aria-valuenow', hp);
+    if(hp !== lastHp){
+      lastHp = hp;
+      elHpNum.textContent = hp;
+      elHpFill.style.width = (boat.health/MAX_HEALTH*100)+'%';
+      elStatus.classList.toggle('low', hp<=25);
+      elHpMeter.setAttribute('aria-valuenow', hp);
+    }
     elStatus.classList.toggle('hurt', hurtFlash>0);
     healthShowT = Math.max(0, healthShowT-dt);
     elStatus.classList.toggle('show', healthShowT>0);

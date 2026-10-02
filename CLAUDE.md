@@ -15,7 +15,9 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   **Performance:** the dither (and the night darkness) runs on the GPU: a WebGL fragment shader (`glSetup`, `ditherPass`)
   uploads the grey buffer as a texture each frame and draws straight to the screen canvas; the JS pixel loop is only
   a fallback when WebGL is missing (it cost ~10 ms a frame and a 1.2 MB allocation, the cause of the hiccups). The
-  WebGL context is rebuilt if the browser drops it. Aim: 60 fps on the phone.
+  WebGL context is rebuilt if the browser drops it. Aim: 60 fps on the phone. The wheel, compass and sail switch are only redrawn
+  (and re-dithered) when something on them changes (`wheelKey`, `cmpKey`, `sailKey`; a shut compass lid is a still
+  picture); hidden HUD elements are not updated every frame; the hull meter is written only when it changes.
   day/night palette (`UI_TINT` = 0.5, `uiPalette`): the dithered widgets and the HTML panels (`--paper` / `--ink`) follow the light.
 - **World:** 7200×7200 torus (wraps on all sides). Home at the centre. Use `wdx/wdy/wdist/wrapX/wrapY` for any distance.
   Regions: `archipelago(x,y)` is a smooth field (new each game, tiles the torus): ~1 = archipelago (more, slightly
