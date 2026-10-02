@@ -14,6 +14,10 @@
 A top-down sailing game in a single HTML file (`index.html`, no dependencies, canvas 2D + Web Audio).
 You sail from home to four villages to buy the courses of a dinner (selling fish for coins), then return home.
 
+- **Screen:** made for a phone held upright. On a wide screen (`min-aspect-ratio: 4/5`: a computer, a tablet on its side)
+  the game plays in a phone-shaped frame in the middle (`#wrap`, at most 880 px tall, ~0.47 wide), dark around it, so the
+  view of the world, the grain and the controls match the phone. `--fw` / `--fh` are the frame size in CSS; in the code
+  use `viewW()` / `viewH()` (never `window.innerWidth/innerHeight`) for anything that depends on the view size.
 - **Look:** 1-bit. Everything is drawn in greys into a low-res buffer, then ordered-dithered (Bayer 4×4) to two colours
   (`PAPER32` / `INK32`, shifted by the day/night palette). UI colours are `#ebe7dc` / `#1b1a17` tinted halfway toward the
   **Performance:** the dither (and the night darkness) runs on the GPU: a WebGL fragment shader (`glSetup`, `ditherPass`)

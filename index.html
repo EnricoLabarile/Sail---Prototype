@@ -25,6 +25,18 @@
     user-select:none;
   }
   #wrap{position:fixed; inset:0; overflow:hidden;}
+  /* the game is made for a phone held upright. On a wide screen (a computer, a
+     tablet on its side) it plays in a phone-shaped frame in the middle, at most
+     the height of a big phone: same view of the world, same fine grain, the
+     controls where they are on the phone. --fw / --fh are the frame's size (the
+     whole screen on a phone); the transform makes the fixed UI sit in the frame. */
+  :root{--fw:100vw; --fh:100vh;}
+  @media (min-aspect-ratio: 4/5){
+    :root{--fh:min(100vh, 880px); --fw:min(100vw, calc(var(--fh) * 0.47));}
+    html, body{background:#0f0e0c;}
+    #wrap{inset:auto; left:50%; top:50%; width:var(--fw); height:var(--fh); transform:translate(-50%, -50%);
+      box-shadow:0 0 0 1px rgba(235,231,220,.16), 0 24px 70px rgba(0,0,0,.65);}
+  }
   #c{
     position:absolute; top:0; left:0;
     display:block;
@@ -100,7 +112,7 @@
   #market{
     position:fixed;
     top:50%; left:50%; transform:translate(-50%,-50%);
-    width:min(440px, calc(100vw - 20px));
+    width:min(440px, calc(var(--fw) - 20px));
     max-height:calc(100% - 20px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));
     overflow-y:auto;             /* only as a last resort, with a very full hold on a small screen */
     padding:10px 10px 8px;
@@ -150,7 +162,7 @@
     position:fixed;
     top:calc(162px + env(safe-area-inset-top,0px));
     left:50%; transform:translateX(-50%);
-    width:min(420px, calc(100vw - 28px));
+    width:min(420px, calc(var(--fw) - 28px));
     padding:12px 15px 13px;
     z-index:7;
     cursor:pointer;
@@ -239,7 +251,7 @@
      framing two pages either side of a crease */
   #shoplist{
     position:fixed; left:50%; top:calc(8px + env(safe-area-inset-top,0px)); z-index:9;
-    width:min(420px, calc(100vw - 14px));
+    width:min(420px, calc(var(--fw) - 14px));
     /* closed: only the right half shows (the book shut, cover up), centred and above the screen */
     transform:translate(-75%, calc(-100% - 30px)); clip-path:inset(-12px -12px -12px 50%);
     transition:transform .28s cubic-bezier(.2,.8,.2,1), clip-path .34s cubic-bezier(.4,.1,.3,1);
@@ -690,8 +702,12 @@
   const obuf = document.createElement('canvas');       // (fallback) final 1-bit frame, screen size
   const octx = gl ? null : obuf.getContext('2d');
   let PX = 1, K = 1, GW = 1, GH = 1, outImg = null;
+  // the size of the game's frame: the whole screen on a phone, a phone-shaped
+  // column on a wide screen (see #wrap in the CSS)
+  const wrapEl = document.getElementById('wrap');
+  const viewW = ()=> wrapEl.clientWidth || window.innerWidth, viewH = ()=> wrapEl.clientHeight || window.innerHeight;
   function resize(){
-    const w = window.innerWidth, h = window.innerHeight;
+    const w = viewW(), h = viewH();                     // the frame (the whole screen on a phone)
     const dpr = window.devicePixelRatio || 1;
     const target = Math.max(1, Math.floor(Math.min(w,h)/380));
     K = Math.max(1, Math.round(target*dpr));
@@ -3163,11 +3179,11 @@
     else if(tut === 'compass'){ const b = box(cmp); x = b.l + b.w/2; top = b.t + 2; align = 'left'; }
     else if(tut === 'rope'){ const b = box(sailCv); x = b.l + b.w/2; top = b.t + 4; align = 'right'; }
     else {
-      const r = wheelCv.getBoundingClientRect(), b = {l: r.left, t: r.top, w: r.width, h: r.height}, hx = b.l + b.w*WH_CX/WH_W;   // (centred with a transform: use its real box)
+      const r = wheelCv.getBoundingClientRect(), fr = wrapEl.getBoundingClientRect(), b = {l: r.left - fr.left, t: r.top - fr.top, w: r.width, h: r.height}, hx = b.l + b.w*WH_CX/WH_W;   // (centred with a transform: use its real box)
       x = hx; align = 'center';
       top = tut === 'anchor' ? b.t + b.h*WH_CY/WH_H - 48 : tut === 'drop' ? b.t + b.h*WH_CY/WH_H - 38 : b.t - 2;   // over the hub's rings, or over the wheel
     }
-    const vw = window.innerWidth, vh = window.innerHeight, w = elTip.offsetWidth;
+    const vw = viewW(), vh = viewH(), w = elTip.offsetWidth;
     let left = align === 'left' ? x - 30 : align === 'right' ? x - w + 30 : x - w/2;
     left = Math.max(8, Math.min(vw - w - 8, left));
     const pos = Math.round(left) + '|' + Math.round(vh - top + 12) + '|' + Math.round(Math.max(14, Math.min(w - 14, x - left)));
@@ -4400,7 +4416,7 @@
     if(moor && (moor.pier.isl.village || moor.pier.isl.ruin) && (dlg || marketV)){
       const vi = moor.pier.isl;
       fx = boat.x + wdx(vi.x, boat.x);
-      fy = boat.y + wdy(vi.y, boat.y) - window.innerHeight*0.03;
+      fy = boat.y + wdy(vi.y, boat.y) - viewH()*0.03;
     }
     const kf = Math.min(1, dt*2.2);
     camFx = boat.x + wdx(camFx, boat.x); camFy = boat.y + wdy(camFy, boat.y);   // follow wraps
@@ -5757,7 +5773,7 @@
       gullTimer = rand(15,22);
       const th = dw + rand(-0.7,0.7), ux = Math.cos(th), uy = Math.sin(th);
       const reach = Math.hypot(GW*PX, GH*PX)/2 + 60;            // spawn just outside the view
-      const side = rand(-0.35,0.35)*window.innerHeight;
+      const side = rand(-0.35,0.35)*viewH();
       const sx = boat.x - ux*reach - uy*side, sy = boat.y - uy*reach + ux*side;
       const n = 1+Math.floor(rand(0,3)), sp = rand(72,95);
       const flock = {calls: 0};
