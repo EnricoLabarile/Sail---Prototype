@@ -573,6 +573,13 @@
   // (world) change how the world is generated, so an older saved voyage won't
   // load after changing them (the game starts fresh instead).
 
+  // -- Size of the world (first: the other knobs scale with it) --
+  // Distances scale with it (× WORLD_K) and counts with its area (× WORLD_K²),
+  // so the sea keeps the same density whatever its size.
+  const WORLD_SIZE = 5040;           // px a side (the world wraps round); keep it a multiple of 48 (world). Was 7200
+  const WORLD_K = WORLD_SIZE/7200;   // scale against the original 7200 world
+  const WK2 = WORLD_K*WORLD_K;
+
   // -- Boat --
   const MAX_SPEED = 50;              // px/s: reference speed (collision damage is scaled by it too)
   const WIND_BOOST = 0.96;           // how much the wind gives: sets the top speed (~52 px/s dead downwind in full wind)
@@ -592,7 +599,7 @@
   const HIT_MAX_DAMAGE = 25;         // damage of a head-on hit at full speed (grazes do less)
   const REPAIR_EVERY = 0.5;          // seconds between patches at a pier (repairs are free)
   const FISH_HEAL = 15;              // hull points per patch
-  const WHIRL_COUNT = 200;           // whirlpools in the world (world)
+  const WHIRL_COUNT = Math.round(200*WK2);         // whirlpools in the world (world)
   const WHIRL_FROM_DAY = 2;          // the first day is calm: whirlpools only start opening from this day
   const WHIRL_DAMAGE = 10;           // hull damage when caught in a whirlpool's core
   const WHIRL_PULL = 22;             // px/s pull at the edge of the core…
@@ -601,9 +608,9 @@
   const ROLLER_RATE = 1;             // how often big waves come (2 = twice as often, 0.5 = half)
 
   // -- Fishing and market --
-  const BANK_COUNT = 240;            // fish banks out at sea (world)
-  const HOME_WATERS = 950;           // radius of home waters (all kinds of fish there)
-  const HOME_BANKS = 18;             // fish banks in home waters, refilled as they are fished (world)
+  const BANK_COUNT = Math.round(240*WK2);          // fish banks out at sea (world)
+  const HOME_WATERS = Math.round(950*WORLD_K);     // radius of home waters (all kinds of fish there)
+  const HOME_BANKS = Math.round(18*WK2);           // fish banks in home waters, refilled as they are fished (world)
   const FISH_CATCH_MIN = 1, FISH_CATCH_MAX = 2;   // fish per haul (random in between)
   const FISH_REACH = 1.35;           // a bank counts out to this × its radius (a little past its circle)
   const FISH_STOP = 12;              // px/s: slow enough to count as stopped on a bank
@@ -615,11 +622,14 @@
   const DISH_PRICE = 6;              // coins per specialty dish
 
   // -- World --
-  const ISLAND_COUNT = 210;          // islands (world)
-  const VILLAGE_DIST = 2475;         // px from home to each village (world)
-  const SAFE_R = 950;                // home waters: no whirlpools, no big waves
-  const LAGOON_R = 650;              // calm lagoon round home: no islands, no rocks (world)
-  const DANGER_RING = 3400;          // the sea gets wilder out to this distance from home (world)
+  const ISLAND_COUNT = Math.round(210*WK2);        // islands (world)
+  const VILLAGE_DIST = Math.round(2475*WORLD_K);   // px from home to each village (world)
+  const SAFE_R = Math.round(950*WORLD_K);          // home waters: no whirlpools, no big waves
+  const LAGOON_R = Math.round(650*WORLD_K);        // calm lagoon round home: no islands, no rocks (world)
+  const DANGER_RING = Math.round(3400*WORLD_K);    // the sea gets wilder out to this distance from home (world)
+  const BUOY_R = Math.round(880*WORLD_K);          // radius of each village's ring of buoys (world)
+  const BUOYS_PER_VILLAGE = Math.round(24*WORLD_K), HOME_BUOYS = Math.round(32*WORLD_K);   // buoys per ring (world)
+  const OPEN_ROCK_TRIES = Math.round(127*WK2);     // clusters of rocks tried out in open water (world)
   const DAY_LEN = 360;               // seconds for a whole day (dawn to dawn)
   const SIGHT = 220;                 // px of fog uncovered round the boat
   const CLOUD_COUNT = 12;            // clouds in the sky (world)
@@ -734,7 +744,7 @@
   resize();
 
   // ---------- World setup ----------
-  const WORLD = { w: 7200, h: 7200 };
+  const WORLD = { w: WORLD_SIZE, h: WORLD_SIZE };   // (see WORLD_SIZE in Tuning)
   // The world is a torus: sail off one edge and you come back in on the
   // opposite one. Positions wrap, and distances always take the short way round.
   function wd(d,L){ return d - L*Math.round(d/L); }
@@ -1337,7 +1347,7 @@
       }
     }
     // sparse open-water rocks
-    for(let c=0;c<127;c++){
+    for(let c=0;c<OPEN_ROCK_TRIES;c++){
       const x=rand(0,WORLD.w), y=rand(0,WORLD.h);
       const dg=danger(x,y);
       if(Math.random() > 0.05 + 0.95*Math.pow(dg,1.5)) continue;
@@ -1602,7 +1612,7 @@
   const traders = [];
   // buoys: a ring of them round each village, well beyond the reach of
   // its lighthouse, marking the edge of its waters
-  const BUOY_R = 880, BUOYS_PER_VILLAGE = 24;
+  // (BUOY_R, BUOYS_PER_VILLAGE: see Tuning)
   const buoys = [];
   for(const v of VILLAGES){
     v.inside = null;                                      // unknown until the first frame (no message then)
@@ -1617,7 +1627,7 @@
     }
   }
   // and a ring round home waters (SAFE_R): inside, no whirlpools and no big waves
-  const HOME_BUOYS = 32;
+  // (HOME_BUOYS: see Tuning)
   for(let k=0;k<HOME_BUOYS;k++){
     const a = k/HOME_BUOYS*Math.PI*2 + rand(-0.03,0.03);
     for(const dr of [0,30,-30,60,-60,100,-100]){
@@ -3457,7 +3467,7 @@
   // ---------- Fog of war ----------
   // The world is split into cells; the ones the boat has come within sight
   // of are remembered. Everything else sits under a soft, dotted fog.
-  const FOG_CELL = 48, FOG_N = Math.round(WORLD.w/FOG_CELL);   // 7200/48 = 150 cells a side
+  const FOG_CELL = 48, FOG_N = Math.round(WORLD.w/FOG_CELL);   // 5040/48 = 105 cells a side (WORLD_SIZE is a multiple of 48)
   const explored = new Uint8Array(FOG_N*FOG_N);
   const fci = (i)=>((i%FOG_N)+FOG_N)%FOG_N;
   function reveal(x,y){
@@ -5548,7 +5558,7 @@
   // only fall on land (clipped to the island outlines), darkening whatever
   // is there: sand, vegetation, trees, the hut. On the plain sea they'd
   // just read as noise.
-  const CLOUD_P = 1800;                        // wrap period of the shadow field (divides the world, so it tiles)
+  const CLOUD_P = WORLD.w/Math.max(1, Math.round(WORLD.w/1800));   // wrap period of the cloud field, ~1800 px, dividing the world so it tiles
   const CLOUD_SPEED = 10;                      // px/s at full wind
   let cloudOX = 0, cloudOY = 0;
   // Clouds: puffy, soft-shaded, with a crisp inked edge. They float close

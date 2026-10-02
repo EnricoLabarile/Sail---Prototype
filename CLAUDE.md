@@ -27,11 +27,11 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   (and re-dithered) when something on them changes (`wheelKey`, `cmpKey`, `sailKey`; a shut compass lid is a still
   picture); hidden HUD elements are not updated every frame; the hull meter is written only when it changes.
   day/night palette (`UI_TINT` = 0.5, `uiPalette`): the dithered widgets and the HTML panels (`--paper` / `--ink`) follow the light.
-- **World:** 7200×7200 torus (wraps on all sides). Home at the centre. Use `wdx/wdy/wdist/wrapX/wrapY` for any distance.
+- **World:** `WORLD_SIZE` = 5040 px square torus (wraps on all sides; was 7200, area halved). Distances in Tuning scale with it (× `WORLD_K`) and counts with its area (× `WK2`), so the sea keeps the same density: change one number to resize the world. Home at the centre. Use `wdx/wdy/wdist/wrapX/wrapY` for any distance.
   Regions: `archipelago(x,y)` is a smooth field (new each game, tiles the torus): ~1 = archipelago (more, slightly
   smaller islands, tight channels ~40–90 px), ~0 = open sea (few islands, wide water, most whirlpools, big waves up to
   ~2× as often). It multiplies the older rule that the sea gets wilder with distance from home (`danger`).
-- **Villages** (cardinal, ~2475 px from home), one course each, two specialties (1 unit each, all at `DISH_PRICE` = 6
+- **Villages** (cardinal, ~1733 px from home: `VILLAGE_DIST`), one course each, two specialties (1 unit each, all at `DISH_PRICE` = 6
   coins) + a gift: Nordania (N) Antipasti: Fiori di Zucca, Mozzarelle, gift Tarallini. Estolia (E) Primi: Orecchiette
   con Cime di Rapa, Lasagne, gift Olio Santo. Sudia (S) Secondi: Zampina, Pesce Arrosto, gift Vino Rosso. Westa (W)
   Dessert: Cartellate, Tiramisu, gift Limoncello. The gift is never for sale: the merchant adds it when you buy both dishes.
@@ -39,14 +39,14 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   (both dishes from at least one village), Banquet (all 8 dishes). See `VILLAGES`, `dinnerTier`, `ENDINGS`.
   **No spoilers:** intro and list name only the four courses; dishes are discovered at the stalls, and the gifts are
   a surprise: never mention them anywhere before one is earned (not in the intro, list, or market).
-  Each has a bay, a wooden pier, a lighthouse with a sweeping beam, a pixel-art town, 24 buoys at ~880 px (`BUOYS_PER_VILLAGE`) (toasts "Entering / Leaving the waters of …"; leaving counts 150 px past the buoys).
-- **Home waters** (`SAFE_R` = 950 px round home): no whirlpools (pull ring included) and no big waves (any that drift in
-  die down harmlessly); a ring of 32 buoys marks the edge, with toasts "Leaving home waters" / "Back in home waters".
-  Inside them, a calm **lagoon** (`LAGOON_R` = 650 px round home): no islands and no rocks, room to learn the controls.
+  Each has a bay, a wooden pier, a lighthouse with a sweeping beam, a pixel-art town, 17 buoys at ~616 px (`BUOYS_PER_VILLAGE`, `BUOY_R`) (toasts "Entering / Leaving the waters of …"; leaving counts 150 px past the buoys).
+- **Home waters** (`SAFE_R` ≈ 665 px round home): no whirlpools (pull ring included) and no big waves (any that drift in
+  die down harmlessly); a ring of 22 buoys (`HOME_BUOYS`) marks the edge, with toasts "Leaving home waters" / "Back in home waters".
+  Inside them, a calm **lagoon** (`LAGOON_R` ≈ 455 px round home): no islands and no rocks, room to learn the controls.
 - **Guiding wind:** from the start until you first tie up at Nordania, the wind always blows toward Nordania from
   wherever you are (shortest way round the torus; `guideWind`); after that the normal shifting winds apply.
 - **Ruins** on the diagonals: dock there for a random power (friendly wind 60 s, blessed nets ×3, full hull).
-- **Fish:** sardines (N), mackerel (E), red mullet (S), sea bream (W). Banks denser far from home; home waters have all kinds and plenty of banks (`HOME_BANKS` = 18, refilled as they are fished).
+- **Fish:** sardines (N), mackerel (E), red mullet (S), sea bream (W). Banks denser far from home; home waters have all kinds and plenty of banks (`HOME_BANKS` = 9 in the smaller world, same density as 18 before; refilled as they are fished).
   Fishing: stop on a bank for 2 s and the nets go over; drop anchor on a bank and they go over after 0.25 s.
   A bank counts a little past its drawn circle (`FISH_REACH` = 1.35 × radius). The net is thrown toward the bank's
   middle (24–46 px from the boat, flying out in a small arc as it opens; `netPos`) and hauled back to the boat.
