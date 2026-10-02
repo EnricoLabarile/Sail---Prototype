@@ -1367,7 +1367,7 @@
   // the market: fish are sold for coins, worth more far from the waters
   // they were caught in; the dishes are bought with coins
   const COIN_LOCAL = 1;              // a village's own kind of fish: they have plenty
-  const COIN_FOREIGN = 2;            // fish from other waters fetch double
+  const COIN_FOREIGN = 3;            // fish from other waters fetch three times as much
   // (each dish has its own price: see VILLAGES)
   let coins = 0;                     // the purse
   const counts = { sarde:0, sgombri:0, triglie:0, orate:0 };   // fish in the hold
@@ -1390,7 +1390,7 @@
   // away: keep new banks out of the player's sight
   // the waters round home (where north, east, south and west meet) keep
   // their own, denser set of banks, with every kind of fish in them
-  const HOME_WATERS = 950, HOME_BANKS = 11;
+  const HOME_WATERS = 950, HOME_BANKS = 18;   // plenty of banks in home waters (was 11)
   function spawnBank(away, home){
     for(let tries=0; tries<900; tries++){
       let x, y;
@@ -3721,7 +3721,7 @@
     const ico = it.kind==='food' ? itemIcon(it.name) : document.querySelector('#wood .fish-'+it.key+' svg').outerHTML;
     const name = it.kind==='food' ? it.name : FISH_NAME[it.key].one;
     const label = it.kind==='food' ? '<span class="mk-name">'+name+'</span>' : '';
-    return '<div class="mk-unit '+it.kind+(it.side!==it.origin ? ' moved' : '')+'" data-id="'+it.id+'" data-kind="'+it.kind+'" data-origin="'+it.origin+'" role="button" aria-label="'+name+', '+it.value+' coins">'
+    return '<div class="mk-unit '+it.kind+(it.side!==it.origin ? ' moved' : '')+'" data-id="'+it.id+'" data-kind="'+it.kind+'" data-origin="'+it.origin+'" role="button" aria-label="'+name+', '+it.value+(it.value===1 ? ' coin' : ' coins')+'">'
       + ico + label + '<span class="mk-val">'+it.value+COIN_SVG+'</span></div>';
   }
   const MK_TIP = "Drag and drop items between inventories to trade buy and sell.";
