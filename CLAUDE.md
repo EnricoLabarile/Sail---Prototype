@@ -59,8 +59,8 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   **long press 0.5 s = anchor**. At anchor the wheel fades out and only the hub (bigger, dark) remains. The hub is
   shaded in greys and dithered like the rest of the UI: sailing, a light face (r 14.5) with a big ink anchor; at
   anchor, a single dark knob with one light rim and a paper anchor.
-  **Sail badge** (`#sail`, `drawSail`, section "Sail badge"; the old halyard rope is gone): a paper disc with a dark rim,
-  bottom right, 76 px, showing the sail state; tap it (or Enter/Space on it, or S) to switch sail (full /
+  **Sail badge** (`#sail`, `drawSail`, section "Sail badge"; the old halyard rope is gone): a crisp disc (pure ink and paper, hard threshold, no dither):
+  bottom right, 76 px, showing the sail state (full sail: paper disc, ink drawing; furled: inverted, ink disc, paper drawing); tap it (or Enter/Space on it, or S) to switch sail (full /
   minimum) with a clack and a buzz; it pops when it switches. The voyage starts with the sail furled.
   The boat gathers way slowly (`BOAT_ACCEL` = 0.4, a quarter of the original 1.6; slowing down unchanged).
   Top speed is kept modest (`WIND_BOOST` = 0.8; running dead downwind adds only up to +10%, `downwindBonus`).

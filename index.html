@@ -2735,15 +2735,19 @@
     c.setTransform(SAIL_K,0,0,SAIL_K,0,0);
     c.lineCap = 'round'; c.lineJoin = 'round';
     c.translate(19, 19);
-    c.fillStyle = 'rgb(55,55,55)'; c.beginPath(); c.arc(0.6, 1, 16.8, 0, Math.PI*2); c.fill();   // a dark rim, so it reads on the pale sea
+    // pure ink and paper only (no greys), so the dither leaves it crisp.
+    // Full sail: a paper disc with an ink drawing; furled: inverted, an ink
+    // disc with a paper drawing (and a fine paper ring to part it from dark water)
+    const furled = sailLevel === SAIL_MIN, FG = furled ? PAPW : INKW;
     const s = 1 + 0.18*Math.sin(sailFlash*Math.PI);
     c.scale(s, s);
-    c.fillStyle = PAPW; c.strokeStyle = INKW; c.lineWidth = 2;
-    c.beginPath(); c.arc(0,0,15,0,Math.PI*2); c.fill(); c.stroke();
+    c.fillStyle = INKW; c.beginPath(); c.arc(0,0,16.5,0,Math.PI*2); c.fill();            // the ink rim
+    if(furled){ c.strokeStyle = PAPW; c.lineWidth = 1.1; c.beginPath(); c.arc(0,0,14.6,0,Math.PI*2); c.stroke(); }
+    else { c.fillStyle = PAPW; c.beginPath(); c.arc(0,0,14.6,0,Math.PI*2); c.fill(); }
+    c.strokeStyle = FG; c.fillStyle = FG;
     c.lineWidth=1.4; c.beginPath(); c.moveTo(0,-10); c.lineTo(0,10); c.stroke();          // mast
     c.lineWidth=1.8; c.beginPath(); c.moveTo(-7,-7); c.lineTo(7,-7); c.stroke();          // yard
-    c.fillStyle = INKW;
-    if(sailLevel === SAIL_MIN){                                                            // furled, over a little wave
+    if(furled){                                                                            // furled, over a little wave
       c.beginPath(); c.roundRect(-6.5,-6.6,13,3.6,1.7); c.fill();
       c.lineWidth=1.2; c.beginPath(); c.moveTo(-6.5,7); c.quadraticCurveTo(-3.2,5,0,7); c.quadraticCurveTo(3.2,9,6.5,7); c.stroke();
     } else {                                                                               // full and drawing
@@ -2751,7 +2755,13 @@
       c.quadraticCurveTo(0,8,-6,6); c.quadraticCurveTo(-8.2,0,-6,-6.2); c.fill();
     }
     c.setTransform(1,0,0,1,0,0);
-    ditherUI(c, SAIL_PX, SAIL_PX);
+    // a hard threshold instead of the dither: the badge is pure ink and
+    // paper, and its round edge stays clean (no loose dots round the rim)
+    {
+      const im = c.getImageData(0,0,SAIL_PX,SAIL_PX), dd = im.data, o32 = new Uint32Array(dd.buffer);
+      for(let p = 0, q = 0; p < o32.length; p++, q += 4) o32[p] = dd[q+3] < 128 ? 0 : dd[q] > 127 ? UI_PAPER32 : UI_INK32;
+      c.putImageData(im, 0, 0);
+    }
     sbctx.clearRect(0,0,sailCv.width,sailCv.height);
     sbctx.drawImage(slo, 0, 0, sailCv.width, sailCv.height);
   }
