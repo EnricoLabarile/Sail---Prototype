@@ -2744,7 +2744,7 @@
       // drawn like the compass: a brass bezel (lit from the top left) with
       // four rivets, round a shaded face, and a glint of glass; the face is
       // light while sailing, dark at anchor
-      const HR = inv ? 13 : 14.5, FR = HR - 3.2;
+      const HR = inv ? 15 : 17.5, FR = HR - 3.2;          // (bigger than it was, so the anchor reads well)
       const bz = c.createLinearGradient(-HR, -HR, HR, HR);
       bz.addColorStop(0, 'rgb(245,245,245)'); bz.addColorStop(0.5, 'rgb(200,200,200)'); bz.addColorStop(1, 'rgb(140,140,140)');
       c.fillStyle = bz; c.strokeStyle = INKW; c.lineWidth = 1.6;
@@ -2768,17 +2768,17 @@
         c.strokeStyle=INKW; c.lineWidth=lw;   c.beginPath(); c.arc(0,0,r,a0,a1); c.stroke();
         c.restore();
       };
-      if(bankHint){ c.save(); c.rotate(performance.now()*0.002); ring(18.5, 0, Math.PI*2, 1.6, [3,3]); c.restore(); }   // over a fish bank
+      if(bankHint){ c.save(); c.rotate(performance.now()*0.002); ring(HR + 4, 0, Math.PI*2, 1.6, [3,3]); c.restore(); }   // over a fish bank
       if(hubHold && !hubHold.done){
         const k = Math.min(1, (performance.now()-hubHold.t0)/HUB_HOLD);
-        ring(16, -Math.PI/2, -Math.PI/2+k*Math.PI*2, 2.8);
+        ring(HR + 1.5, -Math.PI/2, -Math.PI/2+k*Math.PI*2, 2.8);
       }
       c.strokeStyle = HI; c.fillStyle = HI;
       c.lineCap='round';
       // an anchor: ink on the light hub while sailing, paper on the dark knob at
       // anchor. Over a fish bank it turns into a little fish for a while, to
       // point at what the button is for there (dropping anchor = nets over)
-      c.save(); c.scale(inv ? 1.0 : 1.1, inv ? 1.0 : 1.1);
+      c.save(); c.scale(inv ? 1.2 : 1.35, inv ? 1.2 : 1.35);
       if(bankHint){
         c.save(); c.translate(-0.8, 0);
         c.beginPath(); c.moveTo(-7.2, 0); c.quadraticCurveTo(-1.5, -6.4, 4.6, 0); c.quadraticCurveTo(-1.5, 6.4, -7.2, 0); c.fill();   // body
@@ -3120,7 +3120,7 @@
     if(tutWait) return;                                  // between steps: nothing to point at
     const INKW = '#000', PAPW = '#fff', now = performance.now();
     if(tut === 'anchor' || tut === 'drop'){
-      const base = 13*WH_S*hubScale + 3;
+      const base = 17.5*WH_S*hubScale + 3;
       for(const off of [0, 0.5]){
         const k = (now/1300 + off) % 1, r = base + k*30;
         c.globalAlpha = 1 - k*k;                         // (fades late, so the ring reads among the spokes)
