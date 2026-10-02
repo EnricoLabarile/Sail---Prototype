@@ -58,6 +58,15 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   the start of every voyage, a tap (or Enter/Space) swings it up on the hinge and shows the compass, another tap shuts it.
   The old fish counters round it are hidden (`#wood`); the cargo is shown on the logbook's right page.
 - **Intro:** on "Set sail" the card rolls up into a scroll that is tossed into the list button (skipped with reduced motion).
+- **Saving** (sections "Seed" at the top and "Saving" at the end): the world is generated from a seed (`SEED`; during
+  world-building `Math.random` is a seeded mulberry32, then the real one is restored, so runtime chance stays random).
+  The voyage is saved in localStorage (`SAVE_KEY`, ~4 KB: seed, world fingerprint `WORLD_SIG`, boat, sail, fish, coins,
+  dishes and gifts, day and time, tutorial done, guide wind, compass lid, boons, explored fog packed as bits) every 10 s,
+  on tying up, and when the page is hidden or closed. With a save the intro shows "Continue · Day N" (resumes at anchor
+  where it was) and "New voyage" (clears the save and reloads for a new world). Sinking or serving the dinner clears it.
+  If an update changes world generation, `WORLD_SIG` won't match and the old save is dropped. No storage = fresh start.
+  **Keep world generation deterministic**: anything random during setup must go through `Math.random` (or `rand`).
+
 - **Tutorial** (first voyage, `tut` in the Tutorial section): controls appear one at a time, hidden and disabled
   (keys too) until their step: logbook shimmers (open and close it) -> the compass appears and
   shimmers with its bubble ("tap to open it"); opening the lid ends the step, else after `TUT_COMPASS_T` = 4.5 s it moves on -> the sail switch appears, sends out rings and its thumb nudges up until it is slid (or tapped)
@@ -109,11 +118,11 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   pulsed ~5–8 times a second around 4–5 kHz, in bouts with rests; see `cicadas()` in Sound) with dark nights lit by lanterns, lighthouses and windows.
 
 ## Map of index.html (search for these section headers: `// ---------- Name ----------`)
-World setup · Islands · Home island · Piers · Villages · Ruins · Rocks · Whirlpools · Fish banks · Boat ·
+Seed · World setup · Islands · Home island · Piers · Villages · Ruins · Rocks · Whirlpools · Fish banks · Boat ·
 Trade routes · Wind · Input · Haptics · Sound · Ship's wheel · Sail switch · Intro · Tutorial · UI refs · Dialog · Fishing · Fog of war ·
 Rollers · Powers from the ruins · Village market · Cicadas · Night sounds · Town sounds · Wind streaks · Shopping list ·
 Buoys · Traders · Update · 1-bit rendering · Day and night · Draw · Villages (pixel art) · Ruins (pixel art) ·
-Cloud shadows (clouds) · Ambient life: gulls
+Cloud shadows (clouds) · Ambient life: gulls · Saving
 
 ## Good first tasks in Claude Code
 1. Split `index.html` into modules (e.g. `src/world.js`, `src/boat.js`, `src/audio.js`, `src/ui.js`, `src/render.js`)

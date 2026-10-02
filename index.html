@@ -404,6 +404,9 @@
   .shopping{margin:10px 0 18px; padding-left:22px; font-size:15px; line-height:1.7;}
   .shopping li{list-style:'– ';}
   #start-btn{display:block; margin:0 auto; background:var(--ink); color:var(--paper); animation:ring 1.8s ease-in-out infinite;}
+  /* with a saved voyage: "Continue" is the main button, "New voyage" a quiet one under it */
+  #continue-btn{display:block; margin:0 auto; background:var(--ink); color:var(--paper); animation:ring 1.8s ease-in-out infinite;}
+  #start-btn.secondary{background:var(--paper); color:var(--ink); animation:none; margin-top:10px; font-size:14px; padding:7px 20px;}
   @keyframes ring{0%,100%{box-shadow:0 0 0 2px var(--paper), 0 0 0 4px rgba(27,26,23,0.15)} 50%{box-shadow:0 0 0 3px var(--paper), 0 0 0 7px rgba(27,26,23,0.55)}}
   #intro button, #gameover button{
     margin-top:16px;
@@ -493,6 +496,7 @@
       <li>Dessert</li>
     </ul>
     <p>You will find them in the four villages on the map. Buy them, then sail home.</p>
+    <button id="continue-btn" hidden>Continue</button>
     <button id="start-btn">Set sail</button>
    </div>
   </div>
@@ -531,6 +535,22 @@
 <script>
 (function(){
   "use strict";
+
+  // ---------- Seed ----------
+  // The world (islands, rocks, villages, banks…) is generated from a seed, so
+  // a saved voyage can be rebuilt exactly. While the world is being made,
+  // Math.random is a small seeded generator (mulberry32); once it's done the
+  // real one comes back, so waves, fish and whirlpools stay unpredictable.
+  // The seed is a fresh one for a new voyage, or the saved one (see Saving).
+  const SAVE_KEY = 'vento-e-vele-save-v1';
+  const store = (()=>{ try{ return window.localStorage; }catch(e){ return null; } })();   // may be missing (private mode, sandbox)
+  let saved = null;
+  try{ const raw = store && store.getItem(SAVE_KEY); if(raw){ saved = JSON.parse(raw); if(!saved || saved.v !== 1) saved = null; } }catch(e){ saved = null; }
+  const SEED = saved ? saved.seed >>> 0 : Math.floor(Math.random()*4294967296) >>> 0;
+  const realRandom = Math.random;
+  Math.random = (function(a){
+    return function(){ a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  })(SEED);
 
   let canvas = document.getElementById('c');
   // low-res game buffer: 1 game pixel ≈ 1 CSS px on phones (Playdate-like
@@ -3154,6 +3174,7 @@
   const elGoStats = document.getElementById('go-stats');
   let voyageTime = 0;
   function sink(){
+    clearSave();                                             // the voyage is over
     playing = false;
     boat.speed = 0;
     Sfx.wheel(0); Sfx.drone(0);
@@ -3285,6 +3306,7 @@
   elDlg.addEventListener('pointerdown', ()=>{ if(dlg){ dlg.shown = dlg.text.length; elDlgText.textContent = dlg.text; } });
   const elGoTitle = document.getElementById('go-title');
   function showWin(tier){
+    clearSave();                                             // the voyage is over: the dinner is served
     playing = false;
     boat.speed = 0;
     Sfx.wheel(0); Sfx.drone(0);
@@ -4403,7 +4425,7 @@
         boat.x = moor.fx + (moor.bx-moor.fx)*e;
         boat.y = moor.fy + (moor.by-moor.fy)*e;
         boat.angle = moor.fa + norm(moor.ba-moor.fa)*e;
-        if(k>=1){ anchored = true; weighT = 0; anchorUI(); moor.phase = 'moored'; repairT = 0.4; Sfx.thunk(0.35); buzz([35,90,15]); }   // bump, then tied up
+        if(k>=1){ anchored = true; weighT = 0; anchorUI(); moor.phase = 'moored'; repairT = 0.4; Sfx.thunk(0.35); buzz([35,90,15]); saveGame(); }   // bump, then tied up
       } else {
         boat.x = moor.bx; boat.y = moor.by; boat.angle = moor.ba;
         const village = moor.pier.isl.village, ruin = moor.pier.isl.ruin;
@@ -6201,6 +6223,84 @@
     placeTip();                                             // tutorial bubble (only while a control is being taught)
     if(!logIconDone) drawLogbookIcon();                     // once (it needs the dither table, ready by now)
     if(tutAt('compass')) drawCompass();                    // shown from the tutorial's compass step on
+  }
+
+
+  // ---------- Saving ----------
+  // The voyage is saved in the browser (localStorage, on this device only):
+  // every 10 s while sailing, on tying up at a pier, and when the page is
+  // hidden or closed. On the next visit the intro offers "Continue": the world
+  // is rebuilt from the saved seed and the voyage picks up where it was (at
+  // anchor). Sinking or serving the dinner ends the voyage and clears the save.
+  // If storage isn't available the game simply starts fresh every time.
+  Math.random = realRandom;                                  // the world is made: back to real chance
+  // a fingerprint of the world: if an update to the game changed how the
+  // world is generated, the same seed would give different islands, so an
+  // old save that doesn't match is dropped rather than loaded into the sea
+  const WORLD_SIG = islands.length + ':' + rocks.length + ':' + islands.reduce((a, i)=> (Math.imul(a, 31) + Math.round(i.x)*7 + Math.round(i.y)) | 0, 0);
+  if(saved && saved.sig !== WORLD_SIG){ saved = null; try{ store && store.removeItem(SAVE_KEY); }catch(e){} }
+  function packFog(){
+    let s = '';
+    for(let i = 0; i < explored.length; i += 8){
+      let b = 0; for(let k = 0; k < 8; k++) if(explored[i+k]) b |= 1 << k;
+      s += String.fromCharCode(b);
+    }
+    return btoa(s);
+  }
+  function unpackFog(str){
+    const s = atob(str);
+    for(let i = 0; i < explored.length; i++) explored[i] = (s.charCodeAt(i >> 3) >> (i & 7)) & 1;
+  }
+  function saveGame(){
+    if(!store || !playing || won) return;
+    try{
+      store.setItem(SAVE_KEY, JSON.stringify({
+        v: 1, seed: SEED, sig: WORLD_SIG, at: Date.now(),
+        boat: {x: boat.x, y: boat.y, angle: boat.angle, health: boat.health},
+        sail: sailLevel, counts: {...counts}, coins, caught, voyageTime,
+        villages: VILLAGES.map(v=> ({done: v.done, gift: v.giftGot, dishes: v.dishes.map(d=> !!d.bought)})),
+        dayNo, dayT, tutDone: tut === 'done', guideWind, lid: lidOpen, boonWindT, boonFish,
+        fog: packFog()
+      }));
+    }catch(e){}
+  }
+  function clearSave(){ try{ store && store.removeItem(SAVE_KEY); }catch(e){} }
+  // put a saved voyage back (the world itself was already rebuilt from its seed)
+  function applySave(s){
+    boat.x = s.boat.x; boat.y = s.boat.y; boat.angle = s.boat.angle; boat.health = s.boat.health;
+    boat.speed = 0; boat.kx = boat.ky = 0; boat.whirl = null;
+    moor = null; moorLock = null;                            // back at anchor where it was
+    anchored = true; weighT = 0; anchorUI();
+    sailLevel = s.sail; boat.sailAmount = SAIL_LEVELS[sailLevel].amount; thumbPos = sailLevel === SAIL_MIN ? 0 : 1; renderSailBtn();
+    for(const k in counts) counts[k] = s.counts[k] || 0;
+    coins = s.coins; caught = s.caught; voyageTime = s.voyageTime;
+    VILLAGES.forEach((v,i)=>{ const q = s.villages[i]; v.done = q.done; v.giftGot = q.gift; v.dishes.forEach((d,j)=> d.bought = q.dishes[j]); });
+    dayNo = s.dayNo; dayT = s.dayT; guideWind = s.guideWind;
+    lidOpen = s.lid; lidT = lidOpen ? 0 : 1;
+    boonWindT = s.boonWindT || 0; boonFish = s.boonFish || 0;
+    if(s.fog) unpackFog(s.fog);
+    camFx = boat.x; camFy = boat.y;
+  }
+  setInterval(saveGame, 10000);
+  document.addEventListener('visibilitychange', ()=>{ if(document.hidden) saveGame(); });
+  window.addEventListener('pagehide', saveGame);
+  // the intro: with a saved voyage, "Continue · Day N" and "New voyage"
+  // (a new voyage needs a new world: the save is cleared and the page reloads)
+  if(saved && store){
+    const cont = document.getElementById('continue-btn'), fresh = document.getElementById('start-btn');
+    cont.textContent = 'Continue · Day ' + saved.dayNo;
+    cont.hidden = false;
+    fresh.textContent = 'New voyage';
+    fresh.classList.add('secondary');
+    fresh.addEventListener('click', e=>{ e.stopImmediatePropagation(); clearSave(); location.reload(); }, true);
+    cont.addEventListener('click', ()=>{
+      buzz([25,50,40]);
+      applySave(saved);
+      playing = true;
+      Sfx.init();
+      if(saved.tutDone) tutSet('done');                      // (otherwise the tutorial starts again)
+      rollIntoScroll();
+    });
   }
 
   const elFps = document.getElementById('fps');
