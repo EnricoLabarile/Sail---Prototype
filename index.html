@@ -2534,8 +2534,14 @@
     c.save();
     c.translate(WH_CX, WH_CY);
     c.scale(WH_S, WH_S);
-    // no backing disc: the gaps between the spokes are open, so the sea shows through
     c.rotate(wheelAngle);
+    // a dark backing inside the rim: the gaps between the spokes are a deep
+    // dotted texture, so the light wood (spokes, rim, hub) reads clearly on any sea
+    {
+      const bg = c.createRadialGradient(0, 0, 14, 0, 0, 50);
+      bg.addColorStop(0, 'rgb(70,70,70)'); bg.addColorStop(1, 'rgb(44,44,44)');   // a touch lighter toward the hub
+      c.fillStyle = bg; c.beginPath(); c.arc(0, 0, 50, 0, Math.PI*2); c.fill();
+    }
     c.lineCap='round'; c.lineJoin='round';
     // a spoke/handle profile along +x, turned like a lathe piece: symmetric
     // outline built from [radius, half-width] stations

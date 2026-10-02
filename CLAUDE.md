@@ -52,7 +52,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   -> the anchor hub appears with pulsing rings (weigh anchor) -> two curved arrows on the wheel for ~4.5 s (or until
   you steer) -> free. The smoke test skips it with `tutSet("done")`. At each step a speech bubble (`#tut-tip`,
   `TUT_TIPS`, `placeTip`) sits by the control with its tail pointing at it and says in a few words what it does.
-- **Controls:** wheel (drag in a circle; half a turn = full lock). The wheel has no backing disc: the sea shows between the spokes; its wood
+- **Controls:** wheel (drag in a circle; half a turn = full lock). Inside the rim a dark backing (a radial grey 70→44, dithered to a deep dotted texture) fills the gaps between the spokes, so the light wood reads clearly; the wood
   is a mid grey (`WOOD`, `WOOD_SH`, `WOOD_RIM` in drawWheel) so it stands out from the pale sea.
   Layout (no panel behind the controls: a wooden dashboard was tried and dropped, it hid too much sea): compass over
   logbook bottom left, wheel bottom centre, sail badge bottom right (level with the logbook).
