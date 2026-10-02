@@ -85,8 +85,8 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   right page (`holdHTML`: purse, every fish as a small icon, then every dish and gift bought as an icon only, name on
   hover; the book grows to fit). Each dish and gift has its own 24×24 ink icon (`ITEM_ICONS`, `itemIcon(name)`), used at the market stall too.
   Opening/closing it plays `Sfx.book(open)`: paper flutter, and the cover's thump on closing. The list also shows the day of the voyage
-  (`dayNo`, +1 at each dawn). A tiny faint frame-rate counter (`#fps`, refreshed twice a second while the logbook is open) sits in the
-  leather at the bottom right of the book. Keyboard: arrows, Space = anchor, S = sail.
+  (`dayNo`, +1 at each dawn). A tiny faint frame-rate counter (`#fps`, refreshed twice a second while the logbook is open) sits on the
+  paper, in the bottom right corner of the right page. Keyboard: arrows, Space = anchor, S = sail.
 - **Hazards:** rocks, faraglioni, whirlpools (appear/disappear/wander), rollers (big waves: within ~66° of their travel = surf boost (`SURF_COS`), otherwise they hurt).
 - **Atmosphere:** macchia (tree-spurge domes + Mediterranean pines), clouds with parallax and shadows, gulls, wind streaks,
   traders (motor boats on A* lanes between villages; they don't avoid the player, a collision just shoves them aside

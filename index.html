@@ -259,7 +259,7 @@
     border:2px solid var(--ink); border-radius:10px;
     box-shadow:4px 5px 0 rgba(0,0,0,.35);
   }
-  #fps{position:absolute; right:34px; bottom:1px; font:9px/12px ui-monospace, monospace; color:var(--paper); opacity:.45;
+  #fps{position:absolute; right:21px; bottom:20px; font:10px/12px ui-monospace, monospace; color:var(--ink); opacity:.5;
     font-variant-numeric:tabular-nums; letter-spacing:.04em; pointer-events:none; z-index:2;}
   #shoplist::before{                    /* stitching round the cover */
     content:""; position:absolute; inset:4px; border:1.5px dashed rgba(235,231,220,.55); border-radius:7px; pointer-events:none;
@@ -473,7 +473,7 @@
   <!-- the logbook, open: a sturdy leather cover with metal corners framing two pages;
        the dinner list on the left page, the compass on the right -->
   <div id="shoplist" role="region" aria-label="Logbook">
-    <span id="fps" aria-hidden="true"></span>   <!-- a small frame-rate counter, tucked into the leather at the bottom -->
+    <span id="fps" aria-hidden="true"></span>   <!-- a small frame-rate counter, bottom right of the right page -->
     <svg class="corner tl" aria-hidden="true"><use href="#book-corner"/></svg>
     <svg class="corner tr" aria-hidden="true"><use href="#book-corner"/></svg>
     <svg class="corner bl" aria-hidden="true"><use href="#book-corner"/></svg>
