@@ -101,8 +101,8 @@
   #wood .res-item{display:flex; align-items:center; gap:3px;}
   /* the logbook is a compact card: the list on the left, the compass on the right */
   /* the compass sits at the top of the screen, in the middle (the open logbook covers it; that's fine) */
-  #compass{position:fixed; left:calc(50% - 38px); top:calc(10px + env(safe-area-inset-top,0px));
-    width:76px; height:76px; z-index:7; cursor:pointer; touch-action:manipulation; transition:opacity .5s;}
+  #compass{position:fixed; left:calc(50% - 47.5px); top:calc(10px + env(safe-area-inset-top,0px));
+    width:95px; height:95px; z-index:7; cursor:pointer; touch-action:manipulation; transition:opacity .5s;}
   #compass:focus-visible{outline:2px dashed var(--ink); outline-offset:2px; border-radius:50%;}
   body.tut-no-compass #compass{opacity:0; pointer-events:none;}
   #wood{display:none !important;}      /* the fish counters round the compass are retired: the hold is in the logbook */
@@ -2564,7 +2564,7 @@
   // the compass is drawn like the wheel: in greys into a low-res canvas (one
   // pixel per CSS pixel), then dithered to the two interface colours, so it
   // has the same textured, 1-bit look; the drawing itself is in 72 units
-  const CMP_PX = 76, CMP_K = CMP_PX/72;
+  const CMP_PX = 95, CMP_K = CMP_PX/72;           // (95 px: 1.25 × the old 76)
   const cmpLo = document.createElement('canvas'); cmpLo.width = CMP_PX; cmpLo.height = CMP_PX;
   const cmpL = cmpLo.getContext('2d', {willReadFrequently:true});
   (function(){ const k = Math.max(1, Math.round(window.devicePixelRatio||1)); cmp.width = CMP_PX*k; cmp.height = CMP_PX*k; cmpCtx.imageSmoothingEnabled = false; })();

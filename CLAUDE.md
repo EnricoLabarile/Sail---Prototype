@@ -59,7 +59,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   The market is a centred window over the world (no dark backdrop; a clear `#mk-shade` still catches stray taps); while it's open the compass (with its fish
   counters) and wheel/anchor are hidden. Buttons: Quit (left) and Trade (right); both close it and leave you moored
   with the anchor back, so you can linger; a market opens once per docking (leave and come back to trade again).
-- **Compass** (76 px, `CMP_PX`, top centre of the screen (the open logbook covers it); in its tutorial step the bubble hangs under it; hidden in the tutorial
+- **Compass** (95 px, `CMP_PX`, top centre of the screen (the open logbook covers it); in its tutorial step the bubble hangs under it; hidden in the tutorial
   until its own tutorial step): points home, a dot per village filled once a dish is bought there; drawn like the
   wheel (greys into a low-res canvas, then dithered): brass bezel with rivets, shaded card, wind rose, glass glare.
   It has a hinged brass **lid** (engraved rings, a small star, hinge on top, catch below; `lidOpen`, `toggleLid`): shut at
