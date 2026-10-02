@@ -351,6 +351,7 @@
   /* the sail's turn: the badge wiggles like the logbook with news and sends out rings (paper and ink, so they
      show on pale sea and dark fog) until it's tapped */
   body.tut-rope #sail{border-radius:50%; animation:logWiggle 2.2s ease-in-out infinite, sailPing 1.1s ease-out infinite;}
+  body.tut-compass #compass{border-radius:50%; animation:logWiggle 2.2s ease-in-out infinite, sailPing 1.1s ease-out infinite;}
   @keyframes sailPing{0%{box-shadow:0 0 0 0 rgba(235,231,220,.95), 0 0 0 0 rgba(27,26,23,.85)} 100%{box-shadow:0 0 0 14px rgba(235,231,220,0), 0 0 0 17px rgba(27,26,23,0)}}
 
   /* --- Intro / game over --- */
@@ -2618,12 +2619,26 @@
       c.save(); c.translate(WH_CX + jx, WH_CY); c.scale(WH_S*hubScale, WH_S*hubScale);
       // the knob is shaded in greys (dithered like the rest of the UI): dark at
       // anchor, a light, slightly shaded face while sailing (a bit bigger then)
-      const HR = inv ? 13 : 14.5;
-      const kg = c.createLinearGradient(-HR, -HR, HR, HR);
-      if(inv){ kg.addColorStop(0, 'rgb(105,105,105)'); kg.addColorStop(1, 'rgb(35,35,35)'); }
-      else { kg.addColorStop(0, PAPW); kg.addColorStop(0.55, PAPW); kg.addColorStop(1, 'rgb(200,200,200)'); }
-      c.fillStyle = kg; c.strokeStyle=INKW; c.lineWidth=2;
+      // drawn like the compass: a brass bezel (lit from the top left) with
+      // four rivets, round a shaded face, and a glint of glass; the face is
+      // light while sailing, dark at anchor
+      const HR = inv ? 13 : 14.5, FR = HR - 3.2;
+      const bz = c.createLinearGradient(-HR, -HR, HR, HR);
+      bz.addColorStop(0, 'rgb(245,245,245)'); bz.addColorStop(0.5, 'rgb(200,200,200)'); bz.addColorStop(1, 'rgb(140,140,140)');
+      c.fillStyle = bz; c.strokeStyle = INKW; c.lineWidth = 1.6;
       c.beginPath(); c.arc(0,0,HR,0,Math.PI*2); c.fill(); c.stroke();
+      for(let k=0;k<4;k++){                                                // rivets
+        const a = Math.PI/4 + k*Math.PI/2, rx = Math.cos(a)*(HR-1.6), ry = Math.sin(a)*(HR-1.6);
+        c.fillStyle = INKW; c.beginPath(); c.arc(rx, ry, 1.05, 0, Math.PI*2); c.fill();
+        c.fillStyle = PAPW; c.fillRect(rx-0.6, ry-0.6, 0.6, 0.6);
+      }
+      const fg = c.createRadialGradient(-FR*0.35, -FR*0.35, 1, 0, 0, FR);
+      if(inv){ fg.addColorStop(0, 'rgb(100,100,100)'); fg.addColorStop(1, 'rgb(28,28,28)'); }
+      else { fg.addColorStop(0, PAPW); fg.addColorStop(0.6, 'rgb(236,236,236)'); fg.addColorStop(1, 'rgb(182,182,182)'); }
+      c.fillStyle = fg; c.strokeStyle = INKW; c.lineWidth = 1;
+      c.beginPath(); c.arc(0,0,FR,0,Math.PI*2); c.fill(); c.stroke();
+      c.strokeStyle = PAPW; c.lineWidth = 1.1;                              // a glint on the glass
+      c.beginPath(); c.arc(0,0,FR-1.6,Math.PI*1.08,Math.PI*1.38); c.stroke();
       if(inv){ c.strokeStyle=PAPW; c.lineWidth=1.3; c.beginPath(); c.arc(0,0,HR+1.4,0,Math.PI*2); c.stroke(); }   // one light rim, so the dark knob reads on dark water
       const ring = (r, a0, a1, lw, dash)=>{                // an ink ring with a paper halo, readable anywhere
         c.save(); if(dash) c.setLineDash(dash);
@@ -2639,11 +2654,14 @@
       c.strokeStyle = HI; c.fillStyle = HI;
       c.lineCap='round';
       // always an anchor: ink on the light hub while sailing (bigger, bolder), paper on the dark knob at anchor
-      c.save(); c.scale(inv ? 1.1 : 1.28, inv ? 1.1 : 1.28);
+      c.save(); c.scale(inv ? 1.0 : 1.1, inv ? 1.0 : 1.1);
+      const glyph = ()=>{
       c.lineWidth = inv ? 1.7 : 1.75;
       c.beginPath(); c.arc(0,-7,1.9,0,Math.PI*2); c.stroke();
       c.beginPath(); c.moveTo(0,-5); c.lineTo(0,7.5); c.moveTo(-4.5,-2.2); c.lineTo(4.5,-2.2); c.stroke();
       c.beginPath(); c.moveTo(-6.5,2.5); c.quadraticCurveTo(-5,7.5,0,7.5); c.quadraticCurveTo(5,7.5,6.5,2.5); c.stroke();
+      };
+      glyph();
       c.restore();
       c.restore();
     }
@@ -2835,16 +2853,20 @@
   // reached its control is hidden and disabled (keys included):
   //   'intro'  the intro card is up
   //   'book'   the logbook shimmers: open it, then close it
+  //   'compass' the compass appears and shimmers, with a word on what it does;
+  //            nothing to press: after a few seconds it moves on
   //   'rope'   the sail badge appears and glows: tap it to set the sail
   //   'anchor' the wheel's hub (the anchor) appears and pulses: hold it to weigh
   //   'wheel'  arrows on the wheel show it turns; a few seconds, then 'done'
   let tut = 'intro', tutBookSeen = false, tutWheelT0 = 0, tutSwingT = 0;
-  const TUT_ORDER = ['intro','book','rope','anchor','wheel','done'];
+  const TUT_ORDER = ['intro','book','compass','rope','anchor','wheel','done'];
   const tutAt = (stage)=> TUT_ORDER.indexOf(tut) >= TUT_ORDER.indexOf(stage);   // reached this step yet?
   function tutSet(stage){
     tut = stage;
     document.body.classList.toggle('tut-no-rope', !tutAt('rope'));
-    document.body.classList.toggle('tut-no-compass', !tutAt('rope'));   // the compass arrives with the sail badge
+    document.body.classList.toggle('tut-no-compass', !tutAt('compass'));
+    document.body.classList.toggle('tut-compass', stage === 'compass');
+    if(stage === 'compass') setTimeout(()=>{ if(tut === 'compass') tutNext('rope'); }, TUT_COMPASS_T);   // a look, then on
     document.body.classList.toggle('tut-no-wheel', !tutAt('anchor'));
     document.body.classList.toggle('tut-rope', stage === 'rope');
     if(stage === 'book') elListBtn.classList.add('news');                       // the logbook shimmers
@@ -2855,11 +2877,12 @@
   // a step done: its highlight (bubble, wiggle, rings) goes at once, and the
   // next step is shown after a pause, so the player isn't rushed
   const TUT_PAUSE = 1500;
+  const TUT_COMPASS_T = 4500;                  // how long the compass step lasts (no input needed)
   let tutWait = false;
   function tutNext(stage){
     if(tutWait) return;
     tutWait = true;
-    document.body.classList.remove('tut-rope');
+    document.body.classList.remove('tut-rope', 'tut-compass');
     setTimeout(()=>{ tutWait = false; tutSet(stage); }, TUT_PAUSE);
   }
   // a speech bubble by the control being taught, saying in a few words what
@@ -2868,6 +2891,7 @@
   const elTip = document.getElementById('tut-tip');
   const TUT_TIPS = {
     book:   'Your logbook: the dinner list. Open it, then close it.',
+    compass: 'Your compass: it always points home.',
     rope:   'Tap to set or furl the sail.',
     anchor: 'Hold to weigh anchor.',
     wheel:  'Drag the wheel round to steer.',
@@ -2881,6 +2905,7 @@
     const box = el=> ({l: el.offsetLeft, t: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight});
     let x, top, align;
     if(tut === 'book'){ const b = box(elListBtn); x = b.l + b.w/2; top = b.t + 4; align = 'left'; }
+    else if(tut === 'compass'){ const b = box(cmp); x = b.l + b.w/2; top = b.t + 2; align = 'left'; }
     else if(tut === 'rope'){ const b = box(sailCv); x = b.l + b.w/2; top = b.t + 4; align = 'right'; }
     else {
       const r = wheelCv.getBoundingClientRect(), b = {l: r.left, t: r.top, w: r.width, h: r.height}, hx = b.l + b.w*WH_CX/WH_W;   // (centred with a transform: use its real box)
@@ -3847,7 +3872,7 @@
     } else {
       elList.classList.remove('unfold'); Sfx.book(false); buzz([4,60,14]);                                 // the cover folds shut
       bookT = setTimeout(()=> elList.classList.remove('open'), BOOK_FOLD);                               // then up it goes
-      if(tut === 'book' && tutBookSeen) tutNext('rope');   // tutorial: now the sail badge
+      if(tut === 'book' && tutBookSeen) tutNext('compass');   // tutorial: now the compass
     }
   }
   elListBtn.addEventListener('click', ()=>{ toggleList(); elListBtn.blur(); });
@@ -5965,7 +5990,7 @@
     drawSail();
     placeTip();                                             // tutorial bubble (only while a control is being taught)
     if(!logIconDone) drawLogbookIcon();                     // once (it needs the dither table, ready by now)
-    if(tutAt('rope')) drawCompass();                       // shown from the tutorial's sail step on
+    if(tutAt('compass')) drawCompass();                    // shown from the tutorial's compass step on
   }
 
   function loop(now){

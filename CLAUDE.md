@@ -43,12 +43,13 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   counters) and wheel/anchor are hidden. Buttons: Quit (left) and Trade (right); both close it and leave you moored
   with the anchor back, so you can linger; a market opens once per docking (leave and come back to trade again).
 - **Compass** (76 px, `CMP_PX`, bottom left, just above the logbook icon, same width; hidden in the tutorial
-  until the sail step): points home, a dot per village filled once a dish is bought there; drawn like the
+  until its own tutorial step): points home, a dot per village filled once a dish is bought there; drawn like the
   wheel (greys into a low-res canvas, then dithered): brass bezel with rivets, shaded card, wind rose, glass glare.
   The old fish counters round it are hidden (`#wood`); the cargo is shown on the logbook's right page.
 - **Intro:** on "Set sail" the card rolls up into a scroll that is tossed into the list button (skipped with reduced motion).
 - **Tutorial** (first voyage, `tut` in the Tutorial section): controls appear one at a time, hidden and disabled
-  (keys too) until their step: logbook shimmers (open and close it) -> the sail badge appears, wiggles and sends out rings until tapped
+  (keys too) until their step: logbook shimmers (open and close it) -> the compass appears and
+  shimmers with its bubble, nothing to press: after `TUT_COMPASS_T` = 4.5 s it moves on -> the sail badge appears, wiggles and sends out rings until tapped
   -> the anchor hub appears with pulsing rings (weigh anchor) -> two curved arrows on the wheel for ~4.5 s (or until
   you steer) -> free. The smoke test skips it with `tutSet("done")`. At each step a speech bubble (`#tut-tip`,
   `TUT_TIPS`, `placeTip`) sits by the control with its tail pointing at it and says in a few words what it does. When a step is done its highlight
@@ -59,8 +60,8 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   logbook bottom left, wheel bottom centre, sail badge bottom right (level with the logbook).
   Hub of the wheel = anchor only:
   **long press 0.5 s = anchor**. At anchor the wheel fades out and only the hub (bigger, dark) remains. The hub is
-  shaded in greys and dithered like the rest of the UI: sailing, a light face (r 14.5) with a big ink anchor; at
-  anchor, a single dark knob with one light rim and a paper anchor.
+  drawn like the compass, in greys then dithered: a light brass bezel (lit top left) with four rivets round a shaded
+  face with a glint; sailing, a light face (r 14.5) with an ink anchor; at anchor, a dark face, one light rim and a paper anchor.
   **Sail badge** (`#sail`, `drawSail`, section "Sail badge"; the old halyard rope is gone): a crisp disc (pure ink and paper, hard threshold, no dither):
   bottom right, 76 px, showing the sail state (full sail: paper disc, ink drawing; furled: inverted, ink disc, paper drawing); tap it (or Enter/Space on it, or S) to switch sail (full /
   minimum) with a clack and a buzz; it pops when it switches. The voyage starts with the sail furled.
