@@ -2729,6 +2729,7 @@
   let weighT = 0;
   function anchorUI(){ renderSailBtn(); }            // the hub of the wheel shows the state
   function setAnchor(on, instant){
+    if(tut === 'drop') tutSet('done');                                    // tutorial: they found it
     // at the quay with the text still running: the first press just finishes it
     if(!on && moor && moor.phase==='moored' && dlg && !dlg.ready){
       dlg.shown = dlg.text.length; elDlgText.textContent = dlg.text; dlg.t = Math.max(dlg.t, dlg.pause); dlg.ready = true;
@@ -2940,9 +2941,11 @@
   //            nothing to press: after a few seconds it moves on
   //   'rope'   the sail badge appears and glows: tap it to set the sail
   //   'anchor' the wheel's hub (the anchor) appears and pulses: hold it to weigh
-  //   'wheel'  arrows on the wheel show it turns; a few seconds, then 'done'
+  //   'wheel'  arrows on the wheel show it turns; a few seconds, then 'drop'
+  //   'drop'   3 s later the hub pulses again: hold it to drop anchor (optional;
+  //            gone after 3 s, or as soon as the anchor goes down), then 'done'
   let tut = 'intro', tutBookSeen = false, tutWheelT0 = 0, tutSwingT = 0;
-  const TUT_ORDER = ['intro','book','compass','rope','anchor','wheel','done'];
+  const TUT_ORDER = ['intro','book','compass','rope','anchor','wheel','drop','done'];
   const tutAt = (stage)=> TUT_ORDER.indexOf(tut) >= TUT_ORDER.indexOf(stage);   // reached this step yet?
   function tutSet(stage){
     tut = stage;
@@ -2950,6 +2953,7 @@
     document.body.classList.toggle('tut-no-compass', !tutAt('compass'));
     document.body.classList.toggle('tut-compass', stage === 'compass');
     if(stage === 'compass') setTimeout(()=>{ if(tut === 'compass') tutNext('rope'); }, TUT_COMPASS_T);   // a look, then on
+    if(stage === 'drop') setTimeout(()=>{ if(tut === 'drop') tutSet('done'); }, TUT_DROP_T);   // optional: it fades by itself
     document.body.classList.toggle('tut-no-wheel', !tutAt('anchor'));
     document.body.classList.toggle('tut-rope', stage === 'rope');
     if(stage === 'book') elListBtn.classList.add('news');                       // the logbook shimmers
@@ -2961,12 +2965,13 @@
   // next step is shown after a pause, so the player isn't rushed
   const TUT_PAUSE = 1500;
   const TUT_COMPASS_T = 4500;                  // how long the compass step lasts (no input needed)
+  const TUT_DROP_WAIT = 3000, TUT_DROP_T = 3000;   // after the wheel arrows: wait, then the anchor tip for a while
   let tutWait = false;
-  function tutNext(stage){
+  function tutNext(stage, pause = TUT_PAUSE){
     if(tutWait) return;
     tutWait = true;
     document.body.classList.remove('tut-rope', 'tut-compass');
-    setTimeout(()=>{ tutWait = false; tutSet(stage); }, TUT_PAUSE);
+    setTimeout(()=>{ tutWait = false; tutSet(stage); }, pause);
   }
   // a speech bubble by the control being taught, saying in a few words what
   // it does; it follows the control (placed from its layout box, so the
@@ -2978,6 +2983,7 @@
     rope:   'Slide up to set the sail, down to furl it.',
     anchor: 'Hold to weigh anchor.',
     wheel:  'Drag the wheel round to steer.',
+    drop:   'Hold here to drop anchor and stop.',
   };
   function placeTip(){
     const text = tutWait ? null : TUT_TIPS[tut];
@@ -2993,7 +2999,7 @@
     else {
       const r = wheelCv.getBoundingClientRect(), b = {l: r.left, t: r.top, w: r.width, h: r.height}, hx = b.l + b.w*WH_CX/WH_W;   // (centred with a transform: use its real box)
       x = hx; align = 'center';
-      top = tut === 'anchor' ? b.t + b.h*WH_CY/WH_H - 48 : b.t - 2;   // over the hub's rings, or over the wheel
+      top = tut === 'anchor' ? b.t + b.h*WH_CY/WH_H - 48 : tut === 'drop' ? b.t + b.h*WH_CY/WH_H - 38 : b.t - 2;   // over the hub's rings, or over the wheel
     }
     const vw = window.innerWidth, vh = window.innerHeight, w = elTip.offsetWidth;
     let left = align === 'left' ? x - 30 : align === 'right' ? x - w + 30 : x - w/2;
@@ -3008,19 +3014,19 @@
   function drawTutorialHints(c){
     if(tutWait) return;                                  // between steps: nothing to point at
     const INKW = '#000', PAPW = '#fff', now = performance.now();
-    if(tut === 'anchor'){
+    if(tut === 'anchor' || tut === 'drop'){
       const base = 13*WH_S*hubScale + 3;
       for(const off of [0, 0.5]){
-        const k = (now/1300 + off) % 1, r = base + k*22;
-        c.globalAlpha = 1 - k;
-        c.strokeStyle = PAPW; c.lineWidth = 4.5; c.beginPath(); c.arc(WH_CX, WH_CY, r, 0, Math.PI*2); c.stroke();
-        c.strokeStyle = INKW; c.lineWidth = 2;   c.beginPath(); c.arc(WH_CX, WH_CY, r, 0, Math.PI*2); c.stroke();
+        const k = (now/1300 + off) % 1, r = base + k*30;
+        c.globalAlpha = 1 - k*k;                         // (fades late, so the ring reads among the spokes)
+        c.strokeStyle = PAPW; c.lineWidth = 6; c.beginPath(); c.arc(WH_CX, WH_CY, r, 0, Math.PI*2); c.stroke();
+        c.strokeStyle = INKW; c.lineWidth = 2.6;   c.beginPath(); c.arc(WH_CX, WH_CY, r, 0, Math.PI*2); c.stroke();
       }
       c.globalAlpha = 1;
     }
     if(tut === 'wheel'){
       const el = now - tutWheelT0;
-      if(el > 4500 || Math.abs(wheelAngle) > 0.8){ tutSet('done'); return; }   // seen it, or already steering
+      if(el > 4500 || Math.abs(wheelAngle) > 0.8){ tutNext('drop', TUT_DROP_WAIT); return; }   // seen it, or already steering: then the (optional) anchor tip
       const R = 88, sway = Math.sin(el/1000*Math.PI*1.2)*0.25;
       c.save(); c.translate(WH_CX, WH_CY); c.globalAlpha = Math.min(1, el/400, (4500 - el)/500);
       c.lineCap = 'round'; c.lineJoin = 'round';
