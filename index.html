@@ -291,6 +291,13 @@
   #shoplist .crease::after{content:""; position:absolute; left:50%; top:0; bottom:0; width:2px; margin-left:-1px; background:var(--ink);}
   #shoplist.open{transform:translate(-75%, 0);}                                   /* 1: the shut book comes down */
   #shoplist.open.unfold{transform:translate(-50%, 0); clip-path:inset(-12px);}   /* 2: it opens, re-centring */
+  /* tutorial bubble: by the control being taught, its tail pointing at it */
+  #tut-tip{position:fixed; left:0; bottom:0; max-width:215px; padding:6px 10px; font-style:italic; font-size:14px; line-height:1.3;
+    z-index:9; pointer-events:none; opacity:0; transform:translateY(6px); transition:opacity .4s, transform .4s, visibility 0s .4s; visibility:hidden;}
+  #tut-tip.show{opacity:1; transform:none; visibility:visible; transition:opacity .4s .3s, transform .4s .3s, visibility 0s;}
+  #tut-tip::after{content:""; position:absolute; bottom:-7px; left:var(--tail, 50%); width:10px; height:10px; margin-left:-6px;
+    background:var(--paper); border-right:2px solid var(--ink); border-bottom:2px solid var(--ink); transform:rotate(45deg);}
+  body.at-market #tut-tip{display:none;}
   #toast{
     position:fixed; left:50%; bottom:calc(262px + env(safe-area-inset-bottom,0px)); z-index:10;   /* just above the wheel (and over the market) */
     transform:translate(-50%, -8px); opacity:0; transition:opacity .5s, transform .5s;
@@ -479,6 +486,7 @@
   <!-- the compass, top centre of the main view (not interactive; the open logbook may cover it) -->
   <canvas id="compass" aria-label="Compass: points home. Ports visited: none"></canvas>
   <div id="toast" class="panel" role="status" aria-live="polite"></div>
+  <div id="tut-tip" class="panel" role="status" aria-live="polite"></div>   <!-- tutorial: a bubble by the control being taught -->
   <canvas id="wheel" aria-label="Helm: drag clockwise or anticlockwise to steer"></canvas>
   <canvas id="sail" tabindex="0" role="button" aria-label="Sail: tap to switch"></canvas>   <!-- the sail badge, bottom right -->
 
@@ -2838,6 +2846,38 @@
     if(stage === 'wheel') tutWheelT0 = performance.now();
   }
   tutSet('intro');
+  // a speech bubble by the control being taught, saying in a few words what
+  // it does; it follows the control (placed from its layout box, so the
+  // wiggle doesn't shake it) and fades out when the step is done
+  const elTip = document.getElementById('tut-tip');
+  const TUT_TIPS = {
+    book:   'Your logbook: the dinner list. Open it, then close it.',
+    rope:   'Tap to set or furl the sail.',
+    anchor: 'Hold to weigh anchor.',
+    wheel:  'Drag the wheel round to steer.',
+  };
+  function placeTip(){
+    const text = TUT_TIPS[tut];
+    elTip.classList.toggle('show', !!text);
+    if(!text) return;
+    if(elTip.textContent !== text) elTip.textContent = text;
+    // where it points: [x of the tail, top of the target, how to align]
+    const box = el=> ({l: el.offsetLeft, t: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight});
+    let x, top, align;
+    if(tut === 'book'){ const b = box(elListBtn); x = b.l + b.w/2; top = b.t + 4; align = 'left'; }
+    else if(tut === 'rope'){ const b = box(sailCv); x = b.l + b.w/2; top = b.t + 4; align = 'right'; }
+    else {
+      const r = wheelCv.getBoundingClientRect(), b = {l: r.left, t: r.top, w: r.width, h: r.height}, hx = b.l + b.w*WH_CX/WH_W;   // (centred with a transform: use its real box)
+      x = hx; align = 'center';
+      top = tut === 'anchor' ? b.t + b.h*WH_CY/WH_H - 48 : b.t - 2;   // over the hub's rings, or over the wheel
+    }
+    const vw = window.innerWidth, vh = window.innerHeight, w = elTip.offsetWidth;
+    let left = align === 'left' ? x - 30 : align === 'right' ? x - w + 30 : x - w/2;
+    left = Math.max(8, Math.min(vw - w - 8, left));
+    elTip.style.left = Math.round(left) + 'px';
+    elTip.style.bottom = Math.round(vh - top + 12) + 'px';
+    elTip.style.setProperty('--tail', Math.round(Math.max(14, Math.min(w - 14, x - left))) + 'px');
+  }
   // tutorial hints drawn into the wheel's canvas (before it's dithered):
   // rings pulsing out of the hub when it's time to weigh anchor, then two
   // curved arrows over the wheel that sway, showing it turns both ways
@@ -5906,6 +5946,7 @@
 
     drawWheel();
     drawSail();
+    placeTip();                                             // tutorial bubble (only while a control is being taught)
     if(!logIconDone) drawLogbookIcon();                     // once (it needs the dither table, ready by now)
     if(tutAt('rope')) drawCompass();                       // shown from the tutorial's sail step on
   }

@@ -50,7 +50,8 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
 - **Tutorial** (first voyage, `tut` in the Tutorial section): controls appear one at a time, hidden and disabled
   (keys too) until their step: logbook shimmers (open and close it) -> the sail badge appears, wiggles and sends out rings until tapped
   -> the anchor hub appears with pulsing rings (weigh anchor) -> two curved arrows on the wheel for ~4.5 s (or until
-  you steer) -> free. The smoke test skips it with `tutSet("done")`.
+  you steer) -> free. The smoke test skips it with `tutSet("done")`. At each step a speech bubble (`#tut-tip`,
+  `TUT_TIPS`, `placeTip`) sits by the control with its tail pointing at it and says in a few words what it does.
 - **Controls:** wheel (drag in a circle; half a turn = full lock). The wheel has no backing disc: the sea shows between the spokes; its wood
   is a mid grey (`WOOD`, `WOOD_SH`, `WOOD_RIM` in drawWheel) so it stands out from the pale sea.
   Layout (no panel behind the controls: a wooden dashboard was tried and dropped, it hid too much sea): compass over
