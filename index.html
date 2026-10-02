@@ -2638,7 +2638,7 @@
     {
       const busy = hubHold || hubShake > 0 || bankHint || Math.abs(wheelVis - (stowed() ? 0 : 1)) > 0.002
         || ((tut === 'anchor' || tut === 'drop' || tut === 'wheel') && !tutWait);
-      const key = wheelAngle.toFixed(4) + '|' + wheelVis.toFixed(3) + '|' + anchored + '|' + uiPalKey;
+      const key = wheelAngle.toFixed(4) + '|' + wheelVis.toFixed(3) + '|' + anchored + '|' + bankHint + '|' + uiPalKey;
       if(!busy && key === wheelKey) return;
       wheelKey = key;
     }
@@ -2775,15 +2775,22 @@
       }
       c.strokeStyle = HI; c.fillStyle = HI;
       c.lineCap='round';
-      // always an anchor: ink on the light hub while sailing (bigger, bolder), paper on the dark knob at anchor
+      // an anchor: ink on the light hub while sailing, paper on the dark knob at
+      // anchor. Over a fish bank it turns into a little fish for a while, to
+      // point at what the button is for there (dropping anchor = nets over)
       c.save(); c.scale(inv ? 1.0 : 1.1, inv ? 1.0 : 1.1);
-      const glyph = ()=>{
-      c.lineWidth = inv ? 1.7 : 1.75;
-      c.beginPath(); c.arc(0,-7,1.9,0,Math.PI*2); c.stroke();
-      c.beginPath(); c.moveTo(0,-5); c.lineTo(0,7.5); c.moveTo(-4.5,-2.2); c.lineTo(4.5,-2.2); c.stroke();
-      c.beginPath(); c.moveTo(-6.5,2.5); c.quadraticCurveTo(-5,7.5,0,7.5); c.quadraticCurveTo(5,7.5,6.5,2.5); c.stroke();
-      };
-      glyph();
+      if(bankHint){
+        c.save(); c.translate(-0.8, 0);
+        c.beginPath(); c.moveTo(-7.2, 0); c.quadraticCurveTo(-1.5, -6.4, 4.6, 0); c.quadraticCurveTo(-1.5, 6.4, -7.2, 0); c.fill();   // body
+        c.beginPath(); c.moveTo(3.4, 0); c.lineTo(8.8, -4.4); c.lineTo(7.6, 0); c.lineTo(8.8, 4.4); c.closePath(); c.fill();          // tail
+        c.fillStyle = inv ? INKW : PAPW; c.beginPath(); c.arc(-3.9, -1, 1.15, 0, Math.PI*2); c.fill();                              // eye
+        c.restore();
+      } else {
+        c.lineWidth = inv ? 1.7 : 1.75;
+        c.beginPath(); c.arc(0,-7,1.9,0,Math.PI*2); c.stroke();
+        c.beginPath(); c.moveTo(0,-5); c.lineTo(0,7.5); c.moveTo(-4.5,-2.2); c.lineTo(4.5,-2.2); c.stroke();
+        c.beginPath(); c.moveTo(-6.5,2.5); c.quadraticCurveTo(-5,7.5,0,7.5); c.quadraticCurveTo(5,7.5,6.5,2.5); c.stroke();
+      }
       c.restore();
       c.restore();
     }
