@@ -98,7 +98,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   traders (motor boats on A* lanes between villages; they don't avoid the player, a collision just shoves them aside
   with no damage, then they drift back to their lane; they hail with a speech bubble), fog of war (buoys and a
   340 px radius round each village always show through), clouds see-through at the rim and denser in the middle, each with its shadow at a fixed offset down-right,
-  a third of them rain clouds (darker; rain falls from the cloud onto its shadow on the sea, with a rain sound when you're near: a soft dark wash in gusts plus single drops, each a tiny rising 'plip' like a bubble on a pond, sparse at the edge, thick beneath; `rain()` and `rainDrop()` in Sound),
+  a third of them rain clouds (darker; rain falls from the cloud onto its shadow on the sea, with a rain sound when you're near: a broad soft wash (between a hiss and a murmur) in gusts plus a patter of single drops, mostly soft noise ticks, a third short rising bubble 'plips', sparse at the edge, thick beneath; `rain()` and `rainDrop()` in Sound),
   day/night palette cycle (6 min), afternoon cicada chorus (kept low; only within ~220 px of a wild island's shore, never at home or on village islands,
   from early afternoon to before the golden hour: 3 Cicada orni + 1 Lyristes plebejus,
   pulsed ~5–8 times a second around 4–5 kHz, in bouts with rests; see `cicadas()` in Sound) with dark nights lit by lanterns, lighthouses and windows.
