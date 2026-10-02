@@ -23,7 +23,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   **Performance:** the dither (and the night darkness) runs on the GPU: a WebGL fragment shader (`glSetup`, `ditherPass`)
   uploads the grey buffer as a texture each frame and draws straight to the screen canvas; the JS pixel loop is only
   a fallback when WebGL is missing (it cost ~10 ms a frame and a 1.2 MB allocation, the cause of the hiccups). The
-  WebGL context is rebuilt if the browser drops it. Aim: 60 fps on the phone. The wheel, compass and sail switch are only redrawn
+  WebGL context is rebuilt if the browser drops it. Aim: 60 fps on the phone. The wheel and compass are only redrawn
   (and re-dithered) when something on them changes (`wheelKey`, `cmpKey`, `sailKey`; a shut compass lid is a still
   picture); hidden HUD elements are not updated every frame; the hull meter is written only when it changes.
   day/night palette (`UI_TINT` = 0.5, `uiPalette`): the dithered widgets and the HTML panels (`--paper` / `--ink`) follow the light.
@@ -56,7 +56,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   "Trade" is disabled if the purse can't cover a negative balance; a positive balance goes to the purse.
   Repairs are free and automatic at any pier (+15 hull every half second, the hold is never touched); making them a
   cost the player has to think about is planned for later (see the TickTick list "Vento e Vele: playtest suggestions").
-  The market is a centred window over the world (no dark backdrop; a clear `#mk-shade` still catches stray taps); while it's open the sail switch, compass (with its fish
+  The market is a centred window over the world (no dark backdrop; a clear `#mk-shade` still catches stray taps); while it's open the compass (with its fish
   counters) and wheel/anchor are hidden. Buttons: Quit (left) and Trade (right); both close it and leave you moored
   with the anchor back, so you can linger; a market opens once per docking (leave and come back to trade again).
 - **Compass** (76 px, `CMP_PX`, top centre of the screen (the open logbook covers it); in its tutorial step the bubble hangs under it; hidden in the tutorial
@@ -77,7 +77,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
 
 - **Tutorial** (first voyage, `tut` in the Tutorial section): controls appear one at a time, hidden and disabled
   (keys too) until their step: logbook shimmers (open and close it) -> the compass appears and
-  shimmers with its bubble ("tap to open it"); opening the lid ends the step, else after `TUT_COMPASS_T` = 4.5 s it moves on -> the sail switch appears, sends out rings and its thumb nudges up until it is slid (or tapped)
+  shimmers with its bubble ("tap to open it"); opening the lid ends the step, else after `TUT_COMPASS_T` = 4.5 s it moves on
   -> the anchor hub appears with pulsing rings (weigh anchor) -> two curved arrows on the wheel for ~4.5 s (or until
   you steer) -> 3 s later (`TUT_DROP_WAIT`) the hub pulses again with "Hold here to drop anchor and stop." (optional:
   gone after `TUT_DROP_T` = 3 s, or as soon as the anchor goes down) -> free. The smoke test skips it with `tutSet("done")`. At each step a speech bubble (`#tut-tip`,
@@ -86,19 +86,20 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
 - **Controls:** wheel (drag in a circle; half a turn = full lock). Inside the rim a dark backing (a radial grey 70→44, dithered to a deep dotted texture) fills the gaps between the spokes, so the light wood reads clearly; the wood
   is a mid grey (`WOOD`, `WOOD_SH`, `WOOD_RIM` in drawWheel) so it stands out from the pale sea.
   Layout (no panel behind the controls: a wooden dashboard was tried and dropped, it hid too much sea): compass over
-  logbook bottom left, wheel bottom centre, sail switch bottom right (as tall as the compass and logbook).
+  logbook bottom left (compass at the top centre), wheel bottom centre; nothing bottom right (the sail is automatic).
   Hub of the wheel = anchor only:
   **long press 0.5 s = anchor**. At anchor the wheel fades out and only the hub (dark) remains. The hub is always drawn big (`hubScale` = 2, the
   size it once grew to only at anchor); while sailing its grip is just the hub (`HUB_SAIL_R`), so the spokes still steer. The hub is
   drawn like the compass, in greys then dithered: a light brass bezel (lit top left) with four rivets round a shaded
   face with a glint; sailing, a light face with an ink anchor; at anchor, a dark face, one light rim and a paper anchor (same size both ways). Over a fish bank (not fishing, not
   at anchor) the anchor on the hub turns into a little fish (ink silhouette, paper eye) to point at its use there.
-  **Sail switch** (`#sail`, `drawSail`, section "Sail switch"; the old halyard rope is gone): a vertical iPhone-style
-  switch bottom right, 76×160 px (as tall as compass + logbook). The thumb is the sail badge, a crisp disc (pure ink and
-  paper, hard threshold; full sail: paper disc, ink drawing; furled: inverted). Slide it up = set the sail, down = furl
-  (`thumbPos` 0..1; a click and buzz passing the middle; let go past the middle and it switches with a clack, else it
-  springs back); a tap toggles too, so do Enter/Space on it and S. The track (dithered pill with a groove) is light
-  with the sail set, dark when furled. In the tutorial the thumb nudges upward. The voyage starts with the sail furled.
+  **Sail: automatic** (no button; the old switch `#sail` / `drawSail` is hidden and unused, the halyard rope before it is
+  gone). The sail is up by default. When she's slower than `ROW_ENTER` and the wind can't drive her past it either
+  (head to wind, or nearly), after `ROW_DELAY` the sail is brailed up and the oars come out (`sailLevel` = `SAIL_MIN`:
+  rowing pace `ROW_SPEED`, turning `ROW_TURN_MULT` × quicker); once the sail could give more than `ROW_EXIT` it's set
+  again and the oars come in. Never because of the anchor: while it's down (or going down) the sail stays up and the oars
+  in; weighing it head to wind, the oars take her. Turning is easier in general (`TURN_RATE` = 0.6). To stop on a fish
+  bank, drop anchor (the nets go over after 0.25 s).
   The boat gathers way slowly (`BOAT_ACCEL` = 0.4/1.2: the speed approaches its target at that rate, so it was divided by 1.2 when the top speed went up 20%, keeping the same push in px/s²; slowing down unchanged).
   Top speed is kept modest (`WIND_BOOST` = 0.96, ~52 px/s dead downwind in full wind; running dead downwind adds only up to +10%, `downwindBonus`).
   Oars never come out because of the anchor (nor while getting under way after weighing it).
@@ -114,7 +115,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   hover; the book grows to fit). Each dish and gift has its own 24×24 ink icon (`ITEM_ICONS`, `itemIcon(name)`), used at the market stall too.
   Opening/closing it plays `Sfx.book(open)`: paper flutter, and the cover's thump on closing. The list also shows the day of the voyage
   (`dayNo`, +1 at each dawn). A tiny faint frame-rate counter (`#fps`, refreshed twice a second while the logbook is open) sits on the
-  paper, in the bottom right corner of the right page. Keyboard: arrows, Space = anchor, S = sail.
+  paper, in the bottom right corner of the right page. Keyboard: arrows, Space = anchor.
 - **Hazards:** rocks, faraglioni, whirlpools (appear/disappear/wander; none on day 1: they start opening from day 2, `WHIRL_FROM_DAY`), rollers (big waves: within ~66° of their travel = surf boost (`SURF_COS`), otherwise they hurt).
 - **Atmosphere:** macchia (tree-spurge domes + Mediterranean pines), clouds with parallax and shadows, gulls, wind streaks,
   traders (motor boats on A* lanes between villages; they don't avoid the player, a collision just shoves them aside
@@ -127,7 +128,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
 
 ## Map of index.html (search for these section headers: `// ---------- Name ----------`)
 Seed · Tuning · World setup · Islands · Home island · Piers · Villages · Ruins · Rocks · Whirlpools · Fish banks · Boat ·
-Trade routes · Wind · Input · Haptics · Sound · Ship's wheel · Sail switch · Intro · Tutorial · UI refs · Dialog · Fishing · Fog of war ·
+Trade routes · Wind · Input · Haptics · Sound · Ship's wheel · Sail switch (unused) · Intro · Tutorial · UI refs · Dialog · Fishing · Fog of war ·
 Rollers · Powers from the ruins · Village market · Cicadas · Night sounds · Town sounds · Wind streaks · Shopping list ·
 Buoys · Traders · Update · 1-bit rendering · Day and night · Draw · Villages (pixel art) · Ruins (pixel art) ·
 Cloud shadows (clouds) · Ambient life: gulls · Saving

@@ -351,7 +351,8 @@
   }
   #wheel.grabbed{cursor:grabbing;}
   /* the sail switch: bottom right, as tall as the compass and logbook together; slide the badge up or down */
-  #sail{position:fixed; right:13px; bottom:calc(10px + env(safe-area-inset-bottom,0px)); width:76px; height:160px;
+  #sail{display:none !important;}   /* the sail is automatic now: the switch is hidden (its code stays, unused) */
+  #sail-unused{position:fixed; right:13px; bottom:calc(10px + env(safe-area-inset-bottom,0px)); width:76px; height:160px;
     z-index:7; cursor:pointer; touch-action:manipulation; image-rendering:pixelated; transition:opacity .5s;}
   #sail:focus-visible{outline:2px dashed var(--ink); outline-offset:-2px; border-radius:36px;}
   /* tutorial: controls not reached yet are hidden and can't be touched; they fade in when their turn comes */
@@ -576,8 +577,12 @@
   const MAX_SPEED = 50;              // px/s: reference speed (collision damage is scaled by it too)
   const WIND_BOOST = 0.96;           // how much the wind gives: sets the top speed (~52 px/s dead downwind in full wind)
   const BOAT_ACCEL = 0.4/1.2;        // how quickly she gathers way (higher = quicker); slowing down is separate
-  const TURN_RATE = 0.42;            // rad/s at full rudder
-  const ROW_SPEED = 9;               // px/s on the oars (sail at minimum)
+  const TURN_RATE = 0.6;             // rad/s at full rudder (was 0.42: easier to turn)
+  const ROW_TURN_MULT = 2;           // turning is this much quicker on the oars
+  const ROW_ENTER = 10;              // px/s: slower than this, with the wind unable to help, and the oars come out (sail brailed up)
+  const ROW_EXIT = 16;               // px/s: once the sail could drive her faster than this again, it's set and the oars come in
+  const ROW_DELAY = 0.6;             // seconds a condition must hold before switching (no flicker)
+  const ROW_SPEED = 9;               // px/s on the oars
   const WHEEL_MAX = Math.PI;         // how far the wheel turns for full lock (π = half a turn each way)
   const SURF_BOOST = 32;             // extra px/s while surfing a big wave
   const SURF_COS = 0.4;              // surf if the heading is within ~66° of the wave's travel (else the wave hurts)
@@ -1503,7 +1508,7 @@
     oarK: 0, oarsOut: false, oarPh: 0,   // oars: how far out (0..1), and rowing phase
     whirl: null,      // set while caught in a whirlpool
     sailPower: 0,
-    sailAmount: 0.2,  // smoothed sail area (0..1); starts furled
+    sailAmount: 1,    // smoothed sail area (0..1): the sail is up by default
     sailSide: 1,      // which side the boom is on (+1 / -1), with hysteresis
     boomSigned: 0,    // smoothed angle the square sail faces (boat frame)
     r: 16
@@ -1633,7 +1638,8 @@
     {name:'full',    amount:1.0},
     {name:'minimum', amount:0.2}
   ];
-  let sailLevel = 1;                  // 0 full sail, 1 minimum (rowing pace); the voyage starts with it furled
+  let sailLevel = 0;                  // 0 sail set, 1 brailed up on the oars: chosen automatically (see autoSail)
+  let rowT = 0;                       // how long the switch condition has held
   const SAIL_MIN = 1;
   let repairT = 0;
   // mooring: null while sailing; {phase:'approach'|'moored', …} at the pier
@@ -1689,7 +1695,6 @@
     if(e.key==='ArrowLeft'||e.key==='a'||e.key==='A') turnLeft=true;
     if(e.key==='ArrowRight'||e.key==='d'||e.key==='D') turnRight=true;
     if(e.code==='Space' && !e.repeat){ e.preventDefault(); if(tutAt('anchor')) setAnchor(!anchored); }   // space: anchor (once the tutorial shows it)
-    if(e.code==='KeyS' && !e.repeat && tutAt('rope')) switchSail();                // S: sail (once the tutorial shows it)
   });
   window.addEventListener('keyup', e=>{
     if(e.key==='ArrowLeft'||e.key==='a'||e.key==='A') turnLeft=false;
@@ -2573,7 +2578,7 @@
   function toggleLid(){
     lidOpen = !lidOpen;
     if(lidOpen){ Sfx.tick(0.6, 1.3); buzz([8,30,6]); } else { Sfx.thunk(0.35); buzz(14); }
-    if(lidOpen && tut === 'compass') tutNext('rope');                    // tutorial: opened it, on to the sail
+    if(lidOpen && tut === 'compass') tutNext('anchor');                  // tutorial: opened it, on to the anchor
   }
   cmp.addEventListener('click', ()=>{ Sfx.init(); toggleLid(); });
   cmp.addEventListener('keydown', e=>{ if((e.key==='Enter' || e.key===' ') && !e.repeat){ e.preventDefault(); e.stopPropagation(); toggleLid(); } });
@@ -2941,7 +2946,6 @@
   // hub of the wheel; this just keeps the labels in step
   function renderSailBtn(){
     wheelCv.setAttribute('aria-label', 'Helm: drag round to steer. Centre: hold half a second to ' + (anchored ? 'weigh' : 'drop') + ' anchor.');
-    sailCv.setAttribute('aria-label', 'Sail switch: slide up to set the sail, down to furl it (now ' + SAIL_LEVELS[sailLevel].name + ').');
   }
   // a switch: full sail ↔ minimum
   function cycleSail(){
@@ -3130,17 +3134,15 @@
   //   'drop'   3 s later the hub pulses again: hold it to drop anchor (optional;
   //            gone after 3 s, or as soon as the anchor goes down), then 'done'
   let tut = 'intro', tutBookSeen = false, tutWheelT0 = 0;
-  const TUT_ORDER = ['intro','book','compass','rope','anchor','wheel','drop','done'];
+  const TUT_ORDER = ['intro','book','compass','anchor','wheel','drop','done'];
   const tutAt = (stage)=> TUT_ORDER.indexOf(tut) >= TUT_ORDER.indexOf(stage);   // reached this step yet?
   function tutSet(stage){
     tut = stage;
-    document.body.classList.toggle('tut-no-rope', !tutAt('rope'));
     document.body.classList.toggle('tut-no-compass', !tutAt('compass'));
     document.body.classList.toggle('tut-compass', stage === 'compass');
-    if(stage === 'compass') setTimeout(()=>{ if(tut === 'compass') tutNext('rope'); }, TUT_COMPASS_T);   // a look, then on
+    if(stage === 'compass') setTimeout(()=>{ if(tut === 'compass') tutNext('anchor'); }, TUT_COMPASS_T);   // a look, then on
     if(stage === 'drop') setTimeout(()=>{ if(tut === 'drop') tutSet('done'); }, TUT_DROP_T);   // optional: it fades by itself
     document.body.classList.toggle('tut-no-wheel', !tutAt('anchor'));
-    document.body.classList.toggle('tut-rope', stage === 'rope');
     if(stage === 'book') elListBtn.classList.add('news');                       // the logbook shimmers
     if(stage === 'rope' || stage === 'anchor'){ buzz([10,50,10]); }              // something new to touch
     if(stage === 'wheel') tutWheelT0 = performance.now();
@@ -3252,7 +3254,7 @@
     boat.oarK = 0; boat.oarsOut = false;
     for(const k in counts) counts[k] = 0;
     caught = 0; fishing = null; settleT = 0;
-    sailLevel = SAIL_MIN; boat.sailAmount = SAIL_LEVELS[SAIL_MIN].amount; renderSailBtn();
+    sailLevel = 0; rowT = 0; boat.sailAmount = 1; renderSailBtn();      // the sail is up
     weighT = 0; anchored = true; anchorUI();             // start at the quay, anchor down
     dayT = 0.1; dayNo = 1; howlT = 12;
     boonWindT = 0; boonFish = 0; for(const r of RUINS) r.readyAt = 0;
@@ -4359,7 +4361,7 @@
       const step = Math.max(Math.abs(wheelAngle)*3.5, 0.8)*dt;
       wheelAngle = Math.abs(wheelAngle)<=step ? 0 : wheelAngle - Math.sign(wheelAngle)*step;
     }
-    if(!moor && !boat.whirl) boat.angle += TURN_RATE*(sailLevel===SAIL_MIN ? 2 : 1)*(wheelAngle/WHEEL_MAX)*dt;   // slow sail = nimble, safe handling
+    if(!moor && !boat.whirl) boat.angle += TURN_RATE*(sailLevel===SAIL_MIN ? ROW_TURN_MULT : 1)*(wheelAngle/WHEEL_MAX)*dt;   // slow sail = nimble, safe handling
     wheelSound(dt);
     Sfx.ambient(dt, Math.min(1, boat.speed/MAX_SPEED));
     Sfx.rain(playing ? rainNear() : 0);
@@ -4426,6 +4428,21 @@
     camFx += (fx-camFx)*kf; camFy += (fy-camFy)*kf;
 
     const relDeg = norm(boat.angle-windAngle)*180/Math.PI;
+    // the sail looks after itself: when she's crawling and the wind can't help
+    // (head to wind, or nearly), the sail is brailed up and the oars come out;
+    // once the sail could drive her well again it's set and the oars come in.
+    // Never because of the anchor: while it's down (or going down) the sail stays up and the oars stay in
+    {
+      const could = MAX_SPEED*speedFactor(relDeg)*windStrength*WIND_BOOST*downwindBonus(relDeg);   // what the sail would give
+      if(anchored || moor || boat.whirl){ sailLevel = 0; rowT = 0; }
+      else if(sailLevel === 0){
+        rowT = (boat.speed < ROW_ENTER && could < ROW_ENTER) ? rowT + dt : 0;   // (the wind can't help: also right after weighing anchor head to wind)
+        if(rowT > ROW_DELAY){ sailLevel = SAIL_MIN; rowT = 0; }
+      } else {
+        rowT = could > ROW_EXIT ? rowT + dt : 0;
+        if(rowT > ROW_DELAY){ sailLevel = 0; rowT = 0; }
+      }
+    }
     const windSf = speedFactor(relDeg)*windStrength;   // how well the sail is fed
     boat.sailAmount += (SAIL_LEVELS[sailLevel].amount-boat.sailAmount)*Math.min(1,dt*2.5);
     const sf = windSf*boat.sailAmount;                    // actual drive
@@ -6269,7 +6286,6 @@
     if(!gl){ sctx.imageSmoothingEnabled = false; sctx.drawImage(obuf, 0, 0, GW, GH, 0, 0, GW*K, GH*K); }   // (the WebGL pass draws straight to the screen)
 
     drawWheel();
-    drawSail();
     placeTip();                                             // tutorial bubble (only while a control is being taught)
     if(!logIconDone) drawLogbookIcon();                     // once (it needs the dither table, ready by now)
     if(tutAt('compass')) drawCompass();                    // shown from the tutorial's compass step on
@@ -6321,7 +6337,7 @@
     boat.speed = 0; boat.kx = boat.ky = 0; boat.whirl = null;
     moor = null; moorLock = null;                            // back at anchor where it was
     anchored = true; weighT = 0; anchorUI();
-    sailLevel = s.sail; boat.sailAmount = SAIL_LEVELS[sailLevel].amount; thumbPos = sailLevel === SAIL_MIN ? 0 : 1; renderSailBtn();
+    sailLevel = 0; rowT = 0; boat.sailAmount = 1; renderSailBtn();      // (sail up; the oars sort themselves out)
     for(const k in counts) counts[k] = s.counts[k] || 0;
     coins = s.coins; caught = s.caught; voyageTime = s.voyageTime;
     VILLAGES.forEach((v,i)=>{ const q = s.villages[i]; v.done = q.done; v.giftGot = q.gift; v.dishes.forEach((d,j)=> d.bought = q.dishes[j]); });
