@@ -2356,8 +2356,9 @@
   // the wheel is drawn in greys into a small low-res canvas (one pixel per
   // game pixel), then dithered to the game's two colours and blown up with
   // hard pixels, so it has the same lo-fi look as the world
-  // fixed interface colours (#ebe7dc paper, #1b1a17 ink), not the day/night palette
-  const UI_PAPER32 = (255<<24)|(0xdc<<16)|(0xe7<<8)|0xeb, UI_INK32 = (255<<24)|(0x17<<16)|(0x1a<<8)|0x1b;
+  // interface colours: #ebe7dc paper, #1b1a17 ink, tinted halfway toward the
+  // day/night palette (see uiPalette in Day and night)
+  let UI_PAPER32 = (255<<24)|(0xdc<<16)|(0xe7<<8)|0xeb, UI_INK32 = (255<<24)|(0x17<<16)|(0x1a<<8)|0x1b;
   const wlo = document.createElement('canvas'); wlo.width = WH_W; wlo.height = WH_H;
   const wl = wlo.getContext('2d', {willReadFrequently:true});
   function sizeWheel(){
@@ -4560,6 +4561,23 @@
     INK32   = (255<<24)|(I[2]<<16)|(I[1]<<8)|I[0];
     NIGHT = n0 + (n1-n0)*f;
   }
+  // the interface follows the light too, but only partway (UI_TINT): the
+  // dithered widgets and the HTML panels (--paper / --ink) share the colours
+  const UI_TINT = 0.5;
+  let uiPalKey = '';
+  function uiPalette(){
+    const P = [PAPER32&255, (PAPER32>>8)&255, (PAPER32>>16)&255], I = [INK32&255, (INK32>>8)&255, (INK32>>16)&255];
+    const up = PAPER.map((v,j)=> Math.round(v+(P[j]-v)*UI_TINT)), ui = INK.map((v,j)=> Math.round(v+(I[j]-v)*UI_TINT));
+    const key = up.join()+'/'+ui.join();
+    if(key === uiPalKey) return;                 // only when the colour actually moves
+    uiPalKey = key;
+    UI_PAPER32 = (255<<24)|(up[2]<<16)|(up[1]<<8)|up[0];
+    UI_INK32   = (255<<24)|(ui[2]<<16)|(ui[1]<<8)|ui[0];
+    const root = document.documentElement.style;
+    root.setProperty('--paper', 'rgb('+up.join()+')');
+    root.setProperty('--ink', 'rgb('+ui.join()+')');
+    logIconDone = false;                         // the logbook icon is cached: paint it again
+  }
   // Night light: a coarse mask (one value per 4×4 pixel block) of how lit
   // each spot is. Outside the light everything sinks toward ink.
   const NIGHT_FLOOR = 0.1, MB = 4;
@@ -4617,7 +4635,7 @@
   // 1-bit ordered dither of the grey buffer into the screen frame (and, at
   // night, darkness outside the pools of light)
   function ditherPass(ox, oy){
-    dayPalette();
+    dayPalette(); uiPalette();
     const d = ctx.getImageData(0,0,GW,GH).data;
     const out = new Uint32Array(outImg.data.buffer);
     ox = ((ox%4)+4)%4; oy = ((oy%4)+4)%4;

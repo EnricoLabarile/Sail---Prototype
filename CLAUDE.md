@@ -11,7 +11,8 @@ A top-down sailing game in a single HTML file (`index.html`, no dependencies, ca
 You sail from home to four villages to buy the courses of a dinner (selling fish for coins), then return home.
 
 - **Look:** 1-bit. Everything is drawn in greys into a low-res buffer, then ordered-dithered (Bayer 4×4) to two colours
-  (`PAPER32` / `INK32`, shifted by the day/night palette). UI panels use fixed colours `#ebe7dc` / `#1b1a17`.
+  (`PAPER32` / `INK32`, shifted by the day/night palette). UI colours are `#ebe7dc` / `#1b1a17` tinted halfway toward the
+  day/night palette (`UI_TINT` = 0.5, `uiPalette`): the dithered widgets and the HTML panels (`--paper` / `--ink`) follow the light.
 - **World:** 7200×7200 torus (wraps on all sides). Home at the centre. Use `wdx/wdy/wdist/wrapX/wrapY` for any distance.
   Regions: `archipelago(x,y)` is a smooth field (new each game, tiles the torus): ~1 = archipelago (more, slightly
   smaller islands, tight channels ~40–90 px), ~0 = open sea (few islands, wide water, most whirlpools, big waves up to
