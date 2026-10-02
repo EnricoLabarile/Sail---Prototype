@@ -98,8 +98,9 @@
   /* the logbook is a compact card: the list on the left, the compass on the right */
   /* the compass sits right on top of the logbook icon (same width, centred over it), on the left */
   #compass{position:fixed; left:11px; bottom:calc(94px + env(safe-area-inset-bottom,0px));
-    width:76px; height:76px; z-index:7; pointer-events:none; transition:opacity .5s;}
-  body.tut-no-compass #compass{opacity:0;}
+    width:76px; height:76px; z-index:7; cursor:pointer; touch-action:manipulation; transition:opacity .5s;}
+  #compass:focus-visible{outline:2px dashed var(--ink); outline-offset:2px; border-radius:50%;}
+  body.tut-no-compass #compass{opacity:0; pointer-events:none;}
   #wood{display:none !important;}      /* the fish counters round the compass are retired: the hold is in the logbook */
   /* the market is a window of its own: centred over a dark shade, with room for everything */
   #mk-shade{position:fixed; inset:0; z-index:7; background:rgba(0,0,0,.9); display:none;}
@@ -485,7 +486,7 @@
     </div>
   </div>
   <!-- the compass, top centre of the main view (not interactive; the open logbook may cover it) -->
-  <canvas id="compass" aria-label="Compass: points home. Ports visited: none"></canvas>
+  <canvas id="compass" role="button" tabindex="0" aria-label="Compass: points home. Ports visited: none"></canvas>
   <div id="toast" class="panel" role="status" aria-live="polite"></div>
   <div id="tut-tip" class="panel" role="status" aria-live="polite"></div>   <!-- tutorial: a bubble by the control being taught -->
   <canvas id="wheel" aria-label="Helm: drag clockwise or anticlockwise to steer"></canvas>
@@ -2414,6 +2415,16 @@
   const DOT_ANG = [-Math.PI/2, 0, Math.PI/2, Math.PI];
   const dotState = [false,false,false,false], dotPop = [0,0,0,0];
   let cmpWander = 0;
+  // the lid: a hinged brass cover, like a pocket compass. The voyage starts
+  // with it shut; a tap swings it up on its hinge (top) and another shuts it
+  let lidOpen = false, lidT = 1, lidLastT = performance.now();   // lidT: 1 shut, 0 open
+  function toggleLid(){
+    lidOpen = !lidOpen;
+    if(lidOpen){ Sfx.tick(0.6, 1.3); buzz([8,30,6]); } else { Sfx.thunk(0.35); buzz(14); }
+    if(lidOpen && tut === 'compass') tutNext('rope');                    // tutorial: opened it, on to the sail
+  }
+  cmp.addEventListener('click', ()=>{ Sfx.init(); toggleLid(); });
+  cmp.addEventListener('keydown', e=>{ if((e.key==='Enter' || e.key===' ') && !e.repeat){ e.preventDefault(); e.stopPropagation(); toggleLid(); } });
   function drawCompass(){
     const c = cmpL, INKW='#000', PAPW='#fff', g = v=> 'rgb('+v+','+v+','+v+')';
     c.setTransform(1,0,0,1,0,0); c.clearRect(0,0,CMP_PX,CMP_PX);
@@ -2494,6 +2505,29 @@
     c.beginPath(); c.arc(cx,cy,24.5,Math.PI*1.08,Math.PI*1.38); c.stroke();
     c.lineWidth=1.2; c.beginPath(); c.arc(cx,cy,24.5,Math.PI*1.45,Math.PI*1.52); c.stroke();
     c.lineCap='butt';
+    // the lid, swinging on its hinge at the top: foreshortened as it lifts
+    {
+      const now = performance.now(), dt = Math.min(0.05, (now - lidLastT)/1000); lidLastT = now;
+      lidT += ((lidOpen ? 0 : 1) - lidT)*Math.min(1, dt*9);
+      if(lidT > 0.02){
+        c.save(); c.translate(cx, cy-33); c.scale(1, lidT); c.translate(0, 33);
+        const lg = c.createLinearGradient(-33, -33, 33, 33);
+        lg.addColorStop(0, g(250)); lg.addColorStop(0.5, g(212)); lg.addColorStop(1, g(150));   // brass, lit from the top left
+        c.fillStyle = lg; c.beginPath(); c.arc(0,0,33.4,0,Math.PI*2); c.fill();
+        c.strokeStyle = INKW; c.lineWidth = 1.6; c.stroke();
+        c.strokeStyle = INKW; c.lineWidth = 1; c.beginPath(); c.arc(0,0,27.5,0,Math.PI*2); c.stroke();   // an engraved border
+        c.strokeStyle = g(225); c.lineWidth = 0.8; c.beginPath(); c.arc(0,0,26.3,0,Math.PI*2); c.stroke();
+        c.strokeStyle = INKW; c.lineWidth = 0.7;                             // two fine engraved rings
+        for(const r of [13, 20]){ c.beginPath(); c.arc(0,0,r,0,Math.PI*2); c.stroke(); }
+        c.fillStyle = g(240); c.strokeStyle = INKW; c.lineWidth = 0.9;      // a small engraved star
+        c.beginPath(); for(let k=0;k<8;k++){ const a = k*Math.PI/4 - Math.PI/2, r = k%2 ? 2.4 : 7.5; c.lineTo(Math.cos(a)*r, Math.sin(a)*r); } c.closePath(); c.fill(); c.stroke();
+        c.fillStyle = g(205); c.lineWidth = 1.1;                              // the catch
+        c.beginPath(); c.roundRect(-4, 30.5, 8, 4, 1.5); c.fill(); c.stroke();
+        c.restore();
+      }
+      c.fillStyle = g(195); c.strokeStyle = INKW; c.lineWidth = 1.1;         // the hinge
+      c.beginPath(); c.roundRect(cx-6, 0.8, 12, 4.4, 1.6); c.fill(); c.stroke();
+    }
     c.setTransform(1,0,0,1,0,0);
     ditherUI(c, CMP_PX, CMP_PX);
     cmpCtx.clearRect(0,0,cmp.width,cmp.height);
@@ -2940,7 +2974,7 @@
   const elTip = document.getElementById('tut-tip');
   const TUT_TIPS = {
     book:   'Your logbook: the dinner list. Open it, then close it.',
-    compass: 'Your compass: it always points home.',
+    compass: 'Your compass points home. Tap to open it.',
     rope:   'Slide up to set the sail, down to furl it.',
     anchor: 'Hold to weigh anchor.',
     wheel:  'Drag the wheel round to steer.',
@@ -3033,7 +3067,7 @@
     wake.length = 0; popups.length = 0;
     voyageTime = 0; hurtFlash = 0; shake = 0;
     gameover.classList.add('hidden');
-    playing = true;
+    playing = true; lidOpen = false;                       // a new voyage: the compass lid starts shut
     prevWheel = wheelAngle = 0;
     repairT = 0; moor = mooredAtSpawn(); moorLock = null;
     resetDishes(); freshCourses.clear(); elListBtn.classList.remove('news');

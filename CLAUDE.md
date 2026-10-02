@@ -45,11 +45,13 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
 - **Compass** (76 px, `CMP_PX`, bottom left, just above the logbook icon, same width; hidden in the tutorial
   until its own tutorial step): points home, a dot per village filled once a dish is bought there; drawn like the
   wheel (greys into a low-res canvas, then dithered): brass bezel with rivets, shaded card, wind rose, glass glare.
+  It has a hinged brass **lid** (engraved rings, a small star, hinge on top, catch below; `lidOpen`, `toggleLid`): shut at
+  the start of every voyage, a tap (or Enter/Space) swings it up on the hinge and shows the compass, another tap shuts it.
   The old fish counters round it are hidden (`#wood`); the cargo is shown on the logbook's right page.
 - **Intro:** on "Set sail" the card rolls up into a scroll that is tossed into the list button (skipped with reduced motion).
 - **Tutorial** (first voyage, `tut` in the Tutorial section): controls appear one at a time, hidden and disabled
   (keys too) until their step: logbook shimmers (open and close it) -> the compass appears and
-  shimmers with its bubble, nothing to press: after `TUT_COMPASS_T` = 4.5 s it moves on -> the sail switch appears, sends out rings and its thumb nudges up until it is slid (or tapped)
+  shimmers with its bubble ("tap to open it"); opening the lid ends the step, else after `TUT_COMPASS_T` = 4.5 s it moves on -> the sail switch appears, sends out rings and its thumb nudges up until it is slid (or tapped)
   -> the anchor hub appears with pulsing rings (weigh anchor) -> two curved arrows on the wheel for ~4.5 s (or until
   you steer) -> free. The smoke test skips it with `tutSet("done")`. At each step a speech bubble (`#tut-tip`,
   `TUT_TIPS`, `placeTip`) sits by the control with its tail pointing at it and says in a few words what it does. When a step is done its highlight
