@@ -5,6 +5,12 @@
 - Keep changes small and focused; after every change run the smoke test (see below).
 - I test on an Android phone: haptics (Vibration API) matter, iOS ignores them.
 - Commit after every working change with a short message in English.
+- **Keep the Texts section up to date.** Every word the player reads lives in `TEXT`, the `// ---------- Texts ----------`
+  section at the very top of the script (intro, villages and their dishes/gifts/lines, fish, toasts, popups, tutorial,
+  market, logbook, ruins, endings, sinking, HUD). Enrico authors them by hand. New player-facing text goes there, never
+  as a literal in the code; parts the game fills in are `{placeholders}` filled with `fmt(text, {…})`. Texts written in
+  the HTML (intro card, buttons, labels) are filled from `TEXT` at start (`applyTexts`). Dish and gift icons are keyed
+  by a fixed `icon` id in `VILLAGES`, so renaming a dish keeps its icon.
 - **Keep the Tuning block up to date.** All the main gameplay knobs live in one place, the `// ---------- Tuning ----------`
   section at the top of the script (boat, hull and dangers, fishing and market, world, ruins' powers, tutorial, look),
   one line of comment each. Enrico edits them by hand. When a feature adds or changes a main knob, declare it there (not
@@ -51,7 +57,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   A bank counts a little past its drawn circle (`FISH_REACH` = 1.35 × radius). The net is thrown toward the bank's
   middle (24–46 px from the boat, flying out in a small arc as it opens; `netPos`) and hauled back to the boat.
   **Market = barter table** (left: your hold, every fish a unit; right: the stall: only the dishes not yet bought; no fish for sale).
-  The top of the market panel shows how to trade (`MK_TIP`), not the merchant's flavour line.
+  The top of the market panel shows how to trade (`TEXT.market.tip`), not the merchant's flavour line.
   Drag or tap units across; balance = fish sold − goods taken. Fish sell for coins: 3 if from other waters (`COIN_FOREIGN`), 1 if local (`COIN_LOCAL`): 4 foreign fish buy both dishes of a village.
   "Trade" is disabled if the purse can't cover a negative balance; a positive balance goes to the purse.
   Repairs are free and automatic at any pier (+15 hull every half second, the hold is never touched); making them a
@@ -119,7 +125,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   pulsed ~5–8 times a second around 4–5 kHz, in bouts with rests; see `cicadas()` in Sound) with dark nights lit by lanterns, lighthouses and windows.
 
 ## Map of index.html (search for these section headers: `// ---------- Name ----------`)
-Tuning · World setup · Islands · Home island · Piers · Villages · Ruins · Rocks · Whirlpools · Fish banks · Boat ·
+Texts · Tuning · World setup · Islands · Home island · Piers · Villages · Ruins · Rocks · Whirlpools · Fish banks · Boat ·
 Trade routes · Wind · Input · Haptics · Sound · Ship's wheel · Sail switch (unused) · Intro · Tutorial · UI refs · Dialog · Fishing · Fog of war ·
 Rollers · Powers from the ruins · Village market · Cicadas · Night sounds · Town sounds · Wind streaks · Shopping list ·
 Buoys · Traders · Update · 1-bit rendering · Day and night · Draw · Villages (pixel art) · Ruins (pixel art) ·

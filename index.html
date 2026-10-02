@@ -499,14 +499,10 @@
 
   <div id="intro">
    <div class="card intro-card">
-    <p>You are throwing a party, and the dinner needs four courses:</p>
-    <ul class="shopping">
-      <li>Antipasti</li>
-      <li>Primi</li>
-      <li>Secondi</li>
-      <li>Dessert</li>
-    </ul>
-    <p>You will find them in the four villages on the map. Buy them, then sail home.</p>
+    <!-- (the words come from TEXT.intro / TEXT.villages in the script) -->
+    <p id="intro-lead"></p>
+    <ul class="shopping" id="intro-courses"></ul>
+    <p id="intro-after"></p>
     <button id="start-btn">Set sail</button>
    </div>
   </div>
@@ -517,8 +513,8 @@
     <div id="mk-title"></div>
     <div id="mk-text"></div>
     <div id="mk-table">
-      <div class="mk-side" id="mk-you"><div class="mk-head"><span>Your hold</span><span id="mk-purse"></span></div><div class="mk-items" id="mk-you-items"></div></div>
-      <div class="mk-side" id="mk-them"><div class="mk-head"><span>The stall</span></div><div class="mk-items" id="mk-them-items"></div></div>
+      <div class="mk-side" id="mk-you"><div class="mk-head"><span id="mk-you-label">Your hold</span><span id="mk-purse"></span></div><div class="mk-items" id="mk-you-items"></div></div>
+      <div class="mk-side" id="mk-them"><div class="mk-head"><span id="mk-them-label">The stall</span></div><div class="mk-items" id="mk-them-items"></div></div>
     </div>
     <div id="mk-bal"></div>
     <div id="mk-actions">
@@ -545,6 +541,134 @@
 <script>
 (function(){
   "use strict";
+
+
+  // ---------- Texts ----------
+  // Every word the player reads, in one place, to author freely. Parts in
+  // {braces} are filled in by the game (keep the braces and the word inside;
+  // you can move them around the sentence). A few strings contain bits of
+  // HTML such as <b>…</b>: keep those tags. Accessibility labels for screen
+  // readers stay in the code for now.
+  const TEXT = {
+    intro: {
+      lead:  'You are throwing a party, and the dinner needs four courses:',
+      after: 'You will find them in the four villages on the map. Buy them, then sail home.',
+      start: 'Set sail',
+    },
+    // the four villages: name, the course they cook, its two dishes, the gift
+    // the merchant adds when you buy both, and the merchant's flavour line
+    // (unused for now). Renaming a dish keeps its icon.
+    villages: {
+      nord:  { name:'Nordania', course:'Antipasti', dishes:['Fiori di Zucca', 'Mozzarelle'], gift:'Tarallini',
+               line:"On the quay the grocer sets out the antipasti: fiori di zucca fried golden and mozzarelle still dripping. She takes fish in payment, but sardines she has plenty of: everyone catches those up here." },
+      est:   { name:'Estolia', course:'Primi', dishes:['Orecchiette con Cime di Rapa', 'Lasagne'], gift:'Olio Santo',
+               line:"In the trattoria by the harbour the cook shapes orecchiette with her thumb, and a lasagne rests on the sill. Mackerel she's sick of: the whole east lives on it." },
+      sud:   { name:'Sudia', course:'Secondi', dishes:['Zampina', 'Pesce Arrosto'], gift:'Vino Rosso',
+               line:"At the grill by the market the butcher turns coils of zampina over the coals, and fish roasts beside them. He'll take any fish except red mullet: he catches those himself at dawn." },
+      ovest: { name:'Westa', course:'Dessert', dishes:['Cartellate', 'Tiramisu'], gift:'Limoncello',
+               line:"Grandma's pastry shop smells of honey and coffee: cartellate on the tray, a tiramisu in the cool of the cellar. Out west her larder is full of sea bream." },
+    },
+    fish: {
+      sarde:   { one:'sardine',    many:'sardines' },
+      sgombri: { one:'mackerel',   many:'mackerel' },
+      triglie: { one:'red mullet', many:'red mullet' },
+      orate:   { one:'sea bream',  many:'sea bream' },
+    },
+    // the little notes that slide in at the top
+    toasts: {
+      homeBack:   'Back in home waters',
+      homeLeave:  'Leaving home waters',
+      villageIn:  'Entering the waters of {village}',
+      villageOut: 'Leaving the waters of {village}',
+      gift:       'On the house: {gift}!',
+    },
+    // words that float up from the boat
+    popups: {
+      catch:    '+{n} {fish}',
+      netsIn:   'nets hauled in',
+      surf:     'surf!',
+      whirl:    'Whirlpool! -{damage}',
+      bought:   '+ {item}',
+      coinsIn:  '+{n} coins',
+      coinsOut: '{n} coins',
+    },
+    // the tutorial's speech bubbles
+    tutorial: {
+      book:    'Your logbook: the dinner list. Open it, then close it.',
+      compass: 'Your compass points home. Tap to open it.',
+      anchor:  'Hold to weigh anchor.',
+      wheel:   'Drag the wheel round to steer.',
+      drop:    'Hold here to drop anchor and stop.',
+    },
+    market: {
+      title:      '{village} market',
+      tip:        'Drag and drop items between inventories to trade buy and sell.',
+      yourHold:   'Your hold',
+      stall:      'The stall',
+      emptyHold:  'Nothing in the hold.',
+      emptyStall: 'The stall is bare.',
+      quit:       'Quit',
+      trade:      'Trade',
+      coin: 'coin', coins: 'coins',                 // ({coins} below picks the right one)
+      balNone:    'Balance: <b>0</b>',
+      balGain:    'Balance: <b>+{n}</b> {icon} you receive {n} {coins}',
+      balEven:    'Balance: <b>0</b>: a fair swap',
+      balPay:     'Balance: <b>{n}</b> {icon} paid from your purse',
+      balShort:   'Balance: <b>{n}</b> {icon} not enough: offer more fish',
+    },
+    logbook: {
+      dinner:  'The dinner',
+      day:     'Day {n}',
+      allAboard: 'Every course is aboard: sail home.',
+      cargo:   'Cargo',
+      noFish:  'No fish aboard.',
+    },
+    // at a pier, under the dialog
+    pier: {
+      weighHint: 'Hold the centre of the wheel to weigh anchor.',
+    },
+    ruins: {
+      name:    'Ruins',
+      silent:  'The stones are silent. The wind passes between the columns without a word: whatever dwells here is still resting. Come back later.',
+      visit:   'You walk among the broken columns and the fallen drums in the grass. On an altar worn by the wind there is a carved sign no one can read any more. You touch it with your fingers and {power}',
+      title:   '{ruins} · {power}',
+      // the powers (their durations are in Tuning: BOON_WIND_T, BOON_FISH_HAULS)
+      wind: { title:'the friendly wind', text:'the wind changes its voice and settles at your back. For a minute it will blow from astern, wherever you go.' },
+      fish: { title:'the blessed nets',  text:'the water round the pier fills with flashes of silver. Your next three hauls will bring twice the fish.' },
+      heal: { title:'the hull reborn',   text:'the planks of the boat creak and close up on their own, good as new. The hull is whole again.' },
+      badgeWind: 'friendly wind {s} s',
+      badgeFish: 'blessed nets ×{n}',
+    },
+    // the three endings: the dialog on the home pier, then the closing card
+    endings: {
+      bare: { name:'Bare Minimum', dialog:'Home · a simple supper', title:'Dinner is served: the bare minimum',
+        text:"On the home pier you unload one dish for every course: a plate of antipasti, a primo, a secondo, something sweet. It isn't much, but the friends come anyway, the lanterns are lit and nobody goes home hungry." },
+      nice: { name:'Nice Dinner', dialog:'Home · a nice dinner', title:'A nice dinner',
+        text:"On the home pier you unload the courses, and something more besides. Someone spreads a tablecloth on the terrace, the lanterns are lit, the wine arrives and second helpings go round the table. A nice dinner." },
+      banquet: { name:'Banquet', dialog:'Home · the banquet', title:'The banquet is served',
+        text:"On the home pier you unload everything the four corners of the sea could offer: fiori di zucca and mozzarelle, orecchiette and lasagne, zampina and roast fish, cartellate and tiramisu, and the merchants' gifts on top. The table on the terrace isn't long enough. The banquet can begin." },
+      stats: '{ending}: {dishes} of {all} dishes{gifts}. You did the shopping in {min} min {sec} s, catching {fish} fish along the way.',
+      gifts: ', {n} gifts', gift: ', 1 gift',
+    },
+    sunk: {
+      title: 'The boat has sunk',
+      stats: 'You sailed for {min} min {sec} s and caught {fish} fish.',
+    },
+    restart: 'Set sail again',
+    hud: { hull: 'Hull' },
+  };
+  // fill the {braces} of a text
+  const fmt = (s, o)=> s.replace(/\{(\w+)\}/g, (m, k)=> (o && k in o) ? o[k] : m);
+  // the texts written in the page itself (intro card, buttons, labels)
+  (function applyTexts(){
+    const set = (sel, s)=>{ const el = document.querySelector(sel); if(el) el.textContent = s; };
+    set('#intro-lead', TEXT.intro.lead); set('#intro-after', TEXT.intro.after); set('#start-btn', TEXT.intro.start);
+    const ul = document.getElementById('intro-courses');
+    if(ul) ul.innerHTML = Object.values(TEXT.villages).map(v=> '<li></li>').join('');
+    if(ul) [...ul.children].forEach((li, i)=> li.textContent = Object.values(TEXT.villages)[i].course);
+    set('#restart-btn', TEXT.restart); set('#mk-you-label', TEXT.market.yourHold); set('#mk-them-label', TEXT.market.stall);
+    set('#mk-quit', TEXT.market.quit); set('#mk-deal', TEXT.market.trade); set('.hp-label', TEXT.hud.hull);
+  })();
 
   // ---------- Tuning ----------
   // The game's main knobs, all in one place: change a number, save, reload.
@@ -1083,19 +1207,17 @@
   // point, each on its own island with a pier facing home and a lighthouse.
   // Each cooks one course of the dinner and sells two specialties of it (one
   // unit each); buy both and the merchant adds a gift that isn't for sale.
+  // (all their words are in TEXT.villages; icon: the drawing in ITEM_ICONS)
+  const VT = TEXT.villages;
   const VILLAGES = [
-    { name:'Nordania', ux:0, uy:-1, course:'Antipasti', own:'sarde',
-      dishes:[{name:'Fiori di Zucca', price:DISH_PRICE}, {name:'Mozzarelle', price:DISH_PRICE}], gift:'Tarallini',
-      line:"On the quay the grocer sets out the antipasti: fiori di zucca fried golden and mozzarelle still dripping. She takes fish in payment, but sardines she has plenty of: everyone catches those up here." },
-    { name:'Estolia', ux:1, uy:0, course:'Primi', own:'sgombri',
-      dishes:[{name:'Orecchiette con Cime di Rapa', price:DISH_PRICE}, {name:'Lasagne', price:DISH_PRICE}], gift:'Olio Santo',
-      line:"In the trattoria by the harbour the cook shapes orecchiette with her thumb, and a lasagne rests on the sill. Mackerel she's sick of: the whole east lives on it." },
-    { name:'Sudia', ux:0, uy:1, course:'Secondi', own:'triglie',
-      dishes:[{name:'Zampina', price:DISH_PRICE}, {name:'Pesce Arrosto', price:DISH_PRICE}], gift:'Vino Rosso',
-      line:"At the grill by the market the butcher turns coils of zampina over the coals, and fish roasts beside them. He'll take any fish except red mullet: he catches those himself at dawn." },
-    { name:'Westa', ux:-1, uy:0, course:'Dessert', own:'orate',
-      dishes:[{name:'Cartellate', price:DISH_PRICE}, {name:'Tiramisu', price:DISH_PRICE}], gift:'Limoncello',
-      line:"Grandma's pastry shop smells of honey and coffee: cartellate on the tray, a tiramisu in the cool of the cellar. Out west her larder is full of sea bream." }
+    { name:VT.nord.name, ux:0, uy:-1, course:VT.nord.course, own:'sarde', line:VT.nord.line,
+      dishes:[{name:VT.nord.dishes[0], icon:'Fiori di Zucca', price:DISH_PRICE}, {name:VT.nord.dishes[1], icon:'Mozzarelle', price:DISH_PRICE}], gift:VT.nord.gift, giftIcon:'Tarallini' },
+    { name:VT.est.name, ux:1, uy:0, course:VT.est.course, own:'sgombri', line:VT.est.line,
+      dishes:[{name:VT.est.dishes[0], icon:'Orecchiette con Cime di Rapa', price:DISH_PRICE}, {name:VT.est.dishes[1], icon:'Lasagne', price:DISH_PRICE}], gift:VT.est.gift, giftIcon:'Olio Santo' },
+    { name:VT.sud.name, ux:0, uy:1, course:VT.sud.course, own:'triglie', line:VT.sud.line,
+      dishes:[{name:VT.sud.dishes[0], icon:'Zampina', price:DISH_PRICE}, {name:VT.sud.dishes[1], icon:'Pesce Arrosto', price:DISH_PRICE}], gift:VT.sud.gift, giftIcon:'Vino Rosso' },
+    { name:VT.ovest.name, ux:-1, uy:0, course:VT.ovest.course, own:'orate', line:VT.ovest.line,
+      dishes:[{name:VT.ovest.dishes[0], icon:'Cartellate', price:DISH_PRICE}, {name:VT.ovest.dishes[1], icon:'Tiramisu', price:DISH_PRICE}], gift:VT.ovest.gift, giftIcon:'Limoncello' }
   ];
   const dishesGot = v=> v.dishes.filter(d=>d.bought).length;
   // the dinner as it stands: 'bare' one dish of every course, 'nice' both
@@ -1105,14 +1227,7 @@
     if(VILLAGES.every(v=>dishesGot(v) === v.dishes.length)) return 'banquet';
     return VILLAGES.some(v=>dishesGot(v) === v.dishes.length) ? 'nice' : 'bare';
   }
-  const ENDINGS = {
-    bare: { name:'Bare Minimum', dialog:'Home · a simple supper', title:'Dinner is served: the bare minimum',
-      text:"On the home pier you unload one dish for every course: a plate of antipasti, a primo, a secondo, something sweet. It isn't much, but the friends come anyway, the lanterns are lit and nobody goes home hungry." },
-    nice: { name:'Nice Dinner', dialog:'Home · a nice dinner', title:'A nice dinner',
-      text:"On the home pier you unload the courses, and something more besides. Someone spreads a tablecloth on the terrace, the lanterns are lit, the wine arrives and second helpings go round the table. A nice dinner." },
-    banquet: { name:'Banquet', dialog:'Home · the banquet', title:'The banquet is served',
-      text:"On the home pier you unload everything the four corners of the sea could offer: fiori di zucca and mozzarelle, orecchiette and lasagne, zampina and roast fish, cartellate and tiramisu, and the merchants' gifts on top. The table on the terrace isn't long enough. The banquet can begin." }
-  };
+  const ENDINGS = TEXT.endings;           // (bare, nice, banquet: see Texts)
   function resetDishes(){ for(const v of VILLAGES){ v.done = false; v.giftGot = false; for(const d of v.dishes) d.bought = false; } }
   let won = false;
   // hand-shaped village island: rounded, with a wide clearing at the centre
@@ -1179,10 +1294,10 @@
   // sanctuary and a stone pier. Docking there grants a mysterious power.
   const RUIN_COOLDOWN = 180;          // seconds before the same ruin answers again
   const RUINS = [
-    { name:'Ruins',       ux:-1, uy:-1 },
-    { name:'Ruins',         ux: 1, uy:-1 },
-    { name:'Ruins',           ux: 1, uy: 1 },
-    { name:'Ruins', ux:-1, uy: 1 }
+    { name:TEXT.ruins.name, ux:-1, uy:-1 },
+    { name:TEXT.ruins.name, ux: 1, uy:-1 },
+    { name:TEXT.ruins.name, ux: 1, uy: 1 },
+    { name:TEXT.ruins.name, ux:-1, uy: 1 }
   ];
   function makeRuinIsland(r){
     const d = VILLAGE_DIST/Math.SQRT2*1.02;
@@ -1430,10 +1545,10 @@
   // you haul 1–2 fish and the school scatters. Which fish depends on which
   // side of home the bank lies (north / east / south / west).
   const FISH = {
-    nord:  {key:'sarde',   one:'sardine',    many:'sardines'},
-    est:   {key:'sgombri', one:'mackerel',   many:'mackerel'},
-    sud:   {key:'triglie', one:'red mullet', many:'red mullet'},
-    ovest: {key:'orate',   one:'sea bream',  many:'sea bream'}
+    nord:  {key:'sarde',   ...TEXT.fish.sarde},          // (names: see Texts)
+    est:   {key:'sgombri', ...TEXT.fish.sgombri},
+    sud:   {key:'triglie', ...TEXT.fish.triglie},
+    ovest: {key:'orate',   ...TEXT.fish.orate}
   };
   const FISH_KEYS = ['sarde','sgombri','triglie','orate'];
   const FISH_NAME = {}; for(const k in FISH) FISH_NAME[FISH[k].key] = FISH[k];
@@ -3148,14 +3263,7 @@
   // it does; it follows the control (placed from its layout box, so the
   // wiggle doesn't shake it) and fades out when the step is done
   const elTip = document.getElementById('tut-tip');
-  const TUT_TIPS = {
-    book:   'Your logbook: the dinner list. Open it, then close it.',
-    compass: 'Your compass points home. Tap to open it.',
-    rope:   'Slide up to set the sail, down to furl it.',
-    anchor: 'Hold to weigh anchor.',
-    wheel:  'Drag the wheel round to steer.',
-    drop:   'Hold here to drop anchor and stop.',
-  };
+  const TUT_TIPS = TEXT.tutorial;          // (see Texts)
   let tipPos = '';
   function placeTip(){
     const text = tutWait ? null : TUT_TIPS[tut];
@@ -3228,9 +3336,9 @@
     boat.speed = 0;
     Sfx.wheel(0); Sfx.drone(0);
     closeDialog();
-    elGoTitle.textContent = 'The boat has sunk';
+    elGoTitle.textContent = TEXT.sunk.title;
     const min = Math.floor(voyageTime/60), sec = Math.floor(voyageTime%60);
-    elGoStats.textContent = 'You sailed for '+min+' min '+sec+' s and caught '+caught+(caught===1?' fish.':' fish.');
+    elGoStats.textContent = fmt(TEXT.sunk.stats, {min, sec, fish: caught});
     gameover.classList.remove('hidden');
   }
   document.getElementById('restart-btn').addEventListener('click', ()=>{
@@ -3362,8 +3470,8 @@
     const min = Math.floor(voyageTime/60), sec = Math.floor(voyageTime%60);
     const dishes = VILLAGES.reduce((a,v)=>a+dishesGot(v),0), all = VILLAGES.reduce((a,v)=>a+v.dishes.length,0), gifts = VILLAGES.filter(v=>v.giftGot).length;
     elGoTitle.textContent = ENDINGS[tier].title;
-    elGoStats.textContent = ENDINGS[tier].name+': '+dishes+' of '+all+' dishes'+(gifts ? ', '+gifts+(gifts===1?' gift':' gifts') : '')
-      + '. You did the shopping in '+min+' min '+sec+' s, catching '+caught+' fish along the way.';
+    elGoStats.textContent = fmt(TEXT.endings.stats, {ending: ENDINGS[tier].name, dishes, all, min, sec, fish: caught,
+      gifts: gifts ? (gifts === 1 ? TEXT.endings.gift : fmt(TEXT.endings.gifts, {n: gifts})) : ''});
     gameover.classList.remove('hidden');
   }
 
@@ -3415,14 +3523,14 @@
     boat.speed *= Math.exp(-3*dt); boat.kx *= Math.exp(-3*dt); boat.ky *= Math.exp(-3*dt);
     if(f.phase==='drop' && f.t>=NET_DROP){ f.phase='wait'; f.t=0; }
     else if(f.phase==='wait'){
-      if(steering){ f.phase='cancel'; f.t=0; popups.push({x:boat.x, y:boat.y-22, text:'nets hauled in', life:1.3, max:1.3}); }
+      if(steering){ f.phase='cancel'; f.t=0; popups.push({x:boat.x, y:boat.y-22, text:TEXT.popups.netsIn, life:1.3, max:1.3}); }
       else if(f.t>=f.dur){
         f.phase='haul'; f.t=0;
         let n = FISH_CATCH_MIN + Math.floor(Math.random()*(FISH_CATCH_MAX - FISH_CATCH_MIN + 1));
         if(boonFish>0){ n *= 2; boonFish--; }
         const kind = FISH[f.bank.sec];
         counts[kind.key] += n; caught += n;
-        popups.push({x:boat.x, y:boat.y-24, text:'+'+n+' '+(n===1?kind.one:kind.many), life:1.8, max:1.8});
+        popups.push({x:boat.x, y:boat.y-24, text:fmt(TEXT.popups.catch, {n, fish: n===1 ? kind.one : kind.many}), life:1.8, max:1.8});
         Sfx.pickup();
         buzz([15,50,25]);                           // fish in the boat
         f.bank.state='scatter'; f.bank.t=0;            // the school disperses
@@ -3544,7 +3652,7 @@
       const c = Math.cos(boat.angle)*w.ux + Math.sin(boat.angle)*w.uy;   // 1 = sailing with the wave
       if(c > SURF_COS){
         boat.surfT = 2.6;
-        popups.push({x:boat.x, y:boat.y-24, text:'surf!', life:1.4, max:1.4});
+        popups.push({x:boat.x, y:boat.y-24, text:TEXT.popups.surf, life:1.4, max:1.4});
         Sfx.surf();
         boat.rock = Math.min(2.5, (boat.rock||0) + 0.8);
         buzz([180,50,120,50,70]);                   // riding the wave: a sustained rumble
@@ -3650,24 +3758,20 @@
   }
 
   // ---------- Powers from the ruins ----------
-  const BOONS = {
-    wind: { title:'the friendly wind', text:"the wind changes its voice and settles at your back. For a minute it will blow from astern, wherever you go." },
-    fish: { title:'the blessed nets', text:"the water round the pier fills with flashes of silver. Your next three hauls will bring twice the fish." },
-    heal: { title:'the hull reborn', text:"the planks of the boat creak and close up on their own, good as new. The hull is whole again." }
-  };
+  const BOONS = {wind: TEXT.ruins.wind, fish: TEXT.ruins.fish, heal: TEXT.ruins.heal};   // (words: see Texts)
   let boonWindT = 0, boonFish = 0;
   const elBoon = document.getElementById('boon');
   function updateBoonBadge(){
     const parts = [];
-    if(boonWindT>0) parts.push('friendly wind ' + Math.ceil(boonWindT) + ' s');
-    if(boonFish>0) parts.push('blessed nets ×' + boonFish);
+    if(boonWindT>0) parts.push(fmt(TEXT.ruins.badgeWind, {s: Math.ceil(boonWindT)}));
+    if(boonFish>0) parts.push(fmt(TEXT.ruins.badgeFish, {n: boonFish}));
     elBoon.textContent = parts.length ? '✦ ' + parts.join('  ·  ') : '';
     elBoon.classList.toggle('show', parts.length>0);
   }
   function startRuin(r){
     const now = voyageTime;
     if(now < r.readyAt){
-      openDialog(r.name, "The stones are silent. The wind passes between the columns without a word: whatever dwells here is still resting. Come back later.", 3);
+      openDialog(r.name, TEXT.ruins.silent, 3);
       return;
     }
     r.readyAt = now + RUIN_COOLDOWN;
@@ -3677,8 +3781,7 @@
     if(k==='fish') boonFish = BOON_FISH_HAULS;
     if(k==='heal'){ boat.health = MAX_HEALTH; showHealth(); }
     Sfx.bell(); buzz([14,22,14,22,14,22,14,22,14,22,40]);   // the ruins' power: a quick flutter
-    openDialog(r.name + ' · ' + b.title,
-      "You walk among the broken columns and the fallen drums in the grass. On an altar worn by the wind there is a carved sign no one can read any more. You touch it with your fingers and " + b.text, 5);
+    openDialog(fmt(TEXT.ruins.title, {ruins: r.name, power: b.title}), fmt(TEXT.ruins.visit, {power: b.text}), 5);
   }
 
   // ---------- Village market ----------
@@ -3758,33 +3861,33 @@
   })();
   const itemIcon = (name)=> ITEM_ICONS[name] || FOOD_SVG;
   function unitHTML(it){
-    const ico = it.kind==='food' ? itemIcon(it.name) : document.querySelector('#wood .fish-'+it.key+' svg').outerHTML;
+    const ico = it.kind==='food' ? itemIcon(marketV.dishes[it.dish].icon) : document.querySelector('#wood .fish-'+it.key+' svg').outerHTML;
     const name = it.kind==='food' ? it.name : FISH_NAME[it.key].one;
     const label = it.kind==='food' ? '<span class="mk-name">'+name+'</span>' : '';
     return '<div class="mk-unit '+it.kind+(it.side!==it.origin ? ' moved' : '')+'" data-id="'+it.id+'" data-kind="'+it.kind+'" data-origin="'+it.origin+'" role="button" aria-label="'+name+', '+it.value+(it.value===1 ? ' coin' : ' coins')+'">'
       + ico + label + '<span class="mk-val">'+it.value+COIN_SVG+'</span></div>';
   }
-  const MK_TIP = "Drag and drop items between inventories to trade buy and sell.";
   function drawTable(){
     const v = marketV;
-    elMkTitle.textContent = v.name + ' market';
+    elMkTitle.textContent = fmt(TEXT.market.title, {village: v.name});
     // at the top, how to trade (the merchants' flavour lines stay in VILLAGES, unused for now)
-    elMkText.textContent = MK_TIP;
+    elMkText.textContent = TEXT.market.tip;
     // the goods sit on the side they're on now; the ones that crossed go first
     const order = (a,b)=> (b.side!==b.origin) - (a.side!==a.origin) || (a.kind==='food' ? -1 : 0) - (b.kind==='food' ? -1 : 0) || a.id - b.id;
     const on = side=> mkItems.filter(it=>it.side===side).sort(order).map(unitHTML).join('');
-    elMkYou.innerHTML = on('you') || '<p class="mk-empty">Nothing in the hold.</p>';
-    elMkThem.innerHTML = on('them') || '<p class="mk-empty">The stall is bare.</p>';
+    elMkYou.innerHTML = on('you') || '<p class="mk-empty">'+TEXT.market.emptyHold+'</p>';
+    elMkThem.innerHTML = on('them') || '<p class="mk-empty">'+TEXT.market.emptyStall+'</p>';
     elMkPurse.innerHTML = COIN_SVG + coins;
     const bal = mkBalance(), moved = mkItems.some(it=>it.side!==it.origin), ok = moved && coins + bal >= 0;
     elMkBal.className = bal < 0 && coins + bal < 0 ? 'short' : '';
-    elMkBal.innerHTML = !moved ? 'Balance: <b>0</b>'
-      : bal > 0 ? 'Balance: <b>+'+bal+'</b> '+COIN_SVG+' you receive '+bal+(bal===1?' coin':' coins')
-      : bal === 0 ? 'Balance: <b>0</b>: a fair swap'
-      : coins + bal >= 0 ? 'Balance: <b>'+bal+'</b> '+COIN_SVG+' paid from your purse'
-      : 'Balance: <b>'+bal+'</b> '+COIN_SVG+' not enough: offer more fish';
+    const M = TEXT.market, bv = {n: bal, icon: COIN_SVG, coins: Math.abs(bal) === 1 ? M.coin : M.coins};
+    elMkBal.innerHTML = !moved ? M.balNone
+      : bal > 0 ? fmt(M.balGain, bv)
+      : bal === 0 ? M.balEven
+      : coins + bal >= 0 ? fmt(M.balPay, bv)
+      : fmt(M.balShort, bv);
     elMkDeal.disabled = !ok;
-    elMkDeal.textContent = 'Trade';
+    elMkDeal.textContent = TEXT.market.trade;
   }
   function moveUnit(it){
     it.side = it.side==='you' ? 'them' : 'you';
@@ -3852,10 +3955,10 @@
     // both dishes bought: the merchant throws in the gift
     if(!v.giftGot && dishesGot(v) === v.dishes.length){
       v.giftGot = true; got.push(v.gift);
-      toast('On the house: ' + v.gift + '!');
+      toast(fmt(TEXT.toasts.gift, {gift: v.gift}));
       setTimeout(()=>{ Sfx.bell(); buzz([14,22,14,22,40]); }, 450);
     }
-    const note = [...got.map(f=>'+ '+f), bal > 0 ? '+'+bal+' coins' : bal < 0 ? bal+' coins' : ''].filter(Boolean);
+    const note = [...got.map(f=> fmt(TEXT.popups.bought, {item: f})), bal > 0 ? fmt(TEXT.popups.coinsIn, {n: bal}) : bal < 0 ? fmt(TEXT.popups.coinsOut, {n: bal}) : ''].filter(Boolean);
     note.forEach((txt,i)=> popups.push({x:boat.x, y:boat.y-26-i*16, text:txt, life:1.8, max:1.8}));
     if(elList.classList.contains('open')) renderList();
     closeMarket();                                                        // done: back to the quay (weigh anchor to leave)
@@ -4026,11 +4129,11 @@
   const elList = document.getElementById('shoplist'), elListBody = document.getElementById('shoplist-body'), elListBtn = document.getElementById('btn-list');
   function renderList(){
     // just the courses: crossed off once at least one dish of it is aboard
-    elListBody.innerHTML = '<div class="list-head"><h2>The dinner</h2><span class="day">Day '+dayNo+'</span></div><ul class="courses">' + VILLAGES.map(v=>{
+    elListBody.innerHTML = '<div class="list-head"><h2>'+TEXT.logbook.dinner+'</h2><span class="day">'+fmt(TEXT.logbook.day, {n: dayNo})+'</span></div><ul class="courses">' + VILLAGES.map(v=>{
       const got = dishesGot(v) > 0;
       return '<li class="'+(got?'got':'')+(freshCourses.has(v.course)?' fresh':'')+'"><span class="mark">'+(got?'●':'○')+'</span><span class="food">'+v.course+'</span></li>';
     }).join('') + '</ul>'
-      + (VILLAGES.every(v=>dishesGot(v) > 0) ? '<p class="note">Every course is aboard: sail home.</p>' : '');
+      + (VILLAGES.every(v=>dishesGot(v) > 0) ? '<p class="note">'+TEXT.logbook.allAboard+'</p>' : '');
     elHoldPage.innerHTML = holdHTML();
     listKey = holdKey();
   }
@@ -4039,12 +4142,12 @@
   const elHoldPage = document.getElementById('hold-page');
   function holdHTML(){
     const fish = FISH_KEYS.flatMap(k=> Array(counts[k]).fill(k));
-    const goods = VILLAGES.flatMap(v=> [...v.dishes.filter(d=>d.bought).map(d=>d.name), ...(v.giftGot ? [v.gift] : [])]);
-    return '<div class="hold-head"><h3>Cargo</h3><span class="purse" aria-label="Purse: '+coins+' coins">'+COIN_SVG+coins+'</span></div>'
+    const goods = VILLAGES.flatMap(v=> [...v.dishes.filter(d=>d.bought).map(d=> ({name: d.name, icon: d.icon})), ...(v.giftGot ? [{name: v.gift, icon: v.giftIcon}] : [])]);
+    return '<div class="hold-head"><h3>'+TEXT.logbook.cargo+'</h3><span class="purse" aria-label="Purse: '+coins+' coins">'+COIN_SVG+coins+'</span></div>'
       + (fish.length
           ? '<div class="hold-fish">'+fish.map(k=> '<span title="'+FISH_NAME[k].one+'">'+document.querySelector('#wood .fish-'+k+' svg').outerHTML+'</span>').join('')+'</div>'
-          : '<p class="hold-empty">No fish aboard.</p>')
-      + (goods.length ? '<div class="hold-goods">'+goods.map(n=> '<span title="'+n+'" role="img" aria-label="'+n+'">'+itemIcon(n)+'</span>').join('')+'</div>' : '');
+          : '<p class="hold-empty">'+TEXT.logbook.noFish+'</p>')
+      + (goods.length ? '<div class="hold-goods">'+goods.map(g=> '<span title="'+g.name+'" role="img" aria-label="'+g.name+'">'+itemIcon(g.icon)+'</span>').join('')+'</div>' : '');
   }
   const freshCourses = new Set();              // courses crossed off since the logbook was last opened
   let listKey = '';
@@ -4178,18 +4281,18 @@
     { // home waters, the same way
       const d = wdist(boat.x, boat.y, START.x, START.y);
       if(homeInside === null) homeInside = d < SAFE_R;
-      else if(!homeInside && d < SAFE_R){ homeInside = true; if(playing){ toast('Back in home waters'); buzz([12,40,12]); } }
-      else if(homeInside && d > SAFE_R + 150){ homeInside = false; if(playing){ toast('Leaving home waters'); buzz(12); } }
+      else if(!homeInside && d < SAFE_R){ homeInside = true; if(playing){ toast(TEXT.toasts.homeBack); buzz([12,40,12]); } }
+      else if(homeInside && d > SAFE_R + 150){ homeInside = false; if(playing){ toast(TEXT.toasts.homeLeave); buzz(12); } }
     }
     for(const v of VILLAGES){
       const d = wdist(boat.x, boat.y, v.isl.x, v.isl.y);
       if(v.inside === null){ v.inside = d < BUOY_R; continue; }
       if(!v.inside && d < BUOY_R){
         v.inside = true;
-        if(playing){ toast('Entering the waters of ' + v.name); buzz([12,40,12]); }
+        if(playing){ toast(fmt(TEXT.toasts.villageIn, {village: v.name})); buzz([12,40,12]); }
       } else if(v.inside && d > BUOY_R + 150){             // a little past the buoys, so it doesn't flicker
         v.inside = false;
-        if(playing){ toast('Leaving the waters of ' + v.name); buzz(12); }
+        if(playing){ toast(fmt(TEXT.toasts.villageOut, {village: v.name})); buzz(12); }
       }
     }
   }
@@ -4520,7 +4623,7 @@
         const done = village ? true : ruin ? (dlg && dlg.ready && repaired) : (repaired && !moor.banquet);
         if(ruin && done && !moor.told){                        // visit over and hull seen to
           moor.told = true; moor.rang = true;
-          elDlgFoot.textContent = 'Hold the centre of the wheel to weigh anchor.';
+          elDlgFoot.textContent = TEXT.pier.weighHint;
         }
         if(done && !anchored){                               // anchor weighed: off we go
           boat.kx = -moor.pier.dy*moor.side*9;     // a small push off the pier
@@ -4557,7 +4660,7 @@
           boat.health = Math.max(0, boat.health - WHIRL_DAMAGE);
           hurtFlash = 0.35; shake = 0.15; showHealth(); Sfx.crash(0.6);
           buzz([60,40,60,40,90]);                   // spun round
-          popups.push({x:w.x, y:w.y-w.core-8, text:'Whirlpool! -'+WHIRL_DAMAGE, life:1.4, max:1.4});
+          popups.push({x:w.x, y:w.y-w.core-8, text:fmt(TEXT.popups.whirl, {damage: WHIRL_DAMAGE}), life:1.4, max:1.4});
           Sfx.whirl();
         }
       }
