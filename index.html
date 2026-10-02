@@ -1479,9 +1479,7 @@
                                       ph:rand(0,6.3), wob:rand(0.15,0.35), size:LOOK[2]*rand(0.9,1.1)});
       const blobs = [];                               // soft, lumpy patch of disturbed water
       for(let k=0;k<5;k++){ const a=rand(0,6.3), d=rand(0,0.35)*r; blobs.push([Math.cos(a)*d, Math.sin(a)*d, r*rand(0.6,0.85)]); }
-      const ripples = [];
-      for(let k=0;k<11;k++) ripples.push({a:k/11*Math.PI*2+rand(-0.2,0.2), len:rand(0.22,0.42), rr:rand(0.86,1.06), ph:rand(0,6.3)});
-      banks.push({x, y, r, sec, home: !!home, fish, blobs, ripples, state:'live', t:0, rot:rand(0,6.3), jumpT:rand(1,4)});
+      banks.push({x, y, r, sec, home: !!home, fish, blobs, state:'live', t:0, rot:rand(0,6.3), jumpT:rand(1,4)});
       return;
     }
   }
@@ -5933,28 +5931,19 @@
     ctx.strokeStyle=INKC; ctx.lineWidth=o.r>5?1.4:1.1; path(0,0,1); ctx.stroke();
   }
 
-  // fish bank: a lumpy patch of stirred, darker water ringed by broken
-  // ripples, with a school of small dark fish circling inside on wobbly
+  // fish bank: a lumpy patch of stirred, darker water (no ring round it),
+  // with a school of small dark fish circling inside on wobbly
   // paths; now and then one jumps. When fished out, the school scatters.
   function drawBank(b){
     if(!inView(b.x,b.y,b.r+30)) return;
     const sc = b.state==='scatter' ? Math.min(1, b.t/1.8) : 0;     // 0 → 1 while dispersing
     const fade = 1 - sc;
-    const pulse = 0.5+0.5*Math.sin(b.t*1.6);
     // stirred water
     ctx.globalAlpha = fade;
     for(const [ox,oy,rr] of b.blobs){
       const g = ctx.createRadialGradient(b.x+ox,b.y+oy,0,b.x+ox,b.y+oy,rr);
       g.addColorStop(0,'rgba(0,0,0,0.13)'); g.addColorStop(0.7,'rgba(0,0,0,0.07)'); g.addColorStop(1,'rgba(0,0,0,0)');
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(b.x+ox,b.y+oy,rr,0,Math.PI*2); ctx.fill();
-    }
-    // broken ripple ring, slowly turning and breathing
-    ctx.strokeStyle = INKC; ctx.lineCap='round';
-    for(const q of b.ripples){
-      const a = q.a + b.rot, rr = b.r*(q.rr + 0.05*Math.sin(b.t*1.3+q.ph)) * (1+sc*0.6);
-      ctx.lineWidth = 1.5 + pulse*0.6;
-      ctx.globalAlpha = fade*(0.85+0.15*Math.sin(b.t*2+q.ph));
-      ctx.beginPath(); ctx.arc(b.x,b.y,rr,a,a+q.len); ctx.stroke();
     }
     // the fish, in the shade of their kind (same as the counter icons)
     const shade = {nord:PAPERC, est:V(0.78), sud:V(0.45), ovest:INKC}[b.sec], outline = b.sec!=='ovest';
