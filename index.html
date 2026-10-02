@@ -1352,7 +1352,7 @@
   let coins = 0;                     // the purse
   const counts = { sarde:0, sgombri:0, triglie:0, orate:0 };   // fish in the hold
   let caught = 0;                    // fish landed this voyage
-  const FISH_HEAL = 15;              // hull points repaired per fish sold at a pier
+  const FISH_HEAL = 15;              // hull points repaired per patch at a pier (free)
   const BANK_COUNT = 240;
   function sectorAt(x,y){
     const dx = wdx(x,START.x), dy = wdy(y,START.y);
@@ -4409,32 +4409,22 @@
           openDialog(ENDINGS[tier].dialog, ENDINGS[tier].text, 6);
         }
         if(moor.banquet && dlg && dlg.ready && !won){ won = true; const tr = moor.tier; setTimeout(()=>showWin(tr), 600); }
-        // repairs: one piece of wood from the hold at a time
+        // repairs: free for now, they just happen at any pier, a patch every
+        // half second (the hold is never touched; making them a cost the
+        // player has to think about is for later)
         repairT -= dt;
-        // at a village, never touch the fish you still need for its food:
-        // pay with local fish first, and only while the hold and the purse
-        // together still cover the price of the food
-        const spare = (k)=>{
-          const price = village ? nextPrice(village) : Infinity;
-          if(price === Infinity) return true;                               // nothing left to buy here
-          return fishWorth(village) + coins - fishValue(village, k) >= price;   // keep what the next dish will cost
-        };
-        const payable = FISH_KEYS.filter(k=> counts[k]>0 && spare(k));
-        if(!moor.banquet && repairT<=0 && payable.length && boat.health < MAX_HEALTH-0.5){
-          // sell one fish to pay for the repairs
-          const k = (village && payable.includes(village.own)) ? village.own : payable.reduce((a,b)=>counts[b]>counts[a]?b:a);
-          counts[k]--;
+        if(!moor.banquet && repairT<=0 && boat.health < MAX_HEALTH-0.5){
           const before = boat.health;
           boat.health = Math.min(MAX_HEALTH, boat.health + FISH_HEAL);
           popups.push({x:boat.x, y:boat.y-22, text:'+'+Math.round(boat.health-before), life:1.2, max:1.2});
           Sfx.hammer();
-            showHealth();
+          showHealth();
           repairT = REPAIR_EVERY;
           moor.repaired = true;
         }
         // cast off: once there's nothing left to repair, any wheel input
         // pushes the boat away from the pier, out towards open water
-        const repaired = boat.health >= MAX_HEALTH-0.5 || !payable.length;
+        const repaired = boat.health >= MAX_HEALTH-0.5;
         const steering = turnLeft || turnRight || (wheelPointer!==null && Math.abs(wheelAngle) > 0.35);
         if(!steering) moor.skipLock = false;                  // a fresh turn of the wheel is needed
         // at the ruins the wheel first skips the text, then (another turn) casts off
