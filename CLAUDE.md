@@ -71,9 +71,10 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   Layout (no panel behind the controls: a wooden dashboard was tried and dropped, it hid too much sea): compass over
   logbook bottom left, wheel bottom centre, sail switch bottom right (as tall as the compass and logbook).
   Hub of the wheel = anchor only:
-  **long press 0.5 s = anchor**. At anchor the wheel fades out and only the hub (bigger, dark) remains. The hub is
+  **long press 0.5 s = anchor**. At anchor the wheel fades out and only the hub (dark) remains. The hub is always drawn big (`hubScale` = 2, the
+  size it once grew to only at anchor); while sailing its grip is just the hub (`HUB_SAIL_R`), so the spokes still steer. The hub is
   drawn like the compass, in greys then dithered: a light brass bezel (lit top left) with four rivets round a shaded
-  face with a glint; sailing, a light face (r 17.5) with a big ink anchor (×1.35); at anchor, a dark face (r 15), one light rim and a paper anchor (×1.2). Over a fish bank (not fishing, not
+  face with a glint; sailing, a light face with an ink anchor; at anchor, a dark face, one light rim and a paper anchor (same size both ways). Over a fish bank (not fishing, not
   at anchor) the anchor on the hub turns into a little fish (ink silhouette, paper eye) to point at its use there.
   **Sail switch** (`#sail`, `drawSail`, section "Sail switch"; the old halyard rope is gone): a vertical iPhone-style
   switch bottom right, 76×160 px (as tall as compass + logbook). The thumb is the sail badge, a crisp disc (pure ink and

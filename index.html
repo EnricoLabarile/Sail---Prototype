@@ -2430,7 +2430,8 @@
 
   let wheelPointer = null, wheelLast = 0;
   const HUB_R = 21, HUB_HOLD = 500;        // hub radius (unscaled) and how long to hold it, ms
-  let hubHold = null, hubShake = 0, bankHint = false, wheelVis = 1, hubScale = 1;
+  const HUB_SAIL_R = 16.5;                  // the hub's grip while sailing (it's drawn big now: keep the wheel around it to steer)
+  let hubHold = null, hubShake = 0, bankHint = false, wheelVis = 1, hubScale = 2;
   const stowed = ()=> anchored && weighT <= 0;             // at anchor the wheel itself is locked
   function wheelLocal(ev){
     const r = wheelCv.getBoundingClientRect();
@@ -2438,7 +2439,7 @@
   }
   wheelCv.addEventListener('pointerdown', ev=>{
     const [x,y] = wheelLocal(ev);
-    const onHub = Math.hypot(x,y) < HUB_R*WH_S*hubScale;
+    const onHub = Math.hypot(x,y) < (stowed() ? HUB_R : HUB_SAIL_R)*WH_S*hubScale;   // sailing: just the hub, so the spokes still steer
     if(Math.hypot(x,y) > 84*WH_S) return;      // outside the handles
     if(stowed() && !onHub) return;             // at anchor only the hub works
     ev.preventDefault();
@@ -2734,9 +2735,9 @@
     hubShake = Math.max(0, hubShake - 0.06);
     {
       const jx = hubShake ? Math.sin(performance.now()*0.09)*2.2*hubShake : 0;
-      // with the wheel away the hub grows to twice its size and turns dark,
-      // a dotted ink knob like the old anchor button
-      hubScale = 1 + (1 - wheelVis);
+      // the hub is always the big size (the one it used to grow to only at
+      // anchor): with the wheel away it turns dark, a dotted ink knob
+      hubScale = 2;
       const inv = wheelVis < 0.5, HI = inv ? PAPW : INKW;
       c.save(); c.translate(WH_CX + jx, WH_CY); c.scale(WH_S*hubScale, WH_S*hubScale);
       // the knob is shaded in greys (dithered like the rest of the UI): dark at
@@ -2744,7 +2745,7 @@
       // drawn like the compass: a brass bezel (lit from the top left) with
       // four rivets, round a shaded face, and a glint of glass; the face is
       // light while sailing, dark at anchor
-      const HR = inv ? 15 : 17.5, FR = HR - 3.2;          // (bigger than it was, so the anchor reads well)
+      const HR = 15, FR = HR - 3.2;
       const bz = c.createLinearGradient(-HR, -HR, HR, HR);
       bz.addColorStop(0, 'rgb(245,245,245)'); bz.addColorStop(0.5, 'rgb(200,200,200)'); bz.addColorStop(1, 'rgb(140,140,140)');
       c.fillStyle = bz; c.strokeStyle = INKW; c.lineWidth = 1.6;
@@ -2778,7 +2779,7 @@
       // an anchor: ink on the light hub while sailing, paper on the dark knob at
       // anchor. Over a fish bank it turns into a little fish for a while, to
       // point at what the button is for there (dropping anchor = nets over)
-      c.save(); c.scale(inv ? 1.2 : 1.35, inv ? 1.2 : 1.35);
+      c.save(); c.scale(1.2, 1.2);
       if(bankHint){
         c.save(); c.translate(-0.8, 0);
         c.beginPath(); c.moveTo(-7.2, 0); c.quadraticCurveTo(-1.5, -6.4, 4.6, 0); c.quadraticCurveTo(-1.5, 6.4, -7.2, 0); c.fill();   // body
@@ -3120,7 +3121,7 @@
     if(tutWait) return;                                  // between steps: nothing to point at
     const INKW = '#000', PAPW = '#fff', now = performance.now();
     if(tut === 'anchor' || tut === 'drop'){
-      const base = 17.5*WH_S*hubScale + 3;
+      const base = 15*WH_S*hubScale + 3;
       for(const off of [0, 0.5]){
         const k = (now/1300 + off) % 1, r = base + k*30;
         c.globalAlpha = 1 - k*k;                         // (fades late, so the ring reads among the spokes)
