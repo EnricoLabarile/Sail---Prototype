@@ -100,14 +100,14 @@
 
   #wood .res-item{display:flex; align-items:center; gap:3px;}
   /* the logbook is a compact card: the list on the left, the compass on the right */
-  /* the compass sits right on top of the logbook icon (same width, centred over it), on the left */
-  #compass{position:fixed; left:11px; bottom:calc(94px + env(safe-area-inset-bottom,0px));
+  /* the compass sits at the top of the screen, in the middle (the open logbook covers it; that's fine) */
+  #compass{position:fixed; left:calc(50% - 38px); top:calc(10px + env(safe-area-inset-top,0px));
     width:76px; height:76px; z-index:7; cursor:pointer; touch-action:manipulation; transition:opacity .5s;}
   #compass:focus-visible{outline:2px dashed var(--ink); outline-offset:2px; border-radius:50%;}
   body.tut-no-compass #compass{opacity:0; pointer-events:none;}
   #wood{display:none !important;}      /* the fish counters round the compass are retired: the hold is in the logbook */
   /* the market is a window of its own: centred over a dark shade, with room for everything */
-  #mk-shade{position:fixed; inset:0; z-index:7; background:rgba(0,0,0,.9); display:none;}
+  #mk-shade{position:fixed; inset:0; z-index:7; background:none; display:none;}   /* (still catches stray taps behind the market; no dark backdrop) */
   body.at-market #mk-shade{display:block;}
   #market{
     position:fixed;
@@ -304,6 +304,7 @@
   #tut-tip.show{opacity:1; transform:none; visibility:visible; transition:opacity .4s .3s, transform .4s .3s, visibility 0s;}
   #tut-tip::after{content:""; position:absolute; bottom:-7px; left:var(--tail, 50%); width:10px; height:10px; margin-left:-6px;
     background:var(--paper); border-right:2px solid var(--ink); border-bottom:2px solid var(--ink); transform:rotate(45deg);}
+  #tut-tip.below::after{bottom:auto; top:-7px; transform:rotate(225deg);}   /* under its target (the compass at the top): the tail points up */
   body.at-market #tut-tip{display:none;}
   #toast{
     position:fixed; left:50%; bottom:calc(262px + env(safe-area-inset-bottom,0px)); z-index:10;   /* just above the wheel (and over the market) */
@@ -2721,7 +2722,7 @@
     {
       const busy = hubHold || hubShake > 0 || bankHint || Math.abs(wheelVis - (stowed() ? 0 : 1)) > 0.002
         || ((tut === 'anchor' || tut === 'drop' || tut === 'wheel') && !tutWait);
-      const key = wheelAngle.toFixed(4) + '|' + wheelVis.toFixed(3) + '|' + anchored + '|' + bankHint + '|' + uiPalKey;
+      const key = wheelAngle.toFixed(4) + '|' + wheelVis.toFixed(3) + '|' + anchored + '|' + bankHint + '|' + !!hubHold + '|' + uiPalKey;   // (a let-go hold must clear its ring)
       if(!busy && key === wheelKey) return;
       wheelKey = key;
     }
@@ -3174,9 +3175,9 @@
     if(elTip.textContent !== text) elTip.textContent = text;
     // where it points: [x of the tail, top of the target, how to align]
     const box = el=> ({l: el.offsetLeft, t: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight});
-    let x, top, align;
+    let x, top, align, below = false;
     if(tut === 'book'){ const b = box(elListBtn); x = b.l + b.w/2; top = b.t + 4; align = 'left'; }
-    else if(tut === 'compass'){ const b = box(cmp); x = b.l + b.w/2; top = b.t + 2; align = 'left'; }
+    else if(tut === 'compass'){ const b = box(cmp); x = b.l + b.w/2; top = b.t + b.h + 12; align = 'center'; below = true; }   // at the top: the bubble hangs under it
     else if(tut === 'rope'){ const b = box(sailCv); x = b.l + b.w/2; top = b.t + 4; align = 'right'; }
     else {
       const r = wheelCv.getBoundingClientRect(), fr = wrapEl.getBoundingClientRect(), b = {l: r.left - fr.left, t: r.top - fr.top, w: r.width, h: r.height}, hx = b.l + b.w*WH_CX/WH_W;   // (centred with a transform: use its real box)
@@ -3186,10 +3187,12 @@
     const vw = viewW(), vh = viewH(), w = elTip.offsetWidth;
     let left = align === 'left' ? x - 30 : align === 'right' ? x - w + 30 : x - w/2;
     left = Math.max(8, Math.min(vw - w - 8, left));
-    const pos = Math.round(left) + '|' + Math.round(vh - top + 12) + '|' + Math.round(Math.max(14, Math.min(w - 14, x - left)));
+    const bottom = below ? vh - top - elTip.offsetHeight : vh - top + 12;
+    const pos = Math.round(left) + '|' + Math.round(bottom) + '|' + Math.round(Math.max(14, Math.min(w - 14, x - left))) + '|' + below;
     if(pos === tipPos) return;                                  // only touch the page when it moves
     tipPos = pos;
     const [pl, pb, pt] = pos.split('|');
+    elTip.classList.toggle('below', below);
     elTip.style.left = pl + 'px'; elTip.style.bottom = pb + 'px'; elTip.style.setProperty('--tail', pt + 'px');
   }
   // tutorial hints drawn into the wheel's canvas (before it's dithered):
