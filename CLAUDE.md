@@ -39,7 +39,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   Drag or tap units across; balance = fish sold − goods taken. Fish sell for coins: 2 if from other waters, 1 if local.
   "Trade" is disabled if the purse can't cover a negative balance; a positive balance goes to the purse.
   Repairs are automatic at any pier (1 fish = +15 hull; at a village it never spends what the next dish will cost).
-  The market is a centred window over a 90% black shade; while it's open the sail badge, compass (with its fish
+  The market is a centred window over a 90% black shade; while it's open the sail switch, compass (with its fish
   counters) and wheel/anchor are hidden. Buttons: Quit (left) and Trade (right); both close it and leave you moored
   with the anchor back, so you can linger; a market opens once per docking (leave and come back to trade again).
 - **Compass** (76 px, `CMP_PX`, bottom left, just above the logbook icon, same width; hidden in the tutorial
@@ -49,7 +49,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
 - **Intro:** on "Set sail" the card rolls up into a scroll that is tossed into the list button (skipped with reduced motion).
 - **Tutorial** (first voyage, `tut` in the Tutorial section): controls appear one at a time, hidden and disabled
   (keys too) until their step: logbook shimmers (open and close it) -> the compass appears and
-  shimmers with its bubble, nothing to press: after `TUT_COMPASS_T` = 4.5 s it moves on -> the sail badge appears, wiggles and sends out rings until tapped
+  shimmers with its bubble, nothing to press: after `TUT_COMPASS_T` = 4.5 s it moves on -> the sail switch appears, sends out rings and its thumb nudges up until it is slid (or tapped)
   -> the anchor hub appears with pulsing rings (weigh anchor) -> two curved arrows on the wheel for ~4.5 s (or until
   you steer) -> free. The smoke test skips it with `tutSet("done")`. At each step a speech bubble (`#tut-tip`,
   `TUT_TIPS`, `placeTip`) sits by the control with its tail pointing at it and says in a few words what it does. When a step is done its highlight
@@ -57,14 +57,17 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
 - **Controls:** wheel (drag in a circle; half a turn = full lock). Inside the rim a dark backing (a radial grey 70→44, dithered to a deep dotted texture) fills the gaps between the spokes, so the light wood reads clearly; the wood
   is a mid grey (`WOOD`, `WOOD_SH`, `WOOD_RIM` in drawWheel) so it stands out from the pale sea.
   Layout (no panel behind the controls: a wooden dashboard was tried and dropped, it hid too much sea): compass over
-  logbook bottom left, wheel bottom centre, sail badge bottom right (level with the logbook).
+  logbook bottom left, wheel bottom centre, sail switch bottom right (as tall as the compass and logbook).
   Hub of the wheel = anchor only:
   **long press 0.5 s = anchor**. At anchor the wheel fades out and only the hub (bigger, dark) remains. The hub is
   drawn like the compass, in greys then dithered: a light brass bezel (lit top left) with four rivets round a shaded
   face with a glint; sailing, a light face (r 14.5) with an ink anchor; at anchor, a dark face, one light rim and a paper anchor.
-  **Sail badge** (`#sail`, `drawSail`, section "Sail badge"; the old halyard rope is gone): a crisp disc (pure ink and paper, hard threshold, no dither):
-  bottom right, 76 px, showing the sail state (full sail: paper disc, ink drawing; furled: inverted, ink disc, paper drawing); tap it (or Enter/Space on it, or S) to switch sail (full /
-  minimum) with a clack and a buzz; it pops when it switches. The voyage starts with the sail furled.
+  **Sail switch** (`#sail`, `drawSail`, section "Sail switch"; the old halyard rope is gone): a vertical iPhone-style
+  switch bottom right, 76×160 px (as tall as compass + logbook). The thumb is the sail badge, a crisp disc (pure ink and
+  paper, hard threshold; full sail: paper disc, ink drawing; furled: inverted). Slide it up = set the sail, down = furl
+  (`thumbPos` 0..1; a click and buzz passing the middle; let go past the middle and it switches with a clack, else it
+  springs back); a tap toggles too, so do Enter/Space on it and S. The track (dithered pill with a groove) is light
+  with the sail set, dark when furled. In the tutorial the thumb nudges upward. The voyage starts with the sail furled.
   The boat gathers way slowly (`BOAT_ACCEL` = 0.4, a quarter of the original 1.6; slowing down unchanged).
   Top speed is kept modest (`WIND_BOOST` = 0.8; running dead downwind adds only up to +10%, `downwindBonus`).
   Oars never come out because of the anchor (nor while getting under way after weighing it).
@@ -92,7 +95,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
 
 ## Map of index.html (search for these section headers: `// ---------- Name ----------`)
 World setup · Islands · Home island · Piers · Villages · Ruins · Rocks · Whirlpools · Fish banks · Boat ·
-Trade routes · Wind · Input · Haptics · Sound · Ship's wheel · Sail badge · Intro · Tutorial · UI refs · Dialog · Fishing · Fog of war ·
+Trade routes · Wind · Input · Haptics · Sound · Ship's wheel · Sail switch · Intro · Tutorial · UI refs · Dialog · Fishing · Fog of war ·
 Rollers · Powers from the ruins · Village market · Cicadas · Night sounds · Town sounds · Wind streaks · Shopping list ·
 Buoys · Traders · Update · 1-bit rendering · Day and night · Draw · Villages (pixel art) · Ruins (pixel art) ·
 Cloud shadows (clouds) · Ambient life: gulls

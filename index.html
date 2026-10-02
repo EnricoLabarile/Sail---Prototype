@@ -144,7 +144,7 @@
     font-family:inherit; font-size:15px; text-align:center;
     background:var(--paper); color:var(--ink);
     border:2px solid var(--ink); border-radius:4px; box-shadow:3px 3px 0 var(--ink);
-    cursor:pointer; touch-action:manipulation;
+    cursor:grab; touch-action:none;
   }
   #market button:active:not(:disabled){transform:translate(2px,2px); box-shadow:1px 1px 0 var(--ink);}
   #mk-actions{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
@@ -342,15 +342,15 @@
     z-index:6;
   }
   #wheel.grabbed{cursor:grabbing;}
-  /* the sail badge: bottom right (mirroring the logbook); tap it to switch sail */
-  #sail{position:fixed; right:13px; bottom:calc(12px + env(safe-area-inset-bottom,0px)); width:76px; height:76px;
+  /* the sail switch: bottom right, as tall as the compass and logbook together; slide the badge up or down */
+  #sail{position:fixed; right:13px; bottom:calc(10px + env(safe-area-inset-bottom,0px)); width:76px; height:160px;
     z-index:7; cursor:pointer; touch-action:manipulation; image-rendering:pixelated; transition:opacity .5s;}
-  #sail:focus-visible{outline:2px dashed var(--ink); outline-offset:-4px; border-radius:50%;}
+  #sail:focus-visible{outline:2px dashed var(--ink); outline-offset:-2px; border-radius:36px;}
   /* tutorial: controls not reached yet are hidden and can't be touched; they fade in when their turn comes */
   body.tut-no-rope #sail, body.tut-no-wheel #wheel{opacity:0; pointer-events:none;}
   /* the sail's turn: the badge wiggles like the logbook with news and sends out rings (paper and ink, so they
      show on pale sea and dark fog) until it's tapped */
-  body.tut-rope #sail{border-radius:50%; animation:logWiggle 2.2s ease-in-out infinite, sailPing 1.1s ease-out infinite;}
+  body.tut-rope #sail{border-radius:34px; animation:sailPing 1.1s ease-out infinite;}   /* (the thumb nudges up too: drawSail) */
   body.tut-compass #compass{border-radius:50%; animation:logWiggle 2.2s ease-in-out infinite, sailPing 1.1s ease-out infinite;}
   @keyframes sailPing{0%{box-shadow:0 0 0 0 rgba(235,231,220,.95), 0 0 0 0 rgba(27,26,23,.85)} 100%{box-shadow:0 0 0 14px rgba(235,231,220,0), 0 0 0 17px rgba(27,26,23,0)}}
 
@@ -489,7 +489,7 @@
   <div id="toast" class="panel" role="status" aria-live="polite"></div>
   <div id="tut-tip" class="panel" role="status" aria-live="polite"></div>   <!-- tutorial: a bubble by the control being taught -->
   <canvas id="wheel" aria-label="Helm: drag clockwise or anticlockwise to steer"></canvas>
-  <canvas id="sail" tabindex="0" role="button" aria-label="Sail: tap to switch"></canvas>   <!-- the sail badge, bottom right -->
+  <canvas id="sail" tabindex="0" role="button" aria-label="Sail: tap to switch"></canvas>   <!-- the sail switch, bottom right -->
 
   <div id="intro">
    <div class="card intro-card">
@@ -2728,7 +2728,7 @@
   // hub of the wheel; this just keeps the labels in step
   function renderSailBtn(){
     wheelCv.setAttribute('aria-label', 'Helm: drag round to steer. Centre: hold half a second to ' + (anchored ? 'weigh' : 'drop') + ' anchor.');
-    sailCv.setAttribute('aria-label', 'Sail: tap to switch (now ' + SAIL_LEVELS[sailLevel].name + ').');
+    sailCv.setAttribute('aria-label', 'Sail switch: slide up to set the sail, down to furl it (now ' + SAIL_LEVELS[sailLevel].name + ').');
   }
   // a switch: full sail ↔ minimum
   function cycleSail(){
@@ -2736,20 +2736,29 @@
     renderSailBtn(); Sfx.init(); Sfx.thunk(0.3); buzz(10);
   }
 
-  // ---------- Sail badge ----------
-  // The sail's state in a paper disc, bottom right (mirroring the logbook):
-  // tap it to switch between full sail and minimum, with a clack and a buzz;
-  // it pops when it switches. Drawn like the other controls: greys into a
-  // low-res canvas (38 units, ×2), then dithered.
+  // ---------- Sail switch ----------
+  // A vertical switch, iPhone style, bottom right (as tall as the compass and
+  // the logbook together): the thumb is the sail badge. Slide it up to set the
+  // sail, down to furl it (a tap toggles too); let go past the middle and the
+  // sail switches with a clack and a buzz, otherwise it springs back. The
+  // track is drawn in greys and dithered like the other controls (light with
+  // the sail set, dark when furled); the badge is pure ink and paper with a
+  // hard threshold, so its round edge stays clean.
   const sailCv = document.getElementById('sail');
   const sbctx = sailCv.getContext('2d');
-  const SAIL_PX = 76, SAIL_K = 2;
-  const slo = document.createElement('canvas'); slo.width = SAIL_PX; slo.height = SAIL_PX;
+  const SW = 76, SH = 160;                      // CSS px (see #sail)
+  const TR = 33, TX = SW/2, TOP_Y = 5 + TR, BOT_Y = SH - 5 - TR;   // track radius, thumb centre x, its two stops
+  const BADGE_S = 1.75;                         // the badge drawing (38 units across) scaled into the thumb
+  const slo = document.createElement('canvas'); slo.width = SW; slo.height = SH;
   const sl = slo.getContext('2d', {willReadFrequently:true});
+  const tlo = document.createElement('canvas'); tlo.width = SW; tlo.height = SH;
+  const tl = tlo.getContext('2d', {willReadFrequently:true});
   let sailFlash = 0, sailLastT = performance.now();
+  let thumbPos = sailLevel === SAIL_MIN ? 0 : 1;   // 0 = down (furled), 1 = up (sail set)
+  let thumbDrag = null;                            // {ptr, y0, p0, moved, half}
   function sizeSail(){
     const k = Math.max(1, Math.round(window.devicePixelRatio||1));
-    sailCv.width = SAIL_PX*k; sailCv.height = SAIL_PX*k; sbctx.imageSmoothingEnabled = false;
+    sailCv.width = SW*k; sailCv.height = SH*k; sbctx.imageSmoothingEnabled = false;
   }
   sizeSail();
   window.addEventListener('resize', sizeSail);
@@ -2757,43 +2766,83 @@
     cycleSail(); Sfx.thunk(0.55); buzz([28,40,14]); sailFlash = 1;
     if(tut === 'rope') tutNext('anchor');                                   // tutorial: now weigh anchor
   }
-  sailCv.addEventListener('pointerdown', ev=>{ ev.preventDefault(); Sfx.init(); switchSail(); });
+  const sailUp = ()=> sailLevel !== SAIL_MIN;
+  const localY = ev=>{ const r = sailCv.getBoundingClientRect(); return (ev.clientY - r.top)*(SH/r.height); };
+  sailCv.addEventListener('pointerdown', ev=>{
+    ev.preventDefault(); Sfx.init();
+    try{ sailCv.setPointerCapture(ev.pointerId); }catch(e){}
+    thumbDrag = {ptr: ev.pointerId, y0: localY(ev), p0: thumbPos, moved: false, half: thumbPos > 0.5};
+    buzz(6);
+  });
+  sailCv.addEventListener('pointermove', ev=>{
+    const d = thumbDrag; if(!d || ev.pointerId !== d.ptr) return;
+    const dy = localY(ev) - d.y0;
+    if(Math.abs(dy) > 6) d.moved = true;
+    thumbPos = Math.max(0, Math.min(1, d.p0 - dy/(BOT_Y - TOP_Y)));
+    const half = thumbPos > 0.5;
+    if(half !== d.half){ d.half = half; Sfx.tick(0.4, half ? 1.15 : 0.9); buzz(8); }   // a click as it passes the middle
+  });
+  const thumbRelease = ev=>{
+    const d = thumbDrag; if(!d || ev.pointerId !== d.ptr) return;
+    thumbDrag = null;
+    if(ev.type === 'pointercancel') return;                                 // springs back
+    const want = d.moved ? thumbPos > 0.5 : !sailUp();                      // a tap toggles
+    if(want !== sailUp()) switchSail();
+  };
+  sailCv.addEventListener('pointerup', thumbRelease);
+  sailCv.addEventListener('pointercancel', thumbRelease);
   sailCv.addEventListener('keydown', e=>{ if((e.key==='Enter' || e.key===' ') && !e.repeat){ e.preventDefault(); e.stopPropagation(); switchSail(); } });
   function drawSail(){
     const now = performance.now(), dt = Math.min(0.05, (now - sailLastT)/1000); sailLastT = now;
     sailFlash = Math.max(0, sailFlash - dt*2.5);
-    const c = sl, INKW = '#000', PAPW = '#fff';
-    c.setTransform(1,0,0,1,0,0); c.clearRect(0,0,SAIL_PX,SAIL_PX);
-    c.setTransform(SAIL_K,0,0,SAIL_K,0,0);
-    c.lineCap = 'round'; c.lineJoin = 'round';
-    c.translate(19, 19);
-    // pure ink and paper only (no greys), so the dither leaves it crisp.
-    // Full sail: a paper disc with an ink drawing; furled: inverted, an ink
-    // disc with a paper drawing (and a fine paper ring to part it from dark water)
-    const furled = sailLevel === SAIL_MIN, FG = furled ? PAPW : INKW;
-    const s = 1 + 0.18*Math.sin(sailFlash*Math.PI);
-    c.scale(s, s);
-    c.fillStyle = INKW; c.beginPath(); c.arc(0,0,16.5,0,Math.PI*2); c.fill();            // the ink rim
-    if(furled){ c.strokeStyle = PAPW; c.lineWidth = 1.1; c.beginPath(); c.arc(0,0,14.6,0,Math.PI*2); c.stroke(); }
-    else { c.fillStyle = PAPW; c.beginPath(); c.arc(0,0,14.6,0,Math.PI*2); c.fill(); }
-    c.strokeStyle = FG; c.fillStyle = FG;
-    c.lineWidth=1.4; c.beginPath(); c.moveTo(0,-10); c.lineTo(0,10); c.stroke();          // mast
-    c.lineWidth=1.8; c.beginPath(); c.moveTo(-7,-7); c.lineTo(7,-7); c.stroke();          // yard
-    if(furled){                                                                            // furled, over a little wave
-      c.beginPath(); c.roundRect(-6.5,-6.6,13,3.6,1.7); c.fill();
-      c.lineWidth=1.2; c.beginPath(); c.moveTo(-6.5,7); c.quadraticCurveTo(-3.2,5,0,7); c.quadraticCurveTo(3.2,9,6.5,7); c.stroke();
-    } else {                                                                               // full and drawing
-      c.beginPath(); c.moveTo(-6,-6.2); c.quadraticCurveTo(0,-4.2,6,-6.2); c.quadraticCurveTo(8.2,0,6,6);
-      c.quadraticCurveTo(0,8,-6,6); c.quadraticCurveTo(-8.2,0,-6,-6.2); c.fill();
-    }
-    c.setTransform(1,0,0,1,0,0);
-    // a hard threshold instead of the dither: the badge is pure ink and
-    // paper, and its round edge stays clean (no loose dots round the rim)
+    if(!thumbDrag) thumbPos += ((sailUp() ? 1 : 0) - thumbPos)*Math.min(1, dt*14);   // glides to its stop
+    let nudge = 0;                                                          // tutorial: it nudges up, to show it slides
+    if(tut === 'rope' && !tutWait && !thumbDrag){ const ph = (now/1600) % 1; nudge = ph < 0.3 ? Math.sin(ph/0.3*Math.PI)*0.14 : 0; }
+    const ty = BOT_Y + (TOP_Y - BOT_Y)*Math.min(1, thumbPos + nudge);
+    const INKW = '#000', PAPW = '#fff', g = v=> 'rgb('+v+','+v+','+v+')';
+    // the track: a pill with an ink edge (and a paper halo outside, for dark
+    // water), light dotted with the sail set, dark when furled, a groove down the middle
     {
-      const im = c.getImageData(0,0,SAIL_PX,SAIL_PX), dd = im.data, o32 = new Uint32Array(dd.buffer);
+      const c = sl;
+      c.setTransform(1,0,0,1,0,0); c.clearRect(0,0,SW,SH);
+      const pill = (inset)=>{ c.beginPath(); c.roundRect(TX-TR+inset, 5+inset, (TR-inset)*2, SH-10-inset*2, TR-inset); };
+      c.fillStyle = PAPW; pill(-1.5); c.fill();
+      const v = Math.round(62 + 128*thumbPos);                             // dark (furled) to light (set), following the thumb
+      const tg = c.createLinearGradient(0, 5, 0, SH-5);
+      tg.addColorStop(0, g(Math.min(255, v+25))); tg.addColorStop(1, g(Math.max(0, v-25)));
+      c.fillStyle = tg; pill(0); c.fill();
+      c.strokeStyle = INKW; c.lineWidth = 1.2;                              // the groove the thumb runs in
+      c.beginPath(); c.moveTo(TX, TOP_Y); c.lineTo(TX, BOT_Y); c.stroke();
+      c.lineWidth = 2; pill(1); c.stroke();
+      ditherUI(c, SW, SH);
+    }
+    // the thumb: the sail badge, pure ink and paper with a hard threshold
+    {
+      const c = tl;
+      c.setTransform(1,0,0,1,0,0); c.clearRect(0,0,SW,SH);
+      c.lineCap = 'round'; c.lineJoin = 'round';
+      const furled = !sailUp(), FG = furled ? PAPW : INKW;
+      const s = BADGE_S*(1 + 0.12*Math.sin(sailFlash*Math.PI));
+      c.translate(TX, ty); c.scale(s, s);
+      c.fillStyle = INKW; c.beginPath(); c.arc(0,0,16.5,0,Math.PI*2); c.fill();            // the ink rim
+      if(furled){ c.strokeStyle = PAPW; c.lineWidth = 1.1; c.beginPath(); c.arc(0,0,14.6,0,Math.PI*2); c.stroke(); }
+      else { c.fillStyle = PAPW; c.beginPath(); c.arc(0,0,14.6,0,Math.PI*2); c.fill(); }
+      c.strokeStyle = FG; c.fillStyle = FG;
+      c.lineWidth=1.4; c.beginPath(); c.moveTo(0,-10); c.lineTo(0,10); c.stroke();          // mast
+      c.lineWidth=1.8; c.beginPath(); c.moveTo(-7,-7); c.lineTo(7,-7); c.stroke();          // yard
+      if(furled){                                                                            // furled, over a little wave
+        c.beginPath(); c.roundRect(-6.5,-6.6,13,3.6,1.7); c.fill();
+        c.lineWidth=1.2; c.beginPath(); c.moveTo(-6.5,7); c.quadraticCurveTo(-3.2,5,0,7); c.quadraticCurveTo(3.2,9,6.5,7); c.stroke();
+      } else {                                                                               // full and drawing
+        c.beginPath(); c.moveTo(-6,-6.2); c.quadraticCurveTo(0,-4.2,6,-6.2); c.quadraticCurveTo(8.2,0,6,6);
+        c.quadraticCurveTo(0,8,-6,6); c.quadraticCurveTo(-8.2,0,-6,-6.2); c.fill();
+      }
+      c.setTransform(1,0,0,1,0,0);
+      const im = c.getImageData(0,0,SW,SH), dd = im.data, o32 = new Uint32Array(dd.buffer);
       for(let p = 0, q = 0; p < o32.length; p++, q += 4) o32[p] = dd[q+3] < 128 ? 0 : dd[q] > 127 ? UI_PAPER32 : UI_INK32;
       c.putImageData(im, 0, 0);
     }
+    sl.drawImage(tlo, 0, 0);                                                // thumb over the track
     sbctx.clearRect(0,0,sailCv.width,sailCv.height);
     sbctx.drawImage(slo, 0, 0, sailCv.width, sailCv.height);
   }
@@ -2892,7 +2941,7 @@
   const TUT_TIPS = {
     book:   'Your logbook: the dinner list. Open it, then close it.',
     compass: 'Your compass: it always points home.',
-    rope:   'Tap to set or furl the sail.',
+    rope:   'Slide up to set the sail, down to furl it.',
     anchor: 'Hold to weigh anchor.',
     wheel:  'Drag the wheel round to steer.',
   };
