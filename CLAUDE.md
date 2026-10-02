@@ -42,7 +42,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   The market is a centred window over a 90% black shade; while it's open the halyard, compass (with its fish
   counters) and wheel/anchor are hidden. Buttons: Quit (left) and Trade (right); both close it and leave you moored
   with the anchor back, so you can linger; a market opens once per docking (leave and come back to trade again).
-- **Compass** (76 px, `CMP_PX`, left side just above the logbook icon, same width; hidden in the tutorial
+- **Compass** (76 px, `CMP_PX`, bottom left, just above the logbook icon, same width, straddling the dashboard rail; hidden in the tutorial
   until the halyard step): points home, a dot per village filled once a dish is bought there; drawn like the
   wheel (greys into a low-res canvas, then dithered): brass bezel with rivets, shaded card, wind rose, glass glare.
   The old fish counters round it are hidden (`#wood`); the cargo is shown on the logbook's right page.
@@ -52,8 +52,11 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   -> the anchor hub appears with pulsing rings (weigh anchor) -> two curved arrows on the wheel for ~4.5 s (or until
   you steer) -> free. The smoke test skips it with `tutSet("done")`.
 - **Controls:** wheel (drag in a circle; half a turn = full lock). The wheel has no backing disc: the sea shows between the spokes; its wood
-  is a mid grey (`WOOD`, `WOOD_SH`, `WOOD_RIM` in drawWheel) so it stands out from the pale sea. It stands on a
-  wooden pedestal (a tapered turned post on a plinth, drawn behind it in drawWheel; it fades with the wheel at anchor). Hub of the wheel = anchor only:
+  is a mid grey (`WOOD`, `WOOD_SH`, `WOOD_RIM` in drawWheel) so it stands out from the pale sea.
+  **Dashboard** (`drawDash`, `#dash`): a wooden panel across the bottom (`DASH_H` = 112 px + safe area), like a car's
+  dash under the windscreen: dark planks with grain, butt joints and nails, a light rounded rail on top; dithered like
+  the UI, repainted on resize and when the light changes. The wheel's hub sits just above the rail (its lower half rests
+  on the wood); the camera is shifted by `DASH_H/2` so the boat stays centred in the visible sea. Hub of the wheel = anchor only:
   **long press 0.5 s = anchor**. At anchor the wheel fades out and only the hub (bigger, dark) remains. The hub is
   shaded in greys and dithered like the rest of the UI: sailing, a light face (r 14.5) with a big ink anchor; at
   anchor, a single dark knob with one light rim and a paper anchor.
@@ -66,7 +69,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   The boat gathers way slowly (`BOAT_ACCEL` = 0.4, a quarter of the original 1.6; slowing down unchanged).
   Top speed is kept modest (`WIND_BOOST` = 0.8; running dead downwind adds only up to +10%, `downwindBonus`).
   Oars never come out because of the anchor (nor while getting under way after weighing it).
-  The **logbook** button (left side, mirroring the halyard, under the compass) is just the book, no round knob: a 76 px icon
+  The **logbook** button (bottom left corner, on the dashboard, under the compass) is just the book, no round knob: a 76 px icon
   (`LOG_PX`) drawn like the wheel (greys, then dithered: dark leather, spine bands, metal corners, strap; drawn in 56
   units and scaled; `drawLogbookIcon`) with a thin paper halo; the cover is plain (no emblem). Its cover swings open to an open-book icon.
   When a course is first crossed off (its first dish bought), the book shimmers (a glint across the cover and a
@@ -90,7 +93,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
 
 ## Map of index.html (search for these section headers: `// ---------- Name ----------`)
 World setup · Islands · Home island · Piers · Villages · Ruins · Rocks · Whirlpools · Fish banks · Boat ·
-Trade routes · Wind · Input · Haptics · Sound · Ship's wheel · Halyard · Intro · Tutorial · UI refs · Dialog · Fishing · Fog of war ·
+Trade routes · Wind · Input · Haptics · Sound · Ship's wheel · Dashboard · Halyard · Intro · Tutorial · UI refs · Dialog · Fishing · Fog of war ·
 Rollers · Powers from the ruins · Village market · Cicadas · Night sounds · Town sounds · Wind streaks · Shopping list ·
 Buoys · Traders · Update · 1-bit rendering · Day and night · Draw · Villages (pixel art) · Ruins (pixel art) ·
 Cloud shadows (clouds) · Ambient life: gulls

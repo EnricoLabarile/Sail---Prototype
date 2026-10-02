@@ -97,8 +97,8 @@
   #wood .res-item{display:flex; align-items:center; gap:3px;}
   /* the logbook is a compact card: the list on the left, the compass on the right */
   /* the compass sits right on top of the logbook icon (same width, centred over it), on the left */
-  #compass{position:fixed; left:11px; bottom:calc(148px + env(safe-area-inset-bottom,0px));
-    width:76px; height:76px; z-index:5; pointer-events:none; transition:opacity .5s;}
+  #compass{position:fixed; left:11px; bottom:calc(94px + env(safe-area-inset-bottom,0px));
+    width:76px; height:76px; z-index:7; pointer-events:none; transition:opacity .5s;}
   body.tut-no-compass #compass{opacity:0;}
   #wood{display:none !important;}      /* the fish counters round the compass are retired: the hold is in the logbook */
   /* the market is a window of its own: centred over a dark shade, with room for everything */
@@ -237,7 +237,7 @@
   #btn-list .log-pages{opacity:0; transform:scale(.85); transition:opacity .25s .12s, transform .35s .12s;}
   #btn-list.open .log-cover{transform:rotateY(-160deg); opacity:0;}
   #btn-list.open .log-pages{opacity:1; transform:none;}
-  #btn-list{left:9px; right:auto; bottom:calc(62px + env(safe-area-inset-bottom,0px));}   /* left side: the logbook mirrors the halyard, the compass sits above it */
+  #btn-list{left:9px; right:auto; bottom:calc(10px + env(safe-area-inset-bottom,0px));}   /* bottom left, on the dashboard; the compass sits above it */
   body.at-market #btn-list{display:none;}
   /* at the barter table the halyard and the compass (with its fish counters) step aside */
   body.at-market #rope, body.at-market #rope-hit, body.at-market #compass, body.at-market #wood, body.at-market #wheel{display:none;}
@@ -325,6 +325,8 @@
   #hold-page .hold-empty{font-size:12px; font-style:italic; margin:2px 0 6px;}
   #hold-page .hold-goods{display:flex; flex-wrap:wrap; gap:4px; padding-top:6px; border-top:1.5px dashed var(--ink);}
   #hold-page .hold-goods svg{width:26px; height:26px; display:block;}
+  /* the dashboard: a wooden panel along the bottom (the cockpit); the controls sit on it */
+  #dash{position:fixed; left:0; bottom:0; width:100%; height:calc(112px + env(safe-area-inset-bottom,0px)); z-index:5; pointer-events:none; image-rendering:pixelated;}
   #wheel{
     transition:opacity .35s;
     position:fixed;
@@ -495,6 +497,7 @@
   <!-- the compass, top centre of the main view (not interactive; the open logbook may cover it) -->
   <canvas id="compass" aria-label="Compass: points home. Ports visited: none"></canvas>
   <div id="toast" class="panel" role="status" aria-live="polite"></div>
+  <canvas id="dash" aria-hidden="true"></canvas>   <!-- the wooden dashboard the controls sit on -->
   <canvas id="wheel" aria-label="Helm: drag clockwise or anticlockwise to steer"></canvas>
   <canvas id="rope" aria-hidden="true"></canvas>
   <div id="rope-hit" tabindex="0" role="button" aria-label="Halyard: pull down to switch sail"></div>
@@ -2539,25 +2542,6 @@
     if(Math.abs(rudder)<0.04){ c.fillStyle=PAPW; c.fill(); c.lineWidth=1.8; c.stroke(); }
     else { c.fillStyle=INKW; c.fill(); }
 
-    // the pedestal: a turned wooden post on a plinth, behind the wheel, so
-    // the wheel stands on something instead of floating over the sea
-    {
-      const x0 = WH_CX, yT = WH_CY, yB = WH_H - 16, tw = 9, bw = 15;
-      const post = ()=>{ c.beginPath(); c.moveTo(x0-tw, yT); c.lineTo(x0+tw, yT); c.lineTo(x0+bw, yB); c.lineTo(x0-bw, yB); c.closePath(); };
-      const pg = c.createLinearGradient(x0-bw, 0, x0+bw, 0);
-      pg.addColorStop(0, WOOD); pg.addColorStop(0.55, WOOD_RIM); pg.addColorStop(1, WOOD_SH);   // lit from the left
-      c.fillStyle = pg; post(); c.fill();
-      c.strokeStyle = 'rgb(105,105,105)'; c.lineWidth = 0.9;                                  // the grain
-      for(const u of [-0.45, 0.1, 0.5]){ c.beginPath(); c.moveTo(x0+u*tw, yT+6); c.lineTo(x0+u*bw, yB-2); c.stroke(); }
-      c.strokeStyle = INKW; c.lineWidth = 1.6; post(); c.stroke();
-      for(const y of [yT+44, yT+52]){                                                          // two turned rings
-        const hw = tw + (bw-tw)*(y-yT)/(yB-yT) + 2.5;
-        c.fillStyle = WOOD_SH; c.beginPath(); c.roundRect(x0-hw, y-2.5, hw*2, 5, 2.5); c.fill(); c.stroke();
-      }
-      c.fillStyle = WOOD_SH; c.beginPath(); c.roundRect(x0-38, yB, 76, 13, [5, 5, 2, 2]); c.fill(); c.stroke();   // the plinth
-      c.strokeStyle = 'rgb(200,200,200)'; c.lineWidth = 1.1; c.beginPath(); c.moveTo(x0-33, yB+3); c.lineTo(x0+33, yB+3); c.stroke();
-    }
-
     // wheel: ink woodcut look; every part has an ink outline so it reads over any terrain
     c.save();
     c.translate(WH_CX, WH_CY);
@@ -2738,6 +2722,62 @@
   function cycleSail(){
     sailLevel = sailLevel === 0 ? SAIL_MIN : 0;
     renderSailBtn(); Sfx.init(); Sfx.thunk(0.3); buzz(10);
+  }
+
+  // ---------- Dashboard ----------
+  // The cockpit: a wooden panel across the bottom of the screen, like a car's
+  // dashboard under the windscreen. The sea is seen above it; the wheel's hub
+  // sits on its top rail (the lower half of the wheel rests on the wood) and
+  // the other controls are set into it. Drawn in greys (planks, grain, butt
+  // joints, nails, a rounded rail along the top), then dithered like the rest
+  // of the interface; painted again on resize and when the light changes.
+  const DASH_H = 112;                          // CSS px above the safe area (the hub sits just over the rail)
+  const dashCv = document.getElementById('dash');
+  let dashDone = false;
+  window.addEventListener('resize', ()=>{ dashDone = false; });
+  function drawDash(){
+    dashDone = true;
+    const r = dashCv.getBoundingClientRect(), W = Math.max(1, Math.round(r.width)), H = Math.max(1, Math.round(r.height));
+    const k = Math.max(1, Math.round(window.devicePixelRatio||1));
+    const lo = document.createElement('canvas'); lo.width = W; lo.height = H;
+    const c = lo.getContext('2d', {willReadFrequently:true});
+    const g = v=> 'rgb('+v+','+v+','+v+')', INKW = '#000';
+    const hash = (n)=>{ const s = Math.sin(n*127.1+311.7)*43758.5453; return s - Math.floor(s); };   // stable "random"
+    const RAIL = 13, PLANK = 30;
+    c.fillStyle = g(104); c.fillRect(0, 0, W, H);                                  // dark oiled wood
+    // planks: grain, butt joints (staggered) and a nail either side of each joint
+    for(let row = 0, y = RAIL+3; y < H; row++, y += PLANK){
+      c.strokeStyle = g(74); c.lineWidth = 1;
+      for(let n = 0; n < 4; n++){
+        const yy = y + 5 + n*6.5 + hash(row*9+n)*3, ph = hash(row*13+n)*6, amp = 0.8 + hash(row*7+n)*1.4;
+        c.beginPath(); for(let x = 0; x <= W; x += 6) c.lineTo(x, yy + Math.sin(x/37 + ph)*amp); c.stroke();
+      }
+      c.strokeStyle = g(140); c.lineWidth = 0.9;                                 // a lighter streak in the grain
+      const ys = y + 9 + hash(row*5)*12;
+      c.beginPath(); for(let x = 0; x <= W; x += 6) c.lineTo(x, ys + Math.sin(x/53 + row)*1.2); c.stroke();
+      c.fillStyle = g(150); c.fillRect(0, y+1, W, 1);                            // the bevel under the seam
+      c.fillStyle = INKW; c.fillRect(0, y-0.5, W, 1.5);                          // seam
+      const off = (row%2) ? 70 : 0;
+      for(let x = off + 60 + hash(row)*30; x < W; x += 150 + hash(row+x)*40){
+        c.fillStyle = INKW; c.fillRect(Math.round(x), y, 1.5, PLANK);            // butt joint
+        for(const nx of [x-5, x+6]){                                             // nails
+          c.fillStyle = g(30); c.beginPath(); c.arc(nx, y+PLANK/2, 1.9, 0, Math.PI*2); c.fill();
+          c.fillStyle = g(200); c.fillRect(nx-1, y+PLANK/2-1.2, 1, 1);
+        }
+      }
+    }
+    // the rail along the top: a rounded, lighter moulding with a highlight,
+    // and a shadow cast on the planks below it
+    c.fillStyle = g(58); c.fillRect(0, RAIL, W, 4);
+    const rg = c.createLinearGradient(0, 0, 0, RAIL);
+    rg.addColorStop(0, g(205)); rg.addColorStop(0.35, g(170)); rg.addColorStop(1, g(105));
+    c.fillStyle = rg; c.fillRect(0, 0, W, RAIL);
+    c.fillStyle = INKW; c.fillRect(0, 0, W, 1.6); c.fillRect(0, RAIL-0.5, W, 1.5);
+    c.fillStyle = g(240); c.fillRect(0, 3, W, 1);
+    ditherUI(c, W, H);
+    if(dashCv.width !== W*k || dashCv.height !== H*k){ dashCv.width = W*k; dashCv.height = H*k; }
+    const x = dashCv.getContext('2d'); x.imageSmoothingEnabled = false; x.clearRect(0, 0, dashCv.width, dashCv.height);
+    x.drawImage(lo, 0, 0, dashCv.width, dashCv.height);
   }
 
   // ---------- Halyard ----------
@@ -4563,6 +4603,7 @@
     root.setProperty('--paper', 'rgb('+up.join()+')');
     root.setProperty('--ink', 'rgb('+ui.join()+')');
     logIconDone = false;                         // the logbook icon is cached: paint it again
+    dashDone = false;
   }
   // Night light: a coarse mask (one value per 4×4 pixel block) of how lit
   // each spot is. Outside the light everything sinks toward ink.
@@ -5962,7 +6003,7 @@
     // camera follows the boat freely (no edges), snapped to the game-pixel grid
     if(!playing){ camFx = boat.x; camFy = boat.y; }
     let camX = camFx - w/2;
-    let camY = camFy - h/2;
+    let camY = camFy - h/2 + DASH_H/2;           // the dashboard covers the bottom: centre the view in the windscreen
     const sk = shake*24;
     camX += sk ? rand(-sk,sk) : 0; camY += sk ? rand(-sk,sk) : 0;
     const gx = Math.round(camX/PX), gy = Math.round(camY/PX);
@@ -6047,6 +6088,7 @@
     drawWheel();
     drawRope();
     if(!logIconDone) drawLogbookIcon();                     // once (it needs the dither table, ready by now)
+    if(!dashDone) drawDash();                               // the wooden dashboard (on resize and when the light changes)
     if(tutAt('rope')) drawCompass();                       // shown from the tutorial's halyard step on
   }
 
