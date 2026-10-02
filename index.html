@@ -789,6 +789,9 @@
   // home waters are a safe harbour: no whirlpools and no big waves within
   // SAFE_R of home; a ring of buoys marks the edge
   const SAFE_R = 950;
+  // a calm lagoon round the home island: no islands and no rocks within
+  // LAGOON_R of home, room to learn the wheel before the first coast
+  const LAGOON_R = 650;
   // 0 at home, 1 from DANGER_RING outwards: drives island, rock, whirlpool
   // and fish-bank density, so the far seas are richer but more treacherous
   const DANGER_RING = 3400;
@@ -1093,10 +1096,10 @@
       if(Math.random() > (0.2 + 0.8*dg*dg)*(0.25 + 1.5*ar)) continue;   // sparser near home and in open seas, crowded in archipelagos
       const R = rand(90,160)*(1.1 - 0.25*ar), gap = (210 - 120*dg)*(1.45 - 1.0*ar);   // tight channels in archipelagos, wide water in open seas
       // cheap pre-check with a generous radius before building the island
-      if (wdist(x,y,START.x,START.y) < R*0.6+360) continue;
+      if (wdist(x,y,START.x,START.y) < R*0.6+LAGOON_R) continue;
       if (islandGrid.query(x,y,R*0.6+gap, o=> wdist(x,y,o.x,o.y) < R*0.6+o.rmax+gap)) continue;
       const isl = makeIsland(x,y,R);
-      if (wdist(x,y,START.x,START.y) < isl.rmax+360) continue;
+      if (wdist(x,y,START.x,START.y) < isl.rmax+LAGOON_R) continue;   // the home lagoon stays open
       const clash = islandGrid.query(x,y,isl.rmax+gap, o=> wdist(x,y,o.x,o.y) < isl.rmax+o.rmax+gap);
       if(!clash) addIsland(isl);
     }
@@ -1119,7 +1122,7 @@
   }
   function tryStack(x,y,r){
     x = wrapX(x); y = wrapY(y);
-    if(wdist(x,y,START.x,START.y) < 300) return false;
+    if(wdist(x,y,START.x,START.y) < LAGOON_R) return false;
     for(const v of SPECIALS) if(v.isl && wdist(x,y,v.isl.x,v.isl.y) < v.isl.rmax+160) return false;
     if(onLand(x,y,r+4)) return false;
     if(rockGrid.query(x,y,60, o=> Math.hypot(wdx(o.x,x),wdy(o.y,y)) < o.r+r+10)) return false;
@@ -1130,7 +1133,7 @@
   }
   function tryRock(x,y,r,allowShore){
     x = wrapX(x); y = wrapY(y);
-    if(wdist(x,y,START.x,START.y) < 260) return false;
+    if(wdist(x,y,START.x,START.y) < LAGOON_R) return false;
     for(const v of SPECIALS) if(wdist(x,y,v.isl.x,v.isl.y) < v.isl.rmax+140) return false;   // clear approach
     if(!allowShore && onLand(x,y,r*0.5+2)) return false;
     if(rockGrid.query(x,y,30, o=> Math.hypot(wdx(o.x,x),wdy(o.y,y)) < o.r+r+2)) return false;
@@ -1515,7 +1518,7 @@
   const popups = [];               // floating "+15" / "-8" texts
   const TURN_RATE = 0.42; // rad/s at full rudder
   const MAX_SPEED = 50; // px/s (reference speed)
-  const WIND_BOOST = 1.05;            // how much the wind actually gives (30% down from 1.5)
+  const WIND_BOOST = 0.8;             // how much the wind actually gives (was 1.5, then 1.05)
   const BOAT_ACCEL = 0.4;             // how fast she picks up speed (was 1.6, halved twice)
 
   // polar-ish speed curve: [angleDeg, factor]
@@ -1535,10 +1538,10 @@
     return POLAR[POLAR.length-1][1];
   }
   // extra reward for having the wind from behind: rises from a broad reach
-  // (120°) to dead downwind (180°), up to +50%
+  // (120°) to dead downwind (180°), up to +10%
   function downwindBonus(relDeg){
     const a = Math.abs(relDeg), k = Math.max(0, Math.min(1, (a-120)/60));
-    return 1 + 0.25*k*k*(3-2*k);
+    return 1 + 0.1*k*k*(3-2*k);
   }
   function andaturaName(relDeg){
     relDeg = Math.abs(relDeg);

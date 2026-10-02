@@ -27,6 +27,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   Each has a bay, a wooden pier, a lighthouse with a sweeping beam, a pixel-art town, 24 buoys at ~880 px (`BUOYS_PER_VILLAGE`) (toasts "Entering / Leaving the waters of …"; leaving counts 150 px past the buoys).
 - **Home waters** (`SAFE_R` = 950 px round home): no whirlpools (pull ring included) and no big waves (any that drift in
   die down harmlessly); a ring of 32 buoys marks the edge, with toasts "Leaving home waters" / "Back in home waters".
+  Inside them, a calm **lagoon** (`LAGOON_R` = 650 px round home): no islands and no rocks, room to learn the controls.
 - **Guiding wind:** from the start until you first tie up at Nordania, the wind always blows toward Nordania from
   wherever you are (shortest way round the torus; `guideWind`); after that the normal shifting winds apply.
 - **Ruins** on the diagonals: dock there for a random power (friendly wind 60 s, blessed nets ×3, full hull).
@@ -61,6 +62,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   the top of the wheel; a ~35 px pull switches the sail. The voyage starts with the sail furled; the rope hangs short
   while furled (`ROPE_LEN_FURLED` = 10: the handle just under the badge) and long with the sail open (`ROPE_LEN_OPEN`), easing between the two.
   The boat gathers way slowly (`BOAT_ACCEL` = 0.4, a quarter of the original 1.6; slowing down unchanged).
+  Top speed is kept modest (`WIND_BOOST` = 0.8; running dead downwind adds only up to +10%, `downwindBonus`).
   Oars never come out because of the anchor (nor while getting under way after weighing it).
   The **logbook** button (right side, just above the sail badge) is just the book, no round knob: a 76 px icon
   (`LOG_PX`) drawn like the wheel (greys, then dithered: dark leather, spine bands, metal corners, strap; drawn in 56
