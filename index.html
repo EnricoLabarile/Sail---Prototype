@@ -96,8 +96,8 @@
 
   #wood .res-item{display:flex; align-items:center; gap:3px;}
   /* the logbook is a compact card: the list on the left, the compass on the right */
-  /* the compass sits right on top of the logbook icon (same width, centred over it) */
-  #compass{position:fixed; right:13px; bottom:calc(332px + env(safe-area-inset-bottom,0px));
+  /* the compass sits right on top of the logbook icon (same width, centred over it), on the left */
+  #compass{position:fixed; left:11px; bottom:calc(148px + env(safe-area-inset-bottom,0px));
     width:76px; height:76px; z-index:5; pointer-events:none; transition:opacity .5s;}
   body.tut-no-compass #compass{opacity:0;}
   #wood{display:none !important;}      /* the fish counters round the compass are retired: the hold is in the logbook */
@@ -237,7 +237,7 @@
   #btn-list .log-pages{opacity:0; transform:scale(.85); transition:opacity .25s .12s, transform .35s .12s;}
   #btn-list.open .log-cover{transform:rotateY(-160deg); opacity:0;}
   #btn-list.open .log-pages{opacity:1; transform:none;}
-  #btn-list{left:auto; bottom:calc(246px + env(safe-area-inset-bottom,0px));}   /* right side, just above the sail badge (centred over it) */
+  #btn-list{left:9px; right:auto; bottom:calc(62px + env(safe-area-inset-bottom,0px));}   /* left side: the logbook mirrors the halyard, the compass sits above it */
   body.at-market #btn-list{display:none;}
   /* at the barter table the halyard and the compass (with its fish counters) step aside */
   body.at-market #rope, body.at-market #rope-hit, body.at-market #compass, body.at-market #wood, body.at-market #wheel{display:none;}
@@ -2539,6 +2539,25 @@
     if(Math.abs(rudder)<0.04){ c.fillStyle=PAPW; c.fill(); c.lineWidth=1.8; c.stroke(); }
     else { c.fillStyle=INKW; c.fill(); }
 
+    // the pedestal: a turned wooden post on a plinth, behind the wheel, so
+    // the wheel stands on something instead of floating over the sea
+    {
+      const x0 = WH_CX, yT = WH_CY, yB = WH_H - 16, tw = 9, bw = 15;
+      const post = ()=>{ c.beginPath(); c.moveTo(x0-tw, yT); c.lineTo(x0+tw, yT); c.lineTo(x0+bw, yB); c.lineTo(x0-bw, yB); c.closePath(); };
+      const pg = c.createLinearGradient(x0-bw, 0, x0+bw, 0);
+      pg.addColorStop(0, WOOD); pg.addColorStop(0.55, WOOD_RIM); pg.addColorStop(1, WOOD_SH);   // lit from the left
+      c.fillStyle = pg; post(); c.fill();
+      c.strokeStyle = 'rgb(105,105,105)'; c.lineWidth = 0.9;                                  // the grain
+      for(const u of [-0.45, 0.1, 0.5]){ c.beginPath(); c.moveTo(x0+u*tw, yT+6); c.lineTo(x0+u*bw, yB-2); c.stroke(); }
+      c.strokeStyle = INKW; c.lineWidth = 1.6; post(); c.stroke();
+      for(const y of [yT+44, yT+52]){                                                          // two turned rings
+        const hw = tw + (bw-tw)*(y-yT)/(yB-yT) + 2.5;
+        c.fillStyle = WOOD_SH; c.beginPath(); c.roundRect(x0-hw, y-2.5, hw*2, 5, 2.5); c.fill(); c.stroke();
+      }
+      c.fillStyle = WOOD_SH; c.beginPath(); c.roundRect(x0-38, yB, 76, 13, [5, 5, 2, 2]); c.fill(); c.stroke();   // the plinth
+      c.strokeStyle = 'rgb(200,200,200)'; c.lineWidth = 1.1; c.beginPath(); c.moveTo(x0-33, yB+3); c.lineTo(x0+33, yB+3); c.stroke();
+    }
+
     // wheel: ink woodcut look; every part has an ink outline so it reads over any terrain
     c.save();
     c.translate(WH_CX, WH_CY);
@@ -3860,14 +3879,6 @@
       c.fillStyle = INKW; c.beginPath(); c.roundRect(9, 5, 7, 40, [3.5, 0, 0, 3.5]); c.fill();          // the spine
       c.strokeStyle = g(200); c.lineWidth = 1.2;                                                          // raised bands
       for(const y of [11, 19, 31, 39]){ c.beginPath(); c.moveTo(9.5, y); c.lineTo(15.5, y); c.stroke(); }
-      c.save(); c.translate(27, 24); c.scale(1.3, 1.3);                                                 // compass rose, bold
-      c.fillStyle = PAPW; c.beginPath();
-      for(let i=0;i<8;i++){ const a = i*Math.PI/4 - Math.PI/2, r = i%2 ? 3.4 : 7.8, b = a + Math.PI/8;
-        c.lineTo(Math.cos(a)*r, Math.sin(a)*r); c.lineTo(Math.cos(b)*1.6, Math.sin(b)*1.6); }
-      c.closePath(); c.fill();
-      c.strokeStyle = PAPW; c.lineWidth = 1.1; c.beginPath(); c.arc(0, 0, 5.4, 0, Math.PI*2); c.stroke();
-      c.fillStyle = INKW; c.beginPath(); c.arc(0, 0, 1.1, 0, Math.PI*2); c.fill();
-      c.restore();
       const corner = (x, y, sx, sy)=>{                                                                    // metal corners
         c.save(); c.translate(x, y); c.scale(sx, sy);
         c.fillStyle = g(235); c.strokeStyle = INKW; c.lineWidth = 1.1;
