@@ -135,6 +135,14 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   dinner list on the left page (4 course names, crossed off once a dish of it is aboard), a crease, and the **Cargo** on the
   right page (`holdHTML`: purse, every fish as a small icon, then every dish and gift bought as an icon only, name on
   hover; the book grows to fit). Each dish and gift has its own 24×24 ink icon (`ITEM_ICONS`, `itemIcon(name)`), used at the market stall too.
+  **Two spreads**: a sideways swipe across the open book turns the page (left = forward to the **sea chart**, right = back
+  to the list and cargo; `turnPage`, `logSpread`): a sheet swings over on the spine (copies of the pages, `snapPage`), with
+  `Sfx.pageTurn()` and a buzz; the book remembers the spread it was left on and opens there. The **sea chart** (`renderMap`)
+  is drawn across both pages and the crease, square, `MAP_RES` pixels a side then dithered like the widgets: only the
+  cells the boat has seen (fog of war's `explored`; land inked round its coast), home (square), the four ports (rings,
+  filled once a dish is bought there), ruins once seen, and the boat with a tick for her heading. It is drawn only when
+  shown (book opened on it, or a page turned to it), never while sailing (~3 ms; the land under each pixel is worked out
+  once, ~10 ms, on the first showing).
   Opening/closing it plays `Sfx.book(open)`: paper flutter, and the cover's thump on closing. The list also shows the day of the voyage
   (`dayNo`, +1 at each dawn). A tiny faint frame-rate counter (`#fps`, refreshed twice a second while the logbook is open) sits on the
   paper, in the bottom right corner of the right page. Keyboard: arrows, Space = anchor.
@@ -152,7 +160,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
 ## Map of index.html (search for these section headers: `// ---------- Name ----------`)
 Texts · Tuning · World setup · Islands · Home island · Piers · Villages · Ruins · Rocks · Whirlpools · Fish banks · Boat ·
 Trade routes · Wind · Input · Haptics · Sound · Ship's wheel · Sail switch (unused) · Intro · Tutorial · UI refs · Dialog · Fishing · Fog of war ·
-Rollers · Powers from the ruins · Village market · Cicadas · Night sounds · Town sounds · Wind streaks · Shopping list ·
+Rollers · Powers from the ruins · Village market · Cicadas · Night sounds · Town sounds · Wind streaks · Shopping list · Sea chart · Turning the logbook's pages ·
 Buoys · Traders · Update · 1-bit rendering · Day and night · Draw · Villages (pixel art) · Ruins (pixel art) ·
 Cloud shadows (clouds) · Ambient life: gulls
 

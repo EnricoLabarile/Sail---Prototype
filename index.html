@@ -296,6 +296,23 @@
     background-size:100% 100%, 3px 3px;
   }
   #shoplist .crease::after{content:""; position:absolute; left:50%; top:0; bottom:0; width:2px; margin-left:-1px; background:var(--ink);}
+  /* the second spread: the sea chart, drawn across both pages and the crease */
+  #shoplist{touch-action:none;}
+  #shoplist .map-cv{display:none; width:100%; image-rendering:pixelated;}
+  #shoplist.on-map .map-cv{display:block;}
+  #shoplist.on-map #shoplist-body, #shoplist.on-map #hold-page{display:none;}
+  #shoplist.on-map .page.left{padding:10px 0 10px 10px;}
+  #shoplist.on-map .page.right{padding:10px 10px 10px 0;}
+  #shoplist.on-map .crease{padding:10px 0; background-image:none;}
+  #shoplist.on-map .crease::before{content:""; position:absolute; left:3px; right:3px; top:10px; bottom:10px; opacity:.45;   /* the gutter's shade, over the chart */
+    background-image:radial-gradient(var(--ink) 0.7px, transparent 0.9px); background-size:3px 3px;}
+  #shoplist.on-map .crease::after{opacity:.5;}
+  /* a page being turned: a sheet swinging on the spine, the page it leaves on its front and the new one on its back */
+  #shoplist .turn{position:absolute; z-index:4; transform-style:preserve-3d; pointer-events:none;}
+  #shoplist .turn > .page{position:absolute; inset:0; overflow:hidden; backface-visibility:hidden; -webkit-backface-visibility:hidden;}
+  #shoplist .under{position:absolute; overflow:hidden;}
+  #shoplist .turn > .back{transform:rotateY(180deg);}
+  #shoplist .under{z-index:3; pointer-events:none;}
   #shoplist.open{transform:translate(-75%, 0);}                                   /* 1: the shut book comes down */
   #shoplist.open.unfold{transform:translate(-50%, 0); clip-path:inset(-12px);}   /* 2: it opens, re-centring */
   /* tutorial bubble: by the control being taught, its tail pointing at it */
@@ -483,11 +500,11 @@
     <div class="pages">
       <!-- the front cover: its inside is the left page; folded shut it lies over the right page, leather side up -->
       <div class="leaf">
-        <div class="page left" id="shoplist-body"></div>
+        <div class="page left"><div id="shoplist-body"></div><canvas class="map-cv" id="map-l"></canvas></div>
         <div class="leaf-back" aria-hidden="true"><svg viewBox="0 0 24 24"><g fill="var(--paper)"><path d="M12 1.5 L13.6 9.2 L21 12 L13.6 14.8 L12 22.5 L10.4 14.8 L3 12 L10.4 9.2 Z"/><path d="M12 6 L13 11 L18 12 L13 13 L12 18 L11 13 L6 12 L11 11 Z" transform="rotate(45 12 12)" opacity=".7"/></g><circle cx="12" cy="12" r="6.6" fill="none" stroke="var(--paper)" stroke-width="0.9"/><circle cx="12" cy="12" r="1.2" fill="var(--ink)"/></svg></div>
       </div>
-      <div class="crease" aria-hidden="true"></div>
-      <div class="page right" id="hold-page"></div>
+      <div class="crease" aria-hidden="true"><canvas class="map-cv" id="map-c"></canvas></div>
+      <div class="page right"><div id="hold-page"></div><canvas class="map-cv" id="map-r"></canvas></div>
     </div>
   </div>
   <!-- the compass, top centre of the main view (not interactive; the open logbook may cover it) -->
@@ -622,6 +639,7 @@
       allAboard: 'Every course is aboard: you can sail home.',
       cargo:   'Cargo',
       noFish:  'No fish aboard.',
+      chart:   'Sea chart',
     },
     // at a pier, under the dialog
     pier: {
@@ -759,6 +777,7 @@
   const UI_TINT = 0.5;               // how much the interface takes on the day/night colours (0 = never, 1 = like the world)
   const CLOUD_ALPHA = 0.45, CLOUD_CORE = 0.88;   // clouds: see-through at the rim, denser in the middle
   const CLOUD_MODELS = 4;            // cloud shapes, shared by all the clouds in the sky (world)
+  const MAP_RES = 140;               // the sea chart in the logbook: its pixels a side (fewer = coarser)
   const PINE_MODELS = 4;             // stone pine shapes, reused (each also mirrored) all over the map (world)
   // draw the scene on the processor (true) or on the graphics card (false): the frame is tiny, and Firefox
   // on Android is slow with the card (24 fps); add ?scene=gpu or ?scene=cpu to the address to compare
@@ -2301,19 +2320,29 @@
     // thup) and a flutter of paper settling; closing = a short flutter, then
     // the cover coming down with a dull thump. Paper is short bursts of
     // band-passed noise, each a little different.
+    function paper(at, len, f, vol){
+      const src = ac.createBufferSource(); src.buffer = noise;
+      const bp = ac.createBiquadFilter(); bp.type='bandpass'; bp.Q.value = 0.9;
+      bp.frequency.setValueAtTime(f, at); bp.frequency.exponentialRampToValueAtTime(f*0.6, at + len);   // a swish that drops
+      const hp = ac.createBiquadFilter(); hp.type='highpass'; hp.frequency.value = 900;
+      const g = ac.createGain();
+      g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(vol, at + len*0.3); g.gain.exponentialRampToValueAtTime(0.0001, at + len);
+      src.connect(bp); bp.connect(hp); hp.connect(g); g.connect(master);
+      src.start(at, Math.random()*0.8, len + 0.02);
+    }
+    // a page turned in the logbook: the sheet lifts with a soft rising swish,
+    // sweeps over, and lands with a light flap
+    function pageTurn(){
+      if(!ac || ac.state!=='running') return;
+      const t0 = ac.currentTime + 0.01;
+      paper(t0, 0.09, 1800, 0.025);                                             // the corner lifts
+      paper(t0 + 0.06, 0.3, 3400, 0.06);                                        // the sheet sweeps over
+      paper(t0 + 0.34, 0.07, 2600, 0.045);                                      // and lands
+      paper(t0 + 0.4, 0.05, 4200, 0.02);
+    }
     function book(open){
       if(!ac || ac.state!=='running') return;
       const t0 = ac.currentTime + 0.01;
-      const paper = (at, len, f, vol)=>{
-        const src = ac.createBufferSource(); src.buffer = noise;
-        const bp = ac.createBiquadFilter(); bp.type='bandpass'; bp.Q.value = 0.9;
-        bp.frequency.setValueAtTime(f, at); bp.frequency.exponentialRampToValueAtTime(f*0.6, at + len);   // a swish that drops
-        const hp = ac.createBiquadFilter(); hp.type='highpass'; hp.frequency.value = 900;
-        const g = ac.createGain();
-        g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(vol, at + len*0.3); g.gain.exponentialRampToValueAtTime(0.0001, at + len);
-        src.connect(bp); bp.connect(hp); hp.connect(g); g.connect(master);
-        src.start(at, Math.random()*0.8, len + 0.02);
-      };
       const thump = (at, vol, f)=>{
         const src = ac.createBufferSource(); src.buffer = noise;
         const lp = ac.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value = 420;
@@ -2658,7 +2687,7 @@
     }
 
 
-    return {init, tick, thunk, wheel, ambient, rain, cicadas, book, pickup, hammer, bell, whirl, type, splash, drone, gull, crash, waveBreak, waveHit, surf, townEvent, chatter, cricket, howl, anchor, buoy, coins, engine};
+    return {init, tick, thunk, wheel, ambient, rain, cicadas, book, pageTurn, pickup, hammer, bell, whirl, type, splash, drone, gull, crash, waveBreak, waveHit, surf, townEvent, chatter, cricket, howl, anchor, buoy, coins, engine};
   })();
 
   // ---------- Ship's wheel ----------
@@ -4307,7 +4336,8 @@
     elListBtn.setAttribute('aria-expanded', on ? 'true' : 'false');
     Sfx.init();
     if(on){
-      renderList(); freshCourses.clear(); elListBtn.classList.remove('news');   // seen: stop the shimmer
+      renderList(); elListBtn.classList.remove('news');                        // seen: stop the shimmer
+      if(logSpread === 1) renderMap(); else freshCourses.clear();             // (a course crossed off waits for the list page)
       if(tut === 'book' || tut === 'intro') tutBookSeen = true;   // (opened while the scroll was still flying in counts too)
       elList.classList.add('open');
       bookT = setTimeout(()=>{ elList.classList.add('unfold'); Sfx.book(true); buzz([6,40,4]); }, BOOK_DROP);   // landed: open it
@@ -4318,6 +4348,123 @@
     }
   }
   elListBtn.addEventListener('click', ()=>{ toggleList(); elListBtn.blur(); });
+
+  // ---------- Sea chart ----------
+  // The logbook's second spread: a rough chart of the sea, drawn across both
+  // pages. Only what the boat has seen is on it (the fog of war's cells),
+  // plus home and the four villages. Drawn only when it is shown (the book
+  // opens on it, or a page is turned to it), never while sailing.
+  const elMapL = document.getElementById('map-l'), elMapC = document.getElementById('map-c'), elMapR = document.getElementById('map-r');
+  for(const c of [elMapL, elMapC, elMapR]){ c.setAttribute('role', 'img'); c.setAttribute('aria-label', TEXT.logbook.chart); }
+  const mapCv = document.createElement('canvas'); mapCv.width = mapCv.height = MAP_RES;
+  const mapCtx = mapCv.getContext('2d', {willReadFrequently:true});
+  let mapLand = null;                          // land under each chart pixel, worked out once
+  function renderMap(){
+    const N = MAP_RES, S = WORLD.w/N;
+    if(!mapLand){
+      mapLand = new Uint8Array(N*N);
+      for(let j=0;j<N;j++) for(let i=0;i<N;i++) mapLand[j*N+i] = onLand((i+0.5)*S, (j+0.5)*S, 0) ? 1 : 0;
+    }
+    const im = mapCtx.createImageData(N, N), d = im.data;
+    const seen = (i,j)=> explored[fci(Math.floor((j+0.5)*S/FOG_CELL))*FOG_N + fci(Math.floor((i+0.5)*S/FOG_CELL))];
+    const land = (i,j)=> mapLand[((j+N)%N)*N + (i+N)%N];
+    for(let j=0;j<N;j++) for(let i=0;i<N;i++){
+      let g = 215;                                                     // not yet seen: a light dotted grey
+      if(seen(i,j)){
+        g = 255;                                                       // open sea
+        if(land(i,j)) g = (land(i-1,j) && land(i+1,j) && land(i,j-1) && land(i,j+1)) ? 120 : 25;   // land, inked round its coast
+      }
+      const q = (j*N+i)*4; d[q] = d[q+1] = d[q+2] = g; d[q+3] = 255;
+    }
+    mapCtx.putImageData(im, 0, 0);
+    const c = mapCtx, k = N/WORLD.w, mark = (x,y,r,fill)=>{
+      c.fillStyle = '#fff'; c.beginPath(); c.arc(x*k, y*k, r+1.2, 0, Math.PI*2); c.fill();
+      c.fillStyle = '#000'; c.beginPath(); c.arc(x*k, y*k, r, 0, Math.PI*2); c.fill();
+      if(!fill){ c.fillStyle = '#fff'; c.beginPath(); c.arc(x*k, y*k, r-1, 0, Math.PI*2); c.fill(); }
+    };
+    for(const v of VILLAGES) mark(v.isl.x, v.isl.y, 3.5, dishesGot(v) > 0);   // the ports, filled once a dish is bought there
+    c.fillStyle = '#fff'; c.fillRect(START.x*k-3, START.y*k-3, 6, 6);         // home: a little square
+    c.fillStyle = '#000'; c.fillRect(START.x*k-2, START.y*k-2, 4, 4);
+    for(const r of RUINS){ const i = Math.floor(r.isl.x*k), j = Math.floor(r.isl.y*k);   // the ruins, once found
+      if(seen(i,j)){ c.fillStyle = '#000'; c.fillRect(i-1, j-2, 1, 4); c.fillRect(i+1, j-2, 1, 4); c.fillRect(i-2, j-3, 5, 1); } }
+    const bx = wrapX(boat.x)*k, by = wrapY(boat.y)*k, hx = Math.cos(boat.angle), hy = Math.sin(boat.angle);   // the boat, and where she's heading
+    c.lineCap = 'round';
+    c.strokeStyle = '#fff'; c.lineWidth = 3.4; c.beginPath(); c.moveTo(bx, by); c.lineTo(bx+hx*5, by+hy*5); c.stroke();
+    mark(boat.x, boat.y, 2, true);
+    c.strokeStyle = '#000'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(bx, by); c.lineTo(bx+hx*5, by+hy*5); c.stroke();
+    ditherUI(c, N, N);
+    // cut it into the three strips the spread shows: left page, crease, right page
+    const wl = elMapL.clientWidth, wc = elMapC.clientWidth, wr = elMapR.clientWidth, W = wl + wc + wr;
+    if(!wl || !wr) return;                                             // (not on show)
+    let x0 = 0;
+    for(const [cv, w] of [[elMapL, wl], [elMapC, wc], [elMapR, wr]]){
+      const x1 = Math.round(N*(x0 + w)/W), sx = Math.round(N*x0/W);
+      cv.width = Math.max(1, x1 - sx); cv.height = N; cv.style.height = W+'px';
+      cv.getContext('2d').drawImage(mapCv, sx, 0, cv.width, N, 0, 0, cv.width, N);
+      x0 += w;
+    }
+  }
+
+  // ---------- Turning the logbook's pages ----------
+  // Two spreads: 0 = the dinner list and the cargo, 1 = the sea chart. A
+  // swipe across the open book turns the page (left: forward, right: back);
+  // the book remembers the spread it was left on.
+  let logSpread = 0, turning = false;
+  const PAGE_TURN = 460;                       // ms for a page to swing over
+  const elPages = elList.querySelector('.pages'), elPageL = elList.querySelector('.page.left'), elPageR = elList.querySelector('.page.right');
+  // a copy of a page as it looks now, canvases included; what shows and the
+  // padding are frozen inline, so turning the spread doesn't restyle the copy
+  function snapPage(el){
+    const cp = el.cloneNode(true), from = el.querySelectorAll('*'), to = cp.querySelectorAll('*'), drop = [];
+    cp.style.padding = getComputedStyle(el).padding;
+    from.forEach((n, i)=>{
+      const d = getComputedStyle(n).display;
+      if(d === 'none'){ drop.push(to[i]); return; }
+      to[i].style.display = d;
+      if(n.tagName === 'CANVAS' && n.width && n.height) to[i].getContext('2d').drawImage(n, 0, 0);
+    });
+    drop.forEach(n=> n.remove());
+    return cp;
+  }
+  function placeAt(el, ref, base){
+    const r = ref.getBoundingClientRect();
+    Object.assign(el.style, {left: (r.left-base.left)+'px', top: (r.top-base.top)+'px', width: r.width+'px', height: r.height+'px'});
+  }
+  function turnPage(dir){                       // +1: forward, -1: back
+    const to = logSpread + dir;
+    if(turning || to < 0 || to > 1 || !elList.classList.contains('unfold')) return;
+    turning = true;
+    const fwd = dir > 0, oldL = snapPage(elPageL), oldR = snapPage(elPageR);
+    logSpread = to;
+    elList.classList.toggle('on-map', to === 1);
+    if(to === 1) renderMap(); else { renderList(); freshCourses.clear(); }
+    const base = elPages.getBoundingClientRect();
+    // the page that stays put until the turning sheet lands on it
+    const under = fwd ? oldL : oldR; under.classList.add('under'); placeAt(under, fwd ? elPageL : elPageR, base);
+    // the sheet: the page it leaves on its front, the new page on its back
+    const turn = document.createElement('div'); turn.className = 'turn';
+    placeAt(turn, fwd ? elPageR : elPageL, base);
+    const front = fwd ? oldR : oldL, back = snapPage(fwd ? elPageL : elPageR);
+    back.classList.add('back');
+    turn.append(front, back);
+    turn.style.transformOrigin = fwd ? '-8px 50%' : 'calc(100% + 8px) 50%';   // the spine, in the middle of the crease
+    turn.style.transition = 'transform '+PAGE_TURN+'ms cubic-bezier(.45,.05,.35,1)';
+    elPages.append(under, turn);
+    turn.getBoundingClientRect();                                        // (start the swing from flat)
+    turn.style.transform = 'rotateY('+(fwd ? -180 : 180)+'deg)';
+    Sfx.pageTurn(); buzz([5,30,10]);
+    setTimeout(()=>{ under.remove(); turn.remove(); turning = false; buzz(8); }, PAGE_TURN);   // landed: a light tap
+  }
+  // a swipe: mostly sideways, far enough, and quick
+  let swipe = null;
+  elList.addEventListener('pointerdown', ev=>{ swipe = {x: ev.clientX, y: ev.clientY, t: performance.now(), id: ev.pointerId}; });
+  elList.addEventListener('pointerup', ev=>{
+    if(!swipe || swipe.id !== ev.pointerId) return;
+    const dx = ev.clientX - swipe.x, dy = ev.clientY - swipe.y, dt = performance.now() - swipe.t;
+    swipe = null;
+    if(Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)*1.3 && dt < 800) turnPage(dx < 0 ? 1 : -1);
+  });
+  elList.addEventListener('pointercancel', ()=>{ swipe = null; });
 
   // ---------- Buoys and a village's waters ----------
   // a small window in the fog round every buoy, so they can be spotted
