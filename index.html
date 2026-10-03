@@ -833,11 +833,14 @@
     PX = K/dpr;
     GW = Math.ceil(w/PX); GH = Math.ceil(h/PX);
     buf.width = GW; buf.height = GH;
-    canvas.width = GW*K; canvas.height = GH*K;
+    // with WebGL the screen canvas is one pixel per game pixel and the browser
+    // blows it up with hard edges (image-rendering: pixelated): the shader then
+    // runs once per game pixel, not K×K times (9× less work on a 3× phone screen)
+    canvas.width = gl ? GW : GW*K; canvas.height = gl ? GH : GH*K;
     canvas.style.width = (GW*PX)+'px'; canvas.style.height = (GH*PX)+'px';
     if(gl){
       gl.viewport(0, 0, canvas.width, canvas.height);
-      gl.uniform2f(gl.U.uGrid, GW, GH); gl.uniform1f(gl.U.uK, K); gl.uniform1f(gl.U.uH, canvas.height);
+      gl.uniform2f(gl.U.uGrid, GW, GH); gl.uniform1f(gl.U.uK, 1); gl.uniform1f(gl.U.uH, canvas.height);
     } else {
       obuf.width = GW; obuf.height = GH;
       outImg = octx.createImageData(GW, GH);
@@ -6380,7 +6383,7 @@
     if(playing) update(dt);
     draw();
     fpsN++;                                                 // frame rate, shown in the logbook (only while it's open)
-    if(now - fpsT0 >= 500){ if(bookOpen) elFps.textContent = Math.round(fpsN*1000/(now - fpsT0)) + ' fps'; fpsN = 0; fpsT0 = now; }
+    if(now - fpsT0 >= 500){ if(bookOpen) elFps.textContent = Math.round(fpsN*1000/(now - fpsT0)) + ' fps · ' + (gl ? 'gl' : 'js'); fpsN = 0; fpsT0 = now; }   // gl / js: the dither runs on the GPU, or the slow JS fallback
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);
