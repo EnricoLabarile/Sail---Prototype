@@ -41,6 +41,10 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   memory canvas (`SCENE_ON_CPU` in Tuning, `willReadFrequently`); `?scene=gpu` / `?scene=cpu` in the address compares the two. Result on Enrico's phone: Firefox 24 -> 48–60 fps
   (Firefox on Android seems to cap at 60), Opera 120. No gradient is made per frame: the soft round shadows (swell, fish banks) are a
   cached sprite stamped scaled (`softDot`, `stampDot`), lighthouse beams and whirlpools keep their gradients (`.grads`).
+  Island land is baked in tiles (`ISL_TILE` = 384 px, `islandTile`; `CACHE_MAX` = 64 tiles kept, least recently seen
+  dropped): a tile is baked when it comes into view, or up to 160 px ahead of it at one a frame; while baking, only the
+  bushes, tufts, specks, stones and pines on that tile are drawn (`bakeR`, `inBake`). The island layers are drawn on the
+  wrapped copies of the world out to `320 + MAX_RMAX` past the edge, so a big island never pops at the seam.
   Every picture drawn into the scene (baked islands, cloud sprites, fog, soft dots) is a memory canvas too (`sceneCtx`):
   a graphics-card canvas drawn into a memory one is read back from the card, which gave 26 ms stalls one frame in 20.
   The frame goes to the GPU with `texSubImage2D` (same texture, written in place). The night light mask is built per
@@ -55,9 +59,11 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   Regions: `archipelago(x,y)` is a smooth field (new each game, tiles the torus): ~1 = archipelago (more, slightly
   smaller islands, tight channels ~40–90 px), ~0 = open sea (few islands, wide water, most whirlpools, big waves up to
   ~2× as often). It multiplies the older rule that the sea gets wilder with distance from home (`danger`).
+  **Island size**: `ISLAND_SCALE` (world, 2.5) scales every wild island (atolls too: ring ×scale, islets ×√scale);
+  `ISLAND_COUNT` (wild islands only) falls with its square, so about the same share of the sea stays land (~20 islands).
   **Island shapes** (`shapeProfile`, `makeIsland(x,y,R,kind)`; still one radius per angle round a centre): round-ish
   blobs, plus shares set in Tuning (world): `ISLAND_L` (two long arms meeting at a corner), `ISLAND_C` (a horseshoe round
-  a deep bay), `ISLAND_BIG` (about twice the size), `ISLAND_ATOLL` (`tryAtoll`: a ring of low sandy islets lying along
+  a deep bay), `ISLAND_BIG` (about 1.7× the size), `ISLAND_ATOLL` (`tryAtoll`: a ring of low sandy islets lying along
   it round a lagoon, 2–3 gaps left open to sail in; no rocks round them; an atoll counts as one island). The shaped
   ones are placed first (they need room), then the blobs fill in.
 - **Villages** (cardinal, ~1733 px from home: `VILLAGE_DIST`; each game nudged by `placeVillages`: pushed out by up to
@@ -144,8 +150,8 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   to the list and cargo; `turnPage`, `logSpread`): a sheet swings over on the spine (copies of the pages, `snapPage`), with
   `Sfx.pageTurn()` and a buzz; the book remembers the spread it was left on and opens there. The **sea chart** (`renderMap`)
   is drawn across both pages and the crease, square, `MAP_RES` pixels a side then dithered like the widgets: only the
-  cells the boat has seen (fog of war's `explored`; land inked round its coast), home (square) and ruins once seen; no
-  boat and no village marks (Enrico's choice: you find your way by the coastlines). It is drawn only when
+  cells the boat has seen (fog of war's `explored`; land inked round its coast) and nothing else: no marks for home,
+  ports, ruins or the boat (Enrico's choice: you find your way by the coastlines). It is drawn only when
   shown (book opened on it, or a page turned to it), never while sailing (~3 ms; the land under each pixel is worked out
   once, ~10 ms, on the first showing).
   Opening/closing it plays `Sfx.book(open)`: paper flutter, and the cover's thump on closing. The list also shows the day of the voyage

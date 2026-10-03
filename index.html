@@ -746,11 +746,12 @@
 
   // -- World --
   const TRADERS = 12;                // trading boats: round the lanes, the ones from home first (12 = two on each home lane) (world)
-  const ISLAND_COUNT = Math.round(210*WK2);        // islands (world)
+  const ISLAND_SCALE = 2.5;          // size of the wild islands (1 = the old small ones) (world)
+  const ISLAND_COUNT = Math.round(210*WK2*1.2/(ISLAND_SCALE*ISLAND_SCALE));   // wild islands: fewer as they grow, so about the same share of the sea is land (world)
   // share of the wild islands of each shape (the rest are round-ish blobs) (world):
   const ISLAND_L = 0.12;             // L-shaped: two long arms meeting at a corner
   const ISLAND_C = 0.12;             // C-shaped: a horseshoe round a deep bay
-  const ISLAND_BIG = 0.07;           // big islands, about twice the usual size
+  const ISLAND_BIG = 0.07;           // big islands, about 1.7 times the usual size
   const ISLAND_ATOLL = 0.05;         // atolls: a ring of sandy islets round a lagoon, with gaps to sail in
   const VILLAGE_DIST = Math.round(2475*WORLD_K);   // px from home to each village (world)
   // each game every village is nudged a little, still roughly N / E / S / W of home:
@@ -1140,7 +1141,8 @@
       return d < rAt(isl,Math.atan2(dy,dx))+margin;
     });
   }
-  function addIsland(isl){ islands.push(isl); islandGrid.add(isl, isl.x, isl.y, isl.rmax); }
+  let MAX_RMAX = 0;                                // the biggest island's reach
+  function addIsland(isl){ islands.push(isl); islandGrid.add(isl, isl.x, isl.y, isl.rmax); MAX_RMAX = Math.max(MAX_RMAX, isl.rmax); }
 
   const START = {x:WORLD.w/2, y:WORLD.h/2};   // centre of the home island
   // home waters are a safe harbour: no whirlpools and no big waves within
@@ -1457,7 +1459,7 @@
   // an atoll: a ring of low sandy islets, each lying along the ring, round a
   // lagoon; a few places on the ring are left open so a boat can sail in
   function tryAtoll(x, y, gap){
-    const Ra = rand(140, 230), n = Math.round(Ra/12), out = Ra + 40;
+    const sq = Math.sqrt(ISLAND_SCALE), Ra = rand(140, 230)*ISLAND_SCALE, n = Math.round(Ra/(12*sq)), out = Ra + 40*sq;
     if(wdist(x,y,START.x,START.y) < out + LAGOON_R) return false;
     if(islandGrid.query(x,y,out+gap, o=> wdist(x,y,o.x,o.y) < out+o.rmax+gap)) return false;
     const a0 = rand(0, Math.PI*2), open = new Set();
@@ -1466,7 +1468,7 @@
     for(let k=0;k<n;k++){
       if(open.has(k)) continue;
       const a = a0 + k/n*Math.PI*2 + rand(-0.08, 0.08), rr = Ra*rand(0.94, 1.06);
-      const isl = makeIsland(wrapX(x + Math.cos(a)*rr), wrapY(y + Math.sin(a)*rr), rand(14, 22), 'islet', a + Math.PI/2);   // lying along the ring
+      const isl = makeIsland(wrapX(x + Math.cos(a)*rr), wrapY(y + Math.sin(a)*rr), rand(14, 22)*sq, 'islet', a + Math.PI/2);   // lying along the ring
       isl.atoll = true;
       addIsland(isl);
     }
@@ -1474,7 +1476,7 @@
   }
   (function genIslands(){
     const N = ISLAND_COUNT;
-    let attempts=0, placed=islands.length;                     // (an atoll counts as one island)
+    let attempts=0, placed=0;                                  // wild islands only (an atoll counts as one)
     // the shaped islands go down first (they need more room), then the blobs fill in
     const quota = {atoll: Math.round(N*ISLAND_ATOLL), L: Math.round(N*ISLAND_L), C: Math.round(N*ISLAND_C), big: Math.round(N*ISLAND_BIG)};
     const got = {atoll: 0, L: 0, C: 0, big: 0};
@@ -1489,7 +1491,7 @@
       const want = ['atoll','L','C','big'].find(k=> got[k] < quota[k] && attempts < 30000) || 'blob';
       if(want === 'atoll'){ if(tryAtoll(x, y, gap)){ placed++; got.atoll++; } continue; }
       const big = want === 'big', kind = big ? 'blob' : want;
-      const R = rand(90,160)*(1.1 - 0.25*ar)*(big ? rand(2, 2.5) : kind === 'L' ? 0.85 : kind === 'C' ? 1.3 : 1);
+      const R = rand(90,160)*(1.1 - 0.25*ar)*(big ? rand(1.5, 1.9) : kind === 'L' ? 0.85 : kind === 'C' ? 1.3 : 1)*ISLAND_SCALE;
       // cheap pre-check with a generous radius before building the island
       if (wdist(x,y,START.x,START.y) < R*0.6+LAGOON_R) continue;
       if (islandGrid.query(x,y,R*0.6+gap, o=> wdist(x,y,o.x,o.y) < R*0.6+o.rmax+gap)) continue;
@@ -4421,7 +4423,7 @@
   // ---------- Sea chart ----------
   // The logbook's second spread: a rough chart of the sea, drawn across both
   // pages. Only what the boat has seen is on it (the fog of war's cells),
-  // plus home and the ruins once seen. Drawn only when it is shown (the book
+  // and nothing else: no marks for home, ports or the boat. Drawn only when it is shown (the book
   // opens on it, or a page is turned to it), never while sailing.
   const elMapL = document.getElementById('map-l'), elMapC = document.getElementById('map-c'), elMapR = document.getElementById('map-r');
   for(const c of [elMapL, elMapC, elMapR]){ c.setAttribute('role', 'img'); c.setAttribute('aria-label', TEXT.logbook.chart); }
@@ -4446,12 +4448,7 @@
       const q = (j*N+i)*4; d[q] = d[q+1] = d[q+2] = g; d[q+3] = 255;
     }
     mapCtx.putImageData(im, 0, 0);
-    const c = mapCtx, k = N/WORLD.w;
-    c.fillStyle = '#fff'; c.fillRect(START.x*k-3, START.y*k-3, 6, 6);         // home: a little square
-    c.fillStyle = '#000'; c.fillRect(START.x*k-2, START.y*k-2, 4, 4);
-    for(const r of RUINS){ const i = Math.floor(r.isl.x*k), j = Math.floor(r.isl.y*k);   // the ruins, once found
-      if(seen(i,j)){ c.fillStyle = '#000'; c.fillRect(i-1, j-2, 1, 4); c.fillRect(i+1, j-2, 1, 4); c.fillRect(i-2, j-3, 5, 1); } }
-    ditherUI(c, N, N);
+    ditherUI(mapCtx, N, N);
     // cut it into the three strips the spread shows: left page, crease, right page
     const wl = elMapL.clientWidth, wc = elMapC.clientWidth, wr = elMapR.clientWidth, W = wl + wc + wr;
     if(!wl || !wr) return;                                             // (not on show)
@@ -5404,34 +5401,55 @@
     traceIsland(isl,i=>R[i]+surf); ctx.stroke();
     ctx.setLineDash([]);
   }
-  // Island land is static (except the mooring lines), so
-  // each island is baked once into its own greyscale image the first time
-  // it comes into view, and after that it's a single drawImage per frame.
-  const CACHE_MAX = 48;              // baked island images kept in memory
+  // Island land is static (except the mooring lines), so it is baked into
+  // greyscale tiles (ISL_TILE px square, in the island's own grid), each the
+  // first time it comes near the view; after that a tile is one drawImage
+  // per frame. Big islands never need one huge image, and only the tiles
+  // in sight are kept.
+  const ISL_TILE = 384;
+  const CACHE_MAX = 64;              // baked tiles kept in memory (~0.6 MB each)
   const cached = [];
-  let frameNo = 0;
-  function islandCache(isl){
-    isl.seen = frameNo;
-    if(isl.cache) return isl.cache;
-    if(cached.length >= CACHE_MAX){
-      cached.sort((a,b)=>a.seen-b.seen);
-      const old = cached.shift(); old.cache = null;          // least recently seen goes
-    }
-    cached.push(isl);
+  let frameNo = 0, bakeR = null, bakedThisFrame = 0;
+  const inBake = (x,y,m)=> !bakeR || (x > bakeR.x0-m && x < bakeR.x1+m && y > bakeR.y0-m && y < bakeR.y1+m);
+  function islandBox(isl){
+    if(isl.bb) return isl.bb;
     const pad = (isl.home || isl.village || isl.ruin) ? PIER_LEN + 40 : 30;
     const ox = Math.floor(isl.x - isl.rmax - pad), oy = Math.floor(isl.y - isl.rmax - pad);
     const size = Math.ceil(2*(isl.rmax + pad)) + 2;
-    const c = document.createElement('canvas'); c.width = size; c.height = size;
+    return (isl.bb = {ox, oy, size, n: Math.ceil(size/ISL_TILE), tiles: new Map()});
+  }
+  function islandTile(isl, tx, ty, mayBake){
+    const bb = islandBox(isl), key = ty*bb.n + tx;
+    let tl = bb.tiles.get(key);
+    if(tl){ tl.seen = frameNo; return tl; }
+    if(!mayBake) return null;
+    if(cached.length >= CACHE_MAX){
+      cached.sort((a,b)=>a.seen-b.seen);
+      const old = cached.shift(); old.bb.tiles.delete(old.key);      // least recently seen goes
+    }
+    const x0 = bb.ox + tx*ISL_TILE, y0 = bb.oy + ty*ISL_TILE;
+    const w = Math.min(ISL_TILE, bb.ox + bb.size - x0), h = Math.min(ISL_TILE, bb.oy + bb.size - y0);
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
     const saved = ctx;
     ctx = sceneCtx(c);
-    ctx.translate(-ox, -oy);
+    ctx.translate(-x0, -y0);
+    bakeR = {x0, y0, x1: x0 + w, y1: y0 + h};                         // only what falls on this tile is drawn
     drawIslandLandStatic(isl);
-    ctx = saved;
-    return (isl.cache = {c, ox, oy});
+    bakeR = null; ctx = saved; bakedThisFrame++;
+    tl = {c, x0, y0, seen: frameNo, bb, key};
+    bb.tiles.set(key, tl); cached.push(tl);
+    return tl;
   }
   function drawIslandLand(isl){
-    const k = islandCache(isl);
-    ctx.drawImage(k.c, k.ox, k.oy);
+    const bb = islandBox(isl), T = ISL_TILE, A = 160;                 // A: tiles this close to the view are baked ahead, one a frame
+    const range = (v, len, o)=> [Math.max(0, Math.floor((v - o)/T)), Math.min(bb.n-1, Math.floor((v + len - o)/T))];
+    const [ax0, ax1] = range(view.x - A, view.w + 2*A, bb.ox), [ay0, ay1] = range(view.y - A, view.h + 2*A, bb.oy);
+    for(let ty=ay0; ty<=ay1; ty++) for(let tx=ax0; tx<=ax1; tx++){
+      const x0 = bb.ox + tx*T, y0 = bb.oy + ty*T;
+      const seen = x0 < view.x + view.w && x0 + T > view.x && y0 < view.y + view.h && y0 + T > view.y;
+      const tl = islandTile(isl, tx, ty, seen || bakedThisFrame === 0);
+      if(tl && seen) ctx.drawImage(tl.c, tl.x0, tl.y0);
+    }
     if(moor && moor.pier.isl===isl) drawMooringLines();
   }
   function drawIslandLandStatic(isl){
@@ -5448,7 +5466,7 @@
       }
     }
     ctx.fillStyle=INKC;
-    for(const [sx,sy] of isl.specks) ctx.fillRect(sx,sy,1,1);
+    for(const [sx,sy] of isl.specks) if(inBake(sx,sy,2)) ctx.fillRect(sx,sy,1,1);
     // vegetation: mid-tone dither (paler where it's dry, darker in the macchia), undergrowth patches, inked edge
     ctx.fillStyle=V(0.6);                                // the scrub: a darker ground for the pale domes to stand on
     traceIsland(isl,i=>R[i]-S[i]); ctx.fill();
@@ -5466,6 +5484,7 @@
       ctx.fillStyle=V(0.93); ctx.beginPath();
       for(const [cx,cy,cr] of isl.clearings){ ctx.moveTo(cx+cr,cy); ctx.arc(cx,cy,cr,0,Math.PI*2); } ctx.fill();
       for(const [sx,sy,sr] of isl.stones){
+        if(!inBake(sx,sy,4)) continue;
         ctx.fillStyle=V(0.35); ctx.beginPath(); ctx.arc(sx+0.6,sy+0.6,sr,0,Math.PI*2); ctx.fill();
         ctx.fillStyle=PAPERC; ctx.beginPath(); ctx.arc(sx,sy,sr*0.8,0,Math.PI*2); ctx.fill();
       }
@@ -5503,13 +5522,13 @@
     // grass tufts
     ctx.strokeStyle=INKC; ctx.lineWidth=1; ctx.globalAlpha=0.75;
     ctx.beginPath();
-    for(const [tx,ty] of isl.tufts){ ctx.moveTo(tx-1.5,ty-2); ctx.lineTo(tx,ty); ctx.lineTo(tx+1.2,ty-2.4); }
+    for(const [tx,ty] of isl.tufts){ if(!inBake(tx,ty,4)) continue; ctx.moveTo(tx-1.5,ty-2); ctx.lineTo(tx,ty); ctx.lineTo(tx+1.2,ty-2.4); }
     ctx.stroke(); ctx.globalAlpha=1;
     if(isl.home) drawHomeBuildings(isl);
     if(isl.village) drawVillage(isl);
     if(isl.ruin) drawRuins(isl);
-    if(isl.bushes) drawSpurge(isl.bushes);
-    if(isl.umbrellas) for(const u of isl.umbrellas) drawStonePine(u);
+    if(isl.bushes) drawSpurge(bakeR ? isl.bushes.filter(b=> inBake(b.x,b.y,b.r*2+2)) : isl.bushes);
+    if(isl.umbrellas) for(const u of isl.umbrellas) if(inBake(u.x,u.y,60)) drawStonePine(u);
   }
   // tree spurge: each bush a little dome, shadowed down-right, darker
   // round its lower side, a bright crown, and an inked lower rim; together
@@ -6563,7 +6582,7 @@
   }
 
   function draw(){
-    frameNo++;
+    frameNo++; bakedThisFrame = 0;
     const w = GW*PX, h = GH*PX;
     // camera follows the boat freely (no edges), snapped to the game-pixel grid
     if(!playing){ camFx = boat.x; camFy = boat.y; }
@@ -6582,14 +6601,17 @@
 
     // near an edge the view overlaps a neighbouring copy of the world:
     // draw each layer once per copy that touches the screen
-    const M = 320;
-    const shifts = [];
-    for(const sx of [-WORLD.w, 0, WORLD.w]) for(const sy of [-WORLD.h, 0, WORLD.h]){
-      if(camX+w < sx-M || camX > sx+WORLD.w+M || camY+h < sy-M || camY > sy+WORLD.h+M) continue;
-      shifts.push([sx,sy]);
-    }
-    const layer = (fn)=>{
-      for(const [sx,sy] of shifts){
+    const shiftsFor = (M)=>{
+      const out = [];
+      for(const sx of [-WORLD.w, 0, WORLD.w]) for(const sy of [-WORLD.h, 0, WORLD.h]){
+        if(camX+w < sx-M || camX > sx+WORLD.w+M || camY+h < sy-M || camY > sy+WORLD.h+M) continue;
+        out.push([sx,sy]);
+      }
+      return out;
+    };
+    const shifts = shiftsFor(320), islandShifts = shiftsFor(320 + MAX_RMAX);   // (a big island may reach far past the edge)
+    const layer = (fn, wide)=>{
+      for(const [sx,sy] of (wide ? islandShifts : shifts)){
         ctx.save(); ctx.translate(sx,sy);
         view.x=camX-sx; view.y=camY-sy; view.w=w; view.h=h;
         fn(sx,sy);
@@ -6603,8 +6625,8 @@
       return out;
     };
     layer(()=>{ for(const wp of whirlpools) if(wp.s>0 && inView(wp.x,wp.y,wp.r+10)){ ctx.globalAlpha = wp.s; drawWhirlpool(wp); ctx.globalAlpha = 1; } });
-    layer(()=>{ for(const isl of visIslands()) drawIslandWater(isl); });
-    layer(()=>{ for(const isl of visIslands()) drawIslandLand(isl); });
+    layer(()=>{ for(const isl of visIslands()) drawIslandWater(isl); }, true);
+    layer(()=>{ for(const isl of visIslands()) drawIslandLand(isl); }, true);
     layer(()=>{ rockGrid.query(view.x+w/2, view.y+h/2, Math.max(w,h)/2+20, o=>{ if(inView(o.x,o.y,o.r+6)) drawRock(o); }); });
     layer(()=>{ for(const b of banks) drawBank(b); });
     layer(()=>{ for(const w of rollers) drawRoller(w); });
