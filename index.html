@@ -4928,6 +4928,7 @@
   // 1-bit ordered dither of the grey buffer into the screen frame (and, at
   // night, darkness outside the pools of light)
   let maskBytes = null;
+  let upMs = 0, workMs = 0;                                          // time spent uploading / on the whole frame (fps counter)
   function ditherPass(ox, oy){
     dayPalette(); uiPalette();
     ox = ((ox%4)+4)%4; oy = ((oy%4)+4)%4;
@@ -4947,7 +4948,9 @@
       const col = (c)=> [(c & 255)/255, ((c >> 8) & 255)/255, ((c >> 16) & 255)/255];
       gl.uniform3fv(U.uPaper, col(PAPER32)); gl.uniform3fv(U.uInk, col(INK32));
       gl.activeTexture(gl.TEXTURE0);
+      const tUp = performance.now();
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+      upMs += performance.now() - tUp;                               // (timed for the fps counter)
       gl.drawArrays(gl.TRIANGLES, 0, 6);
       return;
     }
@@ -6380,10 +6383,14 @@
     const dt = Math.min(0.05, (now-last)/1000);
     last = now;
     t += dt;
+    const tW = performance.now();
     if(playing) update(dt);
     draw();
+    workMs += performance.now() - tW;
     fpsN++;                                                 // frame rate, shown in the logbook (only while it's open)
-    if(now - fpsT0 >= 500){ if(bookOpen) elFps.textContent = Math.round(fpsN*1000/(now - fpsT0)) + ' fps · ' + (gl ? 'gl' : 'js'); fpsN = 0; fpsT0 = now; }   // gl / js: the dither runs on the GPU, or the slow JS fallback
+    if(now - fpsT0 >= 500){ if(bookOpen) elFps.textContent = Math.round(fpsN*1000/(now - fpsT0)) + ' fps · ' + (gl ? 'gl' : 'js')
+      + ' · ' + (workMs/fpsN).toFixed(1) + ' ms (up ' + (upMs/fpsN).toFixed(1) + ')'; fpsN = 0; fpsT0 = now; upMs = 0; workMs = 0; }
+    // gl / js: the dither runs on the GPU, or the slow JS fallback; ms: JS time per frame; up: of which copying the frame to the GPU
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);

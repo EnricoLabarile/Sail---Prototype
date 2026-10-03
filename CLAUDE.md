@@ -35,7 +35,8 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   a fallback when WebGL is missing (it cost ~10 ms a frame and a 1.2 MB allocation, the cause of the hiccups). The
   WebGL context is rebuilt if the browser drops it. With WebGL the screen canvas is one pixel per game pixel (GW×GH) and CSS
   (`image-rendering: pixelated`) blows it up, so the shader runs once per game pixel (9× less work on a 3× phone screen).
-  The fps counter in the logbook says `gl` or `js` (which dither runs). Aim: 60 fps on the phone. The wheel and compass are only redrawn
+  The fps counter in the logbook says `gl` or `js` (which dither runs), the JS ms per frame and, in brackets, how much of
+  it goes on copying the frame to the GPU (`upMs`, `workMs`): Firefox on Android runs slow (Opera at 120 fps on the same phone). Aim: 60 fps on the phone. The wheel and compass are only redrawn
   (and re-dithered) when something on them changes (`wheelKey`, `cmpKey`, `sailKey`; a shut compass lid is a still
   picture); hidden HUD elements are not updated every frame; the hull meter is written only when it changes.
   day/night palette (`UI_TINT` = 0.5, `uiPalette`): the dithered widgets and the HTML panels (`--paper` / `--ink`) follow the light.
