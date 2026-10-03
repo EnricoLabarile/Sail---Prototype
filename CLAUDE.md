@@ -72,7 +72,9 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
 - **Guiding wind:** from the start until you first tie up at Nordania, the wind always blows toward Nordania from
   wherever you are (shortest way round the torus; `guideWind`); after that the normal shifting winds apply.
 - **Ruins** on the diagonals: dock there for a random power (friendly wind 60 s, blessed nets ×3, full hull).
-- **Fish:** sardines (N), mackerel (E), red mullet (S), sea bream (W). Banks denser far from home; home waters have all kinds and plenty of banks (`HOME_BANKS` = 9 in the smaller world, same density as 18 before; refilled as they are fished).
+- **Fish:** sardines (N), mackerel (E), red mullet (S), sea bream (W). Banks denser far from home; half the open-sea banks
+  (`ROUTE_BANK_SHARE`) lie along the sea roads, home to each village and village to village, within `ROUTE_BANK_SPREAD` of
+  the straight line (`routeSpot`), so the fish lead from place to place; home waters have all kinds and plenty of banks (`HOME_BANKS` = 9 in the smaller world, same density as 18 before; refilled as they are fished).
   Fishing: stop on a bank for 2 s and the nets go over; drop anchor on a bank and they go over after 0.25 s.
   A bank counts a little past its drawn circle (`FISH_REACH` = 1.35 × radius). The net is thrown toward the bank's
   middle (24–46 px from the boat, flying out in a small arc as it opens; `netPos`) and hauled back to the boat.
@@ -137,7 +139,8 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   paper, in the bottom right corner of the right page. Keyboard: arrows, Space = anchor.
 - **Hazards:** rocks, faraglioni, whirlpools (appear/disappear/wander; none on day 1: they start opening from day 2, `WHIRL_FROM_DAY`), rollers (big waves: within ~66° of their travel = surf boost (`SURF_COS`), otherwise they hurt).
 - **Atmosphere:** macchia (tree-spurge domes + Mediterranean pines), clouds with parallax and shadows, gulls, wind streaks,
-  traders (motor boats on A* lanes between villages; they don't avoid the player, a collision just shoves them aside
+  traders (`TRADERS` = 12 motor boats on A* lanes from home to each village and between neighbouring villages, dealt
+  home lanes first, so they show the way out; they don't avoid the player, a collision just shoves them aside
   with no damage, then they drift back to their lane; they hail with a speech bubble), fog of war (buoys and a
   340 px radius round each village always show through), clouds see-through at the rim and denser in the middle, each with its shadow at a fixed offset down-right,
   a third of them rain clouds (darker; rain falls from the cloud onto its shadow on the sea, with a rain sound when you're near: a broad soft wash (between a hiss and a murmur) in gusts plus a patter of soft noise ticks (no watery bubble 'plips': tried and dropped as too intense), sparse at the edge, thick beneath; `rain()` and `rainDrop()` in Sound),

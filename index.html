@@ -712,6 +712,8 @@
 
   // -- Fishing and market --
   const BANK_COUNT = Math.round(240*WK2);          // fish banks out at sea (world)
+  const ROUTE_BANK_SHARE = 0.5;      // share of those banks laid along the sea roads (home to each village, village to village)
+  const ROUTE_BANK_SPREAD = Math.round(170*WORLD_K);   // px either side of a road they may lie
   const HOME_WATERS = Math.round(950*WORLD_K);     // radius of home waters (all kinds of fish there)
   const HOME_BANKS = Math.round(18*WK2);           // fish banks in home waters, refilled as they are fished (world)
   const FISH_CATCH_MIN = 1, FISH_CATCH_MAX = 2;   // fish per haul (random in between)
@@ -725,6 +727,7 @@
   const DISH_PRICE = 6;              // coins per specialty dish
 
   // -- World --
+  const TRADERS = 12;                // trading boats: round the lanes, the ones from home first (12 = two on each home lane) (world)
   const ISLAND_COUNT = Math.round(210*WK2);        // islands (world)
   const VILLAGE_DIST = Math.round(2475*WORLD_K);   // px from home to each village (world)
   // each game every village is nudged a little, still roughly N / E / S / W of home:
@@ -1623,14 +1626,28 @@
   // away: keep new banks out of the player's sight
   // the waters round home (where north, east, south and west meet) keep
   // their own, denser set of banks, with every kind of fish in them
+  // the sea roads: from home out to each village, and from each village to the
+  // next one round; a share of the open-sea banks (ROUTE_BANK_SHARE) lies along
+  // them, so the fish lead the way from place to place
+  function routeSpot(){
+    const at = (v)=> [wdx(v.px, START.x), wdy(v.py, START.y)];   // (home in the middle, as on the map)
+    const n = VILLAGES.length, k = Math.floor(Math.random()*n*2);
+    const [a, b] = k < n ? [[0, 0], at(VILLAGES[k])]                     // home to a village
+                         : [at(VILLAGES[k-n]), at(VILLAGES[(k-n+1) % n])];  // a village to the next one round
+    const f = rand(0.08, 0.92), dx = b[0]-a[0], dy = b[1]-a[1], len = Math.hypot(dx, dy) || 1;
+    const side = rand(-1, 1)*ROUTE_BANK_SPREAD;
+    return [wrapX(START.x + a[0] + dx*f - dy/len*side), wrapY(START.y + a[1] + dy*f + dx/len*side)];
+  }
   function spawnBank(away, home){
+    const onRoute = !home && Math.random() < ROUTE_BANK_SHARE;
     for(let tries=0; tries<900; tries++){
       let x, y;
       if(home){ const a = rand(0,Math.PI*2), d = rand(260, HOME_WATERS); x = wrapX(START.x+Math.cos(a)*d); y = wrapY(START.y+Math.sin(a)*d); }
+      else if(onRoute){ [x, y] = routeSpot(); if(wdist(x,y,START.x,START.y) < HOME_WATERS) continue; }
       else { x = rand(0,WORLD.w); y = rand(0,WORLD.h); if(wdist(x,y,START.x,START.y) < HOME_WATERS) continue; }
       if(wdist(x,y,START.x,START.y) < 260) continue;
       if(away && wdist(x,y,boat.x,boat.y) < 900) continue;
-      if(!home && Math.random() > 0.12 + 0.88*Math.pow(danger(x,y),1.3)) continue;     // richer the farther out
+      if(!home && !onRoute && Math.random() > 0.12 + 0.88*Math.pow(danger(x,y),1.3)) continue;     // richer the farther out
       const r = rand(36,46);
       if(!spotIsClear(x,y,r)) continue;
       const sec = home ? ['nord','est','sud','ovest'][Math.floor(Math.random()*4)] : sectorAt(x,y);
@@ -1671,7 +1688,7 @@
   // Sea lanes are found once, when the world is made: an A* search over a
   // coarse grid of open water (wrapping round the world like everything
   // else), straightened where the way is clear and smoothed into curves.
-  // They run between neighbouring villages (none to home).
+  // They run from home out to each village, and between neighbouring villages.
   const NAV_CELL = 40, NAV_N = Math.round(WORLD.w/NAV_CELL);
   const navOpen = new Uint8Array(NAV_N*NAV_N);
   const ni = (i)=> ((i%NAV_N)+NAV_N)%NAV_N;
@@ -1738,7 +1755,7 @@
   const lanes = [];
   {
     const ports = [PIER, ...VILLAGES.map(v=>v.pier)];
-    const pairs = [[1,2],[2,3],[3,4],[4,1]];                // village to village only (0 is home)
+    const pairs = [[0,1],[0,2],[0,3],[0,4], [1,2],[2,3],[3,4],[4,1]];   // home (0) to each village first, then village to village
     for(const [a,b] of pairs){ const L = findLane(portPoint(ports[a]), portPoint(ports[b])); if(L){ L.a = a; L.b = b; lanes.push(L); } }
   }
   function lanePoint(L, s){
@@ -1779,7 +1796,7 @@
     }
   }
   let homeInside = null;
-  for(let k=0; lanes.length && k<8; k++){                // 8 traders, two to a lane
+  for(let k=0; lanes.length && k<TRADERS; k++){          // dealt round the lanes, home lanes first
     const L = lanes[k % lanes.length];
     traders.push({lane:L, dir: Math.random()<0.5?1:-1, s: rand(0.1,0.9)*L.len, speed: rand(24,32), wait: 0, x:0, y:0, a:0, ph: rand(0,6.3),
                   kx: 0, ky: 0, kvx: 0, kvy: 0, yaw: 0, yv: 0, bumpCool: 0, talkT: 0, talkCool: rand(0,5), marks: [], foam: [], foamT: 0});
