@@ -727,6 +727,8 @@
   const WHIRL_CURVE = 4;             // …rising exponentially from ~0 at the rim
   const WHIRL_FADE = 3;              // seconds for a whirlpool to open up / die down
   const ROLLER_RATE = 1;             // how often big waves come (2 = twice as often, 0.5 = half)
+  const ROLLER_CATCH = 25;           // px/s a wave from astern runs faster than the boat, so it catches her to surf (0 = never helps)
+  const ROLLER_SPARE = 0.55;         // a wave about to hit her badly slows to this share of its pace (1 = never)
 
   // -- Fishing and market --
   const BANK_COUNT = Math.round(240*WK2);          // fish banks out at sea (world)
@@ -1023,28 +1025,39 @@
   // tufts of grass, and here and there a stone pine (Pinus pinea) with its
   // flat umbrella crown.
   const gaussR = ()=> (Math.random()+Math.random()+Math.random()-1.5)/1.5;
+  // (any angle, not just the ISL_N sampled ones: on a big island those
+  // spokes are far apart and things set along them show as lines)
+  function sandAt(isl,th){
+    const f=islIndex(th), i0=Math.floor(f)%ISL_N, i1=(i0+1)%ISL_N, k=f-Math.floor(f);
+    return isl.sand[i0]*(1-k)+isl.sand[i1]*k;
+  }
   function vegPoint(isl, depth){          // random point inside the vegetation, depth 0 edge → 1 centre
-    const i=Math.floor(Math.random()*ISL_N);
-    const inner = isl.radii[i]-isl.sand[i];
+    const a=Math.random()*Math.PI*2;
+    const inner = rAt(isl,a)-sandAt(isl,a);
     const d = inner*(1-depth);
-    return [isl.x+COS[i]*d, isl.y+SIN[i]*d, i];
+    return [isl.x+Math.cos(a)*d, isl.y+Math.sin(a)*d, Math.round(islIndex(a))%ISL_N];
   }
   function inVegetation(isl, x, y, m){
     const dx=x-isl.x, dy=y-isl.y, a=Math.atan2(dy,dx), i=Math.round(islIndex(a))%ISL_N;
-    return Math.hypot(dx,dy) < rAt(isl,a) - isl.sand[i] - m;
+    return Math.hypot(dx,dy) < rAt(isl,a) - sandAt(isl,a) - m;
   }
   // the spurge carpet: many small domes, allowed to overlap a little, kept
   // out of clearings and anywhere `blocked` says
   function scatterMacchia(isl, blocked, density){
     const R = isl.R, bushes = [], cell = 8, G = Math.ceil(isl.rmax*2/cell)+2, grid = new Array(G*G);
     const ox = isl.x - isl.rmax - cell, oy = isl.y - isl.rmax - cell;
-    const tries = Math.floor(R*R/7*(density||1)), sk = Math.pow(R/120, 0.25), cl = isl.clearings;
+    const sk = Math.pow(R/120, 0.25), cl = isl.clearings;
+    const tries = Math.floor(4*isl.rmax*isl.rmax/22*(density||1));          // one try per ~22 px² of the island's box
+    // the scrub thins out in irregular open patches (a smooth noise of a few
+    // crossing waves, new per island), so it isn't one even carpet
+    const ph = [rand(0,6.3), rand(0,6.3), rand(0,6.3), rand(0,6.3)];
+    const thin = (x,y)=> Math.sin(x*0.031+ph[0]) + Math.sin(y*0.027+ph[1]) + Math.sin((x+y)*0.019+ph[2]) + Math.sin((x-y)*0.043+ph[3]);
     for(let k=0;k<tries;k++){
-      // a point well inside the scrub (sampled along a spoke from the centre)
-      const i = (Math.random()*ISL_N)|0, r = (2.6 + Math.random()*2.2)*sk;
-      const inner = isl.radii[i] - isl.sand[i] - r*0.7;
-      const d = inner*(1 - Math.pow(Math.random(),0.8));
-      const x = isl.x + COS[i]*d + (Math.random()-0.5)*4, y = isl.y + SIN[i]*d + (Math.random()-0.5)*4;
+      // a point anywhere in the box, kept if it's well inside the scrub
+      const r = (2.6 + Math.random()*2.2)*sk;
+      const x = isl.x + (Math.random()*2-1)*isl.rmax, y = isl.y + (Math.random()*2-1)*isl.rmax;
+      if(!inVegetation(isl, x, y, r*0.7)) continue;
+      if(thin(x,y) < -1.3 + Math.random()*1.1) continue;                   // a ragged edge to the open patches
       if(blocked && blocked(x,y,r)) continue;
       let ok = true;
       for(let c=0;c<cl.length;c++){ const q=cl[c]; if((x-q[0])*(x-q[0])+(y-q[1])*(y-q[1]) < q[2]*q[2]){ ok=false; break; } }
@@ -3773,10 +3786,34 @@
       let clear = true;
       for(let k=0;k<=2 && clear;k++) if(onLand(wrapX(x+ux*k*120), wrapY(y+uy*k*120), 70)) clear = false;
       if(!clear) continue;
+      const speed = rand(25,30);
       rollers.push({x, y, ux, uy, L: rand(45,75), bow: rand(5,8), thick: rand(9,13),
-                    speed: rand(25,30), t:0, dur: rand(4,6), hit:false, broke:false, seed: rand(0,100)});
+                    speed, base: speed, t:0, dur: rand(4,6), hit:false, broke:false, seed: rand(0,100)});
       return;
     }
+  }
+  // A quiet hand on the waves near the boat: one coming up astern while
+  // she runs with it hurries (and lingers a little) so it can catch her and
+  // she surfs; one about to hit her badly (head-on or broadside) slows, giving
+  // her time to turn or get clear. Eased in and out, so it never shows as a jump.
+  // Returns how fast the wave's life runs (a hurrying wave lives a bit longer).
+  function rollerPace(w, dt){
+    let target = w.base, life = 1;
+    if(!w.hit && !moor && !boat.whirl){
+      const dx = wdx(boat.x, w.x), dy = wdy(boat.y, w.y);
+      const ahead = dx*w.ux + dy*w.uy, u = (-dx*w.uy + dy*w.ux)/(w.L/2);   // boat ahead of the wave (px), and along its crest
+      if(ahead > -5 && ahead < 220 && Math.abs(u) < 1.2){
+        const near = Math.min(1, (220 - ahead)/80);                           // full effect within 140 px, fading out to none at 220
+        const c = Math.cos(boat.angle)*w.ux + Math.sin(boat.angle)*w.uy;      // 1 = she runs with the wave
+        if(c > SURF_COS){
+          const runs = Math.max(0, boat.speed*c);                             // her pace along the wave's travel
+          target = Math.max(w.base, Math.min(w.base*3, runs + ROLLER_CATCH*near));
+          life = 1 - 0.4*near;
+        } else target = w.base*(1 - (1 - ROLLER_SPARE)*near);
+      }
+    }
+    w.speed += (target - w.speed)*Math.min(1, dt*1.6);
+    return life;
   }
   function updateRollers(dt){
     if(!moor && playing){
@@ -3790,7 +3827,7 @@
     }
     for(let k=rollers.length-1;k>=0;k--){
       const w = rollers[k];
-      w.t += dt;
+      w.t += dt * rollerPace(w, dt);
       w.x += w.ux*w.speed*dt; w.y += w.uy*w.speed*dt;
       if(onLand(wrapX(w.x+w.ux*40), wrapY(w.y+w.uy*40), 60) || pierDist(wrapX(w.x),wrapY(w.y)).d < 170)
         w.t = Math.max(w.t, w.dur*0.75);                  // dies on shoaling water or at a harbour mouth
@@ -5461,8 +5498,8 @@
       isl.specks=[];
       const n = Math.round(isl.R*1.2);
       for(let k=0;k<n;k++){
-        const i=Math.floor(Math.random()*ISL_N), d=R[i]-Math.random()*S[i];
-        isl.specks.push([isl.x+COS[i]*d+rand(-2,2), isl.y+SIN[i]*d+rand(-2,2)]);
+        const a=Math.random()*Math.PI*2, d=rAt(isl,a)-Math.random()*sandAt(isl,a);
+        isl.specks.push([isl.x+Math.cos(a)*d, isl.y+Math.sin(a)*d]);
       }
     }
     ctx.fillStyle=INKC;

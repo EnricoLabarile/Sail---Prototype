@@ -66,6 +66,9 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   a deep bay), `ISLAND_BIG` (about 1.7× the size), `ISLAND_ATOLL` (`tryAtoll`: a ring of low sandy islets lying along
   it round a lagoon, 2–3 gaps left open to sail in; no rocks round them; an atoll counts as one island). The shaped
   ones are placed first (they need room), then the blobs fill in.
+  **Foliage** is scattered at any angle (`vegPoint`, `sandAt`; the spurge in `scatterMacchia` by uniform tries over the
+  island's box), never along the ISL_N spokes, which on big islands showed as lines; the spurge thins out in irregular
+  open patches (a smooth noise of four crossing waves, new per island).
 - **Villages** (cardinal, ~1733 px from home: `VILLAGE_DIST`; each game nudged by `placeVillages`: pushed out by up to
   `VILLAGE_OUT_MAX`, slid sideways by up to `VILLAGE_SIDE_MAX`, kept `VILLAGE_EDGE` from the map edge, never closer to
   each other or to the ruins than in the plain cross, measured on the map; across the wrapped edge N–S and E–W do get closer), one course each, two specialties (1 unit each, all at `DISH_PRICE` = 6
@@ -157,7 +160,10 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   Opening/closing it plays `Sfx.book(open)`: paper flutter, and the cover's thump on closing. The list also shows the day of the voyage
   (`dayNo`, +1 at each dawn). A tiny faint frame-rate counter (`#fps`, refreshed twice a second while the logbook is open) sits on the
   paper, in the bottom right corner of the right page. Keyboard: arrows, Space = anchor.
-- **Hazards:** rocks, faraglioni, whirlpools (appear/disappear/wander; none on day 1: they start opening from day 2, `WHIRL_FROM_DAY`), rollers (big waves: within ~66° of their travel = surf boost (`SURF_COS`), otherwise they hurt).
+- **Hazards:** rocks, faraglioni, whirlpools (appear/disappear/wander; none on day 1: they start opening from day 2, `WHIRL_FROM_DAY`), rollers (big waves: within ~66° of their travel = surf boost (`SURF_COS`), otherwise they hurt). A quiet hand on
+  the waves near the boat (`rollerPace`, eased): one coming up astern (within 220 px, full effect within 140) while she
+  runs with it hurries to her pace + `ROLLER_CATCH` (25 px/s, at most 3× its own) and lives a little longer, so it
+  catches her and she surfs; one about to hit her badly slows to `ROLLER_SPARE` (0.55) of its pace, time to turn away.
 - **Atmosphere:** macchia (tree-spurge domes + Mediterranean pines; the pines come in `PINE_MODELS` = 4 shapes made each game, each maybe mirrored), clouds with parallax and shadows (`CLOUD_MODELS` = 4 shapes, made each game, still: they only drift), gulls, wind streaks,
   traders (`TRADERS` = 12 motor boats on A* lanes from home to each village and between neighbouring villages, dealt
   home lanes first, so they show the way out; they don't avoid the player, a collision just shoves them aside
