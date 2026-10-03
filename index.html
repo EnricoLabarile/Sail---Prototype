@@ -998,7 +998,6 @@
   }
   function decorateIsland(isl){
     const R = isl.R;
-    isl.clumps=[]; isl.palms=[]; isl.plants=[]; isl.pines=[];
     // open garrigue: pale, stony clearings in the scrub
     isl.clearings = [];
     const nc = 1 + Math.floor(R/55) + (Math.random()<0.5?1:0);
@@ -1111,10 +1110,7 @@
       sand[i]=12+4*Math.sin(3*th+p2)+1.5*Math.sin(9*th);
     }
     const isl = {x,y,R:HOME_R,rmax,radii,rocky,sand,home:true};
-    isl.clumps=[]; isl.pines=[];
     isl.patches=[[[x-34,y+6,7],[x-28,y+12,6]], [[x+30,y-14,6],[x+36,y-8,5]]];
-    isl.palms=[];
-    isl.plants=[];
     // bare, sun-bleached yard around the buildings (in home-scale units, see HOME_BLD)
     // the layout was drawn for a south-facing pier: mirror it top↔bottom
     const my = (py)=> 2*y - py;
@@ -1136,8 +1132,6 @@
   // Decorations left in the new water are removed.
   // Remove an island's decorations where blocked(x, y, margin) is true.
   function clearDecor(isl, blocked){
-    isl.clumps  = (isl.clumps ||[]).filter(c=>!blocked(c.x,c.y,c.r));
-    isl.plants  = (isl.plants ||[]).filter(p=>!blocked(p.x,p.y,3));
     isl.patches = (isl.patches||[]).filter(b=>!b.some(([x,y,r])=>blocked(x,y,r)));
     isl.tufts   = (isl.tufts  ||[]).filter(([x,y])=>!blocked(x,y,1));
     if(isl.bushes) isl.bushes = isl.bushes.filter(b=>!blocked(b.x,b.y,b.r));
@@ -5296,15 +5290,12 @@
     ctx.beginPath();
     for(const [tx,ty] of isl.tufts){ ctx.moveTo(tx-1.5,ty-2); ctx.lineTo(tx,ty); ctx.lineTo(tx+1.2,ty-2.4); }
     ctx.stroke(); ctx.globalAlpha=1;
-    for(const p of isl.plants) drawPlant(p);
     if(isl.home) drawHomeBuildings(isl);
     if(isl.village) drawVillage(isl);
     if(isl.ruin) drawRuins(isl);
     if(isl.bushes) drawSpurge(isl.bushes);
     if(isl.umbrellas) for(const u of isl.umbrellas) drawStonePine(u);
   }
-  // palm seen from above: fronds radiating from the crown, bending and
-  // swaying a little in the wind, with a long dithered shadow
   // tree spurge: each bush a little dome, shadowed down-right, darker
   // round its lower side, a bright crown, and an inked lower rim; together
   // they make the billowy, pebbled carpet of the macchia
@@ -5340,27 +5331,6 @@
     ctx.fillStyle=V(0.55); T(0, -1.2, -1.4, 0.62); ctx.fill();         // tufts catching the light
     ctx.fillStyle=V(0.86); T(0, -1.8, -2.4, 0.32, ly=> ly < -ch*0.25); ctx.fill();   // brightest, on top
   }
-  function drawPlant(p){
-    ctx.lineCap='round';
-    if(p.type==='agave'){
-      const spikes=(lw,col)=>{
-        ctx.strokeStyle=col; ctx.lineWidth=lw; ctx.beginPath();
-        for(let k=0;k<7;k++){
-          const a=p.a0+k*Math.PI*2/7, L=p.s*(k%2?0.75:1);
-          ctx.moveTo(p.x,p.y); ctx.lineTo(p.x+Math.cos(a)*L, p.y+Math.sin(a)*L);
-        }
-        ctx.stroke();
-      };
-      spikes(3,PAPERC); spikes(1.2,INKC);
-    } else {
-      const bl=[[0,0,p.s],[p.s*0.8,p.s*0.3,p.s*0.7],[-p.s*0.5,p.s*0.6,p.s*0.65]];
-      ctx.fillStyle=INKC;
-      for(const [bx,by,br] of bl){ ctx.beginPath(); ctx.arc(p.x+bx,p.y+by,br+1.1,0,Math.PI*2); ctx.fill(); }
-      ctx.fillStyle=PAPERC;
-      for(const [bx,by,br] of bl){ ctx.beginPath(); ctx.arc(p.x+bx,p.y+by,br,0,Math.PI*2); ctx.fill(); }
-    }
-  }
-
   function drawHomestead(isl){
     const {x0,y0,x1,y1,dx,dy} = PIER;
     const px=-dy, py=dx;
