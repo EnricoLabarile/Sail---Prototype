@@ -348,7 +348,8 @@
   @keyframes strikeIn{to{background-size:100% 2px}}
   #shoplist .note{font-size:12px; font-style:italic; margin-top:8px;}
   /* the hold, on the right page: small icons that stay inside the page */
-  #hold-page .hold-head{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px;}
+  #hold-page .hold-head{display:flex; justify-content:space-between; align-items:baseline; gap:6px; margin-bottom:6px;}
+  #hold-page .hold-count{font-size:12px; font-style:italic; font-variant-numeric:tabular-nums; margin-right:auto;}
   #hold-page h3{margin:0; font-size:16px; font-style:italic;}
   #hold-page .purse{display:flex; align-items:center; gap:3px; font-size:13px; font-variant-numeric:tabular-nums;}
   #hold-page .purse .coin{width:12px; height:12px;}
@@ -602,6 +603,7 @@
     // words that float up from the boat
     popups: {
       catch:    '+{n} {fish}',
+      holdFull: 'the hold is full',
       netsIn:   'nets hauled in',
       surf:     'surf!',
       whirl:    'Whirlpool! -{damage}',
@@ -638,6 +640,7 @@
       day:     'Day {n}',
       allAboard: 'Every course is aboard: you can sail home.',
       cargo:   'Cargo',
+      holdCount: '{n}/{max} fish',
       noFish:  'No fish aboard.',
       chart:   'Sea chart',
     },
@@ -737,6 +740,7 @@
   const HOME_WATERS = Math.round(950*WORLD_K);     // radius of home waters (all kinds of fish there)
   const HOME_BANKS = Math.round(18*WK2);           // fish banks in home waters, refilled as they are fished (world)
   const FISH_CATCH_MIN = 1, FISH_CATCH_MAX = 2;   // fish per haul (random in between)
+  const HOLD_MAX = 9;                // fish the hold can carry; when it's full the nets stay aboard
   const FISH_REACH = 1.35;           // a bank counts out to this × its radius (a little past its circle)
   const FISH_STOP = 12;              // px/s: slow enough to count as stopped on a bank
   const FISH_SETTLE = 2;             // seconds stopped on a bank before the nets go over
@@ -3655,6 +3659,9 @@
   const NET_THROW_MIN = 24, NET_THROW_MAX = 46;   // how far the net is thrown, toward the middle of the bank
   let fishing = null;            // {bank, t, phase:'drop'|'wait'|'haul'|'cancel', ...}
   let settleT = 0;
+  const fishAboard = ()=> FISH_KEYS.reduce((a,k)=> a + counts[k], 0);
+  const holdFull = ()=> fishAboard() >= HOLD_MAX;
+  let fullSaid = null;                                   // the bank we've already said "the hold is full" over
   function bankUnderBoat(){
     for(const b of banks){
       if(b.state!=='live') continue;
@@ -3676,6 +3683,12 @@
     if(!fishing){
       const b = bankUnderBoat();
       const atAnchor = anchored && weighT <= 0;             // anchor down on a bank: nets over almost at once
+      if(b !== fullSaid) fullSaid = null;
+      if(b && holdFull()){                                // no room: the nets stay aboard (said once per bank)
+        settleT = 0;
+        if(!fullSaid && (atAnchor || boat.speed < FISH_STOP)){ fullSaid = b; popups.push({x:boat.x, y:boat.y-24, text:TEXT.popups.holdFull, life:1.6, max:1.6}); buzz(20); }
+        return;
+      }
       if(b && (atAnchor || boat.speed < FISH_STOP)){
         settleT += dt;
         if(settleT >= (atAnchor ? FISH_ANCHOR_SETTLE : FISH_SETTLE)){
@@ -3702,6 +3715,7 @@
         f.phase='haul'; f.t=0;
         let n = FISH_CATCH_MIN + Math.floor(Math.random()*(FISH_CATCH_MAX - FISH_CATCH_MIN + 1));
         if(boonFish>0){ n *= 2; boonFish--; }
+        n = Math.max(0, Math.min(n, HOLD_MAX - fishAboard()));   // only as many as the hold has room for
         const kind = FISH[f.bank.sec];
         counts[kind.key] += n; caught += n;
         popups.push({x:boat.x, y:boat.y-24, text:fmt(TEXT.popups.catch, {n, fish: n===1 ? kind.one : kind.many}), life:1.8, max:1.8});
@@ -4357,7 +4371,7 @@
   function holdHTML(){
     const fish = FISH_KEYS.flatMap(k=> Array(counts[k]).fill(k));
     const goods = VILLAGES.flatMap(v=> [...v.dishes.filter(d=>d.bought).map(d=> ({name: d.name, icon: d.icon})), ...(v.giftGot ? [{name: v.gift, icon: v.giftIcon}] : [])]);
-    return '<div class="hold-head"><h3>'+TEXT.logbook.cargo+'</h3><span class="purse" aria-label="Purse: '+coins+' coins">'+COIN_SVG+coins+'</span></div>'
+    return '<div class="hold-head"><h3>'+TEXT.logbook.cargo+'</h3><span class="hold-count">'+fmt(TEXT.logbook.holdCount, {n: fish.length, max: HOLD_MAX})+'</span><span class="purse" aria-label="Purse: '+coins+' coins">'+COIN_SVG+coins+'</span></div>'
       + (fish.length
           ? '<div class="hold-fish">'+fish.map(k=> '<span title="'+FISH_NAME[k].one+'">'+document.querySelector('#wood .fish-'+k+' svg').outerHTML+'</span>').join('')+'</div>'
           : '<p class="hold-empty">'+TEXT.logbook.noFish+'</p>')
@@ -5083,7 +5097,7 @@
     if(!moor && !dlg){
       const b = fishing ? fishing.bank : bankUnderBoat();
       elHint.classList.add('hidden');                   // fishing speaks for itself: nets, fish, splash
-      bankHint = !!b && !fishing && !anchored;           // over a bank: the hub of the wheel glows
+      bankHint = !!b && !fishing && !anchored && !holdFull();   // over a bank: the hub of the wheel glows (not with a full hold)
     }
     else elHint.classList.add('hidden');              // at a quay: no hint window
 

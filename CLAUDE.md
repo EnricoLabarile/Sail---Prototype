@@ -90,6 +90,9 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   (`ROUTE_BANK_SHARE`) lie along the sea roads, home to each village and village to village, within `ROUTE_BANK_SPREAD` of
   the straight line (`routeSpot`), so the fish lead from place to place; home waters have all kinds and plenty of banks (`HOME_BANKS` = 9 in the smaller world, same density as 18 before; refilled as they are fished).
   Fishing: stop on a bank for 2 s and the nets go over; drop anchor on a bank and they go over after 0.25 s.
+  **Hold limit**: at most `HOLD_MAX` = 9 fish aboard (`fishAboard`, `holdFull`): with a full hold the nets stay aboard
+  (a popup "the hold is full", once per bank; the hub doesn't turn into a fish), and a haul brings in only what fits.
+  The Cargo page shows the count ("n/9 fish", `TEXT.logbook.holdCount`).
   A bank counts a little past its drawn circle (`FISH_REACH` = 1.35 × radius). The net is thrown toward the bank's
   middle (24–46 px from the boat, flying out in a small arc as it opens; `netPos`) and hauled back to the boat.
   **Market = barter table** (left: your hold, every fish a unit; right: the stall: only the dishes not yet bought; no fish for sale).
