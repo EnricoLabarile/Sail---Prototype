@@ -747,6 +747,11 @@
   // -- World --
   const TRADERS = 12;                // trading boats: round the lanes, the ones from home first (12 = two on each home lane) (world)
   const ISLAND_COUNT = Math.round(210*WK2);        // islands (world)
+  // share of the wild islands of each shape (the rest are round-ish blobs) (world):
+  const ISLAND_L = 0.12;             // L-shaped: two long arms meeting at a corner
+  const ISLAND_C = 0.12;             // C-shaped: a horseshoe round a deep bay
+  const ISLAND_BIG = 0.07;           // big islands, about twice the usual size
+  const ISLAND_ATOLL = 0.05;         // atolls: a ring of sandy islets round a lagoon, with gaps to sail in
   const VILLAGE_DIST = Math.round(2475*WORLD_K);   // px from home to each village (world)
   // each game every village is nudged a little, still roughly N / E / S / W of home:
   const VILLAGE_OUT_MAX = Math.round(300*WORLD_K);   // px it may be pushed further from home (never closer) (world)
@@ -948,9 +953,42 @@
   function evalH(h,th){ let v=0; for(const o of h) v+=o.amp*Math.sin(o.k*th+o.ph); return v; }
   function sumAmp(h){ let v=0; for(const o of h) v+=o.amp; return v; }
 
-  function makeIsland(x,y,R){
-    // big lobes + a fine, crinkled coastline
-    const shapeH = harmonics(2,9,0.06,0.3,0.9).concat(harmonics(10,22,0.008,0.022,0));
+  // the island's shape before the wobble, as a radius (in R) for each angle:
+  // 'blob' a circle; 'C' a circle with a deep bay cut into one side, its two
+  // horns standing out; 'L' two long arms (boxes) meeting at a corner, seen
+  // from the middle of the corner; 'islet' a long sandy ellipse (atolls)
+  function shapeProfile(kind, rot){
+    if(kind === 'C'){
+      const b = rand(0, Math.PI*2), w = rand(1.0, 1.3), depth = rand(0.8, 0.86);
+      return th=>{
+        const d = Math.abs(Math.atan2(Math.sin(th-b), Math.cos(th-b)));            // angle from the bay's mouth
+        if(d < w) return 1 - depth*Math.pow(Math.cos(d/w*Math.PI/2), 0.5);        // steep-sided bay
+        return 1 + 0.22*Math.exp(-Math.pow((d-w)/0.3, 2));                        // the horns
+      };
+    }
+    if(kind === 'L'){
+      const T = rand(0.75, 0.95), A = rand(2.1, 2.7), B = rand(1.6, 2.4), rot = rand(0, Math.PI*2);
+      // two boxes from the corner (0,0): [0,A]x[0,T] and [0,T]x[0,B]; rays from (T/2,T/2)
+      const exit = (dx, dy, x1, y1)=>{                                             // where a ray from the centre leaves a box
+        let t = Infinity;
+        if(dx > 1e-6) t = Math.min(t, (x1 - T/2)/dx); else if(dx < -1e-6) t = Math.min(t, (-T/2)/dx);
+        if(dy > 1e-6) t = Math.min(t, (y1 - T/2)/dy); else if(dy < -1e-6) t = Math.min(t, (-T/2)/dy);
+        return t;
+      };
+      return th=>{ const dx = Math.cos(th-rot), dy = Math.sin(th-rot); return Math.max(exit(dx,dy,A,T), exit(dx,dy,T,B)); };
+    }
+    if(kind === 'islet'){
+      const a = rand(1.4, 1.9), b = rand(0.5, 0.7);
+      return th=>{ const c = Math.cos(th-rot), s2 = Math.sin(th-rot); return a*b/Math.sqrt((b*c)*(b*c) + (a*s2)*(a*s2)); };
+    }
+    return ()=> 1;
+  }
+  function makeIsland(x,y,R,kind,rot){
+    kind = kind || 'blob';
+    const prof = shapeProfile(kind, rot||0), plain = kind === 'blob';
+    // big lobes + a fine, crinkled coastline (gentler lobes on the shaped
+    // islands, so the shape still reads)
+    const shapeH = harmonics(2,9,0.06,plain ? 0.3 : 0.12,0.9).concat(harmonics(10,22,0.008,0.022,0));
     const rockH  = harmonics(1,3,0.4,1,0);
     const vegH   = harmonics(3,7,0.2,0.6,0);
     const edgeH  = harmonics(6,16,0.4,1,0.4);      // wobble of the vegetation line
@@ -959,17 +997,23 @@
     let rmax=0;
     for(let i=0;i<ISL_N;i++){
       const th=i/ISL_N*Math.PI*2;
-      const r=Math.max(R*0.55, R*(1+evalH(shapeH,th)));
+      const p = R*prof(th), r = Math.max(p*0.6, p*(1+evalH(shapeH,th)));
       radii[i]=r; if(r>rmax) rmax=r;
-      rocky[i] = evalH(rockH,th)/rockNorm > -0.45 ? 1 : 0;   // mostly sheer limestone cliffs
+      rocky[i] = kind !== 'islet' && evalH(rockH,th)/rockNorm > -0.45 ? 1 : 0;   // mostly sheer limestone cliffs (islets: all sand)
       const vn = evalH(vegH,th)/vegNorm;          // -1..1
       const en = evalH(edgeH,th)/edgeNorm;
       // beach width: narrow on rocky stretches, from thin strips to wide
       // bays elsewhere, with a ragged vegetation line
       sand[i] = rocky[i] ? Math.max(2, 3+2*(vn+1)+en*1.5)
                          : Math.max(4, 6 + 22*Math.pow((vn+1)/2, 1.6) + en*3.5);
+      sand[i] = Math.min(sand[i], r*0.5);                       // small islands keep some green in the middle
     }
-    const isl = {x,y,R,rmax,radii,rocky,sand};
+    if(!plain) for(let pass=0; pass<2; pass++){                 // round off the corners of the shape
+      const r0 = radii.slice();
+      for(let i=0;i<ISL_N;i++) radii[i] = (r0[(i+ISL_N-1)%ISL_N] + 2*r0[i] + r0[(i+1)%ISL_N])/4;
+      rmax = Math.max(...radii);
+    }
+    const isl = {x,y,R,rmax,radii,rocky,sand,kind};
     decorateIsland(isl);
     return isl;
   }
@@ -1410,24 +1454,49 @@
   for(const r of RUINS) makeRuinIsland(r);
   const SPECIALS = [...VILLAGES, ...RUINS];        // keep rocks and whirlpools away from these
 
+  // an atoll: a ring of low sandy islets, each lying along the ring, round a
+  // lagoon; a few places on the ring are left open so a boat can sail in
+  function tryAtoll(x, y, gap){
+    const Ra = rand(140, 230), n = Math.round(Ra/12), out = Ra + 40;
+    if(wdist(x,y,START.x,START.y) < out + LAGOON_R) return false;
+    if(islandGrid.query(x,y,out+gap, o=> wdist(x,y,o.x,o.y) < out+o.rmax+gap)) return false;
+    const a0 = rand(0, Math.PI*2), open = new Set();
+    const nOpen = 2 + Math.floor(rand(0, 2));
+    for(let k=0;k<nOpen;k++) open.add(Math.floor(k*n/nOpen + rand(0, n/nOpen)) % n);   // passages, spread round the ring
+    for(let k=0;k<n;k++){
+      if(open.has(k)) continue;
+      const a = a0 + k/n*Math.PI*2 + rand(-0.08, 0.08), rr = Ra*rand(0.94, 1.06);
+      const isl = makeIsland(wrapX(x + Math.cos(a)*rr), wrapY(y + Math.sin(a)*rr), rand(14, 22), 'islet', a + Math.PI/2);   // lying along the ring
+      isl.atoll = true;
+      addIsland(isl);
+    }
+    return true;
+  }
   (function genIslands(){
     const N = ISLAND_COUNT;
-    let attempts=0;
-    while(islands.length<N && attempts<60000){
+    let attempts=0, placed=islands.length;                     // (an atoll counts as one island)
+    // the shaped islands go down first (they need more room), then the blobs fill in
+    const quota = {atoll: Math.round(N*ISLAND_ATOLL), L: Math.round(N*ISLAND_L), C: Math.round(N*ISLAND_C), big: Math.round(N*ISLAND_BIG)};
+    const got = {atoll: 0, L: 0, C: 0, big: 0};
+    while(placed<N && attempts<60000){
       attempts++;
       const x = rand(0, WORLD.w);
       const y = rand(0, WORLD.h);
       const dg = danger(x,y);
       const ar = archipelago(x,y);
       if(Math.random() > (0.2 + 0.8*dg*dg)*(0.25 + 1.5*ar)) continue;   // sparser near home and in open seas, crowded in archipelagos
-      const R = rand(90,160)*(1.1 - 0.25*ar), gap = (210 - 120*dg)*(1.45 - 1.0*ar);   // tight channels in archipelagos, wide water in open seas
+      const gap = (210 - 120*dg)*(1.45 - 1.0*ar);              // tight channels in archipelagos, wide water in open seas
+      const want = ['atoll','L','C','big'].find(k=> got[k] < quota[k] && attempts < 30000) || 'blob';
+      if(want === 'atoll'){ if(tryAtoll(x, y, gap)){ placed++; got.atoll++; } continue; }
+      const big = want === 'big', kind = big ? 'blob' : want;
+      const R = rand(90,160)*(1.1 - 0.25*ar)*(big ? rand(2, 2.5) : kind === 'L' ? 0.85 : kind === 'C' ? 1.3 : 1);
       // cheap pre-check with a generous radius before building the island
       if (wdist(x,y,START.x,START.y) < R*0.6+LAGOON_R) continue;
       if (islandGrid.query(x,y,R*0.6+gap, o=> wdist(x,y,o.x,o.y) < R*0.6+o.rmax+gap)) continue;
-      const isl = makeIsland(x,y,R);
+      const isl = makeIsland(x,y,R,kind);
       if (wdist(x,y,START.x,START.y) < isl.rmax+LAGOON_R) continue;   // the home lagoon stays open
       const clash = islandGrid.query(x,y,isl.rmax+gap, o=> wdist(x,y,o.x,o.y) < isl.rmax+o.rmax+gap);
-      if(!clash) addIsland(isl);
+      if(!clash){ addIsland(isl); placed++; if(want !== 'blob') got[want]++; }
     }
   })();
 
@@ -1470,7 +1539,7 @@
   const gauss = ()=> (Math.random()+Math.random()+Math.random()-1.5)/1.5;
   (function genRocks(){
     for(const isl of islands){
-      if(isl.home || isl.village || isl.ruin) continue;          // keep home, village and ruin waters clear
+      if(isl.home || isl.village || isl.ruin || isl.atoll) continue;   // keep home, village and ruin waters clear, and the atolls' passages open
       const rf = 0.4 + 1.4*danger(isl.x, isl.y);   // rockiness grows with distance
       // boulders sitting right on rocky stretches of coast
       for(let i=0;i<ISL_N;i+=2){
@@ -4352,7 +4421,7 @@
   // ---------- Sea chart ----------
   // The logbook's second spread: a rough chart of the sea, drawn across both
   // pages. Only what the boat has seen is on it (the fog of war's cells),
-  // plus home and the four villages. Drawn only when it is shown (the book
+  // plus home and the ruins once seen. Drawn only when it is shown (the book
   // opens on it, or a page is turned to it), never while sailing.
   const elMapL = document.getElementById('map-l'), elMapC = document.getElementById('map-c'), elMapR = document.getElementById('map-r');
   for(const c of [elMapL, elMapC, elMapR]){ c.setAttribute('role', 'img'); c.setAttribute('aria-label', TEXT.logbook.chart); }
@@ -4377,21 +4446,11 @@
       const q = (j*N+i)*4; d[q] = d[q+1] = d[q+2] = g; d[q+3] = 255;
     }
     mapCtx.putImageData(im, 0, 0);
-    const c = mapCtx, k = N/WORLD.w, mark = (x,y,r,fill)=>{
-      c.fillStyle = '#fff'; c.beginPath(); c.arc(x*k, y*k, r+1.2, 0, Math.PI*2); c.fill();
-      c.fillStyle = '#000'; c.beginPath(); c.arc(x*k, y*k, r, 0, Math.PI*2); c.fill();
-      if(!fill){ c.fillStyle = '#fff'; c.beginPath(); c.arc(x*k, y*k, r-1, 0, Math.PI*2); c.fill(); }
-    };
-    for(const v of VILLAGES) mark(v.isl.x, v.isl.y, 3.5, dishesGot(v) > 0);   // the ports, filled once a dish is bought there
+    const c = mapCtx, k = N/WORLD.w;
     c.fillStyle = '#fff'; c.fillRect(START.x*k-3, START.y*k-3, 6, 6);         // home: a little square
     c.fillStyle = '#000'; c.fillRect(START.x*k-2, START.y*k-2, 4, 4);
     for(const r of RUINS){ const i = Math.floor(r.isl.x*k), j = Math.floor(r.isl.y*k);   // the ruins, once found
       if(seen(i,j)){ c.fillStyle = '#000'; c.fillRect(i-1, j-2, 1, 4); c.fillRect(i+1, j-2, 1, 4); c.fillRect(i-2, j-3, 5, 1); } }
-    const bx = wrapX(boat.x)*k, by = wrapY(boat.y)*k, hx = Math.cos(boat.angle), hy = Math.sin(boat.angle);   // the boat, and where she's heading
-    c.lineCap = 'round';
-    c.strokeStyle = '#fff'; c.lineWidth = 3.4; c.beginPath(); c.moveTo(bx, by); c.lineTo(bx+hx*5, by+hy*5); c.stroke();
-    mark(boat.x, boat.y, 2, true);
-    c.strokeStyle = '#000'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(bx, by); c.lineTo(bx+hx*5, by+hy*5); c.stroke();
     ditherUI(c, N, N);
     // cut it into the three strips the spread shows: left page, crease, right page
     const wl = elMapL.clientWidth, wc = elMapC.clientWidth, wr = elMapR.clientWidth, W = wl + wc + wr;

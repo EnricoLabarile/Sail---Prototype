@@ -55,6 +55,11 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   Regions: `archipelago(x,y)` is a smooth field (new each game, tiles the torus): ~1 = archipelago (more, slightly
   smaller islands, tight channels ~40–90 px), ~0 = open sea (few islands, wide water, most whirlpools, big waves up to
   ~2× as often). It multiplies the older rule that the sea gets wilder with distance from home (`danger`).
+  **Island shapes** (`shapeProfile`, `makeIsland(x,y,R,kind)`; still one radius per angle round a centre): round-ish
+  blobs, plus shares set in Tuning (world): `ISLAND_L` (two long arms meeting at a corner), `ISLAND_C` (a horseshoe round
+  a deep bay), `ISLAND_BIG` (about twice the size), `ISLAND_ATOLL` (`tryAtoll`: a ring of low sandy islets lying along
+  it round a lagoon, 2–3 gaps left open to sail in; no rocks round them; an atoll counts as one island). The shaped
+  ones are placed first (they need room), then the blobs fill in.
 - **Villages** (cardinal, ~1733 px from home: `VILLAGE_DIST`; each game nudged by `placeVillages`: pushed out by up to
   `VILLAGE_OUT_MAX`, slid sideways by up to `VILLAGE_SIDE_MAX`, kept `VILLAGE_EDGE` from the map edge, never closer to
   each other or to the ruins than in the plain cross, measured on the map; across the wrapped edge N–S and E–W do get closer), one course each, two specialties (1 unit each, all at `DISH_PRICE` = 6
@@ -139,8 +144,8 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   to the list and cargo; `turnPage`, `logSpread`): a sheet swings over on the spine (copies of the pages, `snapPage`), with
   `Sfx.pageTurn()` and a buzz; the book remembers the spread it was left on and opens there. The **sea chart** (`renderMap`)
   is drawn across both pages and the crease, square, `MAP_RES` pixels a side then dithered like the widgets: only the
-  cells the boat has seen (fog of war's `explored`; land inked round its coast), home (square), the four ports (rings,
-  filled once a dish is bought there), ruins once seen, and the boat with a tick for her heading. It is drawn only when
+  cells the boat has seen (fog of war's `explored`; land inked round its coast), home (square) and ruins once seen; no
+  boat and no village marks (Enrico's choice: you find your way by the coastlines). It is drawn only when
   shown (book opened on it, or a page turned to it), never while sailing (~3 ms; the land under each pixel is worked out
   once, ~10 ms, on the first showing).
   Opening/closing it plays `Sfx.book(open)`: paper flutter, and the cover's thump on closing. The list also shows the day of the voyage
