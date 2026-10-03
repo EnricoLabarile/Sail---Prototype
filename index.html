@@ -758,6 +758,7 @@
   // -- Look --
   const UI_TINT = 0.5;               // how much the interface takes on the day/night colours (0 = never, 1 = like the world)
   const CLOUD_ALPHA = 0.45, CLOUD_CORE = 0.88;   // clouds: see-through at the rim, denser in the middle
+  const PINE_MODELS = 4;             // stone pine shapes, reused (each also mirrored) all over the map (world)
   // draw the scene on the processor (true) or on the graphics card (false): the frame is tiny, and Firefox
   // on Android is slow with the card (24 fps); add ?scene=gpu or ?scene=cpu to the address to compare
   const SCENE_ON_CPU = /[?&]scene=gpu/.test(location.search) ? false : /[?&]scene=cpu/.test(location.search) ? true
@@ -1034,11 +1035,10 @@
     isl.tufts = [];
     for(let k=0;k<Math.floor(R/3);k++){ const [tx,ty] = vegPoint(isl, Math.sqrt(Math.random())*0.9); isl.tufts.push([tx,ty]); }
   }
-  function addUmbrella(isl, x, y){
-    if(!inVegetation(isl, x, y, 6)) return;
-    if(isl.umbrellas.some(u=> Math.abs(u.x-x) < 9 && Math.abs(u.y-y) < 6)) return;   // not two trunks in one spot
-    // a rounded crown built of many tufts of needles, fuller at the top,
-    // a little ragged at the edge, on a tall trunk that bends as it rises
+  // a few stone pine models, made once per game and reused (PINE_MODELS):
+  // a rounded crown built of many tufts of needles, fuller at the top,
+  // a little ragged at the edge, on a tall trunk that bends as it rises
+  function makePine(){
     const w = rand(24,38), ch = w*rand(0.5,0.68), h = rand(15,24), lobes = [];
     const nt = 9 + Math.floor(w/3);
     for(let k=0;k<nt;k++){
@@ -1047,7 +1047,15 @@
     }
     for(let k=0;k<5;k++){ const u = -0.42 + k*0.21; lobes.push([u*w, ch*0.12 + rand(-1,1.5), rand(3.5,5)*w/32]); }   // the flat-ish underside
     lobes.sort((a,b)=>b[1]-a[1]);                        // lower tufts first, top ones drawn over them
-    isl.umbrellas.push({x, y, h, w, ch, lean: rand(-5,5), bend: rand(-4,4), lobes});
+    return {h, w, ch, lean: rand(-5,5), bend: rand(-4,4), lobes};
+  }
+  const PINES = Array.from({length: Math.max(1, PINE_MODELS)}, makePine);
+  function addUmbrella(isl, x, y){
+    if(!inVegetation(isl, x, y, 6)) return;
+    if(isl.umbrellas.some(u=> Math.abs(u.x-x) < 9 && Math.abs(u.y-y) < 6)) return;   // not two trunks in one spot
+    const m = PINES[(Math.random()*PINES.length)|0], f = Math.random()<0.5 ? -1 : 1;   // a model, maybe mirrored
+    const {w} = m;
+    isl.umbrellas.push(f>0 ? {x, y, ...m} : {x, y, ...m, lean: -m.lean, bend: -m.bend, lobes: m.lobes.map(([lx,ly,r])=>[-lx,ly,r])});
     // clear the spurge right under the crown's trunk
     if(isl.bushes) isl.bushes = isl.bushes.filter(b=> Math.hypot(b.x-x, b.y-y) > 7 && Math.hypot(b.x-x-w*0.25, (b.y-y)*2.6) > w*0.38);   // its shade keeps the ground clear
   }
