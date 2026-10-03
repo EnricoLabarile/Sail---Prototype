@@ -727,6 +727,10 @@
   // -- World --
   const ISLAND_COUNT = Math.round(210*WK2);        // islands (world)
   const VILLAGE_DIST = Math.round(2475*WORLD_K);   // px from home to each village (world)
+  // each game every village is nudged a little, still roughly N / E / S / W of home:
+  const VILLAGE_OUT_MAX = Math.round(300*WORLD_K);   // px it may be pushed further from home (never closer) (world)
+  const VILLAGE_SIDE_MAX = Math.round(300*WORLD_K);  // px it may slide sideways, either way; in practice the ruins keep it to about a third of VILLAGE_OUT_MAX (world)
+  const VILLAGE_EDGE = Math.round(500*WORLD_K);      // px it must keep from the edge of the map (world)
   const SAFE_R = Math.round(950*WORLD_K);          // home waters: no whirlpools, no big waves
   const LAGOON_R = Math.round(650*WORLD_K);        // calm lagoon round home: no islands, no rocks (world)
   const DANGER_RING = Math.round(3400*WORLD_K);    // the sea gets wilder out to this distance from home (world)
@@ -1240,7 +1244,7 @@
   let won = false;
   // hand-shaped village island: rounded, with a wide clearing at the centre
   function makeVillageIsland(v){
-    const x = wrapX(START.x + v.ux*VILLAGE_DIST), y = wrapY(START.y + v.uy*VILLAGE_DIST);
+    const x = v.px, y = v.py;                                 // (see placeVillages)
     const isl = makeIsland(x, y, rand(108,122));
     // soften the shape a little so the village and pier fit well
     for(let i=0;i<ISL_N;i++) isl.radii[i] = isl.R*0.55 + isl.radii[i]*0.45;
@@ -1295,6 +1299,38 @@
       || segDist(x,y,pr.x0,pr.y0,pr.x1,pr.y1) < 10+m || Math.hypot(x-L.light.x,y-L.light.y) < 16+m;
     clearDecor(isl, busy);
   }
+  // where the villages go this game: each one pushed out from home by up to
+  // VILLAGE_OUT_MAX and slid sideways by up to VILLAGE_SIDE_MAX, kept
+  // VILLAGE_EDGE from the edge of the map. No village may end up closer to
+  // another one, or to the ruins, than in the plain cross layout (distances on
+  // the map, home in the middle): sliding sideways brings it toward a ruin, so
+  // the slide picks how far out it must go at least, and the whole set is
+  // drawn again in the rare case two villages still come too close.
+  function placeVillages(){
+    const rd = VILLAGE_DIST/Math.SQRT2*1.02;                  // (where makeRuinIsland puts the ruins)
+    const ruins = [[-1,-1],[1,-1],[1,1],[-1,1]].map(([a,b])=> [a*rd, b*rd]);
+    const at = (v, out, side)=> [v.ux*(VILLAGE_DIST+out) - v.uy*side, v.uy*(VILLAGE_DIST+out) + v.ux*side];
+    const gaps = (P)=> [...P.flatMap((p,i)=> P.slice(i+1).map(q=> Math.hypot(p[0]-q[0], p[1]-q[1]))),
+                        ...P.flatMap(p=> ruins.map(r=> Math.hypot(p[0]-r[0], p[1]-r[1])))];
+    const base = VILLAGES.map(v=> at(v, 0, 0)), need = gaps(base);
+    const outMax = Math.max(0, Math.min(VILLAGE_OUT_MAX, WORLD.w/2 - VILLAGE_EDGE - VILLAGE_DIST));
+    const ruinGap2 = rd*rd + (VILLAGE_DIST-rd)*(VILLAGE_DIST-rd);   // village to its nearer ruins, squared, in the cross
+    const nudge = ()=>{
+      for(let t = 0; t < 50; t++){
+        const side = rand(-VILLAGE_SIDE_MAX, VILLAGE_SIDE_MAX);
+        const outMin = Math.max(0, Math.sqrt(Math.max(0, ruinGap2 - (rd-Math.abs(side))**2)) + rd - VILLAGE_DIST);
+        if(outMin <= outMax) return [rand(outMin, outMax), side];
+      }
+      return [0, 0];
+    };
+    let P = base;
+    for(let tries = 0; tries < 200; tries++){
+      const Q = VILLAGES.map(v=> at(v, ...nudge()));
+      if(gaps(Q).every((d,i)=> d >= need[i] - 1e-6)){ P = Q; break; }
+    }
+    VILLAGES.forEach((v,i)=>{ v.px = wrapX(START.x + P[i][0]); v.py = wrapY(START.y + P[i][1]); });
+  }
+  placeVillages();
   for(const v of VILLAGES) makeVillageIsland(v);
 
   // ---------- Ruins ----------

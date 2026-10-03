@@ -48,7 +48,9 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   Regions: `archipelago(x,y)` is a smooth field (new each game, tiles the torus): ~1 = archipelago (more, slightly
   smaller islands, tight channels ~40–90 px), ~0 = open sea (few islands, wide water, most whirlpools, big waves up to
   ~2× as often). It multiplies the older rule that the sea gets wilder with distance from home (`danger`).
-- **Villages** (cardinal, ~1733 px from home: `VILLAGE_DIST`), one course each, two specialties (1 unit each, all at `DISH_PRICE` = 6
+- **Villages** (cardinal, ~1733 px from home: `VILLAGE_DIST`; each game nudged by `placeVillages`: pushed out by up to
+  `VILLAGE_OUT_MAX`, slid sideways by up to `VILLAGE_SIDE_MAX`, kept `VILLAGE_EDGE` from the map edge, never closer to
+  each other or to the ruins than in the plain cross, measured on the map; across the wrapped edge N–S and E–W do get closer), one course each, two specialties (1 unit each, all at `DISH_PRICE` = 6
   coins) + a gift: Nordania (N) Antipasti: Fiori di Zucca, Mozzarelle, gift Tarallini. Estolia (E) Primi: Orecchiette
   con Cime di Rapa, Lasagne, gift Olio Santo. Sudia (S) Secondi: Zampina, Pesce Arrosto, gift Vino Rosso. Westa (W)
   Dessert: Cartellate, Tiramisu, gift Limoncello. The gift is never for sale: the merchant adds it when you buy both dishes.
