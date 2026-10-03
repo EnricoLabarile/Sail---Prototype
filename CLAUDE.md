@@ -45,8 +45,8 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   a graphics-card canvas drawn into a memory one is read back from the card, which gave 26 ms stalls one frame in 20.
   The frame goes to the GPU with `texSubImage2D` (same texture, written in place). The night light mask is built per
   light (each touches only the cells round it; beams test their cone cheaply), it cost up to 9 ms by a village.
-  The UI palette (`uiPalette`) changes at most twice a second (each change restyles the page). Cloud sprites repaint
-  every ~0.35 s, out of step. Profiling tip: a 2D canvas draws lazily, so time a section only after forcing it
+  The UI palette (`uiPalette`) changes at most twice a second (each change restyles the page). Clouds keep their shape: there are only `CLOUD_MODELS` shapes, each
+  painted once into a sprite (plus a darker rain version and its shadow) and shared by all the clouds. Profiling tip: a 2D canvas draws lazily, so time a section only after forcing it
   (`getImageData(0,0,1,1)`), or its cost shows up in the upload. Aim: 60 fps on the phone. The wheel and compass are only redrawn
   (and re-dithered) when something on them changes (`wheelKey`, `cmpKey`, `sailKey`; a shut compass lid is a still
   picture); hidden HUD elements are not updated every frame; the hull meter is written only when it changes.
@@ -139,7 +139,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   (`dayNo`, +1 at each dawn). A tiny faint frame-rate counter (`#fps`, refreshed twice a second while the logbook is open) sits on the
   paper, in the bottom right corner of the right page. Keyboard: arrows, Space = anchor.
 - **Hazards:** rocks, faraglioni, whirlpools (appear/disappear/wander; none on day 1: they start opening from day 2, `WHIRL_FROM_DAY`), rollers (big waves: within ~66° of their travel = surf boost (`SURF_COS`), otherwise they hurt).
-- **Atmosphere:** macchia (tree-spurge domes + Mediterranean pines), clouds with parallax and shadows, gulls, wind streaks,
+- **Atmosphere:** macchia (tree-spurge domes + Mediterranean pines; the pines come in `PINE_MODELS` = 4 shapes made each game, each maybe mirrored), clouds with parallax and shadows (`CLOUD_MODELS` = 4 shapes, made each game, still: they only drift), gulls, wind streaks,
   traders (`TRADERS` = 12 motor boats on A* lanes from home to each village and between neighbouring villages, dealt
   home lanes first, so they show the way out; they don't avoid the player, a collision just shoves them aside
   with no damage, then they drift back to their lane; they hail with a speech bubble), fog of war (buoys and a
