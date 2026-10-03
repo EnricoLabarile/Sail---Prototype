@@ -3679,6 +3679,24 @@
       }
     }
   }
+  // soft round shadows (swell, stirred water over a fish bank): a radial
+  // gradient painted once into a small sprite and stamped scaled, instead of a
+  // new gradient object every patch every frame (garbage and per-pixel maths)
+  const softDots = {};
+  function softDot(key, stops){
+    if(softDots[key]) return softDots[key];
+    const S = 64, cv = document.createElement('canvas'); cv.width = cv.height = S;
+    const c = cv.getContext('2d'), g = c.createRadialGradient(S/2,S/2,0,S/2,S/2,S/2);
+    for(const [o,a] of stops) g.addColorStop(o, 'rgba(0,0,0,'+a+')');
+    c.fillStyle = g; c.fillRect(0,0,S,S);
+    return softDots[key] = cv;
+  }
+  function stampDot(dot, x, y, r, alpha){
+    const a0 = ctx.globalAlpha;
+    ctx.globalAlpha = a0*alpha;
+    ctx.drawImage(dot, x-r, y-r, r*2, r*2);
+    ctx.globalAlpha = a0;
+  }
   // the wave: a dark, steepening face along a bowed crest line, tapered at
   // the ends; once it breaks, white foam tumbles along the crest and spills
   // back, and as it fades the foam thins into scattered specks
@@ -3705,9 +3723,7 @@
       const th = thick(u), wob = Math.sin(w.t*2.2 + i*0.9 + w.seed);
       const [x,y] = P(u, -th*(0.45 + 0.12*wob));
       const r = th*(0.7 + 0.18*Math.sin(i*1.3 + w.t*1.6));
-      const g = ctx.createRadialGradient(x,y,0,x,y,r);
-      g.addColorStop(0, 'rgba(0,0,0,'+(0.14*s*tp)+')'); g.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+      stampDot(softDot('swell', [[0,1],[1,0]]), x, y, r, 0.14*s*tp);
     }
     // crest: a broken, stippled line that comes and goes along its length
     ctx.strokeStyle = INKC; ctx.lineWidth = 1.2; ctx.lineCap='round';
@@ -5392,24 +5408,29 @@
     const a = t*0.35 + Lt.ph, len = BEAM_LEN, sp = 0.1;   // one turn every ~18 s
     const x = Lt.x+0.5, y = Lt.y+0.5;
     // pale light: lifts the dark fog out at sea, fading along its length
-    const g = ctx.createRadialGradient(x,y,0,x,y,len);
-    g.addColorStop(0,'rgba(255,255,255,0.75)'); g.addColorStop(0.5,'rgba(255,255,255,0.45)'); g.addColorStop(1,'rgba(255,255,255,0)');
+    // (the lighthouse never moves: its three gradients are made once)
+    if(!Lt.grads){
+      const g = ctx.createRadialGradient(x,y,0,x,y,len);
+      g.addColorStop(0,'rgba(255,255,255,0.75)'); g.addColorStop(0.5,'rgba(255,255,255,0.45)'); g.addColorStop(1,'rgba(255,255,255,0)');
+      const gs = ctx.createRadialGradient(x,y,0,x,y,len);
+      gs.addColorStop(0,'rgba(0,0,0,0.1)'); gs.addColorStop(1,'rgba(0,0,0,0)');
+      const ge = ctx.createRadialGradient(x,y,0,x,y,len);
+      ge.addColorStop(0,'rgba(0,0,0,0.55)'); ge.addColorStop(1,'rgba(0,0,0,0)');
+      Lt.grads = {g, gs, ge};
+    }
+    const {g, gs, ge} = Lt.grads;
     ctx.fillStyle = g;
     ctx.beginPath(); ctx.moveTo(x,y);
     ctx.lineTo(x+Math.cos(a-sp)*len, y+Math.sin(a-sp)*len);
     ctx.lineTo(x+Math.cos(a+sp)*len, y+Math.sin(a+sp)*len);
     ctx.closePath(); ctx.fill();
     // a faint shadowy wedge so it also reads on the white, explored sea
-    const gs = ctx.createRadialGradient(x,y,0,x,y,len);
-    gs.addColorStop(0,'rgba(0,0,0,0.1)'); gs.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle = gs;
     ctx.beginPath(); ctx.moveTo(x,y);
     ctx.lineTo(x+Math.cos(a-sp)*len, y+Math.sin(a-sp)*len);
     ctx.lineTo(x+Math.cos(a+sp)*len, y+Math.sin(a+sp)*len);
     ctx.closePath(); ctx.fill();
     // dotted edges along the whole length, fading out
-    const ge = ctx.createRadialGradient(x,y,0,x,y,len);
-    ge.addColorStop(0,'rgba(0,0,0,0.55)'); ge.addColorStop(1,'rgba(0,0,0,0)');
     ctx.strokeStyle = ge; ctx.lineWidth = 1.2;
     ctx.beginPath();
     ctx.moveTo(x+Math.cos(a-sp)*7, y+Math.sin(a-sp)*7); ctx.lineTo(x+Math.cos(a-sp)*len, y+Math.sin(a-sp)*len);
@@ -5960,16 +5981,22 @@
   // centre). The core edge is a broken, wobbling foam ring.
   const WP_PARTS = 38, WP_LIFE = 3.6;           // streaks per whirlpool, seconds rim → eye
   function drawWhirlpool(w){
-    const halo = ctx.createRadialGradient(w.x,w.y,w.core,w.x,w.y,w.r);
-    halo.addColorStop(0, V(0.86)); halo.addColorStop(0.35, V(0.93));
-    halo.addColorStop(0.7, V(0.975)); halo.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle=halo;
-    ctx.beginPath(); ctx.arc(w.x,w.y,w.r,0,Math.PI*2); ctx.fill();
-    const g = ctx.createRadialGradient(w.x,w.y,0,w.x,w.y,w.core*1.1);
-    g.addColorStop(0, V(0.2)); g.addColorStop(0.4, V(0.55));
-    g.addColorStop(0.8, V(0.78)); g.addColorStop(1, V(0.86));
-    ctx.fillStyle=g;
-    ctx.beginPath(); ctx.arc(w.x,w.y,w.core*1.1,0,Math.PI*2); ctx.fill();
+    // (its two gradients are made once, round 0,0, and drawn moved to where it wanders)
+    if(!w.grads){
+      const halo = ctx.createRadialGradient(0,0,w.core,0,0,w.r);
+      halo.addColorStop(0, V(0.86)); halo.addColorStop(0.35, V(0.93));
+      halo.addColorStop(0.7, V(0.975)); halo.addColorStop(1, 'rgba(255,255,255,0)');
+      const g = ctx.createRadialGradient(0,0,0,0,0,w.core*1.1);
+      g.addColorStop(0, V(0.2)); g.addColorStop(0.4, V(0.55));
+      g.addColorStop(0.8, V(0.78)); g.addColorStop(1, V(0.86));
+      w.grads = {halo, g};
+    }
+    ctx.save(); ctx.translate(w.x, w.y);
+    ctx.fillStyle = w.grads.halo;
+    ctx.beginPath(); ctx.arc(0,0,w.r,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = w.grads.g;
+    ctx.beginPath(); ctx.arc(0,0,w.core*1.1,0,Math.PI*2); ctx.fill();
+    ctx.restore();
 
     if(!w.parts){
       w.parts=[];
@@ -6055,9 +6082,7 @@
     // stirred water
     ctx.globalAlpha = fade;
     for(const [ox,oy,rr] of b.blobs){
-      const g = ctx.createRadialGradient(b.x+ox,b.y+oy,0,b.x+ox,b.y+oy,rr);
-      g.addColorStop(0,'rgba(0,0,0,0.13)'); g.addColorStop(0.7,'rgba(0,0,0,0.07)'); g.addColorStop(1,'rgba(0,0,0,0)');
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(b.x+ox,b.y+oy,rr,0,Math.PI*2); ctx.fill();
+      stampDot(softDot('bank', [[0,0.13],[0.7,0.07],[1,0]]), b.x+ox, b.y+oy, rr, 1);
     }
     // the fish, in the shade of their kind (same as the counter icons)
     const shade = {nord:PAPERC, est:V(0.78), sud:V(0.45), ovest:INKC}[b.sec], outline = b.sec!=='ovest';
