@@ -40,7 +40,14 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   5.6 ms of JS (up 0.4): the time went on the 2D canvas drawn on the graphics card, so the tiny scene buffer is now a
   memory canvas (`SCENE_ON_CPU` in Tuning, `willReadFrequently`); `?scene=gpu` / `?scene=cpu` in the address compares the two. Result on Enrico's phone: Firefox 24 -> 48–60 fps
   (Firefox on Android seems to cap at 60), Opera 120. No gradient is made per frame: the soft round shadows (swell, fish banks) are a
-  cached sprite stamped scaled (`softDot`, `stampDot`), lighthouse beams and whirlpools keep their gradients (`.grads`). Aim: 60 fps on the phone. The wheel and compass are only redrawn
+  cached sprite stamped scaled (`softDot`, `stampDot`), lighthouse beams and whirlpools keep their gradients (`.grads`).
+  Every picture drawn into the scene (baked islands, cloud sprites, fog, soft dots) is a memory canvas too (`sceneCtx`):
+  a graphics-card canvas drawn into a memory one is read back from the card, which gave 26 ms stalls one frame in 20.
+  The frame goes to the GPU with `texSubImage2D` (same texture, written in place). The night light mask is built per
+  light (each touches only the cells round it; beams test their cone cheaply), it cost up to 9 ms by a village.
+  The UI palette (`uiPalette`) changes at most twice a second (each change restyles the page). Cloud sprites repaint
+  every ~0.35 s, out of step. Profiling tip: a 2D canvas draws lazily, so time a section only after forcing it
+  (`getImageData(0,0,1,1)`), or its cost shows up in the upload. Aim: 60 fps on the phone. The wheel and compass are only redrawn
   (and re-dithered) when something on them changes (`wheelKey`, `cmpKey`, `sailKey`; a shut compass lid is a still
   picture); hidden HUD elements are not updated every frame; the hull meter is written only when it changes.
   day/night palette (`UI_TINT` = 0.5, `uiPalette`): the dithered widgets and the HTML panels (`--paper` / `--ink`) follow the light.

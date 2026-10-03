@@ -819,13 +819,18 @@
   }catch(e){ console.warn('WebGL dither unavailable, using the JS one:', e); }
   if(gl){
     canvas.addEventListener('webglcontextlost', e=> e.preventDefault());   // (so it can come back)
-    canvas.addEventListener('webglcontextrestored', ()=>{ try{ gl.U = glSetup(gl); maskBytes = null; resize(); }catch(e){ console.warn(e); } });
+    canvas.addEventListener('webglcontextrestored', ()=>{ try{ gl.U = glSetup(gl); gl.upW = 0; maskBytes = null; resize(); }catch(e){ console.warn(e); } });
   }
   const sctx = gl ? null : canvas.getContext('2d');
   const buf = document.createElement('canvas');
   // in memory (willReadFrequently): without WebGL the scene is read back every
   // frame; with WebGL it's uploaded as a texture, and drawing a frame this small
   // on the processor beats sending every stroke to the graphics card (SCENE_ON_CPU)
+  // every picture drawn into the scene (baked islands, clouds, fog, soft dots)
+  // lives where the scene does: copying a graphics-card canvas into a memory
+  // one makes the browser read it back from the card on every draw
+  const SCENE_CTX = (gl && !SCENE_ON_CPU) ? {} : {willReadFrequently:true};
+  const sceneCtx = (cv)=> cv.getContext('2d', SCENE_CTX);
   let ctx = buf.getContext('2d', (gl && !SCENE_ON_CPU) ? {} : {willReadFrequently:true});   // swapped briefly when baking island images
   const obuf = document.createElement('canvas');       // (fallback) final 1-bit frame, screen size
   const octx = gl ? null : obuf.getContext('2d');
@@ -3596,7 +3601,7 @@
       }
   }
   const fogCv = document.createElement('canvas');
-  const fogCtx = fogCv.getContext('2d');
+  const fogCtx = sceneCtx(fogCv);
   let fogImg = null;
   function drawFog(camX, camY, w, h){
     const C = FOG_CELL;
@@ -3711,7 +3716,7 @@
   function softDot(key, stops){
     if(softDots[key]) return softDots[key];
     const S = 64, cv = document.createElement('canvas'); cv.width = cv.height = S;
-    const c = cv.getContext('2d'), g = c.createRadialGradient(S/2,S/2,0,S/2,S/2,S/2);
+    const c = sceneCtx(cv), g = c.createRadialGradient(S/2,S/2,0,S/2,S/2,S/2);
     for(const [o,a] of stops) g.addColorStop(o, 'rgba(0,0,0,'+a+')');
     c.fillStyle = g; c.fillRect(0,0,S,S);
     return softDots[key] = cv;
@@ -4904,7 +4909,12 @@
   // the interface follows the light too, but only partway (UI_TINT): the
   // dithered widgets and the HTML panels (--paper / --ink) share the colours
   let uiPalKey = '';
+  // (at most twice a second: each change restyles the whole page and repaints
+  // the panels and the logbook icon, too heavy to do every frame at dusk and dawn)
+  let uiPalT = -1;
   function uiPalette(){
+    if(uiPalKey && t - uiPalT < 0.5 && t >= uiPalT) return;
+    uiPalT = t;
     const P = [PAPER32&255, (PAPER32>>8)&255, (PAPER32>>16)&255], I = [INK32&255, (INK32>>8)&255, (INK32>>16)&255];
     const up = PAPER.map((v,j)=> Math.round(v+(P[j]-v)*UI_TINT)), ui = INK.map((v,j)=> Math.round(v+(I[j]-v)*UI_TINT));
     const key = up.join()+'/'+ui.join();
@@ -4944,24 +4954,40 @@
     const Ls = nightLights().filter(([x,y,r0,r1])=> Math.abs(wdx(x,vcx)) < vw/2 + r1 && Math.abs(wdy(y,vcy)) < vh/2 + r1);
     const beams = VILLAGES.map(v=>{ const lt=v.isl.vl.light; return [lt.x+0.5, lt.y+0.5, t*0.35+lt.ph]; })
       .filter(([x,y])=> Math.abs(wdx(x,vcx)) < vw/2+BEAM_LEN && Math.abs(wdy(y,vcy)) < vh/2+BEAM_LEN);
-    for(let by=0; by<lmH; by++) for(let bx=0; bx<lmW; bx++){
-      const wx = nightCamX + (bx*MB+MB/2)*PX, wy = nightCamY + (by*MB+MB/2)*PX;
-      let l = 0;
-      for(const [x,y,r0,r1,str] of Ls){
-        const dx = wdx(wx,x), dy = wdy(wy,y);
-        if(Math.abs(dx) > r1 || Math.abs(dy) > r1) continue;
-        const d = Math.hypot(dx,dy); if(d >= r1) continue;
-        let k = d <= r0 ? 1 : (r1-d)/(r1-r0); k = k*k*(3-2*k)*str;
-        if(k > l) l = k;
+    // each light only touches the cells round it (not every cell every light),
+    // and a beam only works out its angle inside its narrow cone
+    const L = lightMask; L.fill(0);
+    const cell = MB*PX, cx0 = nightCamX + cell/2, cy0 = nightCamY + cell/2;   // world centre of cell 0,0
+    const span = (lo, hi, o, n)=> [Math.max(0, Math.floor((lo-o)/cell)), Math.min(n-1, Math.ceil((hi-o)/cell))];
+    for(const [x,y,r0,r1,str] of Ls){
+      const lx = vcx + wdx(x,vcx), ly = vcy + wdy(y,vcy);           // the copy of it nearest the view
+      const [bx0,bx1] = span(lx-r1, lx+r1, cx0, lmW), [by0,by1] = span(ly-r1, ly+r1, cy0, lmH);
+      for(let by=by0; by<=by1; by++){
+        const dy = cy0 + by*cell - ly;
+        for(let bx=bx0; bx<=bx1; bx++){
+          const dx = cx0 + bx*cell - lx, d = Math.hypot(dx,dy); if(d >= r1) continue;
+          let k = d <= r0 ? 1 : (r1-d)/(r1-r0); k = k*k*(3-2*k)*str;
+          const i = by*lmW+bx; if(k > L[i]) L[i] = k;
+        }
       }
-      for(const [x,y,a] of beams){                                     // the sweeping lighthouse cones
-        const dx = wdx(wx,x), dy = wdy(wy,y), d = Math.hypot(dx,dy);
-        if(d > BEAM_LEN || d < 1) continue;
-        const da = Math.abs(Math.atan2(Math.sin(Math.atan2(dy,dx)-a), Math.cos(Math.atan2(dy,dx)-a)));
-        if(da < 0.11){ const k = (1 - d/BEAM_LEN)*(1 - da/0.11)*0.95; if(k > l) l = k; }
-      }
-      lightMask[by*lmW+bx] = NIGHT_FLOOR + (1-NIGHT_FLOOR)*l;
     }
+    const HALF = 0.11, TAN = Math.tan(HALF);
+    for(const [x,y,a] of beams){                                     // the sweeping lighthouse cones
+      const lx = vcx + wdx(x,vcx), ly = vcy + wdy(y,vcy), ca = Math.cos(a), sa = Math.sin(a);
+      const ex = [lx, lx+Math.cos(a-HALF)*BEAM_LEN, lx+Math.cos(a+HALF)*BEAM_LEN], ey = [ly, ly+Math.sin(a-HALF)*BEAM_LEN, ly+Math.sin(a+HALF)*BEAM_LEN];
+      const [bx0,bx1] = span(Math.min(...ex), Math.max(...ex), cx0, lmW), [by0,by1] = span(Math.min(...ey), Math.max(...ey), cy0, lmH);
+      for(let by=by0; by<=by1; by++){
+        const dy = cy0 + by*cell - ly;
+        for(let bx=bx0; bx<=bx1; bx++){
+          const dx = cx0 + bx*cell - lx, along = dx*ca + dy*sa, perp = Math.abs(dy*ca - dx*sa);
+          if(along <= 0 || perp > along*TAN) continue;
+          const d = Math.hypot(dx,dy); if(d > BEAM_LEN || d < 1) continue;
+          const k = (1 - d/BEAM_LEN)*(1 - Math.atan2(perp, along)/HALF)*0.95;
+          const i = by*lmW+bx; if(k > L[i]) L[i] = k;
+        }
+      }
+    }
+    for(let i = 0; i < L.length; i++) L[i] = NIGHT_FLOOR + (1-NIGHT_FLOOR)*L[i];
   }
   const BAYER = [0,8,2,10, 12,4,14,6, 3,11,1,9, 15,7,13,5].map(b=>(b+0.5)*16);
   const greyCache = {};
@@ -4995,7 +5021,10 @@
       gl.uniform3fv(U.uPaper, col(PAPER32)); gl.uniform3fv(U.uInk, col(INK32));
       gl.activeTexture(gl.TEXTURE0);
       const tUp = performance.now();
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+      // same size as last frame: write over the texture in place instead of
+      // making a new one every frame (the old ones piled up for the driver)
+      if(gl.upW === buf.width && gl.upH === buf.height) gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+      else { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, buf); gl.upW = buf.width; gl.upH = buf.height; }
       upMs += performance.now() - tUp;                               // (timed for the fps counter)
       gl.drawArrays(gl.TRIANGLES, 0, 6);
       return;
@@ -5165,7 +5194,7 @@
     const size = Math.ceil(2*(isl.rmax + pad)) + 2;
     const c = document.createElement('canvas'); c.width = size; c.height = size;
     const saved = ctx;
-    ctx = c.getContext('2d');
+    ctx = sceneCtx(c);
     ctx.translate(-ox, -oy);
     drawIslandLandStatic(isl);
     ctx = saved;
@@ -5798,14 +5827,14 @@
     for(const [k,a] of [[1.05,0.12],[0.85,0.1],[0.62,0.08]]){ ctx.fillStyle = 'rgba(0,0,0,'+a+')'; puffPath(P, ox, oy, 0, 0, 0, k); ctx.fill(); }
   }
   // the clouds change slowly, so each one (and its shadow) is painted into
-  // its own little canvas and refreshed only a few times a second
+  // its own little canvas and refreshed about three times a second
   function cloudSprite(c, shade){
     const key = shade ? 'sh' : 'sp', tk = key+'T';
     if(!c[key]){ c[key] = document.createElement('canvas'); c[key].width = Math.ceil(c.cw*1.3); c[key].height = Math.ceil(c.ch*1.3); c[tk] = -1; }
-    if(t - c[tk] > 0.2 || c[tk] < 0){
-      c[tk] = t;
+    if(t - c[tk] > 0.35 || c[tk] < 0){
+      c[tk] = t - Math.random()*0.15;            // (a little out of step, so the clouds don't all repaint in the same frame)
       const cv = c[key], saved = ctx;
-      ctx = cv.getContext('2d'); ctx.clearRect(0,0,cv.width,cv.height);
+      ctx = sceneCtx(cv); ctx.clearRect(0,0,cv.width,cv.height);
       if(!c.P || c.Pt !== t){ c.P = cloudPuffs(c); c.Pt = t; }
       if(shade) drawCloudShade(c, c.P, cv.width/2, cv.height/2);
       else {
@@ -5866,7 +5895,7 @@
     if(c.tint) return c.tint;
     const [rx,ry] = rainFootprint(c), cv = document.createElement('canvas');
     cv.width = Math.ceil(rx*2); cv.height = Math.ceil(ry*2);
-    const g2 = cv.getContext('2d'), g = g2.createRadialGradient(rx,rx,0,rx,rx,rx);
+    const g2 = sceneCtx(cv), g = g2.createRadialGradient(rx,rx,0,rx,rx,rx);
     g.addColorStop(0,'rgba(0,0,0,0.12)'); g.addColorStop(0.7,'rgba(0,0,0,0.07)'); g.addColorStop(1,'rgba(0,0,0,0)');
     g2.scale(1, ry/rx); g2.fillStyle = g; g2.beginPath(); g2.arc(rx,rx,rx,0,Math.PI*2); g2.fill();
     return (c.tint = cv);
