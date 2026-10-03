@@ -553,20 +553,20 @@
     intro: {
       lead:  'You are throwing a party, and the dinner needs four courses:',
       after: 'You will find them in the four villages on the map. Buy them, then sail home.',
-      start: 'Set sail',
+      start: 'Set sail!',
     },
     // the four villages: name, the course they cook, its two dishes, the gift
     // the merchant adds when you buy both, and the merchant's flavour line
     // (unused for now). Renaming a dish keeps its icon.
     villages: {
       nord:  { name:'Nordania', course:'Antipasti', dishes:['Fiori di Zucca', 'Mozzarelle'], gift:'Tarallini',
-               line:"On the quay the grocer sets out the antipasti: fiori di zucca fried golden and mozzarelle still dripping. She takes fish in payment, but sardines she has plenty of: everyone catches those up here." },
+               line:"On the quay the grocer sets out the antipasti: fiori di zucca fried golden and mozzarelle still dripping." },
       est:   { name:'Estolia', course:'Primi', dishes:['Orecchiette con Cime di Rapa', 'Lasagne'], gift:'Olio Santo',
-               line:"In the trattoria by the harbour the cook shapes orecchiette with her thumb, and a lasagne rests on the sill. Mackerel she's sick of: the whole east lives on it." },
+               line:"In the trattoria by the harbour the cook shapes orecchiette with her thumb, and a lasagne rests on the sill." },
       sud:   { name:'Sudia', course:'Secondi', dishes:['Zampina', 'Pesce Arrosto'], gift:'Vino Rosso',
-               line:"At the grill by the market the butcher turns coils of zampina over the coals, and fish roasts beside them. He'll take any fish except red mullet: he catches those himself at dawn." },
+               line:"At the grill by the market the butcher turns coils of zampina over the coals, and fish roasts beside them." },
       ovest: { name:'Westa', course:'Dessert', dishes:['Cartellate', 'Tiramisu'], gift:'Limoncello',
-               line:"Grandma's pastry shop smells of honey and coffee: cartellate on the tray, a tiramisu in the cool of the cellar. Out west her larder is full of sea bream." },
+               line:"Grandma's pastry shop smells of honey and coffee: cartellate on the tray, a tiramisu in the cool of the cellar." },
     },
     fish: {
       sarde:   { one:'sardine',    many:'sardines' },
@@ -576,11 +576,11 @@
     },
     // the little notes that slide in at the top
     toasts: {
-      homeBack:   'Back in home waters',
-      homeLeave:  'Leaving home waters',
-      villageIn:  'Entering the waters of {village}',
-      villageOut: 'Leaving the waters of {village}',
-      gift:       'This is on the house: {gift}!',
+      homeBack:   'Back home',
+      homeLeave:  'Leaving home',
+      villageIn:  'You approach {village}',
+      villageOut: 'Leaving {village}',
+      gift:       'Come again! This is on the house: {gift}!',
     },
     // words that float up from the boat
     popups: {
@@ -596,7 +596,7 @@
     tutorial: {
       book:    'Here you will find your goals and your current cargo.',
       compass: 'Your compass points home. Tap to open it.',
-      anchor:  'Hold to weigh anchor.',
+      anchor:  'Hold to drop or raise the anchor.',
       wheel:   'Drag the wheel round to steer.',
       drop:    'Hold here to drop anchor and stop.',
     },
@@ -619,7 +619,7 @@
     logbook: {
       dinner:  'The dinner',
       day:     'Day {n}',
-      allAboard: 'Every course is aboard: sail home.',
+      allAboard: 'Every course is aboard: you can sail home.',
       cargo:   'Cargo',
       noFish:  'No fish aboard.',
     },
