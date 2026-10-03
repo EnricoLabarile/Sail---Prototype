@@ -5,6 +5,10 @@
 - Keep changes small and focused; after every change run the smoke test (see below).
 - I test on an Android phone: haptics (Vibration API) matter, iOS ignores them.
 - Commit after every working change with a short message in English.
+- **Push after every commit** to GitHub (`origin` = https://github.com/EnricoLabarile/Sail---Prototype, branch `master`;
+  public repo). Enrico reads and edits files there from the browser: if he says he changed something on GitHub, `git pull`
+  first. The game is also served by GitHub Pages at https://enricolabarile.github.io/Sail---Prototype/ (from `master`,
+  root; `.nojekyll` keeps it served as is), updated by each push, besides the claude.ai artifact link for the phone.
 - **Keep the Texts section up to date.** Every word the player reads lives in `TEXT`, the `// ---------- Texts ----------`
   section at the very top of the script (intro, villages and their dishes/gifts/lines, fish, toasts, popups, tutorial,
   market, logbook, ruins, endings, sinking, HUD). Enrico authors them by hand. New player-facing text goes there, never
