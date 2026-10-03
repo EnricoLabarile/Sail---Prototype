@@ -751,6 +751,10 @@
   // -- Look --
   const UI_TINT = 0.5;               // how much the interface takes on the day/night colours (0 = never, 1 = like the world)
   const CLOUD_ALPHA = 0.45, CLOUD_CORE = 0.88;   // clouds: see-through at the rim, denser in the middle
+  // draw the scene on the processor (true) or on the graphics card (false): the frame is tiny, and Firefox
+  // on Android is slow with the card (24 fps); add ?scene=gpu or ?scene=cpu to the address to compare
+  const SCENE_ON_CPU = /[?&]scene=gpu/.test(location.search) ? false : /[?&]scene=cpu/.test(location.search) ? true
+    : true;                          // <- the default
 
   let canvas = document.getElementById('c');
   // low-res game buffer: 1 game pixel ≈ 1 CSS px on phones (Playdate-like
@@ -815,9 +819,10 @@
   }
   const sctx = gl ? null : canvas.getContext('2d');
   const buf = document.createElement('canvas');
-  // without WebGL the scene is read back every frame, so keep it in memory;
-  // with WebGL it's only ever uploaded as a texture
-  let ctx = buf.getContext('2d', gl ? {} : {willReadFrequently:true});   // swapped briefly when baking island images
+  // in memory (willReadFrequently): without WebGL the scene is read back every
+  // frame; with WebGL it's uploaded as a texture, and drawing a frame this small
+  // on the processor beats sending every stroke to the graphics card (SCENE_ON_CPU)
+  let ctx = buf.getContext('2d', (gl && !SCENE_ON_CPU) ? {} : {willReadFrequently:true});   // swapped briefly when baking island images
   const obuf = document.createElement('canvas');       // (fallback) final 1-bit frame, screen size
   const octx = gl ? null : obuf.getContext('2d');
   let PX = 1, K = 1, GW = 1, GH = 1, outImg = null;
@@ -6388,7 +6393,7 @@
     draw();
     workMs += performance.now() - tW;
     fpsN++;                                                 // frame rate, shown in the logbook (only while it's open)
-    if(now - fpsT0 >= 500){ if(bookOpen) elFps.textContent = Math.round(fpsN*1000/(now - fpsT0)) + ' fps · ' + (gl ? 'gl' : 'js')
+    if(now - fpsT0 >= 500){ if(bookOpen) elFps.textContent = Math.round(fpsN*1000/(now - fpsT0)) + ' fps · ' + (gl ? 'gl' : 'js') + (gl ? (SCENE_ON_CPU ? '/cpu' : '/gpu') : '')
       + ' · ' + (workMs/fpsN).toFixed(1) + ' ms (up ' + (upMs/fpsN).toFixed(1) + ')'; fpsN = 0; fpsT0 = now; upMs = 0; workMs = 0; }
     // gl / js: the dither runs on the GPU, or the slow JS fallback; ms: JS time per frame; up: of which copying the frame to the GPU
     requestAnimationFrame(loop);
