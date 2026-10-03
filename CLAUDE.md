@@ -96,7 +96,8 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
 - **Intro:** on "Set sail" the card rolls up into a scroll that is tossed into the list button (skipped with reduced motion).
 
 - **Tutorial** (first voyage, `tut` in the Tutorial section): controls appear one at a time, hidden and disabled
-  (keys too) until their step: logbook shimmers (open and close it) -> the compass appears and
+  (keys too) until their step: logbook shimmers (open and close it; an open made while the intro scroll is still
+  flying in counts, and if the book is already open when the step starts, closing it is enough) -> the compass appears and
   shimmers with its bubble ("tap to open it"); opening the lid ends the step, else after `TUT_COMPASS_T` = 4.5 s it moves on
   -> the anchor hub appears with pulsing rings (weigh anchor) -> two curved arrows on the wheel for ~4.5 s (or until
   you steer) -> 3 s later (`TUT_DROP_WAIT`) the hub pulses again with "Hold here to drop anchor and stop." (optional:

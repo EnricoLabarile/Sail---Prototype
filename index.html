@@ -3300,7 +3300,10 @@
     if(stage === 'compass') setTimeout(()=>{ if(tut === 'compass') tutNext('anchor'); }, TUT_COMPASS_T);   // a look, then on
     if(stage === 'drop') setTimeout(()=>{ if(tut === 'drop') tutSet('done'); }, TUT_DROP_T);   // optional: it fades by itself
     document.body.classList.toggle('tut-no-wheel', !tutAt('anchor'));
-    if(stage === 'book') elListBtn.classList.add('news');                       // the logbook shimmers
+    if(stage === 'book'){
+      if(bookOpen) tutBookSeen = true;                                          // already open: now just close it
+      else elListBtn.classList.add('news');                                     // the logbook shimmers
+    }
     if(stage === 'rope' || stage === 'anchor'){ buzz([10,50,10]); }              // something new to touch
     if(stage === 'wheel') tutWheelT0 = performance.now();
   }
@@ -4302,7 +4305,7 @@
     Sfx.init();
     if(on){
       renderList(); freshCourses.clear(); elListBtn.classList.remove('news');   // seen: stop the shimmer
-      if(tut === 'book') tutBookSeen = true;
+      if(tut === 'book' || tut === 'intro') tutBookSeen = true;   // (opened while the scroll was still flying in counts too)
       elList.classList.add('open');
       bookT = setTimeout(()=>{ elList.classList.add('unfold'); Sfx.book(true); buzz([6,40,4]); }, BOOK_DROP);   // landed: open it
     } else {
