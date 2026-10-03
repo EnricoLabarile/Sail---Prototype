@@ -97,6 +97,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   Layout (no panel behind the controls: a wooden dashboard was tried and dropped, it hid too much sea): compass over
   logbook bottom left (compass at the top centre), wheel bottom centre; nothing bottom right (the sail is automatic).
   Hub of the wheel = anchor only:
+  No rudder gauge above the wheel (removed): the wheel's turn and the rudder on the boat show the helm.
   **long press 0.5 s = anchor**. At anchor the wheel fades out and only the hub (dark) remains. The hub is always drawn big (`hubScale` = 2, the
   size it once grew to only at anchor); while sailing its grip is just the hub (`HUB_SAIL_R`), so the spokes still steer. The hub is
   drawn like the compass, in greys then dithered: a light brass bezel (lit top left) with four rivets round a shaded

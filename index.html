@@ -2827,9 +2827,8 @@
     // the wood is a mid grey (dithered to a dotted tone), so the wheel stands out from the pale sea
     const WOOD = 'rgb(172,172,172)', WOOD_SH = 'rgb(122,122,122)', WOOD_RIM = 'rgb(160,160,160)';
     c.clearRect(0,0,WH_W,WH_H);
-    const rudder = wheelAngle/WHEEL_MAX;
 
-    // at anchor the wheel (and its rudder gauge) is put away: it fades out
+    // at anchor the wheel is put away: it fades out
     // and only the hub stays, to weigh anchor or switch sail
     wheelVis += ((stowed() ? 0 : 1) - wheelVis) * 0.15;
     // skip the redraw (and its dither) while nothing on it moves: same angle,
@@ -2842,16 +2841,6 @@
       wheelKey = key;
     }
     c.globalAlpha = wheelVis;
-    // rudder indicator: paper track, ink tick and marker
-    const barW = 140, bx = WH_CX-barW/2, by = 8;
-    c.fillStyle=PAPW; c.strokeStyle=INKW; c.lineWidth=1.5;
-    c.beginPath(); c.roundRect(bx-6, by-4, barW+12, 12, 3); c.fill(); c.stroke();
-    c.fillStyle=INKW; c.fillRect(WH_CX-0.75, by-2, 1.5, 8);
-    const mx = WH_CX + rudder*barW/2;
-    c.beginPath(); c.arc(mx, by+2, 4, 0, Math.PI*2);
-    if(Math.abs(rudder)<0.04){ c.fillStyle=PAPW; c.fill(); c.lineWidth=1.8; c.stroke(); }
-    else { c.fillStyle=INKW; c.fill(); }
-
     // wheel: ink woodcut look; every part has an ink outline so it reads over any terrain
     c.save();
     c.translate(WH_CX, WH_CY);
