@@ -67,6 +67,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   a deep bay), `ISLAND_BIG` (about 1.7× the size), `ISLAND_ATOLL` (`tryAtoll`: a ring of low sandy islets lying along
   it round a lagoon, 2–3 gaps left open to sail in; no rocks round them; an atoll counts as one island). The shaped
   ones are placed first (they need room), then the blobs fill in.
+  **L, C and atolls are off for now** (their shares are 0 in Tuning; the code stays): only blobs and big islands.
   **Foliage** is scattered at any angle (`vegPoint`, `sandAt`; the spurge in `scatterMacchia` by uniform tries over the
   island's box), never along the ISL_N spokes, which on big islands showed as lines; the spurge thins out in irregular
   open patches (a smooth noise of four crossing waves, new per island).

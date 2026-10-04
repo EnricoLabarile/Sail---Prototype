@@ -786,10 +786,10 @@
   const ISLAND_SCALE = 2.5;          // size of the wild islands (1 = the old small ones) (world)
   const ISLAND_COUNT = Math.round(210*WK2*1.2/(ISLAND_SCALE*ISLAND_SCALE));   // wild islands: fewer as they grow, so about the same share of the sea is land (world)
   // share of the wild islands of each shape (the rest are round-ish blobs) (world):
-  const ISLAND_L = 0.12;             // L-shaped: two long arms meeting at a corner
-  const ISLAND_C = 0.12;             // C-shaped: a horseshoe round a deep bay
+  const ISLAND_L = 0;                // L-shaped: two long arms meeting at a corner (0 = none: off for now; was 0.12)
+  const ISLAND_C = 0;                // C-shaped: a horseshoe round a deep bay (0 = none: off for now; was 0.12)
   const ISLAND_BIG = 0.07;           // big islands, about 1.7 times the usual size
-  const ISLAND_ATOLL = 0.05;         // atolls: a ring of sandy islets round a lagoon, with gaps to sail in
+  const ISLAND_ATOLL = 0;            // atolls: a ring of sandy islets round a lagoon, with gaps to sail in (0 = none: off for now; was 0.05)
   const VILLAGE_DIST = Math.round(2475*WORLD_K);   // px from home to each village (world)
   // each game every village is nudged a little, still roughly N / E / S / W of home:
   const VILLAGE_OUT_MAX = Math.round(300*WORLD_K);   // px it may be pushed further from home (never closer) (world)
