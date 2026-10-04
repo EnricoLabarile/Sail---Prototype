@@ -207,6 +207,15 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   The boat's square sail is drawn `SAIL_SIZE` (1.3) times the old size, its cloth a dotted grey `SAIL_TONE` (0.72; 1 =
   paper), darker when slack or reefed. At anchor (and moored) the cloth is drawn gathered up to the yard (`boat.furl`,
   eased; a look only: the sail stays set as far as the physics goes), and it spreads again as the anchor comes up.
+  **Two sails** (`SPARE_SAIL` in Tuning): she carries one (`boat.rig`, 'square' at the start) and the other is the
+  spare, shown in the logbook's Cargo below the slots (`spareHTML`, "Spare sail", its own icon in `ITEM_ICONS`,
+  takes no slot); a tap on it rigs it (`swapSail`: toast "… rigged", a thunk and a buzz, the new sail bent on furled
+  and spreading) and the old one goes into the hold in its place. Each sail has its own speed curve (`POLARS`):
+  the square one is fastest running free, the **lateen** points higher and reaches well (50° off the wind 0.40 vs
+  0.30, beam 0.70 vs 0.62) but gives a little less dead downwind (0.9 vs 1.0). The lateen is drawn by
+  `drawLateenSail`: a long slanted yard on a short mast near the bow, the triangle of cloth trailing aft, eased out
+  to leeward about half the wind's angle off the bow (`boat.boomSigned`), bellied to leeward, a sheet to the stern
+  quarter; it furls along the yard at anchor. A new voyage starts with the square sail rigged.
   **Sail: automatic** (no button; the old switch `#sail` / `drawSail` is hidden and unused, the halyard rope before it is
   gone). The sail is up by default. When she's slower than `ROW_ENTER` and the wind can't drive her past it either
   (head to wind, or nearly), after `ROW_DELAY` the sail is brailed up and the oars come out (`sailLevel` = `SAIL_MIN`:
@@ -286,6 +295,6 @@ python tests/smoke.py
 ```
 The smoke test checks there are no JS errors. With the orders off (now): the fair wind locked, a visit to the Temple of
 Eolus that gives it, then a trip to a village to buy a dish with foreign
-fish, back home, a new day, and the logbook shows it. With `ORDERS_ON`: two days of orders (day 1: 3 fish home before
+fish, back home, a new day, the logbook shows it, and a tap on the spare sail rigs it. With `ORDERS_ON`: two days of orders (day 1: 3 fish home before
 dinner; day 2: the ordered dish bought at its village, everything brought home and delivered).
 For quick manual testing on the phone: `python -m http.server 8000` and open `http://<pc-ip>:8000` on the same Wi-Fi.

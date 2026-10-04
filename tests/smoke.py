@@ -18,7 +18,7 @@ HOOK = ('requestAnimationFrame(loop);\n})();',
         'get order(){return order},get sat(){return satisfaction},satOn:SATISFACTION_ON,get moor(){return moor},'
         'get dayT(){return dayT},set dayT(v){dayT=v},'
         'dinnerT:(DINNER_HOUR-DAWN_HOUR)/24,ordersOn:ORDERS_ON,get dayNo(){return dayNo},'
-        'RUINS,get powerOwned(){return powerOwned},'
+        'RUINS,get powerOwned(){return powerOwned},get rig(){return boat.rig},'
         'unmoor(){moor=null;moorLock=null;}};'
         'tutSet("done");'                  # skip the tutorial: the test drives the controls directly
         'requestAnimationFrame(loop);\n})();')
@@ -85,6 +85,11 @@ def trip(pg):
     assert pg.evaluate('__d.dayNo') == 2, 'no new day at first light'
     pg.click('#btn-list', force=True); pg.wait_for_timeout(900)
     assert 'Day 2' in pg.inner_text('#shoplist-body'), 'the logbook does not show the day'
+    # the spare sail in the hold: a tap rigs it, the old one goes in its place
+    if pg.query_selector('.spare-sail'):
+        rig = pg.evaluate('__d.rig')
+        pg.click('.spare-sail'); pg.wait_for_timeout(200)
+        assert pg.evaluate('__d.rig') != rig, 'the spare sail was not rigged'
 
 def orders(pg):
         global ORDERS; ORDERS = True

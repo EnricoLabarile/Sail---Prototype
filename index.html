@@ -386,6 +386,10 @@
   #shoplist .slot.fish svg{width:30px; height:16px;}
   #shoplist .hold-goods{display:flex; flex-wrap:wrap; gap:4px; padding-top:6px; border-top:1.5px dashed var(--ink);}
   #shoplist .hold-goods svg{width:26px; height:26px; display:block;}
+  #shoplist .hold-spare{display:flex; align-items:center; gap:8px; padding-top:6px; margin-top:6px; border-top:1.5px dashed var(--ink); font-size:12px; font-style:italic;}
+  #shoplist .spare-sail{width:38px; height:38px; padding:0; background:none; color:var(--ink); border:1.5px solid var(--ink); border-radius:3px; display:flex; align-items:center; justify-content:center; cursor:pointer;}
+  #shoplist .spare-sail:active{transform:translate(1px,1px);}
+  #shoplist .spare-sail svg{width:30px; height:30px; display:block;}
   #wheel{
     transition:opacity .35s;
     position:fixed;
@@ -693,6 +697,14 @@
       balShort:   'Balance: <b>{n}</b> {icon} not enough: offer more fish',
       balFull:    'No room in the hold: {n} too many',
     },
+    // the two sails: the one she carries and the spare in the hold (tap the spare to rig it)
+    sails: {
+      square:  'Square sail',
+      lateen:  'Lateen sail',
+      spare:   'Spare sail',
+      hint:    '{sail}: tap to rig it',
+      rigged:  '{sail} rigged',
+    },
     logbook: {
       order:   'Tonight\'s order',
       day:     'Day {n}',
@@ -886,6 +898,7 @@
   const MAP_RES = 280;               // the sea chart in the logbook: its pixels a side (fewer = coarser)
   const SAIL_SIZE = 1.15;             // size of the boat's sail (1 = the old one: a yard 30 px wide)
   const SAIL_TONE = 0.72;            // the sail's cloth when drawing well (1 = paper white, 0 = ink); slack or reefed it's a little darker
+  const SPARE_SAIL = true;           // she carries a spare sail in the hold (the lateen at the start), and a tap on it in the logbook swaps the two
   const PINE_MODELS = 4;             // stone pine shapes, reused (each also mirrored) all over the map (world)
   // draw the scene on the processor (true) or on the graphics card (false): the frame is tiny, and Firefox
   // on Android is slow with the card (24 fps); add ?scene=gpu or ?scene=cpu to the address to compare
@@ -2027,7 +2040,8 @@
     sailPower: 0,
     sailAmount: 1,    // smoothed sail area (0..1): the sail is up by default
     sailSide: 1,      // which side the boom is on (+1 / -1), with hysteresis
-    boomSigned: 0,    // smoothed angle the square sail faces (boat frame)
+    boomSigned: 0,    // smoothed angle the square sail faces, or the lateen yard's angle off the centreline (boat frame)
+    rig: 'square',    // the sail she carries: 'square' or 'lateen' (the other one is the spare, in the hold)
     r: 16
   };
   const wake=[]; let wakeAcc=0;
@@ -2176,12 +2190,16 @@
   const popups = [];               // floating "+15" / "-8" texts
 
   // polar-ish speed curve: [angleDeg, factor]
-  const POLAR = [
-    [0,0.02],[20,0.06],[35,0.15],[50,0.30],[70,0.48],
-    [90,0.62],[110,0.74],[130,0.84],[150,0.92],[170,0.98],[180,1.0]
-  ];
+  const POLARS = {
+    square: [[0,0.02],[20,0.06],[35,0.15],[50,0.30],[70,0.48],
+             [90,0.62],[110,0.74],[130,0.84],[150,0.92],[170,0.98],[180,1.0]],
+    // the lateen sail points higher and reaches well, a little less dead downwind
+    lateen: [[0,0.02],[20,0.08],[35,0.22],[50,0.40],[70,0.58],
+             [90,0.70],[110,0.79],[130,0.86],[150,0.90],[170,0.91],[180,0.9]]
+  };
   function speedFactor(relDeg){
     relDeg = Math.abs(relDeg);
+    const POLAR = POLARS[boat.rig] || POLARS.square;
     for(let i=0;i<POLAR.length-1;i++){
       const [a0,f0]=POLAR[i], [a1,f1]=POLAR[i+1];
       if(relDeg>=a0 && relDeg<=a1){
@@ -3870,7 +3888,7 @@
   })();
   document.getElementById('restart-btn').addEventListener('click', ()=>{
     boat.x = SPAWN.x; boat.y = SPAWN.y; boat.angle = SPAWN.angle;
-    boat.speed = 0; boat.health = MAX_HEALTH; boat.kx = boat.ky = 0; boat.whirl = null;
+    boat.speed = 0; boat.health = MAX_HEALTH; boat.kx = boat.ky = 0; boat.whirl = null; boat.rig = 'square';
     for(const w of whirlpools) whirlAsleep(w);           // a calm first day again
     boat.oarK = 0; boat.oarsOut = false;
     for(const k in counts) counts[k] = 0;
@@ -4479,6 +4497,9 @@
     // layers in a glass: cocoa, cream and soaked biscuits, a spoon in it
     'Tiramisu': ICO('<path d="M15 5 L20 0.5" '+N+' stroke-width="1.8"/><path d="M5 5 H19 L17.5 20 Q12 21.5 6.5 20 Z" '+P+'/><path d="M5 5 H19 L18.75 7.5 H5.25 Z" '+I+'/><path d="M5.65 11 H18.35 L18.05 14 H5.95 Z" '+M+'/><path d="M6.35 17 H17.65 L17.5 19.6 Q12 21 6.5 19.6 Z" '+M+'/>'),
     // a pale bottle and a lemon with its leaf
+    // the sails, as the spare in the hold: a square sail on its yard, a lateen triangle on its slanted yard
+    'Square sail': ICO('<path d="M4 5 Q12 7.5 20 5 Q21 13 20 19 Q12 16.5 4 19 Q3 13 4 5 Z" '+L+'/><path d="M12 6.5 V17.5" '+N+' stroke-width="0.9"/><path d="M2.5 5 Q12 7.5 21.5 5" '+N+' stroke-width="2"/><path d="M12 3 V21.5" '+N+' stroke-width="1.6"/>'),
+    'Lateen sail': ICO('<path d="M4 18 L19 3 Q19.5 12 15.5 20 Q10 17.5 4 18 Z" '+L+'/><path d="M9.5 13 Q14 12.5 16.5 18" '+N+' stroke-width="0.9"/><path d="M2.5 19.5 L21 1.5" '+N+' stroke-width="2"/><path d="M8 9 V22" '+N+' stroke-width="1.6"/>'),
     'Limoncello': ICO('<path d="M3.5 21 V10 L5.5 7 V2 H8.5 V7 L10.5 10 V21 Z" '+L+'/><path d="M12.5 17 Q13.5 12.8 17.5 13 Q22 13 22.5 17 Q21.5 21 17.5 21 Q13.5 21 12.5 17 Z" '+P+'/><path d="M17.5 13 Q19 9 23 8.5 Q22 12.5 17.5 13 Z" '+I+'/><path d="M12.5 17 H11.6 M22.5 17 H23.3" '+N+'/>'),
   };
   })();
@@ -4787,10 +4808,33 @@
     const slot = k=> { const it = items[k]; return it ? '<span class="slot'+(it.fish?' fish':'')+'" title="'+it.name+'" role="img" aria-label="'+it.name+'">'+it.svg+'</span>' : '<span class="slot empty"></span>'; };
     return '<div class="hold-head"><h3>'+TEXT.logbook.cargo+'</h3><span class="hold-count">'+fmt(TEXT.logbook.holdCount, {n: items.length, max: HOLD_MAX})+'</span><span class="purse" aria-label="Purse: '+coins+' coins">'+COIN_SVG+coins+'</span></div>'
       + '<div class="hold-slots">'+Array.from({length: Math.max(HOLD_MAX, items.length)}, (_,k)=> slot(k)).join('')+'</div>'
-      + (gifts.length ? '<div class="hold-goods">'+gifts.map(g=> '<span title="'+g.name+'" role="img" aria-label="'+g.name+'">'+itemIcon(g.icon)+'</span>').join('')+'</div>' : '');
+      + (gifts.length ? '<div class="hold-goods">'+gifts.map(g=> '<span title="'+g.name+'" role="img" aria-label="'+g.name+'">'+itemIcon(g.icon)+'</span>').join('')+'</div>' : '')
+      + spareHTML();
   }
+  // the spare sail, apart from the slots: a tap on it rigs it, and the sail
+  // she carried goes into the hold in its place
+  const spareRig = ()=> boat.rig === 'lateen' ? 'square' : 'lateen';
+  const SAIL_ICON = {square: 'Square sail', lateen: 'Lateen sail'};
+  function spareHTML(){
+    if(!SPARE_SAIL) return '';
+    const name = TEXT.sails[spareRig()], hint = fmt(TEXT.sails.hint, {sail: name});
+    return '<div class="hold-spare"><span>'+TEXT.sails.spare+'</span><button type="button" class="spare-sail" data-swap="1" title="'+hint+'" aria-label="'+hint+'">'
+      + itemIcon(SAIL_ICON[spareRig()])+'</button></div>';
+  }
+  function swapSail(){
+    boat.rig = spareRig();
+    boat.furl = 1;                                       // the new sail is bent on furled, then spreads
+    toast(fmt(TEXT.sails.rigged, {sail: TEXT.sails[boat.rig]}));
+    Sfx.thunk(0.3); buzz([20,40,20]);
+    renderList();
+  }
+  elListBody.addEventListener('click', e=>{
+    const b = e.target.closest('[data-swap]');
+    if(!b || !playing) return;
+    e.stopPropagation(); Sfx.init(); swapSail();
+  });
   let listKey = '';
-  const holdKey = ()=> [dayNo, coins, ...FISH_KEYS.map(k=>counts[k]), ...ALL_DISHES.map(d=> dishHold[d.icon]||0), ...VILLAGES.map(v=> v.giftGot?'g':''),
+  const holdKey = ()=> [dayNo, coins, boat.rig, ...FISH_KEYS.map(k=>counts[k]), ...ALL_DISHES.map(d=> dishHold[d.icon]||0), ...VILLAGES.map(v=> v.giftGot?'g':''),
                         order ? order.items.map(it=> it.got).join(',') + order.closed : ''].join('|');
   // while the list is open, keep the hold up to date (a catch, a repair)
   function refreshList(){ if(elList.classList.contains('open') && holdKey() !== listKey) renderList(); }
@@ -5354,7 +5398,9 @@
     const wantSide = relR>=0 ? 1 : -1;
     if(wantSide!==boat.sailSide && Math.abs(relR)>0.2) boat.sailSide = wantSide;
     const faceRaw = norm(Math.PI-relR);         // wind-to direction, boat frame
-    const faceTarget = boat.sailSide*Math.min(Math.abs(faceRaw), MAX_BRACE);
+    // (a lateen yard instead trails aft, eased out to leeward about half the wind's angle off the bow)
+    const faceTarget = boat.rig === 'lateen' ? boat.sailSide*Math.max(0.12, Math.min(1.35, Math.abs(relR)*0.5))
+                                              : boat.sailSide*Math.min(Math.abs(faceRaw), MAX_BRACE);
     boat.boomSigned += (faceTarget - boat.boomSigned)*Math.min(1,dt*3);
     // surfing a roller from astern: a temporary push above normal top speed
     const surf = boat.surfT>0 ? SURF_BOOST*Math.min(1, boat.surfT/0.8) : 0;
@@ -7271,6 +7317,14 @@
         }
       }
     }
+    // at anchor the cloth is gathered up to the yard (only a look: the sail
+    // itself stays set); it spreads again as soon as the anchor comes up
+    {
+      const now = performance.now(), fdt = Math.min(0.05, (now - (B.furlLast || now))/1000); B.furlLast = now;
+      const want = g ? (g.moored ? 1 : 0) : anchored && weighT <= 0 ? 1 : 0;
+      B.furl = (B.furl === undefined ? want : B.furl) + (want - (B.furl||0))*Math.min(1, fdt*(want ? 2.2 : 3.5));
+    }
+    if(B.rig === 'lateen'){ drawLateenSail(B); ctx.restore(); ctx.restore(); return; }
     // --- square sail on a yard, pivoting at the mast (centre) ---
     const face = B.boomSigned;
     const nx = Math.cos(face), ny = Math.sin(face);
@@ -7279,13 +7333,6 @@
     const H = 15*SAIL_SIZE;
     const ax = mx-ux*H, ay = my-uy*H;
     const bx = mx+ux*H, by = my+uy*H;
-    // at anchor the cloth is gathered up to the yard (only a look: the sail
-    // itself stays set); it spreads again as soon as the anchor comes up
-    {
-      const now = performance.now(), fdt = Math.min(0.05, (now - (B.furlLast || now))/1000); B.furlLast = now;
-      const want = g ? (g.moored ? 1 : 0) : anchored && weighT <= 0 ? 1 : 0;
-      B.furl = (B.furl === undefined ? want : B.furl) + (want - (B.furl||0))*Math.min(1, fdt*(want ? 2.2 : 3.5));
-    }
     const furl = B.furl, open = 1 - furl;
     const p = B.sailPower*open;
     const reef = (0.3 + 0.7*B.sailAmount)*(1 - 0.9*furl);
@@ -7314,6 +7361,53 @@
     ctx.beginPath(); ctx.arc(mx,my,2.6,0,Math.PI*2); ctx.fill();
     ctx.restore();
     ctx.restore();
+  }
+
+  // the lateen sail (boat frame, bow at +x): a long slanted yard slung on a
+  // short mast near the bow; the triangle of cloth trails aft from it and is
+  // eased out to leeward (B.boomSigned: the yard's angle off the centreline,
+  // its sign the lee side; it swings across the middle when she tacks or gybes)
+  function drawLateenSail(B){
+    const sa = B.boomSigned, lee = sa >= 0 ? 1 : -1, sabs = Math.abs(sa);
+    const mx = 6, my = 0;                                   // the mast
+    const LA = 22*SAIL_SIZE, LF = 9*SAIL_SIZE;              // yard aft and forward of the mast
+    const ex = -Math.cos(sabs), ey = lee*Math.sin(sabs);    // along the yard, toward its peak
+    const tx = mx - ex*LF, ty = my - ey*LF;                 // tack: the yard's low forward end
+    const px = mx + ex*LA, py = my + ey*LA;                 // peak: its high aft end
+    const furl = B.furl, open = 1 - furl;
+    const p = B.sailPower*open;
+    const reef = (0.3 + 0.7*B.sailAmount)*(1 - 0.9*furl);
+    // clew: the sheeted corner, a little further out than the yard; furled, it's drawn up to the yard
+    const ca = sabs + 0.5, CL = 0.62*LA*(1 - 0.75*furl);
+    const cx = mx - Math.cos(ca)*CL, cy = my + lee*Math.sin(ca)*CL;
+    const belly = (1.5 + p*7)*reef*SAIL_SIZE;
+    const luff = p < 0.25 ? (1 - p/0.25) : 0;
+    const ripple = Math.sin(t*22)*2.2*luff*open;           // (a furled sail doesn't flap)
+    // the cloth bellies out to leeward, off the leech and the foot
+    const bulge = (x0,y0,x1,y1,amt)=>{
+      let nx = -(y1-y0), ny = x1-x0; const L = Math.hypot(nx,ny) || 1; nx/=L; ny/=L;
+      if(ny*lee < 0){ nx=-nx; ny=-ny; }
+      return [(x0+x1)/2 + nx*amt, (y0+y1)/2 + ny*amt];
+    };
+    const [l1x,l1y] = bulge(px,py,cx,cy, belly*0.8 + ripple);
+    const [f1x,f1y] = bulge(cx,cy,tx,ty, belly*1.3 - ripple);
+    const sailPath=()=>{ ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(px,py);
+      ctx.quadraticCurveTo(l1x,l1y,cx,cy); ctx.quadraticCurveTo(f1x,f1y,tx,ty); };
+    const tone = SAIL_TONE - 0.14*(1-p) - 0.1*(1-B.sailAmount) - 0.08*furl;
+    ctx.fillStyle = V(tone);
+    sailPath(); ctx.closePath(); ctx.fill();
+    // one seam from the mast down to the clew, then the ink edge of the cloth
+    ctx.strokeStyle=INKC; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(mx,my); ctx.quadraticCurveTo((mx+cx)/2 + (l1x-(px+cx)/2)*0.5, (my+cy)/2 + (l1y-(py+cy)/2)*0.5, cx, cy); ctx.stroke();
+    ctx.lineWidth=1.4; sailPath(); ctx.stroke();
+    // the sheet, from the clew to the stern quarter
+    ctx.lineWidth=0.8; ctx.globalAlpha=0.8;
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(-13, lee*6); ctx.stroke(); ctx.globalAlpha=1;
+    // yard and mast
+    ctx.lineWidth=2.2; ctx.lineCap='round';
+    ctx.beginPath(); skSeg(tx,ty,px,py,1.5); ctx.stroke();
+    ctx.fillStyle=INKC;
+    ctx.beginPath(); ctx.arc(mx,my,2.4,0,Math.PI*2); ctx.fill();
   }
 
   function draw(){
