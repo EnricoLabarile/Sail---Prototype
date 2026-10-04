@@ -369,16 +369,17 @@
   #shoplist .note{font-size:12px; font-style:italic; margin-top:8px;}
   #shoplist .prog{font-size:12px; font-style:italic; font-variant-numeric:tabular-nums; grid-column:2;}
   /* the hold, on the right page: small icons that stay inside the page */
-  #hold-page .hold-head{display:flex; justify-content:space-between; align-items:baseline; gap:6px; margin-bottom:6px;}
-  #hold-page .hold-count{font-size:12px; font-style:italic; font-variant-numeric:tabular-nums; margin-right:auto;}
-  #hold-page h3{margin:0; font-size:16px; font-style:italic;}
-  #hold-page .purse{display:flex; align-items:center; gap:3px; font-size:13px; font-variant-numeric:tabular-nums;}
-  #hold-page .purse .coin{width:12px; height:12px;}
-  #hold-page .hold-fish{display:flex; flex-wrap:wrap; gap:2px 3px; margin-bottom:6px;}
-  #hold-page .hold-fish svg{width:24px; height:13px; display:block;}
-  #hold-page .hold-empty{font-size:12px; font-style:italic; margin:2px 0 6px;}
-  #hold-page .hold-goods{display:flex; flex-wrap:wrap; gap:4px; padding-top:6px; border-top:1.5px dashed var(--ink);}
-  #hold-page .hold-goods svg{width:26px; height:26px; display:block;}
+  #hold-page:empty{min-height:126px; opacity:.16; background:repeating-linear-gradient(to bottom, transparent 0 17px, var(--ink) 17px 18px);}   /* a blank ruled page */
+  #shoplist .hold-head{display:flex; justify-content:space-between; align-items:baseline; gap:6px; margin-bottom:6px;}
+  #shoplist .hold-count{font-size:12px; font-style:italic; font-variant-numeric:tabular-nums; margin-right:auto;}
+  #shoplist h3{margin:0; font-size:16px; font-style:italic;}
+  #shoplist .purse{display:flex; align-items:center; gap:3px; font-size:13px; font-variant-numeric:tabular-nums;}
+  #shoplist .purse .coin{width:12px; height:12px;}
+  #shoplist .hold-fish{display:flex; flex-wrap:wrap; gap:2px 3px; margin-bottom:6px;}
+  #shoplist .hold-fish svg{width:24px; height:13px; display:block;}
+  #shoplist .hold-empty{font-size:12px; font-style:italic; margin:2px 0 6px;}
+  #shoplist .hold-goods{display:flex; flex-wrap:wrap; gap:4px; padding-top:6px; border-top:1.5px dashed var(--ink);}
+  #shoplist .hold-goods svg{width:26px; height:26px; display:block;}
   #wheel{
     transition:opacity .35s;
     position:fixed;
@@ -813,6 +814,7 @@
   const WATCH_MARK = DINNER_HOUR;    // the hour marked on the watch's rim
 
   // -- Orders and the guests --
+  const ORDERS_ON = false;           // the daily orders (in the logbook, delivered at home by dinner); off for now: the logbook shows the day and the cargo
   const FIRST_ORDER_FISH = 3;        // day 1: this many fish, any kind
   const ORDER_FISH_MIN = 2, ORDER_FISH_MAX = 4;   // from day 2: fish of one kind (random in between)
   const ORDER_TWO_DISHES_FROM = 4;   // from day 2 the order asks for one village dish, from this day on for two
@@ -1988,6 +1990,7 @@
     r: 16
   };
   const wake=[]; let wakeAcc=0;
+  const bowSpray=[]; let bowAcc=0;          // bow foam: bits of white water peeling off the stem
   for(let k=0;k<BANK_COUNT;k++) spawnBank(false, false);
 
   // ---------- Trade routes and the boats that sail them ----------
@@ -3783,7 +3786,7 @@
     rollers.length = 0; rollerT = 6; boat.surfT = 0;
     windAngle = rand(0, Math.PI*2); shiftDur = 0; windTimer = rand(28,36); guideWind = false;
     explored.fill(0);
-    wake.length = 0; popups.length = 0;
+    wake.length = 0; bowSpray.length = 0; popups.length = 0;
     voyageTime = 0; hurtFlash = 0; shake = 0;
     gameover.classList.add('hidden');
     playing = true; watchOn = false; watchT = 0;           // a new voyage: compass side up
@@ -4617,6 +4620,12 @@
   // ---------- Shopping list ----------
   const elList = document.getElementById('shoplist'), elListBody = document.getElementById('shoplist-body'), elListBtn = document.getElementById('btn-list');
   function renderList(){
+    if(!ORDERS_ON){                                // no orders: the day and the cargo on the left page, a blank page on the right
+      elListBody.innerHTML = '<div class="list-head"><h2>'+fmt(TEXT.logbook.day, {n: dayNo})+'</h2></div>' + holdHTML();
+      elHoldPage.innerHTML = '';
+      listKey = holdKey();
+      return;
+    }
     // today's order: each line crossed off once it's been delivered at home
     const o = order;
     const line = (it, i)=>{
@@ -5141,12 +5150,14 @@
     {
       const dinnerT = (DINNER_HOUR - DAWN_HOUR)/24, before = dayT;
       dayT += dt/DAY_LEN;
-      if(before < dinnerT && dayT >= dinnerT) serveDinner();               // dinner time: the order is judged
+      if(ORDERS_ON && before < dinnerT && dayT >= dinnerT) serveDinner();  // dinner time: the order is judged
       if(dayT >= 1){                                                       // first light: a new day, a new order
         dayT -= 1; dayNo++;
-        if(order && !order.closed) serveDinner();
-        newOrder(dayNo); freshLines.clear();
-        toast(TEXT.toasts.newOrder); elListBtn.classList.add('news');
+        if(ORDERS_ON){
+          if(order && !order.closed) serveDinner();
+          newOrder(dayNo); freshLines.clear();
+          toast(TEXT.toasts.newOrder); elListBtn.classList.add('news');
+        }
         if(elList.classList.contains('open')) renderList();
       }
     }
@@ -5241,7 +5252,7 @@
         if(!moor.started){ moor.started = true; moor.skipLock = true; if(village) openMarket(village); if(ruin) startRuin(ruin); }
         if(village) renderMarket();
         // home: whatever of today's order is aboard goes ashore for dinner
-        if(!village && !ruin && moor.pier.isl.home) deliverOrder();
+        if(ORDERS_ON && !village && !ruin && moor.pier.isl.home) deliverOrder();
         // repairs: free for now, they just happen at any pier, a patch every
         // half second (the hold is never touched; making them a cost the
         // player has to think about is for later)
@@ -5355,6 +5366,32 @@
           vx: -sa*side*12, vy: ca*side*12,
           life: 1.8, max: 1.8
         });
+      }
+    }
+    // bow foam: bits of white water peel off both sides of the stem, more and
+    // bigger the faster she goes; the water stays put, so they fall astern
+    // as she sails on, spreading out, growing, then breaking up and fading
+    {
+      const k = Math.max(0, Math.min(1, boat.speed/(MAX_SPEED*WIND_BOOST)));
+      if(!moor && k > 0.06){
+        bowAcc += dt*(14 + 46*k);
+        const ca=Math.cos(boat.angle), sa=Math.sin(boat.angle);
+        while(bowAcc > 1){
+          bowAcc -= 1;
+          const side = Math.random() < 0.5 ? -1 : 1, along = 21 - Math.random()*Math.random()*12;   // most near the stem
+          const half = 10.5*Math.max(0, 1 - Math.pow((along-5)/16, 2)) + 0.5;
+          const out = rand(4, 14)*(0.5 + k);                                   // flung outward
+          bowSpray.push({x: boat.x + ca*along - sa*side*half, y: boat.y + sa*along + ca*side*half,
+                         vx: -sa*side*out + ca*rand(-2, 4)*k, vy: ca*side*out + sa*rand(-2, 4)*k,
+                         r: rand(0.7, 1.9)*(0.6 + 0.9*k), life: 0, max: rand(0.3, 0.75)*(0.6 + 0.7*k), seed: Math.random()*6.3});
+        }
+      }
+      for(let i=bowSpray.length-1;i>=0;i--){
+        const f = bowSpray[i];
+        f.life += dt;
+        if(f.life >= f.max){ bowSpray.splice(i,1); continue; }
+        const drag = Math.exp(-3*dt); f.vx *= drag; f.vy *= drag;
+        f.x += f.vx*dt; f.y += f.vy*dt;
       }
     }
     for(let k=wake.length-1;k>=0;k--){
@@ -6912,22 +6949,20 @@
     ctx.save(); ctx.rotate(-B.angle); ctx.translate(2.5 + heave*0.5, 3 + heave*0.9); ctx.rotate(B.angle);
     ctx.fillStyle=V(0.55); hullPath(1); ctx.fill();
     ctx.restore();
-    // bow foam: white water curling off the stem and along both sides of the
-    // bow, longer, wider and busier the faster she goes (drawn under the hull)
+    // bow foam, the cushion right at the stem: a few ragged white lumps that
+    // boil and flicker (the spray peeling off it is drawn with the wake)
     {
       const k = Math.max(0, Math.min(1, B.speed/(MAX_SPEED*WIND_BOOST)));
       if(k > 0.06 && !(g ? g.moored : moor)){
-        const half = x=> 10.5*Math.max(0, 1 - Math.pow((x-5)/16, 2));          // the hull's half-width near the bow
-        const n = 3 + Math.round(k*7), len = 6 + 16*k;
-        const P = new Path2D(), add = (x, y, r)=>{ P.moveTo(x + r, y); P.arc(x, y, r, 0, Math.PI*2); };
-        add(22.5 + k*1.5, 0, 1.2 + k*1.8);                                       // the cushion at the stem
-        for(const sd of [-1, 1]) for(let i=0; i<n; i++){
-          const f = (i + 0.5)/n, x = 21 - f*len;
-          const flick = Math.sin(t*9 + i*1.7 + sd)*0.6*k;                        // the foam boils
-          const y = sd*(half(x) + 0.8 + f*k*4 + flick);
-          add(x, y, Math.max(0.8, (1 - f*0.6)*(1.2 + k*2.2) + flick*0.4));
+        const P = new Path2D(), n = 3 + Math.round(k*3);
+        for(let i=0;i<n;i++){
+          const a = (i/(n-1) - 0.5)*2.2 + Math.sin(t*13 + i*2.1)*0.25;       // round the stem, jittering
+          const d = 1.5 + k*2.5 + Math.sin(t*17 + i*3.7)*0.8*k;
+          const r = (0.7 + 1.3*k)*(0.7 + 0.5*Math.abs(Math.sin(t*11 + i*1.9)));
+          const x = 20.5 + Math.cos(a)*d, y = Math.sin(a)*(d + 2.5*k);
+          P.moveTo(x + r, y); P.arc(x, y, r, 0, Math.PI*2);
         }
-        ctx.globalAlpha = 0.4 + 0.6*k; ctx.strokeStyle = INKC; ctx.lineWidth = 1.6; ctx.stroke(P);   // an ink rim round the white
+        ctx.globalAlpha = 0.5 + 0.5*k; ctx.strokeStyle = INKC; ctx.lineWidth = 1.2; ctx.stroke(P);
         ctx.globalAlpha = 1; ctx.fillStyle = PAPERC; ctx.fill(P);
       }
     }
@@ -7108,6 +7143,23 @@
     drawNet();
     layer(()=>{
       ctx.fillStyle=INKC;
+      // bow spray: white bits with a broken ink rim; young ones whole, old
+      // ones breaking into a few specks as they fade
+      if(bowSpray.length){
+        const solid = new Path2D(), rims = new Path2D(), specks = new Path2D();
+        for(const f of bowSpray){
+          if(!inView(f.x,f.y,6)) continue;
+          const q = f.life/f.max, r = f.r*(1 + 1.2*q);
+          if(q < 0.55){ solid.moveTo(f.x + r, f.y); solid.arc(f.x, f.y, r, 0, Math.PI*2);
+            rims.moveTo(f.x + Math.cos(f.seed)*r, f.y + Math.sin(f.seed)*r); rims.arc(f.x, f.y, r, f.seed, f.seed + 3.6); }
+          else for(let m=0;m<3;m++){ const a = f.seed + m*2.1, d = r*0.9, rr = r*0.35*(1 - q) + 0.3;
+            specks.moveTo(f.x + Math.cos(a)*d + rr, f.y + Math.sin(a)*d); specks.arc(f.x + Math.cos(a)*d, f.y + Math.sin(a)*d, rr, 0, Math.PI*2); }
+        }
+        ctx.globalAlpha = 0.85; ctx.strokeStyle = INKC; ctx.lineWidth = 1; ctx.stroke(rims); ctx.globalAlpha = 1;
+        ctx.fillStyle = PAPERC; ctx.fill(solid);
+        ctx.fillStyle = INKC; ctx.globalAlpha = 0.55; ctx.fill(specks); ctx.globalAlpha = 1;
+        ctx.fillStyle = INKC;
+      }
       for(const f of wake){
         if(!inView(f.x,f.y,4)) continue;
         const k=f.life/f.max;

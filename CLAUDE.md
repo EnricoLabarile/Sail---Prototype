@@ -84,6 +84,8 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   hold (`dishHold`, by icon id) until delivered. The gift is never for sale: the merchant adds it, once per voyage, the
   first time both of a village's dishes have been bought (`boughtEver`). The gifts are a surprise: never mention them
   anywhere before one is earned. (The course names in `TEXT.villages` are no longer shown.)
+  **Orders: off for now** (`ORDERS_ON` = false: no order in the logbook, no deliveries, no dinner verdict or order
+  toasts; the logbook's left page shows the day and the cargo, the right page is a blank ruled page). When on:
   **Orders** (the `// ---------- Orders ----------` section; no endings any more): every day an `order` for the
   restaurant at home. Day 1: `FIRST_ORDER_FISH` (3) fish of any kind. From day 2: `ORDER_FISH_MIN`–`ORDER_FISH_MAX`
   fish of one kind plus one village dish (two from day `ORDER_TWO_DISHES_FROM` = 4), named in the logbook (the player
@@ -167,8 +169,10 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   drawn like the compass, in greys then dithered: a light brass bezel (lit top left) with four rivets round a shaded
   face with a glint; sailing, a light face with an ink anchor; at anchor, a dark face, one light rim and a paper anchor (same size both ways). Over a fish bank (not fishing, not
   at anchor) the anchor on the hub turns into a little fish (ink silhouette, paper eye) to point at its use there.
-  **Bow foam** (in `drawBoat`, under the hull): white water with an ink rim at the stem and along both sides of the bow,
-  longer, wider and busier with speed (none below ~6% of top speed, none when moored).
+  **Bow foam**: a small cushion of ragged white lumps at the stem that boil and flicker (in `drawBoat`, under the hull),
+  and spray (`bowSpray`, updated with the wake, drawn in its layer): white bits of random size peel off both sides of
+  the stem, flung outward, more and bigger with speed; the water stays put, so they fall astern as she sails on, grow,
+  then break into a few specks and fade (none below ~6% of top speed, none when moored).
   The boat's square sail is drawn `SAIL_SIZE` (1.3) times the old size, its cloth a dotted grey `SAIL_TONE` (0.72; 1 =
   paper), darker when slack or reefed. At anchor (and moored) the cloth is drawn gathered up to the yard (`boat.furl`,
   eased; a look only: the sail stays set as far as the physics goes), and it spreads again as the anchor comes up.
@@ -242,6 +246,7 @@ Cloud shadows (clouds) · Ambient life: gulls
 pip install playwright && playwright install chromium
 python tests/smoke.py
 ```
-The smoke test plays two days of orders: day 1 brings 3 fish home and checks dinner raises the mood; day 2 buys the
-ordered dish at its village, brings everything home and checks it's delivered; and no JS errors.
+The smoke test checks there are no JS errors. With the orders off (now): a trip to a village to buy a dish with foreign
+fish, back home, a new day, and the logbook shows it. With `ORDERS_ON`: two days of orders (day 1: 3 fish home before
+dinner; day 2: the ordered dish bought at its village, everything brought home and delivered).
 For quick manual testing on the phone: `python -m http.server 8000` and open `http://<pc-ip>:8000` on the same Wi-Fi.
