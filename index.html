@@ -6755,6 +6755,25 @@
     ctx.save(); ctx.rotate(-boat.angle); ctx.translate(2.5 + heave*0.5, 3 + heave*0.9); ctx.rotate(boat.angle);
     ctx.fillStyle=V(0.55); hullPath(1); ctx.fill();
     ctx.restore();
+    // bow foam: white water curling off the stem and along both sides of the
+    // bow, longer, wider and busier the faster she goes (drawn under the hull)
+    {
+      const k = Math.max(0, Math.min(1, boat.speed/(MAX_SPEED*WIND_BOOST)));
+      if(k > 0.06 && !moor){
+        const half = x=> 10.5*Math.max(0, 1 - Math.pow((x-5)/16, 2));          // the hull's half-width near the bow
+        const n = 3 + Math.round(k*7), len = 6 + 16*k;
+        const P = new Path2D(), add = (x, y, r)=>{ P.moveTo(x + r, y); P.arc(x, y, r, 0, Math.PI*2); };
+        add(22.5 + k*1.5, 0, 1.2 + k*1.8);                                       // the cushion at the stem
+        for(const sd of [-1, 1]) for(let i=0; i<n; i++){
+          const f = (i + 0.5)/n, x = 21 - f*len;
+          const flick = Math.sin(t*9 + i*1.7 + sd)*0.6*k;                        // the foam boils
+          const y = sd*(half(x) + 0.8 + f*k*4 + flick);
+          add(x, y, Math.max(0.8, (1 - f*0.6)*(1.2 + k*2.2) + flick*0.4));
+        }
+        ctx.globalAlpha = 0.4 + 0.6*k; ctx.strokeStyle = INKC; ctx.lineWidth = 1.6; ctx.stroke(P);   // an ink rim round the white
+        ctx.globalAlpha = 1; ctx.fillStyle = PAPERC; ctx.fill(P);
+      }
+    }
     // rudder: a blade hung off the transom, turned by the wheel
     const rud = wheelAngle/WHEEL_MAX;
     {
