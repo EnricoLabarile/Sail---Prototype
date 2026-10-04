@@ -57,7 +57,9 @@ def main():
         o = pg.evaluate('__d.order')
         assert o['day'] == 2 and any(it['kind'] == 'dish' for it in o['items']), f'odd second order: {o}'
         leave(pg)
-        for it in o['items']:
+        # the dishes first (paid with foreign fish), then the ordered fish, so the
+        # fish tapped across at the stall are always the foreign ones
+        for it in sorted(o['items'], key=lambda it: it['kind'] == 'fish'):
             if it['kind'] == 'fish':
                 pg.evaluate(f"()=>{{__d.counts['{it['key']}'] += {it['n']}}}")
             else:
