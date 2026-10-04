@@ -750,7 +750,7 @@
   const REPAIR_EVERY = 0.5;          // seconds between patches at a pier (repairs are free)
   const FISH_HEAL = 15;              // hull points per patch
   const WHIRL_COUNT = Math.round(200*WK2);         // whirlpools in the world (world)
-  const WHIRL_FROM_DAY = 2;          // the first day is calm: whirlpools only start opening from this day
+  const WHIRL_FROM_DAY = 1;          // whirlpools start opening from this day (1 = from the start; was 2, a calm first day)
   const WHIRL_DAMAGE = 10;           // hull damage when caught in a whirlpool's core
   const WHIRL_PULL = 22;             // px/s pull at the edge of the core…
   const WHIRL_CURVE = 4;             // …rising exponentially from ~0 at the rim
@@ -782,7 +782,7 @@
   const DISH_PRICE = 6;              // coins per specialty dish
 
   // -- World --
-  const TRADERS = 12;                // trading boats: round the lanes, the ones from home first (12 = two on each home lane) (world)
+  const TRADERS = 8;                 // trading boats: one on each lane, home lanes first (8 = one per lane; 12 put two on each home lane) (world)
   const ISLAND_SCALE = 2.5;          // size of the wild islands (1 = the old small ones) (world)
   const ISLAND_COUNT = Math.round(210*WK2*1.2/(ISLAND_SCALE*ISLAND_SCALE));   // wild islands: fewer as they grow, so about the same share of the sea is land (world)
   // share of the wild islands of each shape (the rest are round-ish blobs) (world):
@@ -804,7 +804,7 @@
   const DAY_LEN = 720;               // seconds for a whole day, dawn to dawn (was 360)
   const TUTORIAL_ON = false;         // the first-voyage tutorial (controls shown one at a time with tips); off for now
   const RUINS_ON = false;            // the ruins on the diagonals and their powers; off for now (world)
-  const POWER_PER_DAY = 1;           // uses a day of the fair wind (the button bottom right); back at first light
+  const POWER_USES = 1;              // uses of the fair wind (the button bottom right); all back every time she ties up at a pier
   const POWER_WIND_T = 10;           // seconds the fair wind blows from astern, whichever way she steers
   const DAWN_HOUR = 5;               // the hour on the watch at first light (5 puts the golden hour at about 19)
   const DINNER_HOUR = 19;            // the day's order must be home by this hour; then dinner is served (marked on the watch)
@@ -816,6 +816,8 @@
   const ORDER_TWO_DISHES_FROM = 4;   // from day 2 the order asks for one village dish, from this day on for two
   const SAT_START = 0.5;             // the guests' mood at the start (0..1; the bar top right)
   const SAT_GAIN = 0.15;             // a complete order raises it by this much
+  const SATISFACTION_ON = false;     // the guests' mood (the bar top right, changed by each dinner); off for now: no bar, the mood stays put
+  const GUESTS_ON = false;           // the guest pier south of home and the clients' boats tied up there; off for now (world)
   const GUEST_BOATS_MAX = 4;         // clients' boats tied up at the guest pier when the mood is full (fewer as it falls)
   const SAT_LOSS = 0.25;             // an order with nothing delivered lowers it by this much (in proportion to what's missing)
   const SIGHT = 220;                 // px of fog uncovered round the boat
@@ -1325,11 +1327,13 @@
   // the guest pier, on the far (south) side: the clients' boats tie up here
   // (the player's boat doesn't moor at it, but it's solid like any pier)
   const GUEST_DIR = Math.PI/2;
-  const GUEST_PIER = makePier(home, GUEST_DIR, rAt(home, GUEST_DIR) - 26);
-  GUEST_PIER.guest = true;
-  clearDecor(home, (x,y,m)=> segDist(x,y, GUEST_PIER.x0,GUEST_PIER.y0, GUEST_PIER.x1,GUEST_PIER.y1) < PIER_W/2 + m + 4);
+  const GUEST_PIER = GUESTS_ON ? makePier(home, GUEST_DIR, rAt(home, GUEST_DIR) - 26) : null;
+  if(GUEST_PIER){
+    GUEST_PIER.guest = true;
+    clearDecor(home, (x,y,m)=> segDist(x,y, GUEST_PIER.x0,GUEST_PIER.y0, GUEST_PIER.x1,GUEST_PIER.y1) < PIER_W/2 + m + 4);
+  }
   addIsland(home);
-  const piers = [PIER, GUEST_PIER];
+  const piers = GUEST_PIER ? [PIER, GUEST_PIER] : [PIER];
   // moored alongside the seaward end of the home quay, bow pointing out to sea
   const SPAWN = (function(){
     const a = PIER.total - 16, off = BERTH_OFF_START;
@@ -1443,10 +1447,10 @@
     const total = order.items.reduce((a,it)=> a + it.n, 0), got = order.items.reduce((a,it)=> a + Math.min(it.n, it.got), 0);
     const ok = got >= total;
     order.result = ok ? 'ok' : 'short';
-    satisfaction = Math.max(0, Math.min(1, satisfaction + (ok ? SAT_GAIN : -SAT_LOSS*(1 - got/total))));
+    if(SATISFACTION_ON) satisfaction = Math.max(0, Math.min(1, satisfaction + (ok ? SAT_GAIN : -SAT_LOSS*(1 - got/total))));
     toast(ok ? TEXT.toasts.dinnerOk : TEXT.toasts.dinnerShort);
     if(ok){ Sfx.bell(); buzz([14,22,14,22,40]); } else { Sfx.thunk(0.3); buzz([40,60,40]); }
-    satPulse = 1.2;
+    if(SATISFACTION_ON) satPulse = 1.2;
     if(elList.classList.contains('open')) renderList();
   }
   function resetOrders(){
@@ -1484,6 +1488,7 @@
     return g;
   }
   function updateGuests(dt){
+    if(!GUEST_PIER) return;
     const want = Math.round(satisfaction*GUEST_BOATS_MAX), staying = guests.filter(g=> g.dir >= 0);
     if(staying.length < want){                                   // one more comes in
       const used = new Set(guests.map(g=> g.slot));
@@ -1513,6 +1518,7 @@
   }
   function resetGuests(){
     guests.length = 0;
+    if(!GUEST_PIER) return;
     const n = Math.round(satisfaction*GUEST_BOATS_MAX);
     for(let s2=0; s2<n; s2++) newGuest(s2, true);
   }
@@ -3776,7 +3782,7 @@
     repairT = 0; moor = mooredAtSpawn(); moorLock = null;
     resetOrders(); elListBtn.classList.remove('news');
     resetGuests(); homeStage = homeStageFor(satisfaction); rebakeHome();
-    powerLeft = POWER_PER_DAY; powerUI();
+    powerLeft = POWER_USES; powerUI();
     coins = 0;
     closeDialog();
     Sfx.init();
@@ -4746,12 +4752,12 @@
   }
   elListBtn.addEventListener('click', ()=>{ toggleList(); elListBtn.blur(); });
 
-  // ---------- Fair wind (a power, POWER_PER_DAY a day) ----------
+  // ---------- Fair wind (a power, POWER_USES of it, refilled at every pier) ----------
   // The button bottom right: for POWER_WIND_T seconds the wind swings round
   // to blow from astern whichever way she steers (the same spell as the ruins'
   // friendly wind, boonWindT). Its uses come back at first light.
   const elPower = document.getElementById('btn-power');
-  let powerLeft = POWER_PER_DAY;
+  let powerLeft = POWER_USES;
   function powerUI(){ elPower.classList.toggle('spent', powerLeft <= 0); }
   elPower.addEventListener('click', ()=>{
     elPower.blur(); Sfx.init();
@@ -5131,7 +5137,6 @@
         dayT -= 1; dayNo++;
         if(order && !order.closed) serveDinner();
         newOrder(dayNo); freshLines.clear();
-        powerLeft = POWER_PER_DAY; powerUI();                               // the fair wind is back
         toast(TEXT.toasts.newOrder); elListBtn.classList.add('news');
         if(elList.classList.contains('open')) renderList();
       }
@@ -5217,7 +5222,9 @@
         boat.x = moor.fx + (moor.bx-moor.fx)*e;
         boat.y = moor.fy + (moor.by-moor.fy)*e;
         boat.angle = moor.fa + norm(moor.ba-moor.fa)*e;
-        if(k>=1){ anchored = true; weighT = 0; anchorUI(); moor.phase = 'moored'; repairT = 0.4; Sfx.thunk(0.35); buzz([35,90,15]); }   // bump, then tied up
+        if(k>=1){ anchored = true; weighT = 0; anchorUI(); moor.phase = 'moored'; repairT = 0.4; Sfx.thunk(0.35); buzz([35,90,15]);   // bump, then tied up
+          if(powerLeft < POWER_USES){ powerLeft = POWER_USES; powerUI(); }                                // the fair wind is ready again
+        }
       } else {
         boat.x = moor.bx; boat.y = moor.by; boat.angle = moor.ba;
         const village = moor.pier.isl.village, ruin = moor.pier.isl.ruin;
@@ -5444,7 +5451,7 @@
     elStatus.classList.toggle('hurt', hurtFlash>0);
     // the guests' mood bar: written only when it changes
     {
-      const pct = Math.round(satisfaction*100), show = playing;
+      const pct = Math.round(satisfaction*100), show = playing && SATISFACTION_ON;
       if(pct !== moodShown){ moodShown = pct; elMoodFill.style.width = pct+'%'; elMood.setAttribute('aria-valuenow', pct); }
       if(show !== elMood.classList.contains('show')) elMood.classList.toggle('show', show);
       if((boonWindT > 0) !== elPower.classList.contains('blowing')) elPower.classList.toggle('blowing', boonWindT > 0);
@@ -5519,7 +5526,8 @@
   function nightLights(){
     const fl = 1 + 0.05*Math.sin(t*9) + 0.03*Math.sin(t*23);             // lantern flicker
     const L = [[boat.x, boat.y, 82*fl, 140*fl, 1]];                    // the boat's lantern: wide, crisp edge
-    L.push([START.x-14, START.y+18, 8, 34, 1], [PIER.x1, PIER.y1, 4, 22, 1], [GUEST_PIER.x1, GUEST_PIER.y1, 3, 18, 0.8]);   // home: the house, the pier lamps
+    L.push([START.x-14, START.y+18, 8, 34, 1], [PIER.x1, PIER.y1, 4, 22, 1]);   // home: the house, the pier lamp
+    if(GUEST_PIER) L.push([GUEST_PIER.x1, GUEST_PIER.y1, 3, 18, 0.8]);
     if(homeStage >= 3) L.push([START.x+10, START.y-8, 10, 46, 1]);          // the court lit for dinner
     if(homeStage >= 4) L.push([START.x+48, START.y+8, 6, 30, 0.9]);         // and the trulli
     for(const v of VILLAGES){
@@ -5940,11 +5948,11 @@
     const gx=isl.x-2*B, gy=isl.y-24*B;
     track(()=>{ ctx.beginPath(); ctx.moveTo(gx,gy); ctx.bezierCurveTo(gx-6,gy-10, x0-6,y0+10, x0,y0-2); });
     const sx=isl.x-2*B, sy=isl.y+22*B;
-    track(()=>{ ctx.beginPath(); ctx.moveTo(sx,sy); ctx.bezierCurveTo(sx+4,sy+10, G.x0+6,G.y0-12, G.x0,G.y0+2); });
+    if(G) track(()=>{ ctx.beginPath(); ctx.moveTo(sx,sy); ctx.bezierCurveTo(sx+4,sy+10, G.x0+6,G.y0-12, G.x0,G.y0+2); });
 
     drawHarbour(PIER);
     drawPier(PIER);
-    drawPier(GUEST_PIER);
+    if(GUEST_PIER) drawPier(GUEST_PIER);
 
 
   }

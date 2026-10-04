@@ -88,7 +88,8 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   (`serveDinner`): complete → the guests' mood `satisfaction` rises by `SAT_GAIN`, otherwise it falls by `SAT_LOSS` ×
   the share missing. At first light (`dayNo`++) comes a new order (`newOrder`; toast, the logbook shimmers). The mood is
   the bar top right (`#mood`: a plate icon and a bar, no words, starts at `SAT_START`, pulses when it changes); there's
-  no game over for it. The voyage still ends only by sinking (`#gameover`).
+  no game over for it. **The mood is off for now** (`SATISFACTION_ON` = false: no bar, dinners don't move it, so the
+  masseria keeps the look of `SAT_START`). The voyage still ends only by sinking (`#gameover`).
   Each has a bay, a wooden pier, a lighthouse with a sweeping beam, a pixel-art town, 17 buoys at ~616 px (`BUOYS_PER_VILLAGE`, `BUOY_R`) (toasts "Entering / Leaving the waters of …"; leaving counts 150 px past the buoys).
 - **Home: a fortified masseria** (`drawHomeBuildings`, home units ×`HOME_BLD`): a walled court with crenellated white
   walls (north gate to our pier, south gate to the guests'), a square watchtower on the north-east corner, the owner's
@@ -97,7 +98,8 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   breaches in the walls with rubble (3 − stage), standing trulli (stage + 1, the rest fallen in), weeds in the court at
   0–1; tables with chairs (2 × stage), a pergola of vines and an awning from 2, a string of lanterns from 3 (and the court
   lit at night), a pennant on the tower and the trulli lit at 4. It's baked into the island's tiles, so `rebakeHome`
-  drops them when the stage changes. **Guest pier** (`GUEST_PIER`, south side, solid but the player can't moor there):
+  drops them when the stage changes. **Guest pier and clients' boats: off for now** (`GUESTS_ON` = false: no pier, no
+  boats; `GUEST_PIER` is null). When on: **Guest pier** (`GUEST_PIER`, south side, solid but the player can't moor there):
   the clients' boats (`guests`, drawn with the player's boat model, `drawBoat(g)`, sail furled when tied up) take up to
   `GUEST_BOATS_MAX` (4) berths, two a side (one alongside, one rafted outside it); round(satisfaction × 4) of them: one
   more sails in from the open sea (`GUEST_IN_T` = 10 s, foam at the bow) or one sails away when the mood changes.
@@ -107,7 +109,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
 - **Wind:** random from the start (the old guiding wind toward Nordania, `guideWind`, is off), then the normal shifting winds.
   **Fair wind** (a power, the medallion button bottom right, `#btn-power`, drawn like the logbook icon in
   `drawLogbookIcon`: a dark brass medallion with a gust; pale and dotted once spent; wiggles while it blows):
-  `POWER_PER_DAY` (1) uses a day, back at first light; each makes the wind blow from astern whichever way she steers for
+  `POWER_USES` (1) uses, all back every time she ties up at a pier; each makes the wind blow from astern whichever way she steers for
   `POWER_WIND_T` (10 s) (the same spell as the ruins' friendly wind: `boonWindT`, the badge top left shows the seconds).
 - **Ruins** on the diagonals: **off for now** (`RUINS_ON` = false in Tuning: `RUINS` is empty). When on: dock there for
   a random power (friendly wind 60 s, blessed nets ×3, full hull).
@@ -199,7 +201,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   Opening/closing it plays `Sfx.book(open)`: paper flutter, and the cover's thump on closing. The list also shows the day of the voyage
   (`dayNo`, +1 at each dawn). A tiny faint frame-rate counter (`#fps`, refreshed twice a second while the logbook is open) sits on the
   paper, in the bottom right corner of the right page. Keyboard: arrows, Space = anchor.
-- **Hazards:** rocks, faraglioni, whirlpools (appear/disappear/wander; none on day 1: they start opening from day 2, `WHIRL_FROM_DAY`), rollers (big waves: within ~66° of their travel = surf boost (`SURF_COS`), otherwise they hurt). A quiet hand on
+- **Hazards:** rocks, faraglioni, whirlpools (appear/disappear/wander; from day 1, `WHIRL_FROM_DAY` = 1), rollers (big waves: within ~66° of their travel = surf boost (`SURF_COS`), otherwise they hurt). A quiet hand on
   the waves near the boat (`rollerPace`, eased): one coming up astern (within 220 px, full effect within 140) while she
   runs with it hurries to her pace + `ROLLER_CATCH` (25 px/s, at most 3× its own) and lives a little longer, so it
   catches her and she surfs; one about to hit her badly slows to `ROLLER_SPARE` (0.55) of its pace, time to turn away.
@@ -210,8 +212,8 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   pace + `ROLLER_CATCH`, living 5.5–6.5 s; one at a time. `rollerPace` then does the rest (it hurries only while she's
   in line with its crest).
 - **Atmosphere:** macchia (tree-spurge domes + Mediterranean pines; the pines come in `PINE_MODELS` = 4 shapes made each game, each maybe mirrored), clouds with parallax and shadows (`CLOUD_MODELS` = 4 shapes, made each game, still: they only drift), gulls, wind streaks,
-  traders (`TRADERS` = 12 motor boats on A* lanes from home to each village and between neighbouring villages, dealt
-  home lanes first, so they show the way out; they don't avoid the player, a collision just shoves them aside
+  traders (`TRADERS` = 8 motor boats, one on each A* lane: home to each village and between neighbouring villages,
+  dealt home lanes first, so they show the way out; they don't avoid the player, a collision just shoves them aside
   with no damage, then they drift back to their lane; they hail with a speech bubble), fog of war (buoys and a
   340 px radius round each village always show through), clouds see-through at the rim and denser in the middle, each with its shadow at a fixed offset down-right,
   a third of them rain clouds (darker; rain falls from the cloud onto its shadow on the sea, with a rain sound when you're near: a broad soft wash (between a hiss and a murmur) in gusts plus a patter of soft noise ticks (no watery bubble 'plips': tried and dropped as too intense), sparse at the edge, thick beneath; `rain()` and `rainDrop()` in Sound),

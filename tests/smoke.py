@@ -12,7 +12,7 @@ GAME = pathlib.Path(__file__).resolve().parent.parent / 'index.html'
 # expose a few internals to the test (the game keeps its state in a closure)
 HOOK = ('requestAnimationFrame(loop);\n})();',
         'globalThis.__d={boat,counts,VILLAGES,PIER,dishHold,'
-        'get order(){return order},get sat(){return satisfaction},get moor(){return moor},'
+        'get order(){return order},get sat(){return satisfaction},satOn:SATISFACTION_ON,get moor(){return moor},'
         'get dayT(){return dayT},set dayT(v){dayT=v},'
         'dinnerT:(DINNER_HOUR-DAWN_HOUR)/24,'
         'unmoor(){moor=null;moorLock=null;}};'
@@ -50,7 +50,8 @@ def main():
         assert pg.evaluate('__d.order.items.every(it=>it.got>=it.n)'), 'day 1 order not delivered'
         sat0 = pg.evaluate('__d.sat')
         pg.evaluate('()=>{__d.dayT = __d.dinnerT - 0.002}'); pg.wait_for_timeout(1500)   # dinner time
-        assert pg.evaluate('__d.order.closed') and pg.evaluate('__d.sat') > sat0, 'dinner not served, or the mood did not rise'
+        assert pg.evaluate('__d.order.closed'), 'dinner not served'
+        assert not pg.evaluate('__d.satOn') or pg.evaluate('__d.sat') > sat0, 'the mood did not rise'
 
         # day 2: first light brings a new order
         pg.evaluate('()=>{__d.dayT = 0.9995}'); pg.wait_for_timeout(1500)
