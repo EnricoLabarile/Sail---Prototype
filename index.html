@@ -6686,11 +6686,19 @@
     const H = 15*SAIL_SIZE;
     const ax = mx-ux*H, ay = my-uy*H;
     const bx = mx+ux*H, by = my+uy*H;
-    const p = boat.sailPower;
-    const reef = 0.3 + 0.7*boat.sailAmount;
+    // at anchor the cloth is gathered up to the yard (only a look: the sail
+    // itself stays set); it spreads again as soon as the anchor comes up
+    {
+      const now = performance.now(), fdt = Math.min(0.05, (now - (boat.furlLast || now))/1000); boat.furlLast = now;
+      const want = anchored && weighT <= 0 ? 1 : 0;
+      boat.furl = (boat.furl === undefined ? want : boat.furl) + (want - (boat.furl||0))*Math.min(1, fdt*(want ? 2.2 : 3.5));
+    }
+    const furl = boat.furl, open = 1 - furl;
+    const p = boat.sailPower*open;
+    const reef = (0.3 + 0.7*boat.sailAmount)*(1 - 0.9*furl);
     const belly = (1.5 + p*10)*reef*SAIL_SIZE;
     const luff = p < 0.25 ? (1 - p/0.25) : 0;
-    const ripple = Math.sin(t*22)*3*luff;
+    const ripple = Math.sin(t*22)*3*luff*open;          // (a furled sail doesn't flap)
     const k = 1.33;
     const dx = bx-ax, dy = by-ay;
     const c1x = ax + dx/3 + nx*(belly + ripple)*k;
@@ -6699,7 +6707,7 @@
     const c2y = ay + dy*2/3 + ny*(belly - ripple)*k;
     const sailPath=()=>{ ctx.beginPath(); ctx.moveTo(ax,ay); ctx.bezierCurveTo(c1x,c1y,c2x,c2y,bx,by); };
     // cloth: a dotted tan (SAIL_TONE) when drawing well, darker when slack or reefed
-    const tone = SAIL_TONE - 0.14*(1-p) - 0.1*(1-boat.sailAmount);
+    const tone = SAIL_TONE - 0.14*(1-p) - 0.1*(1-boat.sailAmount) - 0.08*furl;
     ctx.fillStyle = V(tone);
     sailPath(); ctx.closePath(); ctx.fill();
     // one centre seam, then the ink edge of the cloth
