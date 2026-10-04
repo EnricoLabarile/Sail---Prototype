@@ -378,6 +378,11 @@
   #shoplist .hold-fish{display:flex; flex-wrap:wrap; gap:2px 3px; margin-bottom:6px;}
   #shoplist .hold-fish svg{width:24px; height:13px; display:block;}
   #shoplist .hold-empty{font-size:12px; font-style:italic; margin:2px 0 6px;}
+  #shoplist .hold-slots{display:grid; grid-template-columns:repeat(3, 38px); gap:4px; margin:4px 0 8px;}
+  #shoplist .slot{width:38px; height:38px; box-sizing:border-box; border:1.5px solid var(--ink); border-radius:3px; display:flex; align-items:center; justify-content:center;}
+  #shoplist .slot.empty{border-style:dashed; opacity:.45;}
+  #shoplist .slot svg{width:28px; height:28px; display:block;}
+  #shoplist .slot.fish svg{width:30px; height:16px;}
   #shoplist .hold-goods{display:flex; flex-wrap:wrap; gap:4px; padding-top:6px; border-top:1.5px dashed var(--ink);}
   #shoplist .hold-goods svg{width:26px; height:26px; display:block;}
   #wheel{
@@ -684,6 +689,7 @@
       balEven:    'Balance: <b>0</b>: a fair swap',
       balPay:     'Balance: <b>{n}</b> {icon} paid from your purse',
       balShort:   'Balance: <b>{n}</b> {icon} not enough: offer more fish',
+      balFull:    'No room in the hold: {n} too many',
     },
     logbook: {
       order:   'Tonight\'s order',
@@ -695,7 +701,7 @@
       served:  'Dinner was served. A new order comes at first light.',
       short:   'Dinner was served without everything. A new order comes at first light.',
       cargo:   'Cargo',
-      holdCount: '{n}/{max} fish',
+      holdCount: '{n}/{max}',
       noFish:  'No fish aboard.',
       chart:   'Sea chart',
     },
@@ -792,7 +798,7 @@
   const HOME_WATERS = Math.round(950*WORLD_K);     // radius of home waters (all kinds of fish there)
   const HOME_BANKS = Math.round(18*WK2);           // fish banks in home waters, refilled as they are fished (world)
   const FISH_CATCH_MIN = 1, FISH_CATCH_MAX = 2;   // fish per haul (random in between)
-  const HOLD_MAX = 9;                // fish the hold can carry; when it's full the nets stay aboard
+  const HOLD_MAX = 9;                // slots in the hold: each fish or dish takes one; when it's full the nets stay aboard
   const FISH_REACH = 1.35;           // a bank counts out to this × its radius (a little past its circle)
   const FISH_STOP = 12;              // px/s: slow enough to count as stopped on a bank
   const FISH_SETTLE = 2;             // seconds stopped on a bank before the nets go over
@@ -801,6 +807,7 @@
   const COIN_LOCAL = 1;              // a village pays this for its own kind of fish
   const COIN_FOREIGN = 3;            // …and this for fish from other waters
   const DISH_PRICE = 6;              // coins per specialty dish
+  const DISH_RESALE = 3;             // coins a stall gives for a dish from your hold (any stall takes any dish)
 
   // -- World --
   const TRADERS_HOME = knob('TRADERS_HOME', 2);            // trading boats between home and the villages (on 2 of the 4 home lanes, picked at random) (world)
@@ -3974,7 +3981,9 @@
   let fishing = null;            // {bank, t, phase:'drop'|'wait'|'haul'|'cancel', ...}
   let settleT = 0;
   const fishAboard = ()=> FISH_KEYS.reduce((a,k)=> a + counts[k], 0);
-  const holdFull = ()=> fishAboard() >= HOLD_MAX;
+  const dishesAboard = ()=> Object.values(dishHold).reduce((a,n)=> a + n, 0);
+  const slotsUsed = ()=> fishAboard() + dishesAboard();          // the hold's HOLD_MAX slots: a fish or a dish each (gifts are kept apart)
+  const holdFull = ()=> slotsUsed() >= HOLD_MAX;
   let fullSaid = null;                                   // the bank we've already said "the hold is full" over
   function bankUnderBoat(){
     for(const b of banks){
@@ -4029,7 +4038,7 @@
         f.phase='haul'; f.t=0;
         let n = FISH_CATCH_MIN + Math.floor(Math.random()*(FISH_CATCH_MAX - FISH_CATCH_MIN + 1));
         if(boonFish>0){ n *= 2; boonFish--; }
-        n = Math.max(0, Math.min(n, HOLD_MAX - fishAboard()));   // only as many as the hold has room for
+        n = Math.max(0, Math.min(n, HOLD_MAX - slotsUsed()));    // only as many as the hold has room for
         const kind = FISH[f.bank.sec];
         counts[kind.key] += n; caught += n;
         popups.push({x:boat.x, y:boat.y-24, text:fmt(TEXT.popups.catch, {n, fish: n===1 ? kind.one : kind.many}), life:1.8, max:1.8});
@@ -4376,7 +4385,8 @@
   function stockTable(v){
     mkItems = [];
     for(const k of FISH_KEYS) for(let n=0;n<counts[k];n++) mkItems.push({kind:'fish', key:k, origin:'you', side:'you', value: fishValue(v,k)});
-    v.dishes.forEach((dsh,i)=> mkItems.push({kind:'food', dish:i, name:dsh.name, origin:'them', side:'them', value: dsh.price}));   // both, every visit
+    for(const d of ALL_DISHES) for(let n=0;n<(dishHold[d.icon]||0);n++) mkItems.push({kind:'food', icon:d.icon, name:d.name, origin:'you', side:'you', value: DISH_RESALE});   // dishes aboard: any stall takes them back
+    v.dishes.forEach((dsh,i)=> mkItems.push({kind:'food', dish:i, icon:dsh.icon, name:dsh.name, origin:'them', side:'them', value: dsh.price}));   // both, every visit
     mkItems.forEach((it,i)=> it.id = i);
   }
   // called every frame while docked: only redraws when something changed
@@ -4388,6 +4398,7 @@
     mkKey = key; stockTable(marketV); drawTable();
   }
   const mkBalance = ()=> mkItems.reduce((a,it)=> a + (it.side===it.origin ? 0 : it.origin==='you' ? it.value : -it.value), 0);
+  const mkSlotsAfter = ()=> mkItems.filter(it=> it.side === 'you').length;      // what the hold would carry after the trade
   const COIN_SVG = '<svg class="coin" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="var(--paper)" stroke="currentColor" stroke-width="1.4"/><circle cx="6" cy="6" r="2.4" fill="none" stroke="currentColor" stroke-width="1"/></svg>';
   const FOOD_SVG = '<svg viewBox="0 0 30 22" aria-hidden="true"><path d="M3 9 H27 L24 20 H6 Z" fill="var(--paper)" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7 9 Q15 -1 23 9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 12 H22 M9 15.5 H21" stroke="currentColor" stroke-width="1.1"/><circle cx="12" cy="7" r="2.6" fill="currentColor"/><circle cx="18" cy="6.5" r="2.2" fill="url(#sh-mid)" stroke="currentColor" stroke-width="0.8"/></svg>';
   // one small icon per dish and gift (24×24, ink on paper), so the cargo in
@@ -4424,7 +4435,7 @@
   })();
   const itemIcon = (name)=> ITEM_ICONS[name] || FOOD_SVG;
   function unitHTML(it){
-    const ico = it.kind==='food' ? itemIcon(marketV.dishes[it.dish].icon) : document.querySelector('#wood .fish-'+it.key+' svg').outerHTML;
+    const ico = it.kind==='food' ? itemIcon(it.icon) : document.querySelector('#wood .fish-'+it.key+' svg').outerHTML;
     const name = it.kind==='food' ? it.name : FISH_NAME[it.key].one;
     const label = it.kind==='food' ? '<span class="mk-name">'+name+'</span>' : '';
     return '<div class="mk-unit '+it.kind+(it.side!==it.origin ? ' moved' : '')+'" data-id="'+it.id+'" data-kind="'+it.kind+'" data-origin="'+it.origin+'" role="button" aria-label="'+name+', '+it.value+(it.value===1 ? ' coin' : ' coins')+'">'
@@ -4441,7 +4452,8 @@
     elMkYou.innerHTML = on('you') || '<p class="mk-empty">'+TEXT.market.emptyHold+'</p>';
     elMkThem.innerHTML = on('them') || '<p class="mk-empty">'+TEXT.market.emptyStall+'</p>';
     elMkPurse.innerHTML = COIN_SVG + coins;
-    const bal = mkBalance(), moved = mkItems.some(it=>it.side!==it.origin), ok = moved && coins + bal >= 0;
+    const bal = mkBalance(), moved = mkItems.some(it=>it.side!==it.origin), over = mkSlotsAfter() - HOLD_MAX;
+    const ok = moved && coins + bal >= 0 && over <= 0;
     elMkBal.className = bal < 0 && coins + bal < 0 ? 'short' : '';
     const M = TEXT.market, bv = {n: bal, icon: COIN_SVG, coins: Math.abs(bal) === 1 ? M.coin : M.coins};
     elMkBal.innerHTML = !moved ? M.balNone
@@ -4449,6 +4461,7 @@
       : bal === 0 ? M.balEven
       : coins + bal >= 0 ? fmt(M.balPay, bv)
       : fmt(M.balShort, bv);
+    if(moved && over > 0) elMkBal.innerHTML = fmt(M.balFull, {n: over});                 // (whatever the coins say)
     elMkDeal.disabled = !ok;
     elMkDeal.textContent = TEXT.market.trade;
   }
@@ -4509,7 +4522,7 @@
     const got = [];
     for(const it of mkItems){
       if(it.side === it.origin) continue;
-      if(it.origin==='you'){ counts[it.key]--; }                          // sold
+      if(it.origin==='you'){ if(it.kind==='fish') counts[it.key]--; else dishHold[it.icon]--; }   // sold
       else { const d = v.dishes[it.dish]; dishHold[d.icon] = (dishHold[d.icon]||0) + 1; d.boughtEver = true; v.done = true; got.push(it.name); }   // into the hold, for an order
     }
     coins += bal;
@@ -4718,13 +4731,14 @@
   // at the market) and everything bought on the voyage (dishes, and any gift)
   const elHoldPage = document.getElementById('hold-page');
   function holdHTML(){
-    const fish = FISH_KEYS.flatMap(k=> Array(counts[k]).fill(k));
-    const goods = VILLAGES.flatMap(v=> [...v.dishes.flatMap(d=> Array(dishHold[d.icon]||0).fill({name: d.name, icon: d.icon})), ...(v.giftGot ? [{name: v.gift, icon: v.giftIcon}] : [])]);
-    return '<div class="hold-head"><h3>'+TEXT.logbook.cargo+'</h3><span class="hold-count">'+fmt(TEXT.logbook.holdCount, {n: fish.length, max: HOLD_MAX})+'</span><span class="purse" aria-label="Purse: '+coins+' coins">'+COIN_SVG+coins+'</span></div>'
-      + (fish.length
-          ? '<div class="hold-fish">'+fish.map(k=> '<span title="'+FISH_NAME[k].one+'">'+document.querySelector('#wood .fish-'+k+' svg').outerHTML+'</span>').join('')+'</div>'
-          : '<p class="hold-empty">'+TEXT.logbook.noFish+'</p>')
-      + (goods.length ? '<div class="hold-goods">'+goods.map(g=> '<span title="'+g.name+'" role="img" aria-label="'+g.name+'">'+itemIcon(g.icon)+'</span>').join('')+'</div>' : '');
+    // HOLD_MAX slots in a grid: fish first, then dishes, the rest empty; the gifts are kept apart, below
+    const items = [...FISH_KEYS.flatMap(k=> Array(counts[k]).fill({name: FISH_NAME[k].one, svg: document.querySelector('#wood .fish-'+k+' svg').outerHTML, fish:true})),
+                   ...ALL_DISHES.flatMap(d=> Array(dishHold[d.icon]||0).fill({name: d.name, svg: itemIcon(d.icon)}))];
+    const gifts = VILLAGES.filter(v=> v.giftGot).map(v=> ({name: v.gift, icon: v.giftIcon}));
+    const slot = k=> { const it = items[k]; return it ? '<span class="slot'+(it.fish?' fish':'')+'" title="'+it.name+'" role="img" aria-label="'+it.name+'">'+it.svg+'</span>' : '<span class="slot empty"></span>'; };
+    return '<div class="hold-head"><h3>'+TEXT.logbook.cargo+'</h3><span class="hold-count">'+fmt(TEXT.logbook.holdCount, {n: items.length, max: HOLD_MAX})+'</span><span class="purse" aria-label="Purse: '+coins+' coins">'+COIN_SVG+coins+'</span></div>'
+      + '<div class="hold-slots">'+Array.from({length: Math.max(HOLD_MAX, items.length)}, (_,k)=> slot(k)).join('')+'</div>'
+      + (gifts.length ? '<div class="hold-goods">'+gifts.map(g=> '<span title="'+g.name+'" role="img" aria-label="'+g.name+'">'+itemIcon(g.icon)+'</span>').join('')+'</div>' : '');
   }
   let listKey = '';
   const holdKey = ()=> [dayNo, coins, ...FISH_KEYS.map(k=>counts[k]), ...ALL_DISHES.map(d=> dishHold[d.icon]||0), ...VILLAGES.map(v=> v.giftGot?'g':''),
