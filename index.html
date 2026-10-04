@@ -731,6 +731,11 @@
   const WHIRL_FADE = 3;              // seconds for a whirlpool to open up / die down
   const ROLLER_RATE = 1;             // how often big waves come (2 = twice as often, 0.5 = half)
   const ROLLER_CATCH = 25;           // px/s a wave from astern runs faster than the boat, so it catches her to surf (0 = never helps)
+  const DOWNWIND_DEG = 120;          // she's running downwind when the wind comes from at least this far round from her bow (180 = dead astern); from here the wind from behind adds speed too
+  const SURF_WAVE_AFTER = 3;         // seconds running downwind before a wave may come up astern for her to surf
+  const SURF_WAVE_CHANCE = 0.3;      // chance each second (after that) of such a wave
+  const SURF_WAVE_BACK = 100;        // px astern it rises (close enough to reach her before it dies)
+  const SURF_WAVE_SIDE = 45;         // px it may be off to either side, so catching it takes a touch of the helm
   const ROLLER_SPARE = 0.55;         // a wave about to hit her badly slows to this share of its pace (1 = never)
 
   // -- Fishing and market --
@@ -1951,7 +1956,7 @@
   // extra reward for having the wind from behind: rises from a broad reach
   // (120°) to dead downwind (180°), up to +10%
   function downwindBonus(relDeg){
-    const a = Math.abs(relDeg), k = Math.max(0, Math.min(1, (a-120)/60));
+    const a = Math.abs(relDeg), k = Math.max(0, Math.min(1, (a-DOWNWIND_DEG)/(180-DOWNWIND_DEG)));
     return 1 + 0.1*k*k*(3-2*k);
   }
 
@@ -3789,21 +3794,43 @@
     const sm = x=>{ x=Math.max(0,Math.min(1,x)); return x*x*(3-2*x); };
     return p<0.3 ? sm(p/0.3) : p<0.7 ? 1 : 1 - sm((p-0.7)/0.3);
   }
-  function spawnRoller(){
+  // a wave rising at (x,y), travelling downwind, if the spot allows it
+  function rollerAt(x, y){
     const dw = windAngle + Math.PI, ux = Math.cos(dw), uy = Math.sin(dw);   // travel direction
+    if(pierDist(wrapX(x),wrapY(y)).d < 280) return null;          // never inside or at a harbour
+    if(wdist(wrapX(x),wrapY(y),START.x,START.y) < SAFE_R + 120) return null;   // never in home waters
+    // needs a bit of open water ahead of it (not right on a beach)
+    for(let k=0;k<=2;k++) if(onLand(wrapX(x+ux*k*120), wrapY(y+uy*k*120), 70)) return null;
+    const speed = rand(25,30), w = {x, y, ux, uy, L: rand(45,75), bow: rand(5,8), thick: rand(9,13),
+                    speed, base: speed, t:0, dur: rand(4,6), hit:false, broke:false, seed: rand(0,100)};
+    rollers.push(w);
+    return w;
+  }
+  function spawnRoller(){
+    const dw = windAngle + Math.PI, ux = Math.cos(dw), uy = Math.sin(dw);
     for(let tries=0; tries<20; tries++){
       const back = rand(60, 360), side = rand(-260, 260);
-      const x = boat.x - ux*back - uy*side, y = boat.y - uy*back + ux*side;
-      if(pierDist(wrapX(x),wrapY(y)).d < 280) continue;          // never inside or at a harbour
-      if(wdist(wrapX(x),wrapY(y),START.x,START.y) < SAFE_R + 120) continue;   // never in home waters
-      // needs a bit of open water ahead of it (not right on a beach)
-      let clear = true;
-      for(let k=0;k<=2 && clear;k++) if(onLand(wrapX(x+ux*k*120), wrapY(y+uy*k*120), 70)) clear = false;
-      if(!clear) continue;
-      const speed = rand(25,30);
-      rollers.push({x, y, ux, uy, L: rand(45,75), bow: rand(5,8), thick: rand(9,13),
-                    speed, base: speed, t:0, dur: rand(4,6), hit:false, broke:false, seed: rand(0,100)});
-      return;
+      if(rollerAt(boat.x - ux*back - uy*side, boat.y - uy*back + ux*side)) return;
+    }
+  }
+  // running downwind for a while, she may get a wave of her own: it rises a
+  // little astern (off to one side or the other), close enough to catch her
+  // before it dies, so she can surf it if she steers onto it
+  let downwindT = 0, surfWave = null;
+  function surfWaves(dt){
+    if(surfWave && (surfWave.hit || !rollers.includes(surfWave))) surfWave = null;   // one at a time
+    const rel = Math.abs(norm(boat.angle - windAngle))*180/Math.PI;
+    const running = rel >= DOWNWIND_DEG && boat.speed > ROW_ENTER && !anchored && !moor && !fishing && !boat.whirl;
+    downwindT = running ? downwindT + dt : 0;
+    if(downwindT < SURF_WAVE_AFTER || surfWave) return;
+    if(Math.random() >= 1 - Math.pow(1 - SURF_WAVE_CHANCE, dt)) return;   // SURF_WAVE_CHANCE per second
+    const dw = windAngle + Math.PI, ux = Math.cos(dw), uy = Math.sin(dw);
+    const back = SURF_WAVE_BACK*rand(0.85, 1.15), side = rand(-1, 1)*SURF_WAVE_SIDE;
+    surfWave = rollerAt(boat.x - ux*back - uy*side, boat.y - uy*back + ux*side);
+    if(surfWave){                                        // it comes up already at her pace (plus a little), so it closes in
+      const c = Math.cos(boat.angle)*ux + Math.sin(boat.angle)*uy;
+      surfWave.speed = Math.min(surfWave.base*3, Math.max(surfWave.base, boat.speed*c + ROLLER_CATCH));
+      surfWave.dur = rand(5.5, 6.5);                      // and lives long enough to reach her
     }
   }
   // A quiet hand on the waves near the boat: one coming up astern while
@@ -3830,6 +3857,7 @@
     return life;
   }
   function updateRollers(dt){
+    if(playing) surfWaves(dt);
     if(!moor && playing){
       rollerT -= dt * (fishing ? 0.2 : 1);            // quieter seas while the nets are out
       if(rollerT<=0){

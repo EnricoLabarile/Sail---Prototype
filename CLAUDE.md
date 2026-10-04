@@ -167,6 +167,12 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   the waves near the boat (`rollerPace`, eased): one coming up astern (within 220 px, full effect within 140) while she
   runs with it hurries to her pace + `ROLLER_CATCH` (25 px/s, at most 3× its own) and lives a little longer, so it
   catches her and she surfs; one about to hit her badly slows to `ROLLER_SPARE` (0.55) of its pace, time to turn away.
+  **Surf waves** (`surfWaves`, `rollerAt`): after `SURF_WAVE_AFTER` (3 s) running downwind (wind at least `DOWNWIND_DEG`
+  = 120° round from her bow, the same angle from which `downwindBonus` starts adding speed; moving, not at anchor or
+  fishing), each second there's a `SURF_WAVE_CHANCE` (0.3) of a wave of her own: it rises `SURF_WAVE_BACK` (100 px)
+  astern, up to `SURF_WAVE_SIDE` (45 px) off to either side (so catching it takes a touch of the helm), already at her
+  pace + `ROLLER_CATCH`, living 5.5–6.5 s; one at a time. `rollerPace` then does the rest (it hurries only while she's
+  in line with its crest).
 - **Atmosphere:** macchia (tree-spurge domes + Mediterranean pines; the pines come in `PINE_MODELS` = 4 shapes made each game, each maybe mirrored), clouds with parallax and shadows (`CLOUD_MODELS` = 4 shapes, made each game, still: they only drift), gulls, wind streaks,
   traders (`TRADERS` = 12 motor boats on A* lanes from home to each village and between neighbouring villages, dealt
   home lanes first, so they show the way out; they don't avoid the player, a collision just shoves them aside
