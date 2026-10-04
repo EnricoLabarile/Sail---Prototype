@@ -3113,7 +3113,7 @@
       const seam = Math.min(WORLD.w/2 - Math.abs(dx), WORLD.h/2 - Math.abs(dy));
       const busy = Math.abs(lidT - (lidOpen ? 0 : 1)) > 0.002 || Math.abs(watchT - (watchOn ? 1 : 0)) > 0.002
         || dotPop.some(p=> p > 0) || VILLAGES.some((v,i)=> v.done !== dotState[i])
-        || (lidT < 0.98 && !watchOn && seam < 600);                     // near the seam the needle trembles
+        || (lidT < 0.98 && !watchOn && seam < 600 && (frameNo & 1));    // near the seam the needle trembles (redrawn every other frame)
       const key = (lidT >= 0.98 ? 'shut' : watchOn ? 'w' + Math.round(watchHour()*30)               // the hour hand moves in 2-minute steps
                   : Math.round(Math.atan2(dy, dx)*120) + '|' + (Math.hypot(dx, dy) < 140)) + '|' + uiPalKey;
       if(!busy && key === cmpKey){ lidLastT = performance.now(); return; }
@@ -3862,7 +3862,7 @@
     boonWindT = 0; boonFish = 0; for(const r of RUINS) r.readyAt = 0;
     rollers.length = 0; rollerT = 6; boat.surfT = 0;
     windAngle = rand(0, Math.PI*2); shiftDur = 0; windTimer = rand(28,36); guideWind = false;
-    explored.fill(0);
+    explored.fill(0); fogVer++;
     wake.length = 0; bowSpray.length = 0; popups.length = 0;
     voyageTime = 0; hurtFlash = 0; shake = 0;
     gameover.classList.add('hidden');
@@ -4064,33 +4064,57 @@
   const FOG_CELL = 48, FOG_N = Math.round(WORLD.w/FOG_CELL);   // 5040/48 = 105 cells a side (WORLD_SIZE is a multiple of 48)
   const explored = new Uint8Array(FOG_N*FOG_N);
   const fci = (i)=>((i%FOG_N)+FOG_N)%FOG_N;
+  let fogVer = 0;                                    // +1 each time a cell is explored
   function reveal(x,y){
     const r = SIGHT, C = FOG_CELL;
     for(let j=Math.floor((y-r)/C); j<=Math.floor((y+r)/C); j++)
       for(let i=Math.floor((x-r)/C); i<=Math.floor((x+r)/C); i++){
         const k = fci(j)*FOG_N + fci(i);
         if(explored[k]) continue;
-        if(Math.hypot((i+0.5)*C - x, (j+0.5)*C - y) <= r) explored[k] = 1;
+        if(Math.hypot((i+0.5)*C - x, (j+0.5)*C - y) <= r){ explored[k] = 1; fogVer++; }
       }
   }
+  // the fog in sight: one pixel a cell, stretched (smoothly) to the cells'
+  // size into fogBig, which is only redone when the view crosses into another
+  // cell or a cell is explored; every other frame it's one plain stamp
   const fogCv = document.createElement('canvas');
   const fogCtx = sceneCtx(fogCv);
-  let fogImg = null;
+  const fogBig = document.createElement('canvas');
+  const fogBigCtx = sceneCtx(fogBig);
+  let fogImg = null, fogKey = '', fogBox = null;
   function drawFog(camX, camY, w, h){
     const C = FOG_CELL;
     const i0 = Math.floor(camX/C)-1, j0 = Math.floor(camY/C)-1;
     const nx = Math.ceil(w/C)+3, ny = Math.ceil(h/C)+3;
+    const key = i0 + '|' + j0 + '|' + nx + '|' + ny + '|' + fogVer;
+    if(key !== fogKey){ fogKey = key; fogBox = buildFog(i0, j0, nx, ny); }
+    if(!fogBox) return;                               // all clear in sight: nothing to draw
+    ctx.drawImage(fogBig, 0, 0, fogBox.w, fogBox.h, fogBox.x, fogBox.y, fogBox.w, fogBox.h);
+  }
+  function buildFog(i0, j0, nx, ny){
+    const C = FOG_CELL;
     if(fogCv.width!==nx || fogCv.height!==ny || !fogImg){ fogCv.width=nx; fogCv.height=ny; fogImg = fogCtx.createImageData(nx,ny); }
     const d = fogImg.data;
+    let bx0 = nx, bx1 = -1, by0 = ny, by1 = -1;                      // the box of the fogged cells
     for(let j=0;j<ny;j++) for(let i=0;i<nx;i++){
       const p = (j*nx+i)*4;
       d[p]=d[p+1]=d[p+2]=0;
       const kk = fci(j0+j)*FOG_N + fci(i0+i);
-      d[p+3] = (explored[kk] || buoyClear[kk]) ? 0 : 255;          // buoys and villages always show through   // solid black: no stray light dots
+      const fog = !(explored[kk] || buoyClear[kk]);                     // buoys and villages always show through
+      d[p+3] = fog ? 255 : 0;                                           // solid black: no stray light dots
+      if(fog){ if(i<bx0) bx0=i; if(i>bx1) bx1=i; if(j<by0) by0=j; if(j>by1) by1=j; }
     }
+    if(bx1 < 0) return null;
+    // stretch only the fogged part (with a clear cell round it, so the soft
+    // edges blend just as when the whole grid is drawn)
+    bx0 = Math.max(0, bx0-1); by0 = Math.max(0, by0-1); bx1 = Math.min(nx-1, bx1+1); by1 = Math.min(ny-1, by1+1);
+    const fw = bx1-bx0+1, fh = by1-by0+1;
     fogCtx.putImageData(fogImg,0,0);
-    ctx.imageSmoothingEnabled = true;                 // soft edges between cells
-    ctx.drawImage(fogCv, i0*C, j0*C, nx*C, ny*C);
+    if(fogBig.width < fw*C || fogBig.height < fh*C){ fogBig.width = Math.max(fogBig.width, fw*C); fogBig.height = Math.max(fogBig.height, fh*C); }
+    fogBigCtx.clearRect(0, 0, fw*C, fh*C);
+    fogBigCtx.imageSmoothingEnabled = true;           // soft edges between cells
+    fogBigCtx.drawImage(fogCv, bx0, by0, fw, fh, 0, 0, fw*C, fh*C);
+    return {x: (i0+bx0)*C, y: (j0+by0)*C, w: fw*C, h: fh*C};
   }
 
   // ---------- Rollers: big breaking waves ----------
@@ -5798,6 +5822,20 @@
     return (h>>>0)/4294967295;
   }
 
+  // the sea's flecks and wavelets are stroked in a few batches, one path
+  // per shade (alpha in 1/40 steps, finer than the dither can show), not
+  // one stroke each: a few hundred strokes a frame become a few dozen
+  const seaPaths = ()=> new Map();
+  function seaPath(paths, a){
+    const k = Math.round(a*40);
+    let pa = paths.get(k);
+    if(!pa){ pa = new Path2D(); paths.set(k, pa); }
+    return pa;
+  }
+  function strokeSeaPaths(paths){
+    for(const [k, pa] of paths){ if(k <= 0) continue; ctx.globalAlpha = k/40; ctx.stroke(pa); }
+    ctx.globalAlpha = 1;
+  }
   function drawSea(camX,camY,w,h){
     ctx.fillStyle = PAPERC;                  // paper sea
     ctx.fillRect(camX, camY, w, h);
@@ -5809,6 +5847,7 @@
       const i0=Math.floor(camX/GT)-1, i1=Math.ceil((camX+w)/GT)+1;
       const j0=Math.floor(camY/GT)-1, j1=Math.ceil((camY+h)/GT)+1;
       ctx.strokeStyle = INKC; ctx.lineWidth = 1; ctx.lineCap = 'round';
+      const paths = seaPaths();
       for(let i=i0;i<=i1;i++) for(let j=j0;j<=j1;j++){
         const ii=((i%NT)+NT)%NT, jj=((j%NT)+NT)%NT;
         const r1=hash(ii,jj,11); if(r1 > 0.55) continue;
@@ -5822,10 +5861,10 @@
         const len = (2.5 + r4*3)*(0.8 + 0.25*Math.sin(t*0.9 + ph*1.3));
         const tilt = 0.35*Math.sin(t*0.7 + ph*0.7), bend = 1.8*Math.sin(t*1.3 + ph);
         const cx = Math.cos(tilt)*len, cy = Math.sin(tilt)*len;
-        ctx.globalAlpha = a;
-        ctx.beginPath(); ctx.moveTo(x-cx, y-cy); ctx.quadraticCurveTo(x - Math.sin(tilt)*bend, y - Math.cos(tilt)*bend, x+cx, y+cy); ctx.stroke();
+        const pa = seaPath(paths, a);
+        pa.moveTo(x-cx, y-cy); pa.quadraticCurveTo(x - Math.sin(tilt)*bend, y - Math.cos(tilt)*bend, x+cx, y+cy);
       }
-      ctx.globalAlpha = 1;
+      strokeSeaPaths(paths);
     }
 
     // wavelets: little ink crests born at fixed world spots; each drifts
@@ -5838,6 +5877,7 @@
     ctx.lineCap='round';
     ctx.lineWidth=1.4;
     ctx.strokeStyle=INKC;
+    const paths = seaPaths();
     for(let i=i0;i<=i1;i++){
       for(let j=j0;j<=j1;j++){
         const ii=((i%NG)+NG)%NG, jj=((j%NG)+NG)%NG;
@@ -5856,14 +5896,12 @@
         const ang = crest + (r1-0.5)*0.5;
         const cx = Math.cos(ang)*len*0.5, cy = Math.sin(ang)*len*0.5;
         const bow = len*0.25;
-        ctx.globalAlpha = a;
-        ctx.beginPath();
-        ctx.moveTo(x-cx, y-cy);
-        ctx.quadraticCurveTo(x+dx*bow, y+dy*bow, x+cx, y+cy);
-        ctx.stroke();
+        const pa = seaPath(paths, a);
+        pa.moveTo(x-cx, y-cy);
+        pa.quadraticCurveTo(x+dx*bow, y+dy*bow, x+cx, y+cy);
       }
     }
-    ctx.globalAlpha = 1;
+    strokeSeaPaths(paths);
   }
 
   const view = {x:0,y:0,w:0,h:0};
@@ -5883,8 +5921,10 @@
     }
     ctx.closePath();
   }
-  // shallow water (light dither) + dashed surf line
-  function drawIslandWater(isl){
+  // shallow water (light dither) + dashed surf line: the rings and the
+  // island's shadow never change, so they're baked in tiles like the land
+  // (see below); only the surf line, which crawls, is drawn every frame
+  function drawIslandWaterStatic(isl){
     const R=isl.radii;
     ctx.fillStyle=V(0.93);
     traceIsland(isl,i=>R[i]+34); ctx.fill();
@@ -5894,31 +5934,68 @@
     ctx.save(); ctx.translate(isl.rocky.some(v=>v) ? 12 : 6, isl.rocky.some(v=>v) ? 16 : 8);
     ctx.fillStyle='rgba(0,0,0,0.26)'; traceIsland(isl,i=>R[i]); ctx.fill();
     ctx.restore();
+  }
+  function drawIslandWater(isl){
+    drawIslandTiles(isl, true);
+    const R=isl.radii;
     ctx.strokeStyle=INKC; ctx.lineWidth=1.3;
-    ctx.setLineDash([5,5]); ctx.lineDashOffset = -t*3;
     const surf = 6+Math.sin(t*1.4+isl.x)*2;
-    traceIsland(isl,i=>R[i]+surf); ctx.stroke();
-    ctx.setLineDash([]);
+    surfDashes(isl, i=>R[i]+surf, 5, -t*3);
+    ctx.lineCap='butt'; ctx.stroke(); ctx.lineCap='round';   // (flat ends: cheaper, and the dither can't tell)
+  }
+  // the dashed surf line, cut into dashes here and only where it's in sight:
+  // the same outline as traceIsland, dash on/off every `dash` px, shifted by
+  // `off` (as lineDashOffset). A canvas dash runs along the whole outline of
+  // a big island every frame (it was ~1 ms a frame in a cluster).
+  function surfDashes(isl, radFn, dash, off){
+    const N=ISL_N, M=20;
+    const vx0=view.x-M, vy0=view.y-M, vx1=view.x+view.w+M, vy1=view.y+view.h+M;
+    const P=[]; for(let i=0;i<=N+1;i++){ const k=i%N, r=radFn(k); P.push(isl.x+COS[k]*r, isl.y+SIN[k]*r); }
+    let x=(P[0]+P[2])/2, y=(P[1]+P[3])/2, s=0, pen=false;
+    const per = 2*dash, on = v=> (((v + off) % per) + per) % per < dash;
+    ctx.beginPath();
+    for(let i=1;i<=N;i++){
+      const cx=P[2*i], cy=P[2*i+1], ex=(cx+P[2*i+2])/2, ey=(cy+P[2*i+3])/2;
+      const len = Math.hypot(cx-x, cy-y) + Math.hypot(ex-cx, ey-cy);
+      const seen = Math.max(x,cx,ex) > vx0 && Math.min(x,cx,ex) < vx1 && Math.max(y,cy,ey) > vy0 && Math.min(y,cy,ey) < vy1;
+      if(!seen){ s += len; x=ex; y=ey; pen=false; continue; }         // out of sight: just count its length
+      const m = Math.max(2, Math.ceil(len/2));
+      const sx=x, sy=y;
+      for(let k=1;k<=m;k++){
+        const u=k/m, a=(1-u)*(1-u), b=2*u*(1-u), c=u*u;
+        const nx=a*sx+b*cx+c*ex, ny=a*sy+b*cy+c*ey;
+        let L=Math.hypot(nx-x, ny-y), px=x, py=y, d=0;
+        while(d < L){                                                     // split at each change of dash
+          const pos = (((s + d + off) % dash) + dash) % dash, step = Math.min(L - d, dash - pos + 1e-6);
+          const drawing = on(s + d + step*0.5);
+          const qx = px + (nx-px)*(step/(L-d)), qy = py + (ny-py)*(step/(L-d));
+          if(drawing){ if(!pen){ ctx.moveTo(px,py); pen=true; } ctx.lineTo(qx,qy); } else pen=false;
+          d += step; px=qx; py=qy;
+        }
+        s += L; x=nx; y=ny;
+      }
+    }
   }
   // Island land is static (except the mooring lines), so it is baked into
   // greyscale tiles (ISL_TILE px square, in the island's own grid), each the
   // first time it comes near the view; after that a tile is one drawImage
   // per frame. Big islands never need one huge image, and only the tiles
   // in sight are kept.
-  const ISL_TILE = 384;
-  const CACHE_MAX = 64;              // baked tiles kept in memory (~0.6 MB each)
+  const ISL_TILE = 256;              // (smaller tiles: each bake is a shorter hitch)
+  const CACHE_MAX = 160;             // baked tiles kept in memory (~0.26 MB each; land and shallows)
   const cached = [];
   let frameNo = 0, bakeR = null, bakedThisFrame = 0;
   const inBake = (x,y,m)=> !bakeR || (x > bakeR.x0-m && x < bakeR.x1+m && y > bakeR.y0-m && y < bakeR.y1+m);
-  function islandBox(isl){
-    if(isl.bb) return isl.bb;
-    const pad = (isl.home || isl.village || isl.ruin) ? PIER_LEN + 40 : 30;
+  function islandBox(isl, water){
+    const k = water ? 'wbb' : 'bb';
+    if(isl[k]) return isl[k];
+    const pad = (isl.home || isl.village || isl.ruin) ? PIER_LEN + 40 : water ? 40 : 30;   // (the shallows reach 34 px past the shore)
     const ox = Math.floor(isl.x - isl.rmax - pad), oy = Math.floor(isl.y - isl.rmax - pad);
     const size = Math.ceil(2*(isl.rmax + pad)) + 2;
-    return (isl.bb = {ox, oy, size, n: Math.ceil(size/ISL_TILE), tiles: new Map()});
+    return (isl[k] = {ox, oy, size, n: Math.ceil(size/ISL_TILE), tiles: new Map(), water});
   }
-  function islandTile(isl, tx, ty, mayBake){
-    const bb = islandBox(isl), key = ty*bb.n + tx;
+  function islandTile(isl, bb, tx, ty, mayBake){
+    const key = ty*bb.n + tx;
     let tl = bb.tiles.get(key);
     if(tl){ tl.seen = frameNo; return tl; }
     if(!mayBake) return null;
@@ -5933,22 +6010,25 @@
     ctx = sceneCtx(c);
     ctx.translate(-x0, -y0);
     bakeR = {x0, y0, x1: x0 + w, y1: y0 + h};                         // only what falls on this tile is drawn
-    drawIslandLandStatic(isl);
+    if(bb.water) drawIslandWaterStatic(isl); else drawIslandLandStatic(isl);
     bakeR = null; ctx = saved; bakedThisFrame++;
     tl = {c, x0, y0, seen: frameNo, bb, key};
     bb.tiles.set(key, tl); cached.push(tl);
     return tl;
   }
-  function drawIslandLand(isl){
-    const bb = islandBox(isl), T = ISL_TILE, A = 160;                 // A: tiles this close to the view are baked ahead, one a frame
+  function drawIslandTiles(isl, water){
+    const bb = islandBox(isl, water), T = ISL_TILE, A = 160;          // A: tiles this close to the view are baked ahead, one a frame
     const range = (v, len, o)=> [Math.max(0, Math.floor((v - o)/T)), Math.min(bb.n-1, Math.floor((v + len - o)/T))];
     const [ax0, ax1] = range(view.x - A, view.w + 2*A, bb.ox), [ay0, ay1] = range(view.y - A, view.h + 2*A, bb.oy);
     for(let ty=ay0; ty<=ay1; ty++) for(let tx=ax0; tx<=ax1; tx++){
       const x0 = bb.ox + tx*T, y0 = bb.oy + ty*T;
       const seen = x0 < view.x + view.w && x0 + T > view.x && y0 < view.y + view.h && y0 + T > view.y;
-      const tl = islandTile(isl, tx, ty, seen || bakedThisFrame === 0);
+      const tl = islandTile(isl, bb, tx, ty, seen || bakedThisFrame === 0);
       if(tl && seen) ctx.drawImage(tl.c, tl.x0, tl.y0);
     }
+  }
+  function drawIslandLand(isl){
+    drawIslandTiles(isl, false);
     if(moor && moor.pier.isl===isl) drawMooringLines();
   }
   function drawIslandLandStatic(isl){
@@ -5971,17 +6051,18 @@
     traceIsland(isl,i=>R[i]-S[i]); ctx.fill();
     ctx.save(); ctx.clip();
     ctx.fillStyle=V(0.5);
-    for(const blobs of isl.patches){
+    for(const blobs of isl.patches){                     // (only the blobs on the tile being baked)
       ctx.beginPath();
-      for(const [bx,by,br] of blobs){ ctx.moveTo(bx+br,by); ctx.arc(bx,by,br,0,Math.PI*2); }
+      for(const [bx,by,br] of blobs){ if(!inBake(bx,by,br+1)) continue; ctx.moveTo(bx+br,by); ctx.arc(bx,by,br,0,Math.PI*2); }
       ctx.fill();
     }
     // stony clearings of garrigue: pale ground dotted with stones
     if(isl.clearings && isl.clearings.length){
+      const cl = isl.clearings.filter(([cx,cy,cr])=> inBake(cx,cy,cr+3));
       ctx.fillStyle=V(0.84); ctx.beginPath();
-      for(const [cx,cy,cr] of isl.clearings){ ctx.moveTo(cx+cr+2,cy); ctx.arc(cx,cy,cr+2,0,Math.PI*2); } ctx.fill();
+      for(const [cx,cy,cr] of cl){ ctx.moveTo(cx+cr+2,cy); ctx.arc(cx,cy,cr+2,0,Math.PI*2); } ctx.fill();
       ctx.fillStyle=V(0.93); ctx.beginPath();
-      for(const [cx,cy,cr] of isl.clearings){ ctx.moveTo(cx+cr,cy); ctx.arc(cx,cy,cr,0,Math.PI*2); } ctx.fill();
+      for(const [cx,cy,cr] of cl){ ctx.moveTo(cx+cr,cy); ctx.arc(cx,cy,cr,0,Math.PI*2); } ctx.fill();
       for(const [sx,sy,sr] of isl.stones){
         if(!inBake(sx,sy,4)) continue;
         ctx.fillStyle=V(0.35); ctx.beginPath(); ctx.arc(sx+0.6,sy+0.6,sr,0,Math.PI*2); ctx.fill();
@@ -6868,9 +6949,6 @@
   function drawStack(o){
     const H = o.h;
     const poly = (ox,oy,s)=>{ ctx.beginPath(); o.pts.forEach(([px,py],k)=>{ const x=o.x+ox+px*s, y=o.y+oy+py*s; k? ctx.lineTo(x,y) : ctx.moveTo(x,y); }); ctx.closePath(); };
-    ctx.strokeStyle=INKC; ctx.lineWidth=1; ctx.globalAlpha=0.45;              // surf at the foot
-    ctx.beginPath(); ctx.arc(o.x,o.y,o.r+3+Math.sin(t*2+o.foam),0,Math.PI*2); ctx.stroke();
-    ctx.globalAlpha=1;
     ctx.fillStyle='rgba(0,0,0,0.3)'; poly(H*0.55, H*0.3, 1); ctx.fill();          // shadow
     ctx.fillStyle=V(0.66);
     for(let k=0;k<=H;k+=1.5){ poly(0,-k,1); ctx.fill(); }                         // the column
@@ -6883,12 +6961,28 @@
     ctx.fillStyle=V(0.6); poly(o.r*0.1,-H+o.r*0.05,0.6); ctx.fill();             // scrub on top
     ctx.lineWidth=1.3; poly(0,-H,1); ctx.stroke();
   }
+  // rocks and stacks never change but their surf ring, so each is painted
+  // once into a little picture of its own (when first in sight) and stamped;
+  // a stack's column alone was 15-30 fills a frame
+  function drawRocks(list){
+    ctx.strokeStyle=INKC; ctx.lineWidth=1; ctx.globalAlpha=0.45;               // surf rings, faint → dotted after dithering
+    ctx.beginPath();
+    for(const o of list){ const r = o.r+3+Math.sin(t*2+o.foam); ctx.moveTo(o.x+r, o.y); ctx.arc(o.x,o.y,r,0,Math.PI*2); }
+    ctx.stroke(); ctx.globalAlpha=1;
+    for(const o of list){ const sp = o.sprite || rockSprite(o); ctx.drawImage(sp.c, sp.x0, sp.y0); }
+  }
+  function rockSprite(o){
+    const H = o.stack ? o.h : 0, xs = o.pts.map(p=>p[0]), ys = o.pts.map(p=>p[1]);
+    const x0 = Math.floor(o.x + Math.min(...xs) - 3), x1 = Math.ceil(o.x + Math.max(...xs) + H*0.55 + 3);
+    const y0 = Math.floor(o.y + Math.min(...ys) - H - 3), y1 = Math.ceil(o.y + Math.max(...ys) + H*0.3 + 3);
+    const c = document.createElement('canvas'); c.width = x1-x0; c.height = y1-y0;
+    const saved = ctx; ctx = sceneCtx(c); ctx.translate(-x0, -y0);
+    if(o.stack) drawStack(o); else drawRock(o);
+    ctx = saved;
+    return (o.sprite = {c, x0, y0});
+  }
   function drawRock(o){
     if(o.stack) return drawStack(o);
-    // surf ring, faint → dotted after dithering
-    ctx.strokeStyle=INKC; ctx.lineWidth=1; ctx.globalAlpha=0.45;
-    ctx.beginPath(); ctx.arc(o.x,o.y,o.r+3+Math.sin(t*2+o.foam)*1,0,Math.PI*2); ctx.stroke();
-    ctx.globalAlpha=1;
     // body in shadow tone, lit top face in paper, ink outline
     const path=(ox,oy,s)=>{
       ctx.beginPath();
@@ -7216,7 +7310,7 @@
     layer(()=>{ for(const wp of whirlpools) if(wp.s>0 && inView(wp.x,wp.y,wp.r+10)){ ctx.globalAlpha = wp.s; drawWhirlpool(wp); ctx.globalAlpha = 1; } });
     layer(()=>{ for(const isl of visIslands()) drawIslandWater(isl); }, true);
     layer(()=>{ for(const isl of visIslands()) drawIslandLand(isl); }, true);
-    layer(()=>{ rockGrid.query(view.x+w/2, view.y+h/2, Math.max(w,h)/2+20, o=>{ if(inView(o.x,o.y,o.r+6)) drawRock(o); }); });
+    layer(()=>{ const vis = []; rockGrid.query(view.x+w/2, view.y+h/2, Math.max(w,h)/2+20, o=>{ if(inView(o.x,o.y,o.r+6)) vis.push(o); }); drawRocks(vis); });
     layer(()=>{ for(const b of banks) drawBank(b); });
     layer(()=>{ for(const w of rollers) drawRoller(w); });
     layer(()=>{ for(const b of buoys) drawBuoy(b); for(const tr of traders) drawTrader(tr); });   // under the fog

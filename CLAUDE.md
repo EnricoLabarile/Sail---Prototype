@@ -42,9 +42,19 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   memory canvas (`SCENE_ON_CPU` in Tuning, `willReadFrequently`); `?scene=gpu` / `?scene=cpu` in the address compares the two. Result on Enrico's phone: Firefox 24 -> 48–60 fps
   (Firefox on Android seems to cap at 60), Opera 120. No gradient is made per frame: the soft round shadows (swell, fish banks) are a
   cached sprite stamped scaled (`softDot`, `stampDot`), lighthouse beams and whirlpools keep their gradients (`.grads`).
-  Island land is baked in tiles (`ISL_TILE` = 384 px, `islandTile`; `CACHE_MAX` = 64 tiles kept, least recently seen
+  Island land is baked in tiles (`ISL_TILE` = 256 px, `islandTile`; `CACHE_MAX` = 160 tiles kept, least recently seen
   dropped): a tile is baked when it comes into view, or up to 160 px ahead of it at one a frame; while baking, only the
-  bushes, tufts, specks, stones and pines on that tile are drawn (`bakeR`, `inBake`). The island layers are drawn on the
+  bushes, tufts, specks, stones, pines, scrub patches and clearings on that tile are drawn (`bakeR`, `inBake`). The
+  shallows round each island (the two pale rings and the island's shadow) are baked the same way in their own tiles
+  (`islandBox(isl, true)`, `drawIslandWaterStatic`); only the crawling surf line is drawn live, cut into dashes by hand
+  and only where it's in sight (`surfDashes`, flat ends: a canvas `setLineDash` ran round the whole of a big island
+  every frame). Rocks and stacks are painted once each into a little sprite (`rockSprite`, `drawRocks`; a stack's column
+  was 15–30 fills a frame); their surf rings stay live, one stroke for all. The fog of war is stretched into `fogBig`
+  only when the view crosses into another fog cell or a cell is explored (`fogVer`); otherwise it's one plain stamp.
+  The sea's flecks and wavelets are stroked in batches, one path per shade (`seaPaths`), not one stroke each. Near the
+  world's seam the trembling compass needle is redrawn every other frame. (Measured in headless Chromium: the scene
+  without the dither went from ~4.8 / 5.4 / 6.9 ms (open sea / cluster / village at night) to ~2.8 / 3.2 / 4.0 ms; the
+  slowest tile bake from ~23 to ~13 ms.) The island layers are drawn on the
   wrapped copies of the world out to `320 + MAX_RMAX` past the edge, so a big island never pops at the seam.
   Every picture drawn into the scene (baked islands, cloud sprites, fog, soft dots) is a memory canvas too (`sceneCtx`):
   a graphics-card canvas drawn into a memory one is read back from the card, which gave 26 ms stalls one frame in 20.
