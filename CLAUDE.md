@@ -108,7 +108,11 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   until its own tutorial step): points home, a dot per village filled once a dish is bought there; drawn like the
   wheel (greys into a low-res canvas, then dithered): brass bezel with rivets, shaded card, wind rose, glass glare.
   It has a hinged brass **lid** (engraved rings, a small star, hinge on top, catch below; `lidOpen`, `toggleLid`): shut at
-  the start of every voyage, a tap (or Enter/Space) swings it up on the hinge and shows the compass, another tap shuts it.
+  the start of every voyage, a tap (or Enter/Space) swings it up on the hinge and shows the compass. Once open, a tap
+  turns the face over like a card (`watchOn`, `watchT`: squeezed sideways, then the other side opens out) to a
+  **24-hour watch** and back: one hand, 0 at the top, 0/6/12/18 numbered, a tick every hour, and a mark on the rim at
+  `WATCH_MARK` = 19 (`drawWatchFace`). The time is `watchHour()` = `DAWN_HOUR` (5) + `dayT`×24, so the golden hour
+  falls at about 19. The lid never shuts again until the next voyage.
   The old fish counters round it are hidden (`#wood`); the cargo is shown on the logbook's right page.
 - **Intro:** on "Set sail" the card rolls up into a scroll that is tossed into the list button (skipped with reduced motion).
 
