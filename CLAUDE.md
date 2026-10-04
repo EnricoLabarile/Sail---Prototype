@@ -240,7 +240,11 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   Opening/closing it plays `Sfx.book(open)`: paper flutter, and the cover's thump on closing. The list also shows the day of the voyage
   (`dayNo`, +1 at each dawn). A tiny faint frame-rate counter (`#fps`, refreshed twice a second while the logbook is open) sits on the
   paper, in the bottom right corner of the right page. Keyboard: arrows, Space = anchor.
-- **Hazards:** rocks, faraglioni, whirlpools (appear/disappear/wander; from day 1, `WHIRL_FROM_DAY` = 1), rollers (big waves: within ~66° of their travel = surf boost (`SURF_COS`), otherwise they hurt). How often: every
+- **Hazards:** rocks, faraglioni, whirlpools (appear/disappear/wander; from day 1, `WHIRL_FROM_DAY` = 1; **slingshot**:
+  running round a whirlpool's outer ring with its swirl, heading within ~37° of the way it turns (`WHIRL_FLING_COS`),
+  she gains speed, `WHIRL_FLING` px/s² × how well she follows it × how deep in she is (0.35 at the rim → 1 at the core),
+  up to `WHIRL_FLING_MAX` above her normal speed, fading once she's out; once a pass a whoosh, a buzz and a "flung!"
+  popup (`boat.flingW`); the pull toward the eye still works, so going deeper is a gamble), rollers (big waves: within ~66° of their travel = surf boost (`SURF_COS`), otherwise they hurt). How often: every
   ~2–6 s (`ROLLER_RATE` = 2, twice the old pace; a little rarer near home and among islands, most in open water), at
   most 12 about in open water (8 elsewhere); never in home waters (they die down there) or within 280 px of a pier, only
   with open water ahead of them, quieter while the nets are out, and they die early on reaching shoal water. A quiet hand on

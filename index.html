@@ -662,6 +662,7 @@
       netsIn:   'nets hauled in',
       surf:     'surf!',
       fairWind: 'fair wind!',
+      fling:    'flung!',
       whirl:    'Whirlpool! -{damage}',
       bought:   '+ {item}',
       coinsIn:  '+{n} coins',
@@ -789,6 +790,9 @@
   const WHIRL_PULL = 22;             // px/s pull at the edge of the core…
   const WHIRL_CURVE = 4;             // …rising exponentially from ~0 at the rim
   const WHIRL_FADE = 3;              // seconds for a whirlpool to open up / die down
+  const WHIRL_FLING = 70;            // px/s² of extra speed while she runs round a whirlpool's outer ring with its swirl (a slingshot)…
+  const WHIRL_FLING_MAX = 40;        // …up to this much above her normal speed (it fades once she's out)
+  const WHIRL_FLING_COS = 0.8;       // how well her heading must follow the swirl to be flung (cos of ~37°)
   const ROLLER_RATE = knob('ROLLER_RATE', 2);             // how often big waves come (2 = twice as often as at first, 1 = the old pace)
   const ROLLER_CATCH = 25;           // px/s a wave from astern runs faster than the boat, so it catches her to surf (0 = never helps)
   const DOWNWIND_DEG = 120;          // she's running downwind when the wind comes from at least this far round from her bow (180 = dead astern); from here the wind from behind adds speed too
@@ -5438,7 +5442,7 @@
       for(const w of whirlpools){
         if(w.s<=0) continue;                              // faded out: no effect
         const dx = wdx(boat.x,w.x), dy = wdy(boat.y,w.y), d = Math.hypot(dx,dy);
-        if(d > w.r){ if(w.escaping){ w.escaping = false; w.armed = true; } continue; }
+        if(d > w.r){ if(w.escaping){ w.escaping = false; w.armed = true; } if(boat.flingW === w) boat.flingW = null; continue; }
         if(boat.whirl || w.escaping) continue;          // thrown out: no pull until clear
         // outer ring: a pull toward the eye (plus a little swirl), almost
         // nothing near the rim and rising exponentially toward the core
@@ -5448,7 +5452,20 @@
           const ux = -dx/(d||1), uy = -dy/(d||1);
           boat.x += (ux*pull - uy*w.dir*pull*0.35)*dt;
           boat.y += (uy*pull + ux*w.dir*pull*0.35)*dt;
-        }
+          // slingshot: running round the ring with the swirl (heading along
+          // it, not into the eye), the water flings her on: extra speed,
+          // more the deeper in she dares, fading once she's out
+          const tx = -uy*w.dir, ty = ux*w.dir;                    // the swirl's way round
+          const al = Math.cos(boat.angle)*tx + Math.sin(boat.angle)*ty;
+          if(al > WHIRL_FLING_COS && boat.speed > ROW_ENTER && !anchored){
+            const f = w.s*(al - WHIRL_FLING_COS)/(1 - WHIRL_FLING_COS)*(0.35 + 0.65*k);
+            boat.speed = Math.min(boat.speed + WHIRL_FLING*f*dt, Math.max(boat.speed, targetSpeed + surf + WHIRL_FLING_MAX));
+            if(boat.flingW !== w){                                 // once a pass: a whoosh and a buzz
+              boat.flingW = w; Sfx.surf(); buzz([15,30,25]);
+              popups.push({x:boat.x, y:boat.y-26, text:TEXT.popups.fling, life:1.4, max:1.4});
+            }
+          }
+        } else if(boat.flingW === w) boat.flingW = null;
         if(!w.armed) continue;
         // core: caught, spun round, damaged and flung out (only once it's fully formed)
         if(d < w.core && w.s > 0.7){
