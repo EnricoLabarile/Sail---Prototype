@@ -261,7 +261,7 @@
   #btn-power canvas{position:absolute; left:2px; top:2px; width:76px; height:76px; image-rendering:pixelated; transition:opacity .3s;
     filter:drop-shadow(1.5px 0 0 var(--paper)) drop-shadow(-1.5px 0 0 var(--paper)) drop-shadow(0 1.5px 0 var(--paper)) drop-shadow(0 -1.5px 0 var(--paper)) drop-shadow(3px 4px 0 rgba(0,0,0,.3));}
   #btn-power .pw-spent{opacity:0;}
-  #btn-power.locked{opacity:.35; pointer-events:none;}   /* until Eolus gives the fair wind */
+  #btn-power.locked{visibility:hidden; pointer-events:none;}   /* not there at all until Eolus gives the fair wind */
   #btn-power.spent .pw-ready{opacity:0;} #btn-power.spent .pw-spent{opacity:1;}
   #btn-power.blowing canvas{animation:logWiggle 1.2s ease-in-out infinite;}
   body.at-market #btn-power{display:none;}
@@ -370,6 +370,11 @@
   #shoplist .note{font-size:12px; font-style:italic; margin-top:8px;}
   #shoplist .prog{font-size:12px; font-style:italic; font-variant-numeric:tabular-nums; grid-column:2;}
   /* the hold, on the right page: small icons that stay inside the page */
+  #wind-card{padding-bottom:14px;}   /* (clear of the fps counter in the corner) */
+  #wind-card h3{margin:0 0 2px;}
+  #wind-card .wind-polar{width:100%; max-width:150px; display:block; margin:0 auto;}
+  #wind-card .wind-eff{margin:2px 0 0; text-align:center; font-weight:bold;}
+  #wind-card .wind-sub{margin:1px 0 0; text-align:center; font-size:11px; font-style:italic; opacity:.8; white-space:nowrap;}
   #hold-page:empty{min-height:126px; opacity:.16; background:repeating-linear-gradient(to bottom, transparent 0 17px, var(--ink) 17px 18px);}   /* a blank ruled page */
   #shoplist .hold-head{display:flex; justify-content:space-between; align-items:baseline; gap:6px; margin-bottom:6px;}
   #shoplist .hold-count{font-size:12px; font-style:italic; font-variant-numeric:tabular-nums; margin-right:auto;}
@@ -700,6 +705,11 @@
       square:  'Square sail',
       lateen:  'Lateen sail',
       hint:    '{sail}: tap to rig it',
+      // the wind card on the logbook's right page: how well the sail she carries takes the wind
+      windTitle: 'Wind',
+      drawing:   '{sail}: {pct}%',
+      breeze:    'breeze {pct}%',
+      spareLine: '- - - spare sail',
       rigged:  '{sail} rigged',
     },
     logbook: {
@@ -2192,9 +2202,9 @@
 
   // polar-ish speed curve per sail: [angleDeg, factor] (see Tuning)
   const POLARS = {square: SAIL_POLAR_SQUARE, lateen: SAIL_POLAR_LATEEN};
-  function speedFactor(relDeg){
+  function speedFactor(relDeg, rig){
     relDeg = Math.abs(relDeg);
-    const POLAR = POLARS[boat.rig] || POLARS.square;
+    const POLAR = POLARS[rig || boat.rig] || POLARS.square;
     for(let i=0;i<POLAR.length-1;i++){
       const [a0,f0]=POLAR[i], [a1,f1]=POLAR[i+1];
       if(relDeg>=a0 && relDeg<=a1){
@@ -4771,8 +4781,8 @@
   function renderList(){
     if(!ORDERS_ON){                                // no orders: the day and the cargo on the left page, a blank page on the right
       elListBody.innerHTML = '<div class="list-head"><h2>'+fmt(TEXT.logbook.day, {n: dayNo})+'</h2></div>' + holdHTML();
-      elHoldPage.innerHTML = '';
-      listKey = holdKey();
+      elHoldPage.innerHTML = '<div id="wind-card">'+windHTML()+'</div>';
+      listKey = holdKey(); windKey = windCardKey();
       return;
     }
     // today's order: each line crossed off once it's been delivered at home
@@ -4790,8 +4800,34 @@
     elListBody.innerHTML = '<div class="list-head"><h2>'+TEXT.logbook.order+'</h2><span class="day">'+fmt(TEXT.logbook.day, {n: dayNo})+'</span></div>'
       + '<ul class="courses">' + (o ? o.items.map(line).join('') : '') + '</ul>'
       + (note ? '<p class="note">'+note+'</p>' : '');
-    elHoldPage.innerHTML = holdHTML();
-    listKey = holdKey();
+    elHoldPage.innerHTML = holdHTML() + '<div id="wind-card">'+windHTML()+'</div>';
+    listKey = holdKey(); windKey = windCardKey();
+  }
+  // the wind card: a polar diagram, the wind blowing down from the top. The
+  // filled curve is how much of her top speed the sail she carries gives on
+  // each heading (its speed curve in Tuning), the dashed one the spare sail's;
+  // the needle is her heading now, its dot where it meets the curve
+  let windKey = '';
+  const windRel = ()=> norm(boat.angle - windAngle)*180/Math.PI;          // degrees off the wind, signed by side
+  const windCardKey = ()=> [Math.round(windRel()/2), boat.rig, Math.round(windStrength*20)].join('|');
+  function windHTML(){
+    const Rr = 46, f = n=> n.toFixed(1);
+    const curve = rig=>{ let d = ''; for(let a = 0; a <= 360; a += 5){ const k = speedFactor(a > 180 ? 360 - a : a, rig)*Rr, r = a*Math.PI/180;
+      d += (a ? 'L' : 'M') + f(Math.sin(r)*k) + ' ' + f(-Math.cos(r)*k); } return d + 'Z'; };
+    const rel = windRel(), r = rel*Math.PI/180, eff = speedFactor(rel), hx = Math.sin(r), hy = -Math.cos(r);
+    const spare = SPARE_SAIL ? '<path d="'+curve(spareRig())+'" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2.5 2.5" opacity=".75"/>' : '';
+    return '<h3>'+TEXT.sails.windTitle+'</h3>'
+      + '<svg class="wind-polar" viewBox="-58 -60 116 112" aria-hidden="true">'
+      + '<circle r="'+Rr+'" fill="none" stroke="currentColor" stroke-width=".7" stroke-dasharray="1 3"/>'
+      + '<path d="M0 -'+Rr+' V'+Rr+' M-'+Rr+' 0 H'+Rr+'" stroke="currentColor" stroke-width=".5" opacity=".5"/>'
+      + '<path d="'+curve(boat.rig)+'" fill="url(#sh-light)" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>' + spare
+      + '<path d="M0 -59 V-50 M-3.5 -54 L0 -49.5 L3.5 -54" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'   // the wind, from the top
+      + '<path d="M0 0 L'+f(hx*Rr*1.08)+' '+f(hy*Rr*1.08)+'" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>'   // her heading
+      + '<circle cx="'+f(hx*Rr*eff)+'" cy="'+f(hy*Rr*eff)+'" r="3.4" fill="currentColor" stroke="var(--paper)" stroke-width="1"/>'
+      + '<circle r="2.2" fill="var(--paper)" stroke="currentColor" stroke-width="1.2"/>'
+      + '</svg>'
+      + '<p class="wind-eff">'+fmt(TEXT.sails.drawing, {sail: TEXT.sails[boat.rig], pct: Math.round(eff*100)})+'</p>'
+      + '<p class="wind-sub">'+fmt(TEXT.sails.breeze, {pct: Math.round(windStrength*100)})+(SPARE_SAIL ? ' · '+TEXT.sails.spareLine : '')+'</p>';
   }
   // the right page: the boat's hold. The purse, every fish aboard (small, as
   // at the market) and everything bought on the voyage (dishes, and any gift)
@@ -4831,7 +4867,13 @@
   const holdKey = ()=> [dayNo, coins, boat.rig, ...FISH_KEYS.map(k=>counts[k]), ...ALL_DISHES.map(d=> dishHold[d.icon]||0), ...VILLAGES.map(v=> v.giftGot?'g':''),
                         order ? order.items.map(it=> it.got).join(',') + order.closed : ''].join('|');
   // while the list is open, keep the hold up to date (a catch, a repair)
-  function refreshList(){ if(elList.classList.contains('open') && holdKey() !== listKey) renderList(); }
+  function refreshList(){
+    if(!elList.classList.contains('open')) return;
+    if(holdKey() !== listKey) renderList();
+    else if(logSpread === 0 && windCardKey() !== windKey){                 // the wind card follows her heading live
+      windKey = windCardKey(); const el = document.getElementById('wind-card'); if(el) el.innerHTML = windHTML();
+    }
+  }
   // the logbook button's icon, drawn like the wheel: in greys into a small
   // low-res canvas (one pixel per CSS pixel), then dithered to the interface's
   // two colours. Two states: the closed book (leather, spine with raised

@@ -95,7 +95,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   first time both of a village's dishes have been bought (`boughtEver`). The gifts are a surprise: never mention them
   anywhere before one is earned. (The course names in `TEXT.villages` are no longer shown.)
   **Orders: off for now** (`ORDERS_ON` = false: no order in the logbook, no deliveries, no dinner verdict or order
-  toasts; the logbook's left page shows the day and the cargo, the right page is a blank ruled page). When on:
+  toasts; the logbook's left page shows the day and the cargo, the right page the **wind card**). When on:
   **Orders** (the `// ---------- Orders ----------` section; no endings any more): every day an `order` for the
   restaurant at home. Day 1: `FIRST_ORDER_FISH` (3) fish of any kind. From day 2: `ORDER_FISH_MIN`–`ORDER_FISH_MAX`
   fish of one kind plus one village dish (two from day `ORDER_TWO_DISHES_FROM` = 4), named in the logbook (the player
@@ -125,7 +125,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
 - **Wind:** random from the start (the old guiding wind toward Nordania, `guideWind`, is off), then the normal shifting winds.
   **Fair wind** (a power, the medallion button bottom right, `#btn-power`, drawn like the logbook icon in
   `drawLogbookIcon`: a dark brass medallion with a gust; pale and dotted once spent; wiggles while it blows):
-  **locked until the Temple of Eolus gives it** (`powerOwned`; the button is dimmed and disabled, class `locked`);
+  **locked until the Temple of Eolus gives it** (`powerOwned`; until then the button isn't there at all: class `locked`, hidden and disabled);
   `POWER_USES` (1) uses; a spent use comes back `POWER_RECHARGE` (60 s) after it was used (`powerT`, `rechargePower`,
   counted from the moment it's used, so also while it blows; no more refill at the piers); each makes the wind blow
   from astern whichever way she steers for `POWER_WIND_T` (30 s) (the same spell as the ruins' friendly wind:
@@ -218,6 +218,12 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   `drawLateenSail`: a long slanted yard on a short mast near the bow, the triangle of cloth trailing aft, eased out
   to leeward about half the wind's angle off the bow (`boat.boomSigned`), bellied to leeward, a sheet to the stern
   quarter; it furls along the yard at anchor. A new voyage starts with the square sail rigged.
+  **Wind card** (the logbook's right page, first spread; `windHTML`, texts in `TEXT.sails`): a polar diagram in ink,
+  the wind blowing down from the top (an arrow): the filled curve is the share of top speed the sail she carries gives
+  on each heading (its `SAIL_POLAR_*`), a dashed curve the spare sail's, a needle for her heading now with a dot where it
+  meets the curve; under it "Square sail: 47%" (that share, `speedFactor` at her angle off the wind) and the breeze
+  (`windStrength`). It follows her heading live while the book is open on it (`windCardKey`, refreshed in
+  `refreshList`, only when the rounded angle, the sail or the breeze changes).
   **Sail: automatic** (no button; the old switch `#sail` / `drawSail` is hidden and unused, the halyard rope before it is
   gone). The sail is up by default. When she's slower than `ROW_ENTER` and the wind can't drive her past it either
   (head to wind, or nearly), after `ROW_DELAY` the sail is brailed up and the oars come out (`sailLevel` = `SAIL_MIN`:
