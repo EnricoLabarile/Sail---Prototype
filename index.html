@@ -784,7 +784,9 @@
   // -- World --
   const TRADERS = 8;                 // trading boats: one on each lane, home lanes first (8 = one per lane; 12 put two on each home lane) (world)
   const ISLAND_SCALE = 2.5;          // size of the wild islands (1 = the old small ones) (world)
-  const ISLAND_COUNT = Math.round(210*WK2*1.2/(ISLAND_SCALE*ISLAND_SCALE));   // wild islands: fewer as they grow, so about the same share of the sea is land (world)
+  const ISLAND_COUNT = Math.round(210*WK2*3.5/(ISLAND_SCALE*ISLAND_SCALE));   // wild islands at most (about 58 at scale 2.5; the clusters fill up first) (world)
+  const CLUSTER_SHARE = 0.32;        // share of the sea taken by clusters of islands; the rest is open water (world)
+  const OPEN_ISLANDS = 6;            // small islands scattered in the open water between the clusters (world)
   // share of the wild islands of each shape (the rest are round-ish blobs) (world):
   const ISLAND_L = 0;                // L-shaped: two long arms meeting at a corner (0 = none: off for now; was 0.12)
   const ISLAND_C = 0;                // C-shaped: a horseshoe round a deep bay (0 = none: off for now; was 0.12)
@@ -1225,12 +1227,17 @@
   // channels), 0 = open sea (wide water, more whirlpools and big waves).
   // Built from a few long waves whose wavenumbers are whole numbers, so it
   // tiles the torus seamlessly.
-  const SEA_WAVES = [[1,2,1],[2,-1,0.75],[3,1,0.5],[1,-3,0.4]].map(([kx,ky,a])=>({kx, ky, a, ph: rand(0, Math.PI*2)}));
+  // A few long waves and some shorter ones (clusters a thousand-odd px
+  // across), then a sharp threshold set so CLUSTER_SHARE of the sea is
+  // cluster: the density changes abruptly, clusters against open water.
+  const SEA_WAVES = [[1,2,1],[2,-1,0.75],[3,1,0.55],[1,-3,0.45],[3,-3,0.45],[-2,3,0.4]]
+    .map(([kx,ky,a])=>({kx, ky, a, ph: rand(0, Math.PI*2)}));
+  const seaField = (x,y)=>{ let f = 0; for(const w of SEA_WAVES) f += w.a*Math.sin(2*Math.PI*(w.kx*x/WORLD.w + w.ky*y/WORLD.h) + w.ph); return f; };
+  const SEA_CUT = (()=>{ const v = []; for(let k=0;k<4000;k++) v.push(seaField(Math.random()*WORLD.w, Math.random()*WORLD.h));
+    v.sort((a,b)=>a-b); return v[Math.floor((1 - CLUSTER_SHARE)*v.length)]; })();
   function archipelago(x,y){
-    let f = 0;
-    for(const w of SEA_WAVES) f += w.a*Math.sin(2*Math.PI*(w.kx*x/WORLD.w + w.ky*y/WORLD.h) + w.ph);
-    const k = Math.max(0, Math.min(1, 0.5 + f/2.4));          // ~0..1
-    return k*k*(3-2*k);                                         // pushed toward the two characters
+    const k = Math.max(0, Math.min(1, (seaField(x,y) - SEA_CUT)/0.5 + 0.5));   // a narrow band round the cut
+    return k*k*(3-2*k);
   }
   const islands = [];
 
@@ -1680,7 +1687,7 @@
   }
   (function genIslands(){
     const N = ISLAND_COUNT;
-    let attempts=0, placed=0;                                  // wild islands only (an atoll counts as one)
+    let attempts=0, placed=0, openPlaced=0;                    // wild islands only (an atoll counts as one)
     // the shaped islands go down first (they need more room), then the blobs fill in
     const quota = {atoll: Math.round(N*ISLAND_ATOLL), L: Math.round(N*ISLAND_L), C: Math.round(N*ISLAND_C), big: Math.round(N*ISLAND_BIG)};
     const got = {atoll: 0, L: 0, C: 0, big: 0};
@@ -1690,19 +1697,21 @@
       const y = rand(0, WORLD.h);
       const dg = danger(x,y);
       const ar = archipelago(x,y);
-      if(Math.random() > (0.2 + 0.8*dg*dg)*(0.25 + 1.5*ar)) continue;   // sparser near home and in open seas, crowded in archipelagos
-      const gap = (210 - 120*dg)*(1.45 - 1.0*ar);              // tight channels in archipelagos, wide water in open seas
+      const open = ar < 0.5;
+      if(open && openPlaced >= OPEN_ISLANDS) continue;          // open water stays open: only a few small islands
+      if(Math.random() > (0.2 + 0.8*dg*dg)*(open ? 0.3 : 1)) continue;   // sparser near home
+      const gap = (210 - 120*dg)*(1.45 - 1.2*ar);              // tight channels in the clusters, wide water in the open
       const want = ['atoll','L','C','big'].find(k=> got[k] < quota[k] && attempts < 30000) || 'blob';
       if(want === 'atoll'){ if(tryAtoll(x, y, gap)){ placed++; got.atoll++; } continue; }
       const big = want === 'big', kind = big ? 'blob' : want;
-      const R = rand(90,160)*(1.1 - 0.25*ar)*(big ? rand(1.5, 1.9) : kind === 'L' ? 0.85 : kind === 'C' ? 1.3 : 1)*ISLAND_SCALE;
+      const R = rand(90,160)*(ar > 0.5 ? rand(0.35, 0.85) : rand(0.22, 0.38))*(big ? rand(1.5, 1.9) : kind === 'L' ? 0.85 : kind === 'C' ? 1.3 : 1)*ISLAND_SCALE;   // in open water: small ones
       // cheap pre-check with a generous radius before building the island
       if (wdist(x,y,START.x,START.y) < R*0.6+LAGOON_R) continue;
       if (islandGrid.query(x,y,R*0.6+gap, o=> wdist(x,y,o.x,o.y) < R*0.6+o.rmax+gap)) continue;
       const isl = makeIsland(x,y,R,kind);
       if (wdist(x,y,START.x,START.y) < isl.rmax+LAGOON_R) continue;   // the home lagoon stays open
       const clash = islandGrid.query(x,y,isl.rmax+gap, o=> wdist(x,y,o.x,o.y) < isl.rmax+o.rmax+gap);
-      if(!clash){ addIsland(isl); placed++; if(want !== 'blob') got[want]++; }
+      if(!clash){ addIsland(isl); placed++; if(open) openPlaced++; if(want !== 'blob') got[want]++; }
     }
   })();
 

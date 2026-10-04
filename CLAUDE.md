@@ -57,11 +57,15 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   picture); hidden HUD elements are not updated every frame; the hull meter is written only when it changes.
   day/night palette (`UI_TINT` = 0.5, `uiPalette`): the dithered widgets and the HTML panels (`--paper` / `--ink`) follow the light.
 - **World:** `WORLD_SIZE` = 5040 px square torus (wraps on all sides; was 7200, area halved). Distances in Tuning scale with it (× `WORLD_K`) and counts with its area (× `WK2`), so the sea keeps the same density: change one number to resize the world. Home at the centre. Use `wdx/wdy/wdist/wrapX/wrapY` for any distance.
-  Regions: `archipelago(x,y)` is a smooth field (new each game, tiles the torus): ~1 = archipelago (more, slightly
-  smaller islands, tight channels ~40–90 px), ~0 = open sea (few islands, wide water, most whirlpools, big waves up to
-  ~2× as often). It multiplies the older rule that the sea gets wilder with distance from home (`danger`).
+  Regions: `archipelago(x,y)` (new each game, tiles the torus) is a field of six crossing waves (`SEA_WAVES`, `seaField`)
+  cut sharply at a level (`SEA_CUT`, found by sampling) so `CLUSTER_SHARE` (0.32) of the sea is **clusters** (~1 there)
+  and the rest **open water** (~0): the density changes abruptly. Clusters are packed with small and middling islands
+  (radius ×0.35–0.85, tight channels); open water gets only `OPEN_ISLANDS` (6) little ones (×0.22–0.38), and the most
+  whirlpools and big waves (up to ~2× as often): room to run free and surf. Villages may land in either. Up to
+  `ISLAND_COUNT` (~58) wild islands, the clusters filling up first. It multiplies the older rule that the sea gets
+  wilder with distance from home (`danger`).
   **Island size**: `ISLAND_SCALE` (world, 2.5) scales every wild island (atolls too: ring ×scale, islets ×√scale);
-  `ISLAND_COUNT` (wild islands only) falls with its square, so about the same share of the sea stays land (~20 islands).
+  `ISLAND_COUNT` (wild islands only) falls with its square.
   **Island shapes** (`shapeProfile`, `makeIsland(x,y,R,kind)`; still one radius per angle round a centre): round-ish
   blobs, plus shares set in Tuning (world): `ISLAND_L` (two long arms meeting at a corner), `ISLAND_C` (a horseshoe round
   a deep bay), `ISLAND_BIG` (about 1.7× the size), `ISLAND_ATOLL` (`tryAtoll`: a ring of low sandy islets lying along
