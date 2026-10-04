@@ -138,6 +138,19 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   unused; sardines still swim in the north). The compass has one dot per village (`DOT_ANG` from each village's
   direction), the trade lanes are home to each village plus each village to the next round (`pairs`, any number), and
   the world generator's preview marks temples with a small diamond.
+- **Messages in a bottle** (section "Messages in a bottle"; texts in `TEXT.bottles`): `BOTTLE_COUNT` (6, Tuning, world)
+  bottles float about the open sea (`bottles`, `spawnBottle`: not on land, not at a quay, not near home), drifting
+  slowly downwind (2.2 px/s) and bobbing; one washed ashore is replaced elsewhere. Drawn by `drawBottle` (with the
+  fish banks' layer): a glass bottle on its side with a rolled note inside, a cork, a ripple ring, `BOTTLE_SIZE` (1.8)
+  times true scale so it reads. Fished like a fish bank (stop on it, or drop anchor: `bottleUnderBoat`, within
+  `BOTTLE_REACH`; fish banks come first): the net goes over, and after `BOTTLE_TIME` (1.2 s) it's hauled in with the
+  bottle ("a message in a bottle!", the logbook shimmers) and another one drifts in out of sight. Aboard it takes a
+  hold slot (`bottleHold`, counted in `slotsUsed` and `mkSlotsAfter`; a full hold leaves it in the sea), shown in the
+  Cargo after the spare sail as a tappable slot (`bottleSlotHTML`, a dot while unread). A tap reads it (`readBottle`):
+  the unrolled message `#letter` over everything (a tap rolls it up), and the first reading puts an ink cross on the
+  sea chart (`marks`, for now at a random spot at sea; drawn by `renderMap` whether that sea is explored or not) with
+  a toast. 12 messages (placeholder lorem ipsum for now, `TEXT.bottles.texts`), dealt in a shuffled order (`msgQueue`)
+  so they don't repeat until all have come up. A new voyage clears them all (`resetBottles`).
 - **Ruins** on the diagonals (the temples): **off for now** (`RUINS_ON` = false in Tuning: `RUINS` is empty). When on: dock there for
   a random power (friendly wind 60 s, blessed nets ×3, full hull).
 - **Fish:** sardines (N), mackerel (E), red mullet (S), sea bream (W). Banks denser far from home; half the open-sea banks
@@ -306,6 +319,7 @@ python tests/smoke.py
 ```
 The smoke test checks there are no JS errors. With the orders off (now): the fair wind locked, a visit to the Temple of
 Eolus that gives it, then a trip to a village to buy a dish with foreign
-fish, back home, a new day, the logbook shows it, and a tap on the spare sail rigs it. With `ORDERS_ON`: two days of orders (day 1: 3 fish home before
+fish (after fishing up a message in a bottle and reading it: a cross on the chart), back home, a new day, the
+logbook shows it, and a tap on the spare sail rigs it. With `ORDERS_ON`: two days of orders (day 1: 3 fish home before
 dinner; day 2: the ordered dish bought at its village, everything brought home and delivered).
 For quick manual testing on the phone: `python -m http.server 8000` and open `http://<pc-ip>:8000` on the same Wi-Fi.

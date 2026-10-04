@@ -177,6 +177,14 @@
     z-index:7;
     cursor:pointer;
   }
+  #letter{position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); width:min(330px, calc(var(--fw) - 44px));
+    padding:14px 17px 13px; z-index:12; cursor:pointer;}   /* a message in a bottle, unrolled: a tap rolls it up again */
+  #letter.hidden{display:none;}
+  #letter .l-title{font-weight:bold; font-style:italic; font-size:15px; margin-bottom:8px;}
+  #letter .l-text{font-size:15px; line-height:1.5; font-style:italic;}
+  #letter .l-foot{font-size:12px; margin-top:10px; border-top:1.5px solid var(--ink); padding-top:6px; opacity:.8;}
+  #shoplist .slot.bottle{padding:0; background:none; color:var(--ink); cursor:pointer; position:relative;}
+  #shoplist .slot.bottle.unread::after{content:''; position:absolute; top:3px; right:3px; width:6px; height:6px; border-radius:50%; background:var(--ink);}   /* not read yet */
   #dlg-title{font-weight:bold; font-style:italic; font-size:15px; margin-bottom:6px; letter-spacing:.02em;}
   #dlg-text{font-size:15px; line-height:1.45; min-height:4.35em;}
   #dlg-foot{font-size:12.5px; margin-top:9px; white-space:pre-line; border-top:1.5px solid var(--ink); padding-top:6px;}
@@ -592,6 +600,11 @@
     </div>
     <div id="mk-foot"></div>
   </div>
+  <div id="letter" class="panel hidden" role="dialog" aria-live="polite">
+    <div class="l-title"></div>
+    <div class="l-text"></div>
+    <div class="l-foot"></div>
+  </div>
   <div id="dialog" class="panel hidden" role="status" aria-live="polite">
     <div id="dlg-title"></div>
     <div id="dlg-text"></div>
@@ -701,6 +714,30 @@
       balFull:    'No room in the hold: {n} too many',
     },
     // the two sails: the one she carries and the spare in the hold (tap the spare to rig it)
+    // messages in a bottle: fished up like a fish bank, read from the Cargo (a tap), each puts a cross on the sea chart
+    bottles: {
+      name:    'Message in a bottle',
+      hint:    'Message in a bottle: tap to read it',
+      caught:  'a message in a bottle!',
+      title:   'A message in a bottle',
+      close:   'Tap to roll it up again.',
+      marked:  'A cross on the sea chart',
+      // the messages (placeholders for now): each bottle fished up brings the next one, in a shuffled order
+      texts: [
+        'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore. (1)',
+        'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo. (2)',
+        'Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. (3)',
+        'Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est. (4)',
+        'Curabitur pretium tincidunt lacus. Nulla gravida orci a odio, et tempus feugiat nisl a tellus. (5)',
+        'Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin. (6)',
+        'Integer in mauris eu nibh euismod gravida. Duis ac tellus et risus vulputate vehicula. (7)',
+        'Donec lobortis risus a elit. Etiam tempor. Ut ullamcorper, ligula eu tempor congue, eros est euismod. (8)',
+        'Maecenas fermentum consequat mi. Donec fermentum. Pellentesque malesuada nulla a mi. (9)',
+        'Aliquam erat volutpat. Nam dui mi, tincidunt quis, accumsan porttitor, facilisis luctus, metus. (10)',
+        'Phasellus ultrices nulla quis nibh. Quisque a lectus. Donec consectetuer ligula vulputate sem tristique. (11)',
+        'Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia curae; fusce id purus. (12)',
+      ],
+    },
     sails: {
       square:  'Square sail',
       lateen:  'Lateen sail',
@@ -828,6 +865,9 @@
   const HOME_WATERS = Math.round(950*WORLD_K);     // radius of home waters (all kinds of fish there)
   const HOME_BANKS = Math.round(18*WK2);           // fish banks in home waters, refilled as they are fished (world)
   const FISH_CATCH_MIN = 1, FISH_CATCH_MAX = 2;   // fish per haul (random in between)
+  const BOTTLE_COUNT = 6;            // messages in a bottle floating about the sea at once (one fished up, another drifts in elsewhere) (world)
+  const BOTTLE_SIZE = 1.8;           // how big a bottle is drawn (1 = true to the boat's scale; bigger reads better)
+  const BOTTLE_TIME = 1.2;           // seconds with the net out before a bottle is hauled in (fish take FISH_TIME_MIN–MAX)
   const HOLD_MAX = 9;                // slots in the hold: each fish or dish takes one; when it's full the nets stay aboard
   const FISH_REACH = 1.35;           // a bank counts out to this × its radius (a little past its circle)
   const FISH_STOP = 12;              // px/s: slow enough to count as stopped on a bank
@@ -2181,6 +2221,70 @@
                   kx: 0, ky: 0, kvx: 0, kvy: 0, yaw: 0, yv: 0, bumpCool: 0, talkT: 0, talkCool: rand(0,5), marks: [], foam: [], foamT: 0});
   }
   for(let k=0;k<HOME_BANKS;k++) spawnBank(false, true);
+
+  // ---------- Messages in a bottle ----------
+  // A few bottles float about the open sea, drifting slowly downwind and
+  // bobbing. Stop (or drop anchor) on one and the net fishes it up like a
+  // fish bank; it goes into the hold, a slot of its own. A tap on it in the
+  // logbook's Cargo reads it (#letter); the first reading puts a cross on the
+  // sea chart (for now at a random spot). Another bottle drifts in elsewhere.
+  const bottles = [];                    // floating: {x, y, ph, a, msg}
+  const bottleHold = [];                 // aboard: {msg, read}
+  const marks = [];                      // crosses on the sea chart: {x, y}
+  const BOTTLE_REACH = 12 + 8*BOTTLE_SIZE;   // how close she must be to net one
+  let msgQueue = [];
+  const nextMsg = ()=>{ if(!msgQueue.length) msgQueue = TEXT.bottles.texts.map((_,i)=> i).sort(()=> Math.random() - 0.5); return msgQueue.pop(); };
+  function spawnBottle(away){
+    for(let tries=0; tries<300; tries++){
+      const x = rand(0, WORLD.w), y = rand(0, WORLD.h);
+      if(wdist(x,y,START.x,START.y) < 300) continue;                       // not at home's quay
+      if(away && wdist(x,y,boat.x,boat.y) < 900) continue;                 // a new one drifts in out of sight
+      if(onLand(x,y,40) || pierDist(x,y).d < 80) continue;
+      bottles.push({x, y, ph: rand(0, 6.3), a: rand(0, 6.3), msg: nextMsg()});
+      return;
+    }
+  }
+  function resetBottles(){
+    bottles.length = 0; bottleHold.length = 0; marks.length = 0; msgQueue = [];
+    for(let k=0;k<BOTTLE_COUNT;k++) spawnBottle(false);
+  }
+  resetBottles();
+  function updateBottles(dt){
+    const dw = windAngle + Math.PI;                                          // they drift downwind, slowly
+    for(let k=bottles.length-1; k>=0; k--){
+      const bo = bottles[k];
+      if(fishing && fishing.bottle === bo) continue;                         // held by the net
+      bo.x = wrapX(bo.x + Math.cos(dw)*2.2*dt); bo.y = wrapY(bo.y + Math.sin(dw)*2.2*dt);
+      bo.a += Math.sin(t*0.3 + bo.ph)*0.15*dt;
+      if(onLand(bo.x, bo.y, 14)){ bottles.splice(k,1); spawnBottle(true); }  // washed ashore: another drifts in elsewhere
+    }
+  }
+  function bottleUnderBoat(){
+    for(const bo of bottles) if(wdist(boat.x,boat.y,bo.x,bo.y) < BOTTLE_REACH) return bo;
+    return null;
+  }
+  // a glass bottle on its side, bobbing, a rolled note inside and a cork
+  function drawBottle(bo){
+    const S = BOTTLE_SIZE;
+    if(!inView(bo.x, bo.y, 14*S)) return;
+    const bob = Math.sin(t*1.9 + bo.ph), tilt = bo.a + Math.sin(t*1.3 + bo.ph)*0.12;
+    ctx.save(); ctx.translate(bo.x, bo.y);
+    ctx.strokeStyle = INKC; ctx.lineWidth = 0.9; ctx.globalAlpha = 0.45;                         // ripple ring
+    ctx.beginPath(); ctx.ellipse(0, 1, (8 + bob)*S, (4.5 + bob*0.5)*S, tilt, 0, Math.PI*2); ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.rotate(tilt); ctx.scale(S, S); ctx.translate(0, -bob*0.5);
+    ctx.fillStyle = V(0.45); ctx.beginPath(); ctx.ellipse(0.8, 1.4, 5.6, 2.4, 0, 0, Math.PI*2); ctx.fill();   // shadow in the water
+    const body = ()=>{ ctx.beginPath(); ctx.moveTo(-5.5, -2.4); ctx.lineTo(1.5, -2.4); ctx.quadraticCurveTo(3.4, -2.4, 3.8, -1.1);
+      ctx.lineTo(6, -1.1); ctx.lineTo(6, 1.1); ctx.lineTo(3.8, 1.1); ctx.quadraticCurveTo(3.4, 2.4, 1.5, 2.4); ctx.lineTo(-5.5, 2.4);
+      ctx.quadraticCurveTo(-6.6, 2.4, -6.6, 0); ctx.quadraticCurveTo(-6.6, -2.4, -5.5, -2.4); ctx.closePath(); };
+    ctx.fillStyle = V(0.82); body(); ctx.fill();                                                // the glass
+    ctx.fillStyle = PAPERC; ctx.fillRect(-4.4, -1.2, 5, 2.4);                                   // the rolled note
+    ctx.strokeStyle = INKC; ctx.lineWidth = 0.5; ctx.strokeRect(-4.4, -1.2, 5, 2.4);
+    ctx.fillStyle = V(0.3); ctx.fillRect(6, -1.0, 1.6, 2.0);                                    // the cork
+    ctx.strokeStyle = INKC; ctx.lineWidth = 0.9; body(); ctx.stroke();
+    ctx.strokeStyle = PAPERC; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.moveTo(-4.6, -1.7); ctx.lineTo(1.2, -1.7); ctx.stroke();   // a glint
+    ctx.restore();
+  }
   const SAIL_LEVELS = [
     {name:'full',    amount:1.0},
     {name:'minimum', amount:0.2}
@@ -3905,7 +4009,7 @@
     boonWindT = 0; boonFish = 0; for(const r of RUINS) r.readyAt = 0;
     rollers.length = 0; rollerT = 6; boat.surfT = 0;
     windAngle = rand(0, Math.PI*2); shiftDur = 0; windTimer = rand(28,36); guideWind = false;
-    explored.fill(0); fogVer++;
+    explored.fill(0); fogVer++; resetBottles();
     wake.length = 0; bowSpray.length = 0; popups.length = 0;
     voyageTime = 0; hurtFlash = 0; shake = 0;
     gameover.classList.add('hidden');
@@ -4026,7 +4130,7 @@
   const fishAboard = ()=> FISH_KEYS.reduce((a,k)=> a + counts[k], 0);
   const dishesAboard = ()=> Object.values(dishHold).reduce((a,n)=> a + n, 0);
   const spareSlots = ()=> SPARE_SAIL ? 1 : 0;                     // the spare sail takes a slot too
-  const slotsUsed = ()=> fishAboard() + dishesAboard() + spareSlots();   // the hold's HOLD_MAX slots: a fish, a dish or the spare sail each (gifts are kept apart)
+  const slotsUsed = ()=> fishAboard() + dishesAboard() + spareSlots() + bottleHold.length;   // the hold's HOLD_MAX slots: a fish, a dish, the spare sail or a bottle each (gifts are kept apart)
   const holdFull = ()=> slotsUsed() >= HOLD_MAX;
   let fullSaid = null;                                   // the bank we've already said "the hold is full" over
   function bankUnderBoat(){
@@ -4045,10 +4149,11 @@
       if(b.jump){ b.jump.t += dt; if(b.jump.t>0.9) b.jump = null; }
       if(b.state==='scatter' && b.t > 1.8){ banks.splice(k,1); spawnBank(true, b.home); }
     }
+    updateBottles(dt);
     if(moor || boat.whirl){ fishing = null; settleT = 0; return; }
     const steering = turnLeft || turnRight || (wheelPointer!==null && Math.abs(wheelAngle) > 0.35);
     if(!fishing){
-      const b = bankUnderBoat();
+      const fb = bankUnderBoat(), bo = fb ? null : bottleUnderBoat(), b = fb || bo;   // a fish bank, or else a bottle
       const atAnchor = anchored && weighT <= 0;             // anchor down on a bank: nets over almost at once
       if(b !== fullSaid) fullSaid = null;
       if(b && holdFull()){                                // no room: the nets stay aboard (said once per bank)
@@ -4064,7 +4169,8 @@
           const a = d > 4 ? Math.atan2(dy, dx) : boat.angle + (Math.random()<0.5 ? 1 : -1)*Math.PI/2;
           const ux = Math.cos(a), uy = Math.sin(a), thr = Math.max(NET_THROW_MIN, Math.min(NET_THROW_MAX, d));
           const side = (-Math.sin(boat.angle)*ux + Math.cos(boat.angle)*uy) < 0 ? -1 : 1;   // which gunwale it goes over
-          fishing = {bank:b, t:0, phase:'drop', side, ux, uy, thr, dur: rand(FISH_TIME_MIN, FISH_TIME_MAX)};
+          fishing = {bank:fb, bottle:bo, t:0, phase:'drop', side, ux, uy, thr: bo ? Math.max(NET_THROW_MIN*0.6, Math.min(NET_THROW_MAX, d)) : thr,
+                     dur: bo ? BOTTLE_TIME : rand(FISH_TIME_MIN, FISH_TIME_MAX)};
           Sfx.splash();
           buzz(15);
         }
@@ -4078,6 +4184,16 @@
     if(f.phase==='drop' && f.t>=NET_DROP){ f.phase='wait'; f.t=0; }
     else if(f.phase==='wait'){
       if(steering){ f.phase='cancel'; f.t=0; popups.push({x:boat.x, y:boat.y-22, text:TEXT.popups.netsIn, life:1.3, max:1.3}); }
+      else if(f.t>=f.dur && f.bottle){                  // a bottle in the net: into the hold, and another drifts in elsewhere
+        f.phase='haul'; f.t=0;
+        const k = bottles.indexOf(f.bottle);
+        if(k >= 0) bottles.splice(k, 1);
+        bottleHold.push({msg: f.bottle.msg, read: false});
+        spawnBottle(true);
+        popups.push({x:boat.x, y:boat.y-24, text:TEXT.bottles.caught, life:1.8, max:1.8});
+        Sfx.pickup(); buzz([15,50,25]);
+        elListBtn.classList.add('news');                // the logbook shimmers: something to read
+      }
       else if(f.t>=f.dur){
         f.phase='haul'; f.t=0;
         let n = FISH_CATCH_MIN + Math.floor(Math.random()*(FISH_CATCH_MAX - FISH_CATCH_MIN + 1));
@@ -4472,7 +4588,7 @@
     mkKey = key; stockTable(marketV); drawTable();
   }
   const mkBalance = ()=> mkItems.reduce((a,it)=> a + (it.side===it.origin ? 0 : it.origin==='you' ? it.value : -it.value), 0);
-  const mkSlotsAfter = ()=> mkItems.filter(it=> it.side === 'you').length + spareSlots();   // what the hold would carry after the trade (the spare sail stays aboard)
+  const mkSlotsAfter = ()=> mkItems.filter(it=> it.side === 'you').length + spareSlots() + bottleHold.length;   // what the hold would carry after the trade (the spare sail stays aboard)
   const COIN_SVG = '<svg class="coin" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="var(--paper)" stroke="currentColor" stroke-width="1.4"/><circle cx="6" cy="6" r="2.4" fill="none" stroke="currentColor" stroke-width="1"/></svg>';
   const FOOD_SVG = '<svg viewBox="0 0 30 22" aria-hidden="true"><path d="M3 9 H27 L24 20 H6 Z" fill="var(--paper)" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7 9 Q15 -1 23 9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 12 H22 M9 15.5 H21" stroke="currentColor" stroke-width="1.1"/><circle cx="12" cy="7" r="2.6" fill="currentColor"/><circle cx="18" cy="6.5" r="2.2" fill="url(#sh-mid)" stroke="currentColor" stroke-width="0.8"/></svg>';
   // one small icon per dish and gift (24×24, ink on paper), so the cargo in
@@ -4505,6 +4621,8 @@
     'Tiramisu': ICO('<path d="M15 5 L20 0.5" '+N+' stroke-width="1.8"/><path d="M5 5 H19 L17.5 20 Q12 21.5 6.5 20 Z" '+P+'/><path d="M5 5 H19 L18.75 7.5 H5.25 Z" '+I+'/><path d="M5.65 11 H18.35 L18.05 14 H5.95 Z" '+M+'/><path d="M6.35 17 H17.65 L17.5 19.6 Q12 21 6.5 19.6 Z" '+M+'/>'),
     // a pale bottle and a lemon with its leaf
     // the sails, as the spare in the hold: a square sail on its yard, a lateen triangle on its slanted yard
+    // a corked bottle with a rolled note inside
+    'Message in a bottle': ICO('<path d="M3.5 13.5 Q3.5 10.5 6.5 10.5 H13 Q15 10.5 15.8 12 H19 V15 H15.8 Q15 16.5 13 16.5 H6.5 Q3.5 16.5 3.5 13.5 Z" '+L+'/><rect x="6" y="12" width="6.5" height="3" '+P+' stroke-width="0.9"/><path d="M19 12.3 H21.2 V14.7 H19" '+M+' stroke-width="1.1"/><path d="M6 11.6 H12" '+N+' stroke="var(--paper)" stroke-width="0.8"/>'),
     'Square sail': ICO('<path d="M4 5 Q12 7.5 20 5 Q21 13 20 19 Q12 16.5 4 19 Q3 13 4 5 Z" '+L+'/><path d="M12 6.5 V17.5" '+N+' stroke-width="0.9"/><path d="M2.5 5 Q12 7.5 21.5 5" '+N+' stroke-width="2"/><path d="M12 3 V21.5" '+N+' stroke-width="1.6"/>'),
     'Lateen sail': ICO('<path d="M4 18 L19 3 Q19.5 12 15.5 20 Q10 17.5 4 18 Z" '+L+'/><path d="M9.5 13 Q14 12.5 16.5 18" '+N+' stroke-width="0.9"/><path d="M2.5 19.5 L21 1.5" '+N+' stroke-width="2"/><path d="M8 9 V22" '+N+' stroke-width="1.6"/>'),
     'Limoncello': ICO('<path d="M3.5 21 V10 L5.5 7 V2 H8.5 V7 L10.5 10 V21 Z" '+L+'/><path d="M12.5 17 Q13.5 12.8 17.5 13 Q22 13 22.5 17 Q21.5 21 17.5 21 Q13.5 21 12.5 17 Z" '+P+'/><path d="M17.5 13 Q19 9 23 8.5 Q22 12.5 17.5 13 Z" '+I+'/><path d="M12.5 17 H11.6 M22.5 17 H23.3" '+N+'/>'),
@@ -4835,16 +4953,41 @@
   const elHoldPage = document.getElementById('hold-page');
   function holdHTML(){
     // HOLD_MAX slots in a grid: the spare sail, fish, then dishes, the rest empty; the gifts are kept apart, below
-    const items = [...(SPARE_SAIL ? [{sail: true}] : []), ...FISH_KEYS.flatMap(k=> Array(counts[k]).fill({name: FISH_NAME[k].one, svg: document.querySelector('#wood .fish-'+k+' svg').outerHTML, fish:true})),
+    const items = [...(SPARE_SAIL ? [{sail: true}] : []), ...bottleHold.map((b,i)=> ({bottle: i})), ...FISH_KEYS.flatMap(k=> Array(counts[k]).fill({name: FISH_NAME[k].one, svg: document.querySelector('#wood .fish-'+k+' svg').outerHTML, fish:true})),
                    ...ALL_DISHES.flatMap(d=> Array(dishHold[d.icon]||0).fill({name: d.name, svg: itemIcon(d.icon)}))];
     const gifts = VILLAGES.filter(v=> v.giftGot).map(v=> ({name: v.gift, icon: v.giftIcon}));
-    const slot = k=> { const it = items[k]; if(it && it.sail) return spareHTML(); return it ? '<span class="slot'+(it.fish?' fish':'')+'" title="'+it.name+'" role="img" aria-label="'+it.name+'">'+it.svg+'</span>' : '<span class="slot empty"></span>'; };
+    const slot = k=> { const it = items[k]; if(it && it.sail) return spareHTML(); if(it && it.bottle !== undefined) return bottleSlotHTML(it.bottle); return it ? '<span class="slot'+(it.fish?' fish':'')+'" title="'+it.name+'" role="img" aria-label="'+it.name+'">'+it.svg+'</span>' : '<span class="slot empty"></span>'; };
     return '<div class="hold-head"><h3>'+TEXT.logbook.cargo+'</h3><span class="hold-count">'+fmt(TEXT.logbook.holdCount, {n: items.length, max: HOLD_MAX})+'</span><span class="purse" aria-label="Purse: '+coins+' coins">'+COIN_SVG+coins+'</span></div>'
       + '<div class="hold-slots">'+Array.from({length: Math.max(HOLD_MAX, items.length)}, (_,k)=> slot(k)).join('')+'</div>'
       + (gifts.length ? '<div class="hold-goods">'+gifts.map(g=> '<span title="'+g.name+'" role="img" aria-label="'+g.name+'">'+itemIcon(g.icon)+'</span>').join('')+'</div>' : '');
   }
   // the spare sail, in a slot of its own among the others: a tap on it rigs
   // it, and the sail she carried goes into the hold in its place
+  // a bottle aboard: a slot you tap to read its message (unread ones carry a dot)
+  function bottleSlotHTML(i){
+    const b = bottleHold[i];
+    return '<button type="button" class="slot bottle'+(b.read?'':' unread')+'" data-bottle="'+i+'" title="'+TEXT.bottles.hint+'" aria-label="'+TEXT.bottles.hint+'">'+itemIcon('Message in a bottle')+'</button>';
+  }
+  const elLetter = document.getElementById('letter');
+  function readBottle(i){
+    const b = bottleHold[i]; if(!b) return;
+    elLetter.querySelector('.l-title').textContent = TEXT.bottles.title;
+    elLetter.querySelector('.l-text').textContent = TEXT.bottles.texts[b.msg];
+    elLetter.querySelector('.l-foot').textContent = TEXT.bottles.close;
+    elLetter.classList.remove('hidden');
+    Sfx.book(true); buzz(12);
+    if(!b.read){                                         // the first reading: a cross on the chart (for now anywhere at sea)
+      b.read = true;
+      for(let tries=0; tries<200; tries++){
+        const x = rand(0, WORLD.w), y = rand(0, WORLD.h);
+        if(onLand(x, y, 30) && tries < 199) continue;
+        marks.push({x, y}); break;
+      }
+      toast(TEXT.bottles.marked);
+      renderList();
+    }
+  }
+  elLetter.addEventListener('click', ()=>{ elLetter.classList.add('hidden'); Sfx.book(false); });
   const spareRig = ()=> boat.rig === 'lateen' ? 'square' : 'lateen';
   const SAIL_ICON = {square: 'Square sail', lateen: 'Lateen sail'};
   function spareHTML(){
@@ -4860,12 +5003,14 @@
     renderList();
   }
   elListBody.addEventListener('click', e=>{
+    const bt = e.target.closest('[data-bottle]');
+    if(bt && playing){ e.stopPropagation(); Sfx.init(); readBottle(+bt.dataset.bottle); return; }
     const b = e.target.closest('[data-swap]');
     if(!b || !playing) return;
     e.stopPropagation(); Sfx.init(); swapSail();
   });
   let listKey = '';
-  const holdKey = ()=> [dayNo, coins, boat.rig, ...FISH_KEYS.map(k=>counts[k]), ...ALL_DISHES.map(d=> dishHold[d.icon]||0), ...VILLAGES.map(v=> v.giftGot?'g':''),
+  const holdKey = ()=> [dayNo, coins, boat.rig, bottleHold.map(b=> b.read ? 'r' : 'u').join(''), ...FISH_KEYS.map(k=>counts[k]), ...ALL_DISHES.map(d=> dishHold[d.icon]||0), ...VILLAGES.map(v=> v.giftGot?'g':''),
                         order ? order.items.map(it=> it.got).join(',') + order.closed : ''].join('|');
   // while the list is open, keep the hold up to date (a catch, a repair)
   function refreshList(){
@@ -5042,6 +5187,13 @@
       const q = (j*N+i)*4; d[q] = d[q+1] = d[q+2] = g; d[q+3] = 255;
     }
     mapCtx.putImageData(im, 0, 0);
+    // the crosses from the messages in bottles: an ink X, wherever they are (seen or not)
+    mapCtx.strokeStyle = '#000'; mapCtx.lineWidth = Math.max(1.5, N/120); mapCtx.lineCap = 'round';
+    const xs = Math.max(3, N/50);
+    for(const m of marks){
+      const x = m.x/S, y = m.y/S;
+      mapCtx.beginPath(); mapCtx.moveTo(x-xs, y-xs); mapCtx.lineTo(x+xs, y+xs); mapCtx.moveTo(x+xs, y-xs); mapCtx.lineTo(x-xs, y+xs); mapCtx.stroke();
+    }
     ditherUI(mapCtx, N, N);
     // cut it into the three strips the spread shows: left page, crease, right page
     const wl = elMapL.clientWidth, wc = elMapC.clientWidth, wr = elMapR.clientWidth, W = wl + wc + wr;
@@ -5692,7 +5844,7 @@
 
     // mooring hint
     if(!moor && !dlg){
-      const b = fishing ? fishing.bank : bankUnderBoat();
+      const b = fishing ? (fishing.bank || fishing.bottle) : (bankUnderBoat() || bottleUnderBoat());
       elHint.classList.add('hidden');                   // fishing speaks for itself: nets, fish, splash
       bankHint = !!b && !fishing && !anchored && !holdFull();   // over a bank: the hub of the wheel glows (not with a full hold)
     }
@@ -7497,7 +7649,7 @@
     layer(()=>{ for(const isl of visIslands()) drawIslandWater(isl); }, true);
     layer(()=>{ for(const isl of visIslands()) drawIslandLand(isl); }, true);
     layer(()=>{ const vis = []; rockGrid.query(view.x+w/2, view.y+h/2, Math.max(w,h)/2+20, o=>{ if(inView(o.x,o.y,o.r+6)) vis.push(o); }); drawRocks(vis); });
-    layer(()=>{ for(const b of banks) drawBank(b); });
+    layer(()=>{ for(const b of banks) drawBank(b); for(const bo of bottles) drawBottle(bo); });
     layer(()=>{ for(const w of rollers) drawRoller(w); });
     layer(()=>{ for(const b of buoys) drawBuoy(b); for(const tr of traders) drawTrader(tr); });   // under the fog
     drawCloudShadowsAll(camX, camY, w, h);                   // cloud shadows fall on sea and land

@@ -18,7 +18,7 @@ HOOK = ('requestAnimationFrame(loop);\n})();',
         'get order(){return order},get sat(){return satisfaction},satOn:SATISFACTION_ON,get moor(){return moor},'
         'get dayT(){return dayT},set dayT(v){dayT=v},'
         'dinnerT:(DINNER_HOUR-DAWN_HOUR)/24,ordersOn:ORDERS_ON,get dayNo(){return dayNo},'
-        'RUINS,get powerOwned(){return powerOwned},get rig(){return boat.rig},'
+        'RUINS,get powerOwned(){return powerOwned},get rig(){return boat.rig},bottles,bottleHold,marks,'
         'unmoor(){moor=null;moorLock=null;}};'
         'tutSet("done");'                  # skip the tutorial: the test drives the controls directly
         'requestAnimationFrame(loop);\n})();')
@@ -72,11 +72,24 @@ def eolus(pg):
     pg.wait_for_timeout(5000)                                      # (his words run, then she may leave)
     leave(pg)
 
+def bottle(pg):
+    # a message in a bottle: anchored on it, the net fishes it up; a tap in the Cargo reads it and marks the chart
+    if not pg.evaluate('__d.bottles.length'): return
+    pg.evaluate("()=>{const d=__d; d.unmoor(); const bo=d.bottles[0]; d.boat.x=bo.x-6; d.boat.y=bo.y; d.boat.speed=0;}")
+    pg.keyboard.press('Space'); pg.wait_for_timeout(4500)                # anchor down, the net goes over and comes back
+    assert pg.evaluate('__d.bottleHold.length') == 1, 'the bottle was not fished up'
+    pg.click('#btn-list', force=True); pg.wait_for_timeout(900)
+    pg.click('.slot.bottle'); pg.wait_for_timeout(300)
+    assert pg.evaluate('__d.marks.length') == 1, 'reading the message put no cross on the chart'
+    pg.click('#letter'); pg.click('#btn-list', force=True); pg.wait_for_timeout(900)
+    leave(pg)
+
 def trip(pg):
     global ORDERS; ORDERS = False
     leave(pg)
     assert not pg.evaluate('!!__d.moor'), 'did not leave the home pier'
     eolus(pg)
+    bottle(pg)
     d = pg.evaluate('__d.VILLAGES[0].dishes[0]')
     buy_dish(pg, 0, d['name'], d['icon'])
     dock_at(pg, 'd.PIER')
