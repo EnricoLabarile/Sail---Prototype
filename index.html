@@ -455,6 +455,14 @@
   }
   #intro p, #gameover p{font-size:14.5px; line-height:1.5; margin:8px 0;}
   .intro-card{text-align:left;}
+  #wg-title{margin:0 0 8px; font-size:18px; font-style:italic;}
+  #wg-map{display:block; width:200px; height:200px; margin:0 auto 10px; border:2px solid var(--ink); image-rendering:pixelated;}
+  #wg-knobs{display:grid; grid-template-columns:1fr 74px; gap:3px 8px; font:11.5px/1.3 ui-monospace, monospace;}
+  #wg-knobs label{align-self:center; overflow:hidden; text-overflow:ellipsis;}
+  #wg-knobs input{width:100%; box-sizing:border-box; font:inherit; padding:2px 4px; background:var(--paper); color:var(--ink); border:1.5px solid var(--ink); border-radius:2px;}
+  #wg-knobs input.changed{background:var(--ink); color:var(--paper);}
+  .wg-row{display:flex; gap:10px; justify-content:center;}
+  #intro .wg-row button{padding:7px 16px; font-size:14px; background:var(--paper); color:var(--ink);}
   .shopping{margin:10px 0 18px; padding-left:22px; font-size:15px; line-height:1.7;}
   .shopping li{list-style:'– ';}
   #start-btn{display:block; margin:0 auto; background:var(--ink); color:var(--paper); animation:ring 1.8s ease-in-out infinite;}
@@ -546,10 +554,11 @@
 
   <div id="intro">
    <div class="card intro-card">
-    <!-- (the words come from TEXT.intro / TEXT.villages in the script) -->
-    <p id="intro-lead"></p>
-    <ul class="shopping" id="intro-courses"></ul>
-    <p id="intro-after"></p>
+    <!-- the world generator: a preview of this world, its knobs, and Generate (reloads with them in the address) -->
+    <h2 id="wg-title"></h2>
+    <canvas id="wg-map" aria-label="Preview of the world"></canvas>
+    <div id="wg-knobs"></div>
+    <div class="wg-row"><button id="wg-reset" type="button"></button><button id="wg-gen" type="button"></button></div>
     <button id="start-btn">Set sail</button>
    </div>
   </div>
@@ -597,7 +606,13 @@
   // HTML such as <b>…</b>: keep those tags. Accessibility labels for screen
   // readers stay in the code for now.
   const TEXT = {
-    intro: {
+    // the first screen: the world generator (knob names are shown as they are in Tuning)
+    worldGen: {
+      title:    'World',
+      generate: 'Generate',
+      reset:    'Defaults',
+    },
+    intro: {                                        // (not shown for now: the first screen is the world generator)
       lead:  'You run a little restaurant on your island. Every morning brings an order for tonight\'s dinner.',
       after: 'Fish, trade your catch in the villages if the order needs it, and bring it all home before 19:00.',
       start: 'Set sail!',
@@ -723,6 +738,11 @@
   // Each one is used further down (search for its name to see how). When a
   // new feature brings a new knob, it goes here too. The knobs marked (world)
   // change how the world is generated.
+  // The world knobs wrapped in knob('NAME', value) can also be set from the
+  // first screen (the world generator): its "Generate" reloads the page with
+  // them in the address (?ISLAND_SCALE=3&…), and they win over the value here.
+  const URLP = new URLSearchParams(location.search);
+  const knob = (k, v)=> URLP.has(k) && URLP.get(k) !== '' && isFinite(+URLP.get(k)) ? +URLP.get(k) : v;
 
   // -- Size of the world (first: the other knobs scale with it) --
   // Distances scale with it (× WORLD_K) and counts with its area (× WORLD_K²),
@@ -756,7 +776,7 @@
   const WHIRL_PULL = 22;             // px/s pull at the edge of the core…
   const WHIRL_CURVE = 4;             // …rising exponentially from ~0 at the rim
   const WHIRL_FADE = 3;              // seconds for a whirlpool to open up / die down
-  const ROLLER_RATE = 2;             // how often big waves come (2 = twice as often as at first, 1 = the old pace)
+  const ROLLER_RATE = knob('ROLLER_RATE', 2);             // how often big waves come (2 = twice as often as at first, 1 = the old pace)
   const ROLLER_CATCH = 25;           // px/s a wave from astern runs faster than the boat, so it catches her to surf (0 = never helps)
   const DOWNWIND_DEG = 120;          // she's running downwind when the wind comes from at least this far round from her bow (180 = dead astern); from here the wind from behind adds speed too
   const SURF_WAVE_AFTER = 1.5;         // seconds running downwind before a wave may come up astern for her to surf
@@ -783,17 +803,17 @@
   const DISH_PRICE = 6;              // coins per specialty dish
 
   // -- World --
-  const TRADERS_HOME = 2;            // trading boats between home and the villages (on 2 of the 4 home lanes, picked at random) (world)
-  const TRADERS_VILLAGES = 4;        // trading boats between neighbouring villages (one on each of those 4 lanes) (world)
-  const ISLAND_SCALE = 2.5;          // size of the wild islands (1 = the old small ones) (world)
-  const ISLAND_COUNT = Math.round(210*WK2*3.5/(ISLAND_SCALE*ISLAND_SCALE));   // wild islands at most (about 58 at scale 2.5; the clusters fill up first) (world)
-  const CLUSTER_SHARE = 0.32;        // share of the sea taken by clusters of islands; the rest is open water (world)
-  const OPEN_ISLANDS = 6;            // small islands scattered in the open water between the clusters (world)
+  const TRADERS_HOME = knob('TRADERS_HOME', 2);            // trading boats between home and the villages (on 2 of the 4 home lanes, picked at random) (world)
+  const TRADERS_VILLAGES = knob('TRADERS_VILLAGES', 4);        // trading boats between neighbouring villages (one on each of those 4 lanes) (world)
+  const ISLAND_SCALE = knob('ISLAND_SCALE', 2.5);          // size of the wild islands (1 = the old small ones) (world)
+  const ISLAND_COUNT = knob('ISLAND_COUNT', Math.round(210*WK2*3.5/(ISLAND_SCALE*ISLAND_SCALE)));   // wild islands at most (about 58 at scale 2.5; the clusters fill up first) (world)
+  const CLUSTER_SHARE = knob('CLUSTER_SHARE', 0.32);        // share of the sea taken by clusters of islands; the rest is open water (world)
+  const OPEN_ISLANDS = knob('OPEN_ISLANDS', 6);            // small islands scattered in the open water between the clusters (world)
   // share of the wild islands of each shape (the rest are round-ish blobs) (world):
-  const ISLAND_L = 0;                // L-shaped: two long arms meeting at a corner (0 = none: off for now; was 0.12)
-  const ISLAND_C = 0;                // C-shaped: a horseshoe round a deep bay (0 = none: off for now; was 0.12)
-  const ISLAND_BIG = 0.07;           // big islands, about 1.7 times the usual size
-  const ISLAND_ATOLL = 0;            // atolls: a ring of sandy islets round a lagoon, with gaps to sail in (0 = none: off for now; was 0.05)
+  const ISLAND_L = knob('ISLAND_L', 0);                // L-shaped: two long arms meeting at a corner (0 = none: off for now; was 0.12)
+  const ISLAND_C = knob('ISLAND_C', 0);                // C-shaped: a horseshoe round a deep bay (0 = none: off for now; was 0.12)
+  const ISLAND_BIG = knob('ISLAND_BIG', 0.07);           // big islands, about 1.7 times the usual size
+  const ISLAND_ATOLL = knob('ISLAND_ATOLL', 0);            // atolls: a ring of sandy islets round a lagoon, with gaps to sail in (0 = none: off for now; was 0.05)
   const VILLAGE_DIST = Math.round(2475*WORLD_K);   // px from home to each village (world)
   // each game every village is nudged a little, still roughly N / E / S / W of home:
   const VILLAGE_OUT_MAX = Math.round(300*WORLD_K);   // px it may be pushed further from home (never closer) (world)
@@ -804,7 +824,7 @@
   const DANGER_RING = Math.round(3400*WORLD_K);    // the sea gets wilder out to this distance from home (world)
   const BUOY_R = Math.round(880*WORLD_K);          // radius of each village's ring of buoys (world)
   const BUOYS_PER_VILLAGE = Math.round(24*WORLD_K), HOME_BUOYS = Math.round(32*WORLD_K);   // buoys per ring (world)
-  const OPEN_ROCK_TRIES = Math.round(127*WK2);     // clusters of rocks tried out in open water (world)
+  const OPEN_ROCK_TRIES = knob('OPEN_ROCK_TRIES', Math.round(127*WK2));     // clusters of rocks tried out in open water (world)
   const DAY_LEN = 720;               // seconds for a whole day, dawn to dawn (was 360)
   const TUTORIAL_ON = false;         // the first-voyage tutorial (controls shown one at a time with tips); off for now
   const RUINS_ON = false;            // the ruins on the diagonals and their powers; off for now (world)
@@ -826,7 +846,7 @@
   const GUEST_BOATS_MAX = 4;         // clients' boats tied up at the guest pier when the mood is full (fewer as it falls)
   const SAT_LOSS = 0.25;             // an order with nothing delivered lowers it by this much (in proportion to what's missing)
   const SIGHT = 220;                 // px of fog uncovered round the boat
-  const CLOUD_COUNT = 12;            // clouds in the sky (world)
+  const CLOUD_COUNT = knob('CLOUD_COUNT', 12);            // clouds in the sky (world)
   const RAIN_CLOUD_EVERY = 3;        // one cloud in this many carries rain (world)
 
   // -- Ruins' powers --
@@ -3775,6 +3795,53 @@
   }
   resetOrders();                                         // the first voyage's order (a restart makes a new one)
   resetGuests();
+
+  // ---------- World generator (the first screen) ----------
+  // The world knobs as they are now (from Tuning, or from the address), a
+  // field each; a preview of this world (land in ink, the clusters' zones
+  // dotted, home a square, the villages rings); "Generate" reloads the page
+  // with the fields in the address, "Defaults" without them.
+  (function worldGen(){
+    const K = {ISLAND_SCALE, ISLAND_COUNT, CLUSTER_SHARE, OPEN_ISLANDS, ISLAND_BIG, ISLAND_L, ISLAND_C, ISLAND_ATOLL,
+               OPEN_ROCK_TRIES, TRADERS_HOME, TRADERS_VILLAGES, ROLLER_RATE, CLOUD_COUNT};
+    const box = document.getElementById('wg-knobs'), T = TEXT.worldGen;
+    document.getElementById('wg-title').textContent = T.title;
+    const gen = document.getElementById('wg-gen'), reset = document.getElementById('wg-reset');
+    gen.textContent = T.generate; reset.textContent = T.reset;
+    for(const [k, v] of Object.entries(K)){
+      const id = 'wg-' + k, lab = document.createElement('label'), inp = document.createElement('input');
+      lab.htmlFor = id; lab.textContent = k; lab.title = k;
+      inp.id = id; inp.type = 'number'; inp.step = 'any'; inp.value = +(+v).toFixed(3); inp.dataset.k = k;
+      inp.addEventListener('input', ()=> inp.classList.toggle('changed', inp.value !== '' && +inp.value !== +(+v).toFixed(3)));
+      box.append(lab, inp);
+    }
+    gen.addEventListener('click', ()=>{
+      const q = new URLSearchParams(location.search);       // what was set before stays, plus what changed now
+      for(const inp of box.querySelectorAll('input.changed')) q.set(inp.dataset.k, inp.value);   // (untouched knobs keep their own rule, e.g. ISLAND_COUNT follows ISLAND_SCALE)
+      location.search = q.toString();
+    });
+    reset.addEventListener('click', ()=>{ location.search = ''; });
+    // the preview (painted once the whole script has run: it needs the dither)
+    setTimeout(()=>{
+    const cv = document.getElementById('wg-map'), N = 150, c = cv.getContext('2d', {willReadFrequently:true});
+    cv.width = cv.height = N;
+    const im = c.createImageData(N, N), d = im.data, S = WORLD.w/N;
+    for(let j=0;j<N;j++) for(let i=0;i<N;i++){
+      const x = (i+0.5)*S, y = (j+0.5)*S;
+      const g = onLand(x, y, 0) ? 30 : archipelago(x, y) > 0.5 ? 228 : 255;
+      const q = (j*N+i)*4; d[q] = d[q+1] = d[q+2] = g; d[q+3] = 255;
+    }
+    c.putImageData(im, 0, 0);
+    const k = N/WORLD.w;
+    c.fillStyle = '#000'; c.fillRect(START.x*k-3, START.y*k-3, 6, 6);
+    c.fillStyle = '#fff'; c.fillRect(START.x*k-1.5, START.y*k-1.5, 3, 3);
+    for(const v of VILLAGES){
+      c.strokeStyle = '#fff'; c.lineWidth = 3; c.beginPath(); c.arc(v.isl.x*k, v.isl.y*k, 4, 0, Math.PI*2); c.stroke();
+      c.strokeStyle = '#000'; c.lineWidth = 1.5; c.stroke();
+    }
+    ditherUI(c, N, N);
+    }, 0);
+  })();
   document.getElementById('restart-btn').addEventListener('click', ()=>{
     boat.x = SPAWN.x; boat.y = SPAWN.y; boat.angle = SPAWN.angle;
     boat.speed = 0; boat.health = MAX_HEALTH; boat.kx = boat.ky = 0; boat.whirl = null;

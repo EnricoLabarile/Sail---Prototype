@@ -146,7 +146,14 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   `WATCH_MARK` = 19 (`drawWatchFace`). The time is `watchHour()` = `DAWN_HOUR` (5) + `dayT`×24, so the golden hour
   falls at about 19.
   The old fish counters round it are hidden (`#wood`); the cargo is shown on the logbook's right page.
-- **Intro:** two lines about the restaurant and the daily orders (`TEXT.intro`; no course list). On "Set sail" the card rolls up into a scroll that is tossed into the list button (skipped with reduced motion).
+- **First screen: the world generator** (the intro card; `worldGen`, `TEXT.worldGen`; the old intro lines in
+  `TEXT.intro` aren't shown for now): a 200 px preview of this world (land in ink, the clusters' zones dotted, home a
+  square, the villages rings), a field per world knob (named as in Tuning: `ISLAND_SCALE`, `ISLAND_COUNT`,
+  `CLUSTER_SHARE`, `OPEN_ISLANDS`, `ISLAND_BIG`, `ISLAND_L`, `ISLAND_C`, `ISLAND_ATOLL`, `OPEN_ROCK_TRIES`, `TRADERS_HOME`,
+  `TRADERS_VILLAGES`, `ROLLER_RATE`, `CLOUD_COUNT`; a changed field turns dark), **Generate** (reloads the page with the
+  changed fields, and those already there, in the address: `?ISLAND_SCALE=1.5&…`; untouched knobs keep their own rule,
+  e.g. `ISLAND_COUNT` follows `ISLAND_SCALE`) and **Defaults** (reloads with a bare address). In Tuning those knobs are
+  `knob('NAME', value)`: a value in the address wins. Then "Set sail": the card rolls up into a scroll that is tossed into the list button (skipped with reduced motion).
 
 - **Tutorial**: **off for now** (`TUTORIAL_ON` = false: `tutSet` goes straight to 'done', every control shows at once).
   When on (first voyage, `tut` in the Tutorial section): controls appear one at a time, hidden and disabled
