@@ -871,7 +871,7 @@
   const CLOUD_ALPHA = 0.45, CLOUD_CORE = 0.88;   // clouds: see-through at the rim, denser in the middle
   const CLOUD_MODELS = 4;            // cloud shapes, shared by all the clouds in the sky (world)
   const MAP_RES = 280;               // the sea chart in the logbook: its pixels a side (fewer = coarser)
-  const SAIL_SIZE = 1.15;             // size of the boat's lateen sail (1 = a yard 31 px long)
+  const SAIL_SIZE = 1.15;             // size of the boat's sail (1 = the old one: a yard 30 px wide)
   const SAIL_TONE = 0.72;            // the sail's cloth when drawing well (1 = paper white, 0 = ink); slack or reefed it's a little darker
   const PINE_MODELS = 4;             // stone pine shapes, reused (each also mirrored) all over the map (world)
   // draw the scene on the processor (true) or on the graphics card (false): the frame is tiny, and Firefox
@@ -2014,7 +2014,7 @@
     sailPower: 0,
     sailAmount: 1,    // smoothed sail area (0..1): the sail is up by default
     sailSide: 1,      // which side the boom is on (+1 / -1), with hysteresis
-    boomSigned: 0,    // smoothed angle of the lateen yard off the centreline (boat frame; its sign = the lee side)
+    boomSigned: 0,    // smoothed angle the square sail faces (boat frame)
     r: 16
   };
   const wake=[]; let wakeAcc=0;
@@ -2162,10 +2162,9 @@
   const popups = [];               // floating "+15" / "-8" texts
 
   // polar-ish speed curve: [angleDeg, factor]
-  // (a lateen sail: points higher and reaches well, a little less dead downwind)
   const POLAR = [
-    [0,0.02],[20,0.08],[35,0.22],[50,0.40],[70,0.58],
-    [90,0.70],[110,0.79],[130,0.86],[150,0.90],[170,0.91],[180,0.9]
+    [0,0.02],[20,0.06],[35,0.15],[50,0.30],[70,0.48],
+    [90,0.62],[110,0.74],[130,0.84],[150,0.92],[170,0.98],[180,1.0]
   ];
   function speedFactor(relDeg){
     relDeg = Math.abs(relDeg);
@@ -5305,14 +5304,17 @@
     if(!anchored && sailLevel===SAIL_MIN) targetSpeed = Math.max(targetSpeed, ROW_SPEED);        // at minimum sail the oars keep her going
     boat.sailPower += (windSf-boat.sailPower)*Math.min(1,dt*3);
 
-    // Lateen sail: the yard trails aft from the mast and is eased out to
-    // leeward, about half the angle the wind makes with the bow (close to the
-    // centreline on the wind, well out running free). Head to wind the side
-    // is kept (hysteresis); changing sides, it swings across the middle.
+    // Square sail: the yard pivots on the mast at its centre. The sail's
+    // belly faces where the wind blows TO (in boat frame), braced round at
+    // most ~60° from the bow. Dead downwind the yard is square across the
+    // hull; with wind on the beam it's braced round toward fore-and-aft.
     const relR = norm(boat.angle-windAngle);
-    const wantSide = relR>=0 ? 1 : -1;                     // the lee side
+    const MAX_BRACE = 1.05;
+    // only ambiguous when head-to-wind: keep the side there (hysteresis)
+    const wantSide = relR>=0 ? 1 : -1;
     if(wantSide!==boat.sailSide && Math.abs(relR)>0.2) boat.sailSide = wantSide;
-    const faceTarget = boat.sailSide*Math.max(0.12, Math.min(1.35, Math.abs(relR)*0.5));
+    const faceRaw = norm(Math.PI-relR);         // wind-to direction, boat frame
+    const faceTarget = boat.sailSide*Math.min(Math.abs(faceRaw), MAX_BRACE);
     boat.boomSigned += (faceTarget - boat.boomSigned)*Math.min(1,dt*3);
     // surfing a roller from astern: a temporary push above normal top speed
     const surf = boat.surfT>0 ? SURF_BOOST*Math.min(1, boat.surfT/0.8) : 0;
@@ -7217,16 +7219,14 @@
         }
       }
     }
-    // --- lateen sail: a long slanted yard slung on a short mast near the
-    // bow; the triangle of cloth trails aft from it and is eased out to
-    // leeward (B.boomSigned: the yard's angle off the centreline, its sign
-    // the lee side; it swings across through the middle when she tacks or gybes)
-    const sa = B.boomSigned, lee = sa >= 0 ? 1 : -1, sabs = Math.abs(sa);
-    const mx = 6, my = 0;                                   // the mast
-    const LA = 22*SAIL_SIZE, LF = 9*SAIL_SIZE;              // yard aft and forward of the mast
-    const ex = -Math.cos(sabs), ey = lee*Math.sin(sabs);    // along the yard, toward its peak
-    const tx = mx - ex*LF, ty = my - ey*LF;                 // tack: the yard's low forward end
-    const px = mx + ex*LA, py = my + ey*LA;                 // peak: its high aft end
+    // --- square sail on a yard, pivoting at the mast (centre) ---
+    const face = B.boomSigned;
+    const nx = Math.cos(face), ny = Math.sin(face);
+    const ux = -ny, uy = nx;
+    const mx = 2, my = 0;
+    const H = 15*SAIL_SIZE;
+    const ax = mx-ux*H, ay = my-uy*H;
+    const bx = mx+ux*H, by = my+uy*H;
     // at anchor the cloth is gathered up to the yard (only a look: the sail
     // itself stays set); it spreads again as soon as the anchor comes up
     {
@@ -7237,38 +7237,29 @@
     const furl = B.furl, open = 1 - furl;
     const p = B.sailPower*open;
     const reef = (0.3 + 0.7*B.sailAmount)*(1 - 0.9*furl);
-    // clew: the sheeted corner, a little further out than the yard; furled, it's drawn up to the yard
-    const ca = sabs + 0.5, CL = 0.62*LA*(1 - 0.75*furl);
-    const cx = mx - Math.cos(ca)*CL, cy = my + lee*Math.sin(ca)*CL;
-    const belly = (1.5 + p*7)*reef*SAIL_SIZE;
+    const belly = (1.5 + p*10)*reef*SAIL_SIZE;
     const luff = p < 0.25 ? (1 - p/0.25) : 0;
-    const ripple = Math.sin(t*22)*2.2*luff*open;           // (a furled sail doesn't flap)
-    // the cloth bellies out to leeward, off the leech and the foot
-    const bulge = (x0,y0,x1,y1,amt)=>{
-      let nx = -(y1-y0), ny = x1-x0; const L = Math.hypot(nx,ny) || 1; nx/=L; ny/=L;
-      if(ny*lee < 0){ nx=-nx; ny=-ny; }
-      return [(x0+x1)/2 + nx*amt, (y0+y1)/2 + ny*amt];
-    };
-    const [l1x,l1y] = bulge(px,py,cx,cy, belly*0.8 + ripple);
-    const [f1x,f1y] = bulge(cx,cy,tx,ty, belly*1.3 - ripple);
-    const sailPath=()=>{ ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(px,py);
-      ctx.quadraticCurveTo(l1x,l1y,cx,cy); ctx.quadraticCurveTo(f1x,f1y,tx,ty); };
+    const ripple = Math.sin(t*22)*3*luff*open;          // (a furled sail doesn't flap)
+    const k = 1.33;
+    const dx = bx-ax, dy = by-ay;
+    const c1x = ax + dx/3 + nx*(belly + ripple)*k;
+    const c1y = ay + dy/3 + ny*(belly + ripple)*k;
+    const c2x = ax + dx*2/3 + nx*(belly - ripple)*k;
+    const c2y = ay + dy*2/3 + ny*(belly - ripple)*k;
+    const sailPath=()=>{ ctx.beginPath(); ctx.moveTo(ax,ay); ctx.bezierCurveTo(c1x,c1y,c2x,c2y,bx,by); };
     // cloth: a dotted tan (SAIL_TONE) when drawing well, darker when slack or reefed
     const tone = SAIL_TONE - 0.14*(1-p) - 0.1*(1-B.sailAmount) - 0.08*furl;
     ctx.fillStyle = V(tone);
     sailPath(); ctx.closePath(); ctx.fill();
-    // one seam from the mast down to the clew, then the ink edge of the cloth
+    // one centre seam, then the ink edge of the cloth
     ctx.strokeStyle=INKC; ctx.lineWidth=1;
-    ctx.beginPath(); ctx.moveTo(mx,my); ctx.quadraticCurveTo((mx+cx)/2 + (l1x-(px+cx)/2)*0.5, (my+cy)/2 + (l1y-(py+cy)/2)*0.5, cx, cy); ctx.stroke();
-    ctx.lineWidth=1.4; sailPath(); ctx.stroke();
-    // the sheet, from the clew to the stern quarter
-    ctx.lineWidth=0.8; ctx.globalAlpha=0.8;
-    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(-13, lee*6); ctx.stroke(); ctx.globalAlpha=1;
+    ctx.beginPath(); ctx.moveTo(mx,my); ctx.lineTo(mx+nx*belly*k*0.72, my+ny*belly*k*0.72); ctx.stroke();
+    ctx.lineWidth=1.6; sailPath(); ctx.stroke();
     // yard and mast
-    ctx.lineWidth=2.2; ctx.lineCap='round';
-    ctx.beginPath(); skSeg(tx,ty,px,py,1.5); ctx.stroke();
+    ctx.lineWidth=2.4; ctx.lineCap='round';
+    ctx.beginPath(); skSeg(ax,ay,bx,by,1.5); ctx.stroke();
     ctx.fillStyle=INKC;
-    ctx.beginPath(); ctx.arc(mx,my,2.4,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(mx,my,2.6,0,Math.PI*2); ctx.fill();
     ctx.restore();
     ctx.restore();
   }

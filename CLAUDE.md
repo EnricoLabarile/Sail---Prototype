@@ -193,12 +193,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   and spray (`bowSpray`, updated with the wake, drawn in its layer): white bits of random size peel off both sides of
   the stem, flung outward, more and bigger with speed; the water stays put, so they fall astern as she sails on, grow,
   then break into a few specks and fade (none below ~6% of top speed, none when moored).
-  The boat carries a **lateen sail** (it replaced the square sail): a long slanted yard slung on a short mast near the
-  bow (tack forward of the mast, peak aft), the triangle of cloth trailing aft and eased out to leeward, about half the
-  wind's angle off the bow (`boat.boomSigned`, its sign the lee side; 0.12–1.35 rad), bellied to leeward, a sheet to the
-  stern quarter; tacking or gybing, the yard swings across through the middle. Its speed curve (`POLAR`) points higher
-  and reaches well (50° off the wind: 0.40, beam 0.70, best ~0.9 from 150° on; dead downwind 0.9, plus `downwindBonus`).
-  Size `SAIL_SIZE` (1 = a yard 31 px long), cloth a dotted grey `SAIL_TONE` (0.72; 1 =
+  The boat's square sail is drawn `SAIL_SIZE` (1.3) times the old size, its cloth a dotted grey `SAIL_TONE` (0.72; 1 =
   paper), darker when slack or reefed. At anchor (and moored) the cloth is drawn gathered up to the yard (`boat.furl`,
   eased; a look only: the sail stays set as far as the physics goes), and it spreads again as the anchor comes up.
   **Sail: automatic** (no button; the old switch `#sail` / `drawSail` is hidden and unused, the halyard rope before it is
