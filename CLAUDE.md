@@ -22,7 +22,8 @@
 
 ## What the game is
 A top-down sailing game in a single HTML file (`index.html`, no dependencies, canvas 2D + Web Audio).
-You sail from home to four villages to buy the courses of a dinner (selling fish for coins), then return home.
+You run a little restaurant at home: every day brings an order for dinner (fish, and from day 2 village dishes too),
+which you must bring home by 19:00; the guests' mood goes up or down with how it went. No ending: the days go on.
 
 - **Screen:** made for a phone held upright. On a wide screen (`min-aspect-ratio: 4/5`: a computer, a tablet on its side)
   the game plays in a phone-shaped frame in the middle (`#wrap`, at most 880 px tall, ~0.47 wide), dark around it, so the
@@ -74,11 +75,19 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   each other or to the ruins than in the plain cross, measured on the map; across the wrapped edge N–S and E–W do get closer), one course each, two specialties (1 unit each, all at `DISH_PRICE` = 6
   coins) + a gift: Nordania (N) Antipasti: Fiori di Zucca, Mozzarelle, gift Tarallini. Estolia (E) Primi: Orecchiette
   con Cime di Rapa, Lasagne, gift Olio Santo. Sudia (S) Secondi: Zampina, Pesce Arrosto, gift Vino Rosso. Westa (W)
-  Dessert: Cartellate, Tiramisu, gift Limoncello. The gift is never for sale: the merchant adds it when you buy both dishes.
-  **Endings** (dock home with at least one dish of every course): Bare Minimum (one dish per village), Nice Dinner
-  (both dishes from at least one village), Banquet (all 8 dishes). See `VILLAGES`, `dinnerTier`, `ENDINGS`.
-  **No spoilers:** intro and list name only the four courses; dishes are discovered at the stalls, and the gifts are
-  a surprise: never mention them anywhere before one is earned (not in the intro, list, or market).
+  Dessert: Cartellate, Tiramisu, gift Limoncello. The stall offers both dishes at every visit; bought dishes wait in the
+  hold (`dishHold`, by icon id) until delivered. The gift is never for sale: the merchant adds it, once per voyage, the
+  first time both of a village's dishes have been bought (`boughtEver`). The gifts are a surprise: never mention them
+  anywhere before one is earned. (The course names in `TEXT.villages` are no longer shown.)
+  **Orders** (the `// ---------- Orders ----------` section; no endings any more): every day an `order` for the
+  restaurant at home. Day 1: `FIRST_ORDER_FISH` (3) fish of any kind. From day 2: `ORDER_FISH_MIN`–`ORDER_FISH_MAX`
+  fish of one kind plus one village dish (two from day `ORDER_TWO_DISHES_FROM` = 4), named in the logbook (the player
+  finds which village sells it). Tying up at home before dinner delivers whatever of it is aboard (`deliverOrder`:
+  fish and dishes leave the hold, popups, a toast); at `DINNER_HOUR` (19, the mark on the watch) dinner is served
+  (`serveDinner`): complete → the guests' mood `satisfaction` rises by `SAT_GAIN`, otherwise it falls by `SAT_LOSS` ×
+  the share missing. At first light (`dayNo`++) comes a new order (`newOrder`; toast, the logbook shimmers). The mood is
+  the bar top right (`#mood`: a plate icon and a bar, no words, starts at `SAT_START`, pulses when it changes); there's
+  no game over for it. The voyage still ends only by sinking (`#gameover`).
   Each has a bay, a wooden pier, a lighthouse with a sweeping beam, a pixel-art town, 17 buoys at ~616 px (`BUOYS_PER_VILLAGE`, `BUOY_R`) (toasts "Entering / Leaving the waters of …"; leaving counts 150 px past the buoys).
 - **Home waters** (`SAFE_R` ≈ 665 px round home): no whirlpools (pull ring included) and no big waves (any that drift in
   die down harmlessly); a ring of 22 buoys (`HOME_BUOYS`) marks the edge, with toasts "Leaving home waters" / "Back in home waters".
@@ -95,7 +104,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   The Cargo page shows the count ("n/9 fish", `TEXT.logbook.holdCount`).
   A bank counts a little past its drawn circle (`FISH_REACH` = 1.35 × radius). The net is thrown toward the bank's
   middle (24–46 px from the boat, flying out in a small arc as it opens; `netPos`) and hauled back to the boat.
-  **Market = barter table** (left: your hold, every fish a unit; right: the stall: only the dishes not yet bought; no fish for sale).
+  **Market = barter table** (left: your hold, every fish a unit; right: the stall: both dishes, every visit; no fish for sale).
   The top of the market panel shows how to trade (`TEXT.market.tip`), not the merchant's flavour line.
   Drag or tap units across; balance = fish sold − goods taken. Fish sell for coins: 3 if from other waters (`COIN_FOREIGN`), 1 if local (`COIN_LOCAL`): 4 foreign fish buy both dishes of a village.
   "Trade" is disabled if the purse can't cover a negative balance; a positive balance goes to the purse.
@@ -114,7 +123,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   `WATCH_MARK` = 19 (`drawWatchFace`). The time is `watchHour()` = `DAWN_HOUR` (5) + `dayT`×24, so the golden hour
   falls at about 19. The lid never shuts again until the next voyage.
   The old fish counters round it are hidden (`#wood`); the cargo is shown on the logbook's right page.
-- **Intro:** on "Set sail" the card rolls up into a scroll that is tossed into the list button (skipped with reduced motion).
+- **Intro:** two lines about the restaurant and the daily orders (`TEXT.intro`; no course list). On "Set sail" the card rolls up into a scroll that is tossed into the list button (skipped with reduced motion).
 
 - **Tutorial** (first voyage, `tut` in the Tutorial section): controls appear one at a time, hidden and disabled
   (keys too) until their step: logbook shimmers (open and close it; an open made while the intro scroll is still
@@ -156,8 +165,10 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   wiggle, class `news`) until the logbook is opened; there the new line is drawn across live (`freshCourses`). Its panel is an open book
   that arrives in two steps: the shut book slides down centred (cover up), then the front cover swings open on the
   spine (`.leaf`, its inside is the left page) as the book re-centres; closing reverses it (`toggleList`). The book: stitched leather cover with metal corners (`#book-corner`), the
-  dinner list on the left page (4 course names, crossed off once a dish of it is aboard), a crease, and the **Cargo** on the
-  right page (`holdHTML`: purse, every fish as a small icon, then every dish and gift bought as an icon only, name on
+  day's **order** on the left page ("Tonight's order", the day, one line per item, crossed off once delivered, with
+  "got/n" while partly delivered, and a note: due by 19:00 / all delivered / dinner served; `freshLines` animates a line
+  crossed off since the book was last opened), a crease, and the **Cargo** on the
+  right page (`holdHTML`: purse, every fish as a small icon, then every dish aboard and gift as an icon only, name on
   hover; the book grows to fit). Each dish and gift has its own 24×24 ink icon (`ITEM_ICONS`, `itemIcon(name)`), used at the market stall too.
   **Two spreads**: a sideways swipe across the open book turns the page (left = forward to the **sea chart**, right = back
   to the list and cargo; `turnPage`, `logSpread`): a sheet swings over on the spine (copies of the pages, `snapPage`), with
@@ -191,7 +202,7 @@ You sail from home to four villages to buy the courses of a dinner (selling fish
   pulsed ~5–8 times a second around 4–5 kHz, in bouts with rests; see `cicadas()` in Sound) with dark nights lit by lanterns, lighthouses and windows.
 
 ## Map of index.html (search for these section headers: `// ---------- Name ----------`)
-Texts · Tuning · World setup · Islands · Home island · Piers · Villages · Ruins · Rocks · Whirlpools · Fish banks · Boat ·
+Texts · Tuning · World setup · Islands · Home island · Piers · Villages · Orders · Ruins · Rocks · Whirlpools · Fish banks · Boat ·
 Trade routes · Wind · Input · Haptics · Sound · Ship's wheel · Sail switch (unused) · Intro · Tutorial · UI refs · Dialog · Fishing · Fog of war ·
 Rollers · Powers from the ruins · Village market · Cicadas · Night sounds · Town sounds · Wind streaks · Shopping list · Sea chart · Turning the logbook's pages ·
 Buoys · Traders · Update · 1-bit rendering · Day and night · Draw · Villages (pixel art) · Ruins (pixel art) ·
@@ -207,5 +218,6 @@ Cloud shadows (clouds) · Ambient life: gulls
 pip install playwright && playwright install chromium
 python tests/smoke.py
 ```
-The smoke test loads the game, sets sail, docks at a village, buys, returns home and checks for JS errors.
+The smoke test plays two days of orders: day 1 brings 3 fish home and checks dinner raises the mood; day 2 buys the
+ordered dish at its village, brings everything home and checks it's delivered; and no JS errors.
 For quick manual testing on the phone: `python -m http.server 8000` and open `http://<pc-ip>:8000` on the same Wi-Fi.

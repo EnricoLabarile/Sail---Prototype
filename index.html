@@ -79,6 +79,16 @@
   #status.hurt{background:var(--ink); color:var(--paper);}
   #status.hurt .hp-track{border-color:var(--paper);}
   #status.hurt .hp-fill{background:var(--paper);}
+  /* the guests' mood: a plate and a bar, top right (no words) */
+  #mood{position:fixed; right:12px; top:calc(12px + env(safe-area-inset-top,0px)); z-index:5; display:flex; align-items:center; gap:5px;
+    padding:4px 7px; opacity:0; transition:opacity .5s; pointer-events:none;}
+  #mood.show{opacity:1;}
+  #mood svg{width:18px; height:18px; display:block;}
+  #mood .mood-track{width:58px; height:9px; border:1.5px solid var(--ink); border-radius:2px; padding:1px;}
+  #mood .mood-fill{height:100%; width:50%; background:var(--ink); transition:width .8s;}
+  #mood.pulse{animation:moodPulse .45s ease-in-out 3;}
+  @keyframes moodPulse{50%{transform:scale(1.12);}}
+  body.at-market #mood{display:none;}
   #boon{
     position:fixed;
     top:calc(204px + env(safe-area-inset-top,0px)); left:14px;
@@ -333,7 +343,7 @@
   #shoplist h2{margin:0 0 8px; font-size:16px; font-style:italic;}
   #shoplist .list-head{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;}
   #shoplist .list-head h2{margin:0;}
-  #shoplist .day{font-size:13px; font-style:italic; font-variant-numeric:tabular-nums;}
+  #shoplist .day{font-size:13px; font-style:italic; font-variant-numeric:tabular-nums; white-space:nowrap; margin-left:6px;}
   #shoplist ul{list-style:none; margin:0; padding:0;}
   #shoplist li{display:grid; grid-template-columns:18px 1fr; gap:2px 5px; padding:6px 0; border-top:1.5px dashed var(--ink); font-size:14.5px;}
   #shoplist li:first-child{border-top:none;}
@@ -347,6 +357,7 @@
     animation:strikeIn .5s .55s ease-out forwards;}
   @keyframes strikeIn{to{background-size:100% 2px}}
   #shoplist .note{font-size:12px; font-style:italic; margin-top:8px;}
+  #shoplist .prog{font-size:12px; font-style:italic; font-variant-numeric:tabular-nums; grid-column:2;}
   /* the hold, on the right page: small icons that stay inside the page */
   #hold-page .hold-head{display:flex; justify-content:space-between; align-items:baseline; gap:6px; margin-bottom:6px;}
   #hold-page .hold-count{font-size:12px; font-style:italic; font-variant-numeric:tabular-nums; margin-right:auto;}
@@ -482,6 +493,10 @@
     </div>
   </div>
 
+  <div id="mood" class="panel" role="meter" aria-label="Guests' mood" aria-valuemin="0" aria-valuemax="100">
+    <svg viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="6.2" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.4"/><circle cx="9" cy="9" r="3.6" fill="none" stroke="var(--ink)" stroke-width="0.9"/><path d="M1.2 3 V7.5 M0.4 3 V5.5 M2 3 V5.5 M1.2 7.5 V15.5 M16.8 3 Q15.4 6 16.8 9 V15.5" fill="none" stroke="var(--ink)" stroke-width="1.1" stroke-linecap="round"/></svg>
+    <div class="mood-track"><div class="mood-fill" id="mood-fill"></div></div>
+  </div>
   <button id="btn-list" class="helm-btn" type="button" aria-label="Logbook" aria-expanded="false" aria-controls="shoplist">
     <!-- the logbook: a leather-bound book; tapping it swings the cover open on its spine and shows the written pages -->
     <span class="logbook" aria-hidden="true">
@@ -569,8 +584,8 @@
   // readers stay in the code for now.
   const TEXT = {
     intro: {
-      lead:  'You are throwing a party, and the dinner needs four courses:',
-      after: 'You will find them in the four villages on the map. Buy them, then sail home.',
+      lead:  'You run a little restaurant on your island. Every morning brings an order for tonight\'s dinner.',
+      after: 'Fish, trade your catch in the villages if the order needs it, and bring it all home before 19:00.',
       start: 'Set sail!',
     },
     // the four villages: name, the course they cook, its two dishes, the gift
@@ -599,6 +614,11 @@
       villageIn:  'You approach {village}',
       villageOut: 'Leaving {village}',
       gift:       'Come again! This is on the house: {gift}!',
+      delivered:  'Delivered for tonight\'s dinner',
+      orderReady: 'Tonight\'s order is ready',
+      dinnerOk:   'Dinner is served: the guests are happy',
+      dinnerShort:'Dinner is served, but something was missing',
+      newOrder:   'A new order in the logbook',
     },
     // words that float up from the boat
     popups: {
@@ -636,9 +656,14 @@
       balShort:   'Balance: <b>{n}</b> {icon} not enough: offer more fish',
     },
     logbook: {
-      dinner:  'The dinner',
+      order:   'Tonight\'s order',
       day:     'Day {n}',
-      allAboard: 'Every course is aboard: you can sail home.',
+      due:     'Bring it home by {hour}:00.',
+      fishAny: '{n} fish, any kind',
+      fishKind:'{n} {fish}',
+      ready:   'All delivered: dinner will be ready.',
+      served:  'Dinner was served. A new order comes at first light.',
+      short:   'Dinner was served without everything. A new order comes at first light.',
       cargo:   'Cargo',
       holdCount: '{n}/{max} fish',
       noFish:  'No fish aboard.',
@@ -660,17 +685,6 @@
       badgeWind: 'friendly wind {s} s',
       badgeFish: 'blessed nets ×{n}',
     },
-    // the three endings: the dialog on the home pier, then the closing card
-    endings: {
-      bare: { name:'Bare Minimum', dialog:'Home · a simple supper', title:'Dinner is served: the bare minimum',
-        text:"On the home pier you unload one dish for every course: a plate of antipasti, a primo, a secondo, something sweet. It isn't much, but the friends come anyway, the lanterns are lit and nobody goes home hungry." },
-      nice: { name:'Nice Dinner', dialog:'Home · a nice dinner', title:'A nice dinner',
-        text:"On the home pier you unload the courses, and something more besides. Someone spreads a tablecloth on the terrace, the lanterns are lit, the wine arrives and second helpings go round the table. A nice dinner." },
-      banquet: { name:'Banquet', dialog:'Home · the banquet', title:'The banquet is served',
-        text:"On the home pier you unload everything the four corners of the sea could offer: fiori di zucca and mozzarelle, orecchiette and lasagne, zampina and roast fish, cartellate and tiramisu, and the merchants' gifts on top. The table on the terrace isn't long enough. The banquet can begin." },
-      stats: '{ending}: {dishes} of {all} dishes{gifts}. You did the shopping in {min} min {sec} s, catching {fish} fish along the way.',
-      gifts: ', {n} gifts', gift: ', 1 gift',
-    },
     sunk: {
       title: 'The boat has sunk',
       stats: 'You sailed for {min} min {sec} s and caught {fish} fish.',
@@ -684,9 +698,7 @@
   (function applyTexts(){
     const set = (sel, s)=>{ const el = document.querySelector(sel); if(el) el.textContent = s; };
     set('#intro-lead', TEXT.intro.lead); set('#intro-after', TEXT.intro.after); set('#start-btn', TEXT.intro.start);
-    const ul = document.getElementById('intro-courses');
-    if(ul) ul.innerHTML = Object.values(TEXT.villages).map(v=> '<li></li>').join('');
-    if(ul) [...ul.children].forEach((li, i)=> li.textContent = Object.values(TEXT.villages)[i].course);
+    const ul = document.getElementById('intro-courses'); if(ul) ul.remove();     // (the orders change every day: no fixed list)
     set('#restart-btn', TEXT.restart); set('#mk-you-label', TEXT.market.yourHold); set('#mk-them-label', TEXT.market.stall);
     set('#mk-quit', TEXT.market.quit); set('#mk-deal', TEXT.market.trade); set('.hp-label', TEXT.hud.hull);
   })();
@@ -777,7 +789,16 @@
   const OPEN_ROCK_TRIES = Math.round(127*WK2);     // clusters of rocks tried out in open water (world)
   const DAY_LEN = 360;               // seconds for a whole day (dawn to dawn)
   const DAWN_HOUR = 5;               // the hour on the watch at first light (5 puts the golden hour at about 19)
-  const WATCH_MARK = 19;             // the hour marked on the watch's rim
+  const DINNER_HOUR = 19;            // the day's order must be home by this hour; then dinner is served (marked on the watch)
+  const WATCH_MARK = DINNER_HOUR;    // the hour marked on the watch's rim
+
+  // -- Orders and the guests --
+  const FIRST_ORDER_FISH = 3;        // day 1: this many fish, any kind
+  const ORDER_FISH_MIN = 2, ORDER_FISH_MAX = 4;   // from day 2: fish of one kind (random in between)
+  const ORDER_TWO_DISHES_FROM = 4;   // from day 2 the order asks for one village dish, from this day on for two
+  const SAT_START = 0.5;             // the guests' mood at the start (0..1; the bar top right)
+  const SAT_GAIN = 0.15;             // a complete order raises it by this much
+  const SAT_LOSS = 0.25;             // an order with nothing delivered lowers it by this much (in proportion to what's missing)
   const SIGHT = 220;                 // px of fog uncovered round the boat
   const CLOUD_COUNT = 12;            // clouds in the sky (world)
   const RAIN_CLOUD_EVERY = 3;        // one cloud in this many carries rain (world)
@@ -1333,17 +1354,82 @@
     { name:VT.ovest.name, ux:-1, uy:0, course:VT.ovest.course, own:'orate', line:VT.ovest.line,
       dishes:[{name:VT.ovest.dishes[0], icon:'Cartellate', price:DISH_PRICE}, {name:VT.ovest.dishes[1], icon:'Tiramisu', price:DISH_PRICE}], gift:VT.ovest.gift, giftIcon:'Limoncello' }
   ];
-  const dishesGot = v=> v.dishes.filter(d=>d.bought).length;
-  // the dinner as it stands: 'bare' one dish of every course, 'nice' both
-  // dishes from at least one village, 'banquet' every dish (and every gift)
-  function dinnerTier(){
-    if(!VILLAGES.every(v=>dishesGot(v) > 0)) return null;
-    if(VILLAGES.every(v=>dishesGot(v) === v.dishes.length)) return 'banquet';
-    return VILLAGES.some(v=>dishesGot(v) === v.dishes.length) ? 'nice' : 'bare';
+  // ---------- Orders ----------
+  // Every day the restaurant at home has an order for dinner: on day 1 a few
+  // fish of any kind, from day 2 fish of one kind and one or two village
+  // dishes. Whatever of it is aboard is delivered when the boat ties up at
+  // home; at DINNER_HOUR dinner is served and the guests' mood (the bar top
+  // right) goes up if the order was complete, down by what was missing. At
+  // first light comes the next order. The dishes bought at the stalls wait
+  // in the hold (dishHold, by dish icon id) until they're delivered.
+  const ALL_DISHES = VILLAGES.flatMap(v=> v.dishes.map(d=> ({...d, village: v})));
+  const dishHold = {};                    // dish icon id -> how many aboard
+  let order = null, satisfaction = SAT_START;
+  const freshLines = new Set();           // order lines completed since the logbook was last opened
+  function newOrder(day){
+    const items = [];
+    if(day <= 1) items.push({kind:'fish', key:null, n: FIRST_ORDER_FISH, got:0});
+    else {
+      const key = FISH_KEYS[(Math.random()*FISH_KEYS.length)|0];
+      items.push({kind:'fish', key, n: ORDER_FISH_MIN + Math.floor(Math.random()*(ORDER_FISH_MAX - ORDER_FISH_MIN + 1)), got:0});
+      const pool = ALL_DISHES.slice();
+      for(let k = 0; k < (day >= ORDER_TWO_DISHES_FROM ? 2 : 1); k++){
+        const d = pool.splice((Math.random()*pool.length)|0, 1)[0];
+        items.push({kind:'dish', icon: d.icon, name: d.name, n:1, got:0});
+      }
+    }
+    order = {day, items, closed:false, result:null};
   }
-  const ENDINGS = TEXT.endings;           // (bare, nice, banquet: see Texts)
-  function resetDishes(){ for(const v of VILLAGES){ v.done = false; v.giftGot = false; for(const d of v.dishes) d.bought = false; } }
-  let won = false;
+  const orderLeft = ()=> order ? order.items.reduce((a,it)=> a + it.n - it.got, 0) : 0;
+  const orderDone = ()=> !!order && orderLeft() === 0;
+  // tied up at home before dinner: hand over whatever of the order is aboard
+  function deliverOrder(){
+    if(!order || order.closed) return;
+    const notes = [];
+    order.items.forEach((it, i)=>{
+      let want = it.n - it.got;
+      if(want <= 0) return;
+      let gave = 0;
+      if(it.kind === 'dish'){ gave = Math.min(want, dishHold[it.icon]||0); dishHold[it.icon] = (dishHold[it.icon]||0) - gave; }
+      else {
+        const keys = it.key ? [it.key] : FISH_KEYS.slice().sort((a,b)=> counts[b] - counts[a]);   // any kind: the biggest catch first
+        for(const k of keys){ const g = Math.min(want - gave, counts[k]); counts[k] -= g; gave += g; }
+      }
+      if(!gave) return;
+      it.got += gave;
+      if(it.got >= it.n){ freshLines.add(i); elListBtn.classList.add('news'); }
+      notes.push(gave > 1 ? gave + ' × ' + orderLineName(it) : orderLineName(it));
+    });
+    if(!notes.length) return;
+    notes.forEach((txt,k)=> popups.push({x:boat.x, y:boat.y-26-k*16, text:'− '+txt, life:1.8, max:1.8}));
+    Sfx.coins(); buzz([15,40,15,40,55]);
+    toast(orderDone() ? TEXT.toasts.orderReady : TEXT.toasts.delivered);
+    if(elList.classList.contains('open')) renderList();
+  }
+  function orderLineName(it){
+    if(it.kind === 'dish') return it.name;
+    return it.key ? FISH_NAME[it.key].many : TEXT.logbook.fishAny.replace('{n} ', '');
+  }
+  // dinner time: the guests sit down to whatever came home
+  function serveDinner(){
+    if(!order || order.closed) return;
+    order.closed = true;
+    const total = order.items.reduce((a,it)=> a + it.n, 0), got = order.items.reduce((a,it)=> a + Math.min(it.n, it.got), 0);
+    const ok = got >= total;
+    order.result = ok ? 'ok' : 'short';
+    satisfaction = Math.max(0, Math.min(1, satisfaction + (ok ? SAT_GAIN : -SAT_LOSS*(1 - got/total))));
+    toast(ok ? TEXT.toasts.dinnerOk : TEXT.toasts.dinnerShort);
+    if(ok){ Sfx.bell(); buzz([14,22,14,22,40]); } else { Sfx.thunk(0.3); buzz([40,60,40]); }
+    satPulse = 1.2;
+    if(elList.classList.contains('open')) renderList();
+  }
+  function resetOrders(){
+    for(const v of VILLAGES){ v.done = false; v.giftGot = false; for(const d of v.dishes) d.boughtEver = false; }
+    for(const k in dishHold) delete dishHold[k];
+    satisfaction = SAT_START; freshLines.clear();
+    newOrder(1);
+  }
+  let satPulse = 0;
   // hand-shaped village island: rounded, with a wide clearing at the centre
   function makeVillageIsland(v){
     const x = v.px, y = v.py;                                 // (see placeVillages)
@@ -3579,6 +3665,7 @@
     elGoStats.textContent = fmt(TEXT.sunk.stats, {min, sec, fish: caught});
     gameover.classList.remove('hidden');
   }
+  resetOrders();                                         // the first voyage's order (a restart makes a new one)
   document.getElementById('restart-btn').addEventListener('click', ()=>{
     boat.x = SPAWN.x; boat.y = SPAWN.y; boat.angle = SPAWN.angle;
     boat.speed = 0; boat.health = MAX_HEALTH; boat.kx = boat.ky = 0; boat.whirl = null;
@@ -3599,9 +3686,9 @@
     playing = true; lidOpen = false; watchOn = false; watchT = 0;   // a new voyage: the compass lid starts shut, compass side up
     prevWheel = wheelAngle = 0;
     repairT = 0; moor = mooredAtSpawn(); moorLock = null;
-    resetDishes(); freshCourses.clear(); elListBtn.classList.remove('news');
+    resetOrders(); elListBtn.classList.remove('news');
     coins = 0;
-    won = false; closeDialog();
+    closeDialog();
     Sfx.init();
   });
 
@@ -3612,6 +3699,8 @@
   const HEALTH_SHOW = 3;
   let healthShowT = 0;
   const elWood = document.getElementById('wood');
+  const elMood = document.getElementById('mood'), elMoodFill = document.getElementById('mood-fill');
+  let moodShown = -1;
   function showHealth(){ healthShowT = HEALTH_SHOW; }
   const elHpFill = document.getElementById('hp-fill');
   const elHpNum = document.getElementById('hp-num');
@@ -3700,19 +3789,6 @@
   // tap the box to show the whole text at once (the pause still runs)
   elDlg.addEventListener('pointerdown', ()=>{ if(dlg){ dlg.shown = dlg.text.length; elDlgText.textContent = dlg.text; } });
   const elGoTitle = document.getElementById('go-title');
-  function showWin(tier){
-    playing = false;
-    boat.speed = 0;
-    Sfx.wheel(0); Sfx.drone(0);
-    closeDialog();
-    const min = Math.floor(voyageTime/60), sec = Math.floor(voyageTime%60);
-    const dishes = VILLAGES.reduce((a,v)=>a+dishesGot(v),0), all = VILLAGES.reduce((a,v)=>a+v.dishes.length,0), gifts = VILLAGES.filter(v=>v.giftGot).length;
-    elGoTitle.textContent = ENDINGS[tier].title;
-    elGoStats.textContent = fmt(TEXT.endings.stats, {ending: ENDINGS[tier].name, dishes, all, min, sec, fish: caught,
-      gifts: gifts ? (gifts === 1 ? TEXT.endings.gift : fmt(TEXT.endings.gifts, {n: gifts})) : ''});
-    gameover.classList.remove('hidden');
-  }
-
   // ---------- Fishing ----------
   const NET_DROP = 1.4;          // net deploying animation
   const NET_HAUL = 1.1;          // hauling animation
@@ -4110,9 +4186,7 @@
   let marketV = null, mkItems = [], mkKey = '';
   const fishValue = (v, k)=> k===v.own ? COIN_LOCAL : COIN_FOREIGN;
   const fishWorth = (v)=> FISH_KEYS.reduce((a,k)=> a + counts[k]*fishValue(v,k), 0);   // the whole hold, sold here
-  // the cheapest dish still on the stall (Infinity when everything's bought)
-  const nextPrice = (v)=> Math.min(...v.dishes.filter(d=>!d.bought).map(d=>d.price), Infinity);
-  const mkState = (v)=> [v.name, dishesGot(v), coins, ...FISH_KEYS.map(k=>counts[k])].join('|');
+  const mkState = (v)=> [v.name, ...v.dishes.map(d=> dishHold[d.icon]||0), coins, ...FISH_KEYS.map(k=>counts[k])].join('|');
   function openMarket(v){
     marketV = v; elMk.classList.remove('hidden');
     document.body.classList.add('at-market');
@@ -4124,7 +4198,7 @@
   function stockTable(v){
     mkItems = [];
     for(const k of FISH_KEYS) for(let n=0;n<counts[k];n++) mkItems.push({kind:'fish', key:k, origin:'you', side:'you', value: fishValue(v,k)});
-    v.dishes.forEach((dsh,i)=>{ if(!dsh.bought) mkItems.push({kind:'food', dish:i, name:dsh.name, origin:'them', side:'them', value: dsh.price}); });
+    v.dishes.forEach((dsh,i)=> mkItems.push({kind:'food', dish:i, name:dsh.name, origin:'them', side:'them', value: dsh.price}));   // both, every visit
     mkItems.forEach((it,i)=> it.id = i);
   }
   // called every frame while docked: only redraws when something changed
@@ -4254,17 +4328,16 @@
     const v = marketV; if(!v) return;
     const bal = mkBalance();
     if(!mkItems.some(it=>it.side!==it.origin) || coins + bal < 0) return;
-    const got = [], wasCrossed = dishesGot(v) > 0;
+    const got = [];
     for(const it of mkItems){
       if(it.side === it.origin) continue;
       if(it.origin==='you'){ counts[it.key]--; }                          // sold
-      else { v.dishes[it.dish].bought = true; v.done = true; got.push(it.name); }   // a dish for the dinner
+      else { const d = v.dishes[it.dish]; dishHold[d.icon] = (dishHold[d.icon]||0) + 1; d.boughtEver = true; v.done = true; got.push(it.name); }   // into the hold, for an order
     }
-    if(!wasCrossed && dishesGot(v) > 0){ freshCourses.add(v.course); elListBtn.classList.add('news'); }   // a course crossed off: the logbook shimmers
     coins += bal;
     Sfx.coins(); buzz([15,40,15,40,55]);                                  // deal done: coins on the counter
-    // both dishes bought: the merchant throws in the gift
-    if(!v.giftGot && dishesGot(v) === v.dishes.length){
+    // both dishes bought (at some point): the merchant throws in the gift, once
+    if(!v.giftGot && v.dishes.every(d=> d.boughtEver)){
       v.giftGot = true; got.push(v.gift);
       toast(fmt(TEXT.toasts.gift, {gift: v.gift}));
       setTimeout(()=>{ Sfx.bell(); buzz([14,22,14,22,40]); }, 450);
@@ -4439,12 +4512,21 @@
   // ---------- Shopping list ----------
   const elList = document.getElementById('shoplist'), elListBody = document.getElementById('shoplist-body'), elListBtn = document.getElementById('btn-list');
   function renderList(){
-    // just the courses: crossed off once at least one dish of it is aboard
-    elListBody.innerHTML = '<div class="list-head"><h2>'+TEXT.logbook.dinner+'</h2><span class="day">'+fmt(TEXT.logbook.day, {n: dayNo})+'</span></div><ul class="courses">' + VILLAGES.map(v=>{
-      const got = dishesGot(v) > 0;
-      return '<li class="'+(got?'got':'')+(freshCourses.has(v.course)?' fresh':'')+'"><span class="mark">'+(got?'●':'○')+'</span><span class="food">'+v.course+'</span></li>';
-    }).join('') + '</ul>'
-      + (VILLAGES.every(v=>dishesGot(v) > 0) ? '<p class="note">'+TEXT.logbook.allAboard+'</p>' : '');
+    // today's order: each line crossed off once it's been delivered at home
+    const o = order;
+    const line = (it, i)=>{
+      const done = it.got >= it.n;
+      const label = it.kind === 'dish' ? it.name
+        : it.key ? fmt(TEXT.logbook.fishKind, {n: it.n, fish: it.n === 1 ? FISH_NAME[it.key].one : FISH_NAME[it.key].many})
+        : fmt(TEXT.logbook.fishAny, {n: it.n});
+      const prog = !done && it.got > 0 ? ' <span class="prog">'+it.got+'/'+it.n+'</span>' : '';
+      return '<li class="'+(done?'got':'')+(freshLines.has(i)?' fresh':'')+'"><span class="mark">'+(done?'●':'○')+'</span><span class="food">'+label+'</span>'+prog+'</li>';
+    };
+    const note = !o ? '' : o.closed ? (o.result === 'ok' ? TEXT.logbook.served : TEXT.logbook.short)
+      : orderDone() ? TEXT.logbook.ready : fmt(TEXT.logbook.due, {hour: DINNER_HOUR});
+    elListBody.innerHTML = '<div class="list-head"><h2>'+TEXT.logbook.order+'</h2><span class="day">'+fmt(TEXT.logbook.day, {n: dayNo})+'</span></div>'
+      + '<ul class="courses">' + (o ? o.items.map(line).join('') : '') + '</ul>'
+      + (note ? '<p class="note">'+note+'</p>' : '');
     elHoldPage.innerHTML = holdHTML();
     listKey = holdKey();
   }
@@ -4453,16 +4535,16 @@
   const elHoldPage = document.getElementById('hold-page');
   function holdHTML(){
     const fish = FISH_KEYS.flatMap(k=> Array(counts[k]).fill(k));
-    const goods = VILLAGES.flatMap(v=> [...v.dishes.filter(d=>d.bought).map(d=> ({name: d.name, icon: d.icon})), ...(v.giftGot ? [{name: v.gift, icon: v.giftIcon}] : [])]);
+    const goods = VILLAGES.flatMap(v=> [...v.dishes.flatMap(d=> Array(dishHold[d.icon]||0).fill({name: d.name, icon: d.icon})), ...(v.giftGot ? [{name: v.gift, icon: v.giftIcon}] : [])]);
     return '<div class="hold-head"><h3>'+TEXT.logbook.cargo+'</h3><span class="hold-count">'+fmt(TEXT.logbook.holdCount, {n: fish.length, max: HOLD_MAX})+'</span><span class="purse" aria-label="Purse: '+coins+' coins">'+COIN_SVG+coins+'</span></div>'
       + (fish.length
           ? '<div class="hold-fish">'+fish.map(k=> '<span title="'+FISH_NAME[k].one+'">'+document.querySelector('#wood .fish-'+k+' svg').outerHTML+'</span>').join('')+'</div>'
           : '<p class="hold-empty">'+TEXT.logbook.noFish+'</p>')
       + (goods.length ? '<div class="hold-goods">'+goods.map(g=> '<span title="'+g.name+'" role="img" aria-label="'+g.name+'">'+itemIcon(g.icon)+'</span>').join('')+'</div>' : '');
   }
-  const freshCourses = new Set();              // courses crossed off since the logbook was last opened
   let listKey = '';
-  const holdKey = ()=> [dayNo, coins, ...FISH_KEYS.map(k=>counts[k]), ...VILLAGES.map(v=>dishesGot(v)+(v.giftGot?'g':''))].join('|');
+  const holdKey = ()=> [dayNo, coins, ...FISH_KEYS.map(k=>counts[k]), ...ALL_DISHES.map(d=> dishHold[d.icon]||0), ...VILLAGES.map(v=> v.giftGot?'g':''),
+                        order ? order.items.map(it=> it.got).join(',') + order.closed : ''].join('|');
   // while the list is open, keep the hold up to date (a catch, a repair)
   function refreshList(){ if(elList.classList.contains('open') && holdKey() !== listKey) renderList(); }
   // the logbook button's icon, drawn like the wheel: in greys into a small
@@ -4542,7 +4624,7 @@
     Sfx.init();
     if(on){
       renderList(); elListBtn.classList.remove('news');                        // seen: stop the shimmer
-      if(logSpread === 1) renderMap(); else freshCourses.clear();             // (a course crossed off waits for the list page)
+      if(logSpread === 1) renderMap(); else freshLines.clear();               // (a line crossed off waits for the list page)
       if(tut === 'book' || tut === 'intro') tutBookSeen = true;   // (opened while the scroll was still flying in counts too)
       elList.classList.add('open');
       bookT = setTimeout(()=>{ elList.classList.add('unfold'); Sfx.book(true); buzz([6,40,4]); }, BOOK_DROP);   // landed: open it
@@ -4627,7 +4709,7 @@
     const fwd = dir > 0, oldL = snapPage(elPageL), oldR = snapPage(elPageR);
     logSpread = to;
     elList.classList.toggle('on-map', to === 1);
-    if(to === 1) renderMap(); else { renderList(); freshCourses.clear(); }
+    if(to === 1) renderMap(); else { renderList(); freshLines.clear(); }
     const base = elPages.getBoundingClientRect();
     // the page that stays put until the turning sheet lands on it
     const under = fwd ? oldL : oldR; under.classList.add('under'); placeAt(under, fwd ? elPageL : elPageR, base);
@@ -4915,8 +4997,18 @@
     reveal(boat.x, boat.y);
     updateDialog(dt);
     updateBoonBadge();
-    dayT += dt/DAY_LEN;
-    if(dayT >= 1){ dayT -= 1; dayNo++; }                  // first light: a new day
+    {
+      const dinnerT = (DINNER_HOUR - DAWN_HOUR)/24, before = dayT;
+      dayT += dt/DAY_LEN;
+      if(before < dinnerT && dayT >= dinnerT) serveDinner();               // dinner time: the order is judged
+      if(dayT >= 1){                                                       // first light: a new day, a new order
+        dayT -= 1; dayNo++;
+        if(order && !order.closed) serveDinner();
+        newOrder(dayNo); freshLines.clear();
+        toast(TEXT.toasts.newOrder); elListBtn.classList.add('news');
+        if(elList.classList.contains('open')) renderList();
+      }
+    }
     // camera focus: normally the boat; during a village visit it glides over
     // to frame the village below the dialog box, then back to the boat
     let fx = boat.x, fy = boat.y;
@@ -5004,18 +5096,13 @@
         if(!moor.started && guideWind && village === VILLAGES[0]){ guideWind = false; windTimer = rand(14,22); }   // reached the north: the wind is free again
         if(!moor.started){ moor.started = true; moor.skipLock = true; if(village) openMarket(village); if(ruin) startRuin(ruin); }
         if(village) renderMarket();
-        // home with at least one dish of every course: dinner, as good as the shopping
-        const tier = !village && !ruin && !won && !moor.banquet ? dinnerTier() : null;
-        if(tier){
-          moor.banquet = true; moor.tier = tier;
-          openDialog(ENDINGS[tier].dialog, ENDINGS[tier].text, 6);
-        }
-        if(moor.banquet && dlg && dlg.ready && !won){ won = true; const tr = moor.tier; setTimeout(()=>showWin(tr), 600); }
+        // home: whatever of today's order is aboard goes ashore for dinner
+        if(!village && !ruin && moor.pier.isl.home) deliverOrder();
         // repairs: free for now, they just happen at any pier, a patch every
         // half second (the hold is never touched; making them a cost the
         // player has to think about is for later)
         repairT -= dt;
-        if(!moor.banquet && repairT<=0 && boat.health < MAX_HEALTH-0.5){
+        if(repairT<=0 && boat.health < MAX_HEALTH-0.5){
           const before = boat.health;
           boat.health = Math.min(MAX_HEALTH, boat.health + FISH_HEAL);
           popups.push({x:boat.x, y:boat.y-22, text:'+'+Math.round(boat.health-before), life:1.2, max:1.2});
@@ -5034,7 +5121,7 @@
           dlg.shown = dlg.text.length; elDlgText.textContent = dlg.text; dlg.t = Math.max(dlg.t, dlg.pause); dlg.ready = true;
           moor.skipLock = true;
         }
-        const done = village ? true : ruin ? (dlg && dlg.ready && repaired) : (repaired && !moor.banquet);
+        const done = village ? true : ruin ? (dlg && dlg.ready && repaired) : repaired;
         if(ruin && done && !moor.told){                        // visit over and hull seen to
           moor.told = true; moor.rang = true;
           elDlgFoot.textContent = TEXT.pier.weighHint;
@@ -5225,6 +5312,13 @@
       elHpMeter.setAttribute('aria-valuenow', hp);
     }
     elStatus.classList.toggle('hurt', hurtFlash>0);
+    // the guests' mood bar: written only when it changes
+    {
+      const pct = Math.round(satisfaction*100), show = playing;
+      if(pct !== moodShown){ moodShown = pct; elMoodFill.style.width = pct+'%'; elMood.setAttribute('aria-valuenow', pct); }
+      if(show !== elMood.classList.contains('show')) elMood.classList.toggle('show', show);
+      if(satPulse > 0){ if(!elMood.classList.contains('pulse')) elMood.classList.add('pulse'); satPulse -= dt; if(satPulse <= 0) elMood.classList.remove('pulse'); }
+    }
     healthShowT = Math.max(0, healthShowT-dt);
     elStatus.classList.toggle('show', healthShowT>0);
     elWood.classList.add('show');                                   // always visible
