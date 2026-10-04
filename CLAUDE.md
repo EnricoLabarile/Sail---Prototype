@@ -218,7 +218,9 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   free (150° 0.82 vs 0.93, dead downwind 0.74 vs 1.0): pick the sail by the course to the next port. The lateen is drawn by
   `drawLateenSail`: a long slanted yard on a short mast near the bow, the triangle of cloth trailing aft, eased out
   to leeward about half the wind's angle off the bow (`boat.boomSigned`), bellied to leeward, a sheet to the stern
-  quarter; it furls along the yard at anchor. A new voyage starts with the square sail rigged.
+  quarter; it furls along the yard at anchor. Changing tack, the heavy yard swings across slowly (`LATEEN_SWING` in
+  Tuning, 0.9 against the usual trim rate of 3; `boat.swingAcross` until it's settled on the new side). A new voyage
+  starts with the square sail rigged.
   **Wind card** (the logbook's right page, first spread; `windHTML`, texts in `TEXT.sails`): a polar diagram in ink,
   the wind blowing down from the top (an arrow): the filled curve is the share of top speed the sail she carries gives
   on each heading (its `SAIL_POLAR_*`), a dashed curve the spare sail's, a needle for her heading now with a dot where it
