@@ -90,6 +90,17 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   the bar top right (`#mood`: a plate icon and a bar, no words, starts at `SAT_START`, pulses when it changes); there's
   no game over for it. The voyage still ends only by sinking (`#gameover`).
   Each has a bay, a wooden pier, a lighthouse with a sweeping beam, a pixel-art town, 17 buoys at ~616 px (`BUOYS_PER_VILLAGE`, `BUOY_R`) (toasts "Entering / Leaving the waters of …"; leaving counts 150 px past the buoys).
+- **Home: a fortified masseria** (`drawHomeBuildings`, home units ×`HOME_BLD`): a walled court with crenellated white
+  walls (north gate to our pier, south gate to the guests'), a square watchtower on the north-east corner, the owner's
+  house along the south wall, a well, and five trulli (whitewashed drums under grey stone cones) outside the east wall;
+  the drying net on the west beach stays. Its look follows the guests' mood, `homeStage` = round(satisfaction×4), 0..4:
+  breaches in the walls with rubble (3 − stage), standing trulli (stage + 1, the rest fallen in), weeds in the court at
+  0–1; tables with chairs (2 × stage), a pergola of vines and an awning from 2, a string of lanterns from 3 (and the court
+  lit at night), a pennant on the tower and the trulli lit at 4. It's baked into the island's tiles, so `rebakeHome`
+  drops them when the stage changes. **Guest pier** (`GUEST_PIER`, south side, solid but the player can't moor there):
+  the clients' boats (`guests`, drawn with the player's boat model, `drawBoat(g)`, sail furled when tied up) take up to
+  `GUEST_BOATS_MAX` (4) berths, two a side (one alongside, one rafted outside it); round(satisfaction × 4) of them: one
+  more sails in from the open sea (`GUEST_IN_T` = 10 s, foam at the bow) or one sails away when the mood changes.
 - **Home waters** (`SAFE_R` ≈ 665 px round home): no whirlpools (pull ring included) and no big waves (any that drift in
   die down harmlessly); a ring of 22 buoys (`HOME_BUOYS`) marks the edge, with toasts "Leaving home waters" / "Back in home waters".
   Inside them, a calm **lagoon** (`LAGOON_R` ≈ 455 px round home): no islands and no rocks, room to learn the controls.

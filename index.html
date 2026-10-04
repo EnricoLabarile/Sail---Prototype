@@ -816,6 +816,7 @@
   const ORDER_TWO_DISHES_FROM = 4;   // from day 2 the order asks for one village dish, from this day on for two
   const SAT_START = 0.5;             // the guests' mood at the start (0..1; the bar top right)
   const SAT_GAIN = 0.15;             // a complete order raises it by this much
+  const GUEST_BOATS_MAX = 4;         // clients' boats tied up at the guest pier when the mood is full (fewer as it falls)
   const SAT_LOSS = 0.25;             // an order with nothing delivered lowers it by this much (in proportion to what's missing)
   const SIGHT = 220;                 // px of fog uncovered round the boat
   const CLOUD_COUNT = 12;            // clouds in the sky (world)
@@ -1255,7 +1256,8 @@
     const my = (py)=> 2*y - py;
     isl.patches.forEach(b=>b.forEach(q=>q[1]=my(q[1])));
     const B = HOME_BLD;
-    isl.yard=[[x-4*B,y+12*B,26*B],[x+10*B,y+2*B,16*B],[x+27*B,y-18*B,14*B],[x-10*B,y-12*B,12*B],[x+18*B,y-38*B,13*B]];
+    // the masseria's walled court (and its tower) and the cluster of trulli east of it
+    isl.yard=[[x-2*B,y-1*B,37*B],[x+18*B,y-28*B,13*B],[x+41*B,y+7*B,17*B],[x-14*B,y+19*B,14*B],[x+10*B,y+19*B,14*B]];
     const inYard=(px,py)=>isl.yard.some(([cx,cy,r])=>Math.hypot(px-cx,py-cy)<r+2);
     isl.tufts=[];
     for(let k=0;k<90 && isl.tufts.length<55;k++){ const a=rand(0,6.3), d=Math.sqrt(Math.random())*(HOME_R-14); const tx=x+Math.cos(a)*d, ty=y+Math.sin(a)*d; if(!inYard(tx,ty)) isl.tufts.push([tx,ty]); }
@@ -1320,8 +1322,14 @@
   const BERTH_OFF_START = PIER_W/2 + 12;
   const PIER = makePier(home, PIER_DIR, Math.min(HOME_R*0.55, rAt(home,PIER_DIR)-8));
   PIER.side = 1;                                   // the boat starts on the open (mouth) side
+  // the guest pier, on the far (south) side: the clients' boats tie up here
+  // (the player's boat doesn't moor at it, but it's solid like any pier)
+  const GUEST_DIR = Math.PI/2;
+  const GUEST_PIER = makePier(home, GUEST_DIR, rAt(home, GUEST_DIR) - 26);
+  GUEST_PIER.guest = true;
+  clearDecor(home, (x,y,m)=> segDist(x,y, GUEST_PIER.x0,GUEST_PIER.y0, GUEST_PIER.x1,GUEST_PIER.y1) < PIER_W/2 + m + 4);
   addIsland(home);
-  const piers = [PIER];
+  const piers = [PIER, GUEST_PIER];
   // moored alongside the seaward end of the home quay, bow pointing out to sea
   const SPAWN = (function(){
     const a = PIER.total - 16, off = BERTH_OFF_START;
@@ -1448,6 +1456,66 @@
     newOrder(1);
   }
   let satPulse = 0;
+  // the masseria's look follows the guests' mood: 0 desolate … 4 lively
+  // (its picture is baked into the island's tiles, so they're redrawn when it changes)
+  const homeStageFor = s=> Math.max(0, Math.min(4, Math.round(s*4)));
+  let homeStage = homeStageFor(SAT_START);
+  function rebakeHome(){
+    const bb = home.bb; if(!bb) return;
+    for(const tl of bb.tiles.values()){ const k = cached.indexOf(tl); if(k >= 0) cached.splice(k, 1); }
+    bb.tiles.clear();
+  }
+  // the clients' boats: as many tied up at the guest pier as the mood
+  // allows; a new one sails in from the open sea, one too many sails away
+  const guests = [];
+  const GUEST_IN_T = 10;                  // seconds to sail in (or out)
+  function guestBerths(){                 // two a side near the pier head: one alongside, one rafted up outside it
+    const pr = GUEST_PIER, out = [], a = pr.total - 16;
+    for(const off of [BERTH_OFF, BERTH_OFF + 22]) for(const side of [1, -1])
+      out.push({x: pr.x0 + pr.dx*(a - (off > BERTH_OFF ? 5 : 0)) - pr.dy*side*off, y: pr.y0 + pr.dy*(a - (off > BERTH_OFF ? 5 : 0)) + pr.dx*side*off, a: pr.dir});
+    return out;
+  }
+  function newGuest(slot, there){
+    const b = guestBerths()[slot], a = GUEST_DIR + rand(-0.6, 0.6), far = 520;
+    const g = {slot, bx:b.x, by:b.y, ba:b.a, sx: b.x + Math.cos(a)*far, sy: b.y + Math.sin(a)*far, k: there ? 1 : 0, dir: there ? 0 : 1,
+               x:b.x, y:b.y, angle:b.a, speed:0, moored: there, rock:0, boomSigned: rand(-0.3,0.3), sailPower:0.8, sailAmount:1, oarK:0, oarPh:0,
+               furl: there ? 1 : 0};
+    guests.push(g);
+    return g;
+  }
+  function updateGuests(dt){
+    const want = Math.round(satisfaction*GUEST_BOATS_MAX), staying = guests.filter(g=> g.dir >= 0);
+    if(staying.length < want){                                   // one more comes in
+      const used = new Set(guests.map(g=> g.slot));
+      const slot = [0,1,2,3].find(s=> !used.has(s));
+      if(slot !== undefined) newGuest(slot, false);
+    } else if(staying.length > want){                            // one leaves
+      const g = staying.find(g=> g.dir === 0) || staying[staying.length-1];
+      g.dir = -1; g.moored = false;
+    }
+    for(let i=guests.length-1; i>=0; i--){
+      const g = guests[i];
+      if(g.dir){
+        const k0 = g.k;
+        g.k = Math.max(0, Math.min(1, g.k + g.dir*dt/GUEST_IN_T));
+        const e = q=> 1 - Math.pow(1 - q, 2.2);                    // slows as it nears the pier
+        const px = g.sx + (g.bx - g.sx)*e(g.k), py = g.sy + (g.by - g.sy)*e(g.k);
+        g.speed = Math.hypot(px - g.x, py - g.y)/Math.max(dt, 1e-3);
+        const head = Math.atan2(g.by - g.sy, g.bx - g.sx) + (g.dir < 0 ? Math.PI : 0);
+        const turn = Math.max(0, (g.k - 0.8)/0.2);                 // the last stretch: swings alongside
+        g.angle = head + Math.atan2(Math.sin(g.ba - head), Math.cos(g.ba - head))*turn;
+        g.x = px; g.y = py;
+        if(g.dir > 0 && g.k >= 1){ g.dir = 0; g.moored = true; g.speed = 0; }
+        if(g.dir < 0 && g.k <= 0){ guests.splice(i, 1); continue; }
+        if(k0 === g.k) g.speed = 0;
+      }
+    }
+  }
+  function resetGuests(){
+    guests.length = 0;
+    const n = Math.round(satisfaction*GUEST_BOATS_MAX);
+    for(let s2=0; s2<n; s2++) newGuest(s2, true);
+  }
   // hand-shaped village island: rounded, with a wide clearing at the centre
   function makeVillageIsland(v){
     const x = v.px, y = v.py;                                 // (see placeVillages)
@@ -3685,6 +3753,7 @@
     gameover.classList.remove('hidden');
   }
   resetOrders();                                         // the first voyage's order (a restart makes a new one)
+  resetGuests();
   document.getElementById('restart-btn').addEventListener('click', ()=>{
     boat.x = SPAWN.x; boat.y = SPAWN.y; boat.angle = SPAWN.angle;
     boat.speed = 0; boat.health = MAX_HEALTH; boat.kx = boat.ky = 0; boat.whirl = null;
@@ -3706,6 +3775,7 @@
     prevWheel = wheelAngle = 0;
     repairT = 0; moor = mooredAtSpawn(); moorLock = null;
     resetOrders(); elListBtn.classList.remove('news');
+    resetGuests(); homeStage = homeStageFor(satisfaction); rebakeHome();
     powerLeft = POWER_PER_DAY; powerUI();
     coins = 0;
     closeDialog();
@@ -5124,6 +5194,7 @@
     // ---- mooring at the home pier ----
     if(!moor && !boat.whirl){
       for(const pr of piers){
+        if(pr.guest) continue;                               // the clients' pier: not for us
         const pf = pierFrame(pr, boat.x, boat.y);
         const near = pf.along > pr.shoreAlong+8 && pf.along < pr.total+20 && Math.abs(pf.lat) < MOOR_RANGE;
         if(pr===moorLock){ if(!near) moorLock = null; continue; }   // re-arm once clear of it
@@ -5329,6 +5400,8 @@
     else elHint.classList.add('hidden');              // at a quay: no hint window
 
     updateFishing(dt);
+    updateGuests(dt);
+    if(homeStageFor(satisfaction) !== homeStage){ homeStage = homeStageFor(satisfaction); rebakeHome(); }   // the masseria changes with the mood
     updateRollers(dt);
     // oars: out when crawling along and steering, back in once under way;
     // they row while the boat is actually turning
@@ -5446,7 +5519,9 @@
   function nightLights(){
     const fl = 1 + 0.05*Math.sin(t*9) + 0.03*Math.sin(t*23);             // lantern flicker
     const L = [[boat.x, boat.y, 82*fl, 140*fl, 1]];                    // the boat's lantern: wide, crisp edge
-    L.push([START.x-4, START.y+16, 10, 42, 1], [PIER.x1, PIER.y1, 4, 22, 1]);   // home: windows, pier lamp
+    L.push([START.x-14, START.y+18, 8, 34, 1], [PIER.x1, PIER.y1, 4, 22, 1], [GUEST_PIER.x1, GUEST_PIER.y1, 3, 18, 0.8]);   // home: the house, the pier lamps
+    if(homeStage >= 3) L.push([START.x+10, START.y-8, 10, 46, 1]);          // the court lit for dinner
+    if(homeStage >= 4) L.push([START.x+48, START.y+8, 6, 30, 0.9]);         // and the trulli
     for(const v of VILLAGES){
       const vl = v.isl.vl;
       L.push([v.isl.x, v.isl.y, 8, 40, 1]);                             // piazza lamp
@@ -5854,16 +5929,22 @@
   function drawHomestead(isl){
     const {x0,y0,x1,y1,dx,dy} = PIER;
     const px=-dy, py=dx;
-    // winding sandy path from the house door down to the pier
-    const dx0=isl.x-5, dy0=isl.y-4;
-    const path=()=>{ ctx.beginPath(); ctx.moveTo(dx0,dy0); ctx.bezierCurveTo(dx0-10,dy0-12, x0-8,y0+14, x0,y0-2); };
-    ctx.lineCap='round';
-    ctx.strokeStyle=INKC; ctx.lineWidth=8.5; ctx.globalAlpha=0.35; path(); ctx.stroke();
-    ctx.globalAlpha=1;
-    ctx.strokeStyle=V(0.93); ctx.lineWidth=7; path(); ctx.stroke();
+    // sandy tracks from the masseria's gates: north to our pier, south to the guests'
+    const B = HOME_BLD, G = GUEST_PIER;
+    const track=(fn)=>{
+      ctx.lineCap='round';
+      ctx.strokeStyle=INKC; ctx.lineWidth=8.5; ctx.globalAlpha=0.35; fn(); ctx.stroke();
+      ctx.globalAlpha=1;
+      ctx.strokeStyle=V(0.93); ctx.lineWidth=7; fn(); ctx.stroke();
+    };
+    const gx=isl.x-2*B, gy=isl.y-24*B;
+    track(()=>{ ctx.beginPath(); ctx.moveTo(gx,gy); ctx.bezierCurveTo(gx-6,gy-10, x0-6,y0+10, x0,y0-2); });
+    const sx=isl.x-2*B, sy=isl.y+22*B;
+    track(()=>{ ctx.beginPath(); ctx.moveTo(sx,sy); ctx.bezierCurveTo(sx+4,sy+10, G.x0+6,G.y0-12, G.x0,G.y0+2); });
 
     drawHarbour(PIER);
     drawPier(PIER);
+    drawPier(GUEST_PIER);
 
 
   }
@@ -6147,56 +6228,121 @@
   // the house (flat roof terrace with a railing, a small pitched-roof room
   // and a striped awning), a lean-to boat shed, a net drying on poles,
   // a rowboat pulled up on the beach and a few barrels
+  // Home: a fortified masseria of the south (Apulia): a walled court with
+  // crenellated white walls, a square watchtower on one corner, the owner's
+  // house along the south wall, a well in the court, and a cluster of trulli
+  // (white drums under grey stone cones) outside the east wall. How it looks
+  // follows the guests' mood (homeStage 0..4): breached walls, fallen trulli
+  // and weeds when it's low; tables, a pergola, lanterns and a pennant as it
+  // rises. Drawn in home units (scaled by HOME_BLD round the island's centre).
   function drawHomeBuildings(isl){
-    const x=isl.x, y=isl.y;
+    const x=isl.x, y=isl.y, st=homeStage;
     ctx.save();
     ctx.translate(x,y); ctx.scale(HOME_BLD,HOME_BLD); ctx.translate(-x,-y);
-    const rect=(x0,y0,w,h,fill)=>{ ctx.fillStyle=fill; ctx.fillRect(x0,y0,w,h); };
-    // --- house ---
-    const HX=x-21, HY=y, HW=34, HH=24;
-    rect(HX+4,HY+4,HW,HH,V(0.35));                        // cast shadow
-    rect(HX,HY,HW,HH,PAPERC);                             // terrace
-    // railing: inner line + balusters
-    ctx.strokeStyle=INKC; ctx.lineWidth=1;
-    ctx.strokeRect(HX+2.5,HY+2.5,HW-5,HH-5);
-    ctx.beginPath();
-    for(let u=HX+5; u<HX+HW-3; u+=3){ ctx.moveTo(u,HY); ctx.lineTo(u,HY+2.5); ctx.moveTo(u,HY+HH-2.5); ctx.lineTo(u,HY+HH); }
-    for(let v=HY+5; v<HY+HH-3; v+=3){ ctx.moveTo(HX,v); ctx.lineTo(HX+2.5,v); ctx.moveTo(HX+HW-2.5,v); ctx.lineTo(HX+HW,v); }
-    ctx.globalAlpha=0.6; ctx.stroke(); ctx.globalAlpha=1;
-    // striped awning over part of the terrace
-    rect(HX+5,HY+5,11,9,PAPERC);
-    ctx.beginPath(); for(let u=HX+6; u<HX+16; u+=2.5){ ctx.moveTo(u,HY+5); ctx.lineTo(u,HY+14); }
-    ctx.lineWidth=1.2; ctx.stroke();
-    ctx.lineWidth=1; ctx.strokeRect(HX+5,HY+5,11,9);
-    // upper room with a pitched roof, casting a shadow on the terrace
-    const RX=HX+HW-15, RW=15, RH=13, RY=HY+HH-RH;
-    rect(RX-3,RY+3,RW,RH,V(0.55));
-    rect(RX,RY,RW/2,RH,PAPERC);
-    rect(RX+RW/2,RY,RW/2,RH,V(0.45));
-    ctx.beginPath(); for(let v=RY+3; v<RY+RH; v+=3){ skSeg(RX,v,RX+RW/2-1,v+0.3,0.3); } ctx.globalAlpha=0.75; ctx.stroke(); ctx.globalAlpha=1;
-    skPoly([[RX,RY],[RX+RW,RY],[RX+RW,RY+RH],[RX,RY+RH]], true, 1.2, 1.4);
-    ctx.lineWidth=1.8; ctx.beginPath(); skSeg(RX+RW/2,RY,RX+RW/2+0.3,RY+RH,1.2); ctx.stroke();
-    // outer walls, sketchy
-    skPoly([[HX,HY],[HX+HW,HY],[HX+HW,HY+HH],[HX,HY+HH]], true, 2, 1.7);
-    // door + step
-    rect(x-7,HY-2.5,6,2.5,INKC);                        // door faces the pier (north)
-
-    // --- lean-to boat shed near the east shore ---
-    const SX=x+32, SY=y-22, SW=18, SH=13;
-    rect(SX+3,SY+3,SW,SH,V(0.35));
-    rect(SX,SY,SW,SH,V(0.82));
-    ctx.strokeStyle=INKC; ctx.lineWidth=1;
-    ctx.beginPath(); for(let u=SX+3; u<SX+SW; u+=3){ ctx.moveTo(u,SY); ctx.lineTo(u+0.3,SY+SH); } ctx.globalAlpha=0.7; ctx.stroke(); ctx.globalAlpha=1;
-    skPoly([[SX,SY],[SX+SW,SY],[SX+SW,SY+SH],[SX,SY+SH]], true, 1.6, 1.5);
-    ctx.lineWidth=2.2; ctx.beginPath(); skSeg(SX,SY,SX+SW,SY,1.5); ctx.stroke();   // high side of the roof
-    // barrels
-    for(const [bx,by] of [[SX+SW+4,SY+4],[SX+SW+5,SY+10]]){
-      ctx.fillStyle=PAPERC; ctx.beginPath(); ctx.arc(bx,by,2.6,0,Math.PI*2); ctx.fill();
-      ctx.lineWidth=1.1; ctx.stroke();
-      ctx.beginPath(); ctx.arc(bx,by,1.1,0,Math.PI*2); ctx.stroke();
+    const R=(x0,y0,w,h,c)=>{ ctx.fillStyle=c; ctx.fillRect(x0,y0,w,h); };
+    const ink=(lw)=>{ ctx.strokeStyle=INKC; ctx.lineWidth=lw; };
+    // --- the court and its walls ---
+    const WX=x-30, WY=y-24, WW=56, WH=46, T=4;
+    R(WX+4,WY+4,WW,WH,V(0.35));                                  // the walls' shadow
+    R(WX,WY,WW,WH,V(0.9));                                       // the court: pale beaten earth
+    ctx.fillStyle=V(0.72);                                       // a few flagstones
+    for(let v=WY+T+3; v<WY+WH-T; v+=5) for(let u=WX+T+3+((v/5)|0)%2*2.5; u<WX+WW-T; u+=5) ctx.fillRect(u,v,1,1);
+    // breaches: gaps in the walls with rubble, fewer as the mood rises
+    const BREACH=[['e',0.3],['s',0.7],['w',0.45]], nb=Math.max(0, 3-st);
+    const gaps={n:[[0.44,0.58,'gate']], e:[], s:[[0.44,0.56,'gate']], w:[]};      // the gates (north, to our pier; south, to the guests')
+    BREACH.slice(0,nb).forEach(([sd,p])=> gaps[sd].push([p-0.09,p+0.09]));
+    const wall=(sd)=>{                                           // one side, in pieces round its gaps
+      const horiz = sd==='n' || sd==='s', len = horiz ? WW : WH;
+      const cuts = gaps[sd].slice().sort((a,b)=>a[0]-b[0]);
+      let from = 0;
+      for(const [a,b] of [...cuts, [1,1]]){
+        if(a > from){
+          const s0=from*len, s1=a*len;
+          const r = sd==='n' ? [WX+s0,WY,s1-s0,T] : sd==='s' ? [WX+s0,WY+WH-T,s1-s0,T] : sd==='w' ? [WX,WY+s0,T,s1-s0] : [WX+WW-T,WY+s0,T,s1-s0];
+          R(r[0],r[1],r[2],r[3],PAPERC); ink(1.1); ctx.strokeRect(r[0],r[1],r[2],r[3]);
+          ctx.fillStyle=INKC;                                    // merlons: little notches along the parapet
+          for(let q=s0+2; q<s1-1; q+=4){ if(horiz) ctx.fillRect(WX+q, (sd==='n'?WY:WY+WH-T)+1.4, 1.4, 1.2); else ctx.fillRect((sd==='w'?WX:WX+WW-T)+1.4, WY+q, 1.2, 1.4); }
+        }
+        from = Math.max(from, b);
+      }
+      for(const [a,b,gate] of cuts){                             // rubble in the breaches (not in the gates)
+        if(gate) continue;
+        const m=(a+b)/2*len;
+        const [cx,cy] = sd==='n' ? [WX+m,WY+2] : sd==='s' ? [WX+m,WY+WH-2] : sd==='w' ? [WX+2,WY+m] : [WX+WW-2,WY+m];
+        for(let k=0;k<6;k++){ const ox=Math.sin(k*2.3+m)*3.5, oy=Math.cos(k*1.7+m)*2.5;
+          ctx.fillStyle=k%2?V(0.6):PAPERC; ctx.beginPath(); ctx.arc(cx+ox,cy+oy,1.3,0,Math.PI*2); ctx.fill(); ink(0.6); ctx.stroke(); }
+      }
+    };
+    ['n','e','s','w'].forEach(wall);
+    R(x-3.5,WY-1,6,T+2,V(0.3)); ink(0.8); ctx.strokeRect(x-3.5,WY-1,6,T+2);           // the north gate's wooden leaves, open
+    R(x-3.5,WY+WH-T-1,6,T+2,V(0.3)); ctx.strokeRect(x-3.5,WY+WH-T-1,6,T+2);         // the south gate
+    // --- the owner's house along the south wall: a flat roof terrace ---
+    const HX=WX+T, HY=WY+WH-T-15, HW=24, HH=15;
+    R(HX+2,HY+2,HW,HH,V(0.45)); R(HX,HY,HW,HH,PAPERC);
+    ink(1); ctx.strokeRect(HX+1.5,HY+1.5,HW-3,HH-3);                                  // the parapet
+    ctx.beginPath(); for(let k=0;k<4;k++){ ctx.moveTo(HX+HW-1,HY+3+k*2.5); ctx.lineTo(HX+HW+4,HY+3+k*2.5); } ctx.stroke();   // stair down to the court
+    skPoly([[HX,HY],[HX+HW,HY],[HX+HW,HY+HH],[HX,HY+HH]], true, 1.6, 1.2);
+    R(HX+3,HY+3,2.5,2.5,INKC);                                                         // chimney
+    if(st >= 2){                                                                       // a striped awning on the terrace
+      R(HX+8,HY+4,11,7,PAPERC); ink(1.1); ctx.beginPath(); for(let u=HX+9; u<HX+19; u+=2.4){ ctx.moveTo(u,HY+4); ctx.lineTo(u,HY+11); } ctx.stroke(); ctx.strokeRect(HX+8,HY+4,11,7);
     }
+    // --- the watchtower on the north-east corner ---
+    const TX=WX+WW-12, TY=WY-6, TS=16;
+    R(TX+6,TY+6,TS,TS,V(0.3));                                                         // a long shadow: it's tall
+    R(TX,TY,TS,TS,PAPERC); ink(1.6); ctx.strokeRect(TX,TY,TS,TS);
+    R(TX+3,TY+3,TS-6,TS-6,V(0.78)); ink(1); ctx.strokeRect(TX+3,TY+3,TS-6,TS-6);         // the roof inside its parapet
+    ctx.fillStyle=INKC; for(let q=1.5; q<TS-1; q+=3){ ctx.fillRect(TX+q,TY+0.8,1.2,1); ctx.fillRect(TX+q,TY+TS-1.8,1.2,1); ctx.fillRect(TX+0.8,TY+q,1,1.2); ctx.fillRect(TX+TS-1.8,TY+q,1,1.2); }   // machicolations
+    if(st >= 4){                                                                       // a pennant on the tower
+      ink(1); ctx.beginPath(); ctx.moveTo(TX+TS/2,TY+TS/2); ctx.lineTo(TX+TS/2,TY-7); ctx.stroke();
+      ctx.fillStyle=INKC; ctx.beginPath(); ctx.moveTo(TX+TS/2,TY-7); ctx.lineTo(TX+TS/2+8,TY-5); ctx.lineTo(TX+TS/2,TY-3); ctx.closePath(); ctx.fill();
+    }
+    // --- in the court: the well, then life (or weeds) ---
+    const WLX=x-10, WLY=y-8;
+    ctx.fillStyle=PAPERC; ctx.beginPath(); ctx.arc(WLX,WLY,3.6,0,Math.PI*2); ctx.fill(); ink(1.2); ctx.stroke();
+    ctx.fillStyle=st ? INKC : V(0.4); ctx.beginPath(); ctx.arc(WLX,WLY,1.8,0,Math.PI*2); ctx.fill();
+    if(st >= 2){                                                                       // a pergola of vines over the west of the court
+      const PX=WX+T+1, PY=WY+T+2, PW=19, PH=17;
+      ctx.fillStyle=V(0.55); for(let k=0;k<26;k++){ const u=PX+((k*7.3)%PW), v=PY+((k*5.1)%PH); ctx.beginPath(); ctx.arc(u,v,1.6,0,Math.PI*2); ctx.fill(); }   // leaves
+      ink(0.9); ctx.globalAlpha=0.8; ctx.beginPath();
+      for(let u=PX; u<=PX+PW; u+=4.75){ ctx.moveTo(u,PY); ctx.lineTo(u,PY+PH); }
+      for(let v=PY; v<=PY+PH; v+=5.6){ ctx.moveTo(PX,v); ctx.lineTo(PX+PW,v); }
+      ctx.stroke(); ctx.globalAlpha=1;
+    }
+    const TABLES=[[x+4,y-12],[x+12,y-4],[x+3,y+2],[x+14,y+7],[x-16,y-14],[x-8,y+3],[x+20,y-14],[x-18,y-3]];
+    TABLES.slice(0, st*2).forEach(([tx,ty])=>{                                         // tables laid for dinner, each with four chairs
+      ctx.fillStyle=INKC; for(const [ox,oy] of [[-3,0],[3,0],[0,-3],[0,3]]) ctx.fillRect(tx+ox-0.6,ty+oy-0.6,1.3,1.3);
+      R(tx-1.8,ty-1.8,3.6,3.6,PAPERC); ink(0.9); ctx.strokeRect(tx-1.8,ty-1.8,3.6,3.6);
+    });
+    if(st <= 1){                                                                       // weeds through the flagstones
+      ink(0.9); ctx.beginPath();
+      for(let k=0;k<(st ? 8 : 16);k++){ const u=WX+T+3+((k*11.7)%(WW-2*T-6)), v=WY+T+3+((k*7.9)%(WH-2*T-6)); ctx.moveTo(u-1.2,v-1.6); ctx.lineTo(u,v); ctx.lineTo(u+1,v-1.9); }
+      ctx.stroke();
+    }
+    if(st >= 3){                                                                       // a string of lanterns from the house to the tower
+      const a=[HX+HW-2,HY+1], b=[TX+2,TY+TS-2];
+      ink(0.7); ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.quadraticCurveTo((a[0]+b[0])/2,(a[1]+b[1])/2+6,b[0],b[1]); ctx.stroke();
+      for(let k=1;k<6;k++){ const f=k/6, ux=a[0]+(b[0]-a[0])*f, uy=a[1]+(b[1]-a[1])*f + 6*4*f*(1-f)*0.5;
+        ctx.fillStyle=PAPERC; ctx.beginPath(); ctx.arc(ux,uy,1.3,0,Math.PI*2); ctx.fill(); ink(0.6); ctx.stroke(); }
+    }
+    // --- the trulli, outside the east wall: more of them standing as the mood rises ---
+    const TRULLI=[[x+38,y-6],[x+47,y+3],[x+37,y+8],[x+46,y+16],[x+36,y+21]];
+    TRULLI.forEach(([tx,ty],k)=>{
+      const up = k <= st;                                                              // standing (else fallen in)
+      ctx.fillStyle=V(0.35); ctx.beginPath(); ctx.arc(tx+2.5,ty+2.5,7.5,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle=PAPERC; ctx.beginPath(); ctx.arc(tx,ty,7.5,0,Math.PI*2); ctx.fill(); ink(1.3); ctx.stroke();   // the whitewashed drum
+      if(up){
+        ctx.fillStyle=V(0.5); ctx.beginPath(); ctx.arc(tx,ty,6,0,Math.PI*2); ctx.fill();                     // the cone of grey stone
+        ctx.strokeStyle=V(0.82); ctx.lineWidth=1.6; ctx.beginPath(); ctx.arc(tx,ty,4.6,Math.PI*1.05,Math.PI*1.6); ctx.stroke();   // lit side
+        ink(0.8); for(const r of [4.5, 3]){ ctx.beginPath(); ctx.arc(tx,ty,r,0,Math.PI*2); ctx.stroke(); }    // courses of stone
+        ink(1.1); ctx.beginPath(); ctx.arc(tx,ty,6,0,Math.PI*2); ctx.stroke();
+        ctx.fillStyle=PAPERC; ctx.beginPath(); ctx.arc(tx,ty,1.6,0,Math.PI*2); ctx.fill(); ink(0.8); ctx.stroke();   // the pinnacle
+      } else {
+        ctx.fillStyle=V(0.25); ctx.beginPath(); ctx.arc(tx,ty,5.4,0,Math.PI*2); ctx.fill();                  // fallen in: a dark hole
+        for(let q=0;q<5;q++){ const a=q*1.3+k, r=3+q%2*1.5; ctx.fillStyle=V(0.6); ctx.beginPath(); ctx.arc(tx+Math.cos(a)*r,ty+Math.sin(a)*r,1.4,0,Math.PI*2); ctx.fill(); ink(0.6); ctx.stroke(); }
+      }
+    });
 
-    // --- fishing net drying between two poles, on the beach ---
+    // --- fishing net drying between two poles, on the west beach ---
     const P1=[x-62,y+10], P2=[x-44,y+22], sag=5;
     ctx.save();
     ctx.beginPath();
@@ -6214,15 +6360,6 @@
     ctx.beginPath(); skSeg(P1[0],P1[1],P2[0],P2[1],1.5); ctx.stroke();
     ctx.fillStyle=INKC;
     for(const [qx,qy] of [P1,P2]){ ctx.beginPath(); ctx.arc(qx,qy,1.8,0,Math.PI*2); ctx.fill(); }
-
-    // --- rowboat pulled up on the west beach, keel up ---
-    ctx.save();
-    ctx.translate(x-50,y-18); ctx.rotate(0.9);
-    ctx.fillStyle=V(0.45); ctx.beginPath(); ctx.ellipse(1.5,2,9,4,0,0,Math.PI*2); ctx.fill();
-    ctx.fillStyle=PAPERC; ctx.beginPath(); ctx.ellipse(0,0,9,4,0,0,Math.PI*2); ctx.fill();
-    ctx.strokeStyle=INKC; ctx.lineWidth=1.3; ctx.stroke();
-    ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(-8,0); ctx.lineTo(8,0); ctx.stroke();   // keel
-    ctx.restore();
     ctx.restore();
   }
   // whirlpool: dithered funnel darkening toward the eye, three ink arms
@@ -6725,18 +6862,21 @@
   }
 
 
-  function drawBoat(){
+  // the boat; with g (a client's boat at the guest pier: {x, y, angle, speed,
+  // moored, …}) the same model is drawn for it, sail furled when it's tied up
+  function drawBoat(g){
+    const B = g || boat;
     const LWK = 1;                      // line-width factor for the boat's details
     // buoyancy: the swell lifts and drops her (the shadow shifts), rolls her
     // from side to side and pitches bow and stern; rougher with more wind
-    // and after a knock (boat.rock), gentle when she lies still
-    const sea = 0.6 + 0.4*windStrength + (boat.rock||0);
+    // and after a knock (B.rock), gentle when she lies still
+    const sea = 0.6 + 0.4*windStrength + (B.rock||0);
     const heave = (Math.sin(t*1.25) + 0.5*Math.sin(t*2.05+1.3))*sea;          // up and down
     const roll  = (Math.sin(t*1.6+0.4)*0.05 + Math.sin(t*2.7)*0.025)*sea;       // side to side
     const pitch = (Math.sin(t*1.1+2.1) + 0.4*Math.sin(t*2.3))*0.018*sea;       // bow up, bow down
     ctx.save();
-    ctx.translate(boat.x, boat.y - heave*0.6);
-    ctx.rotate(boat.angle);
+    ctx.translate(B.x, B.y - heave*0.6);
+    ctx.rotate(B.angle);
     ctx.save();
     ctx.scale(1 + pitch, 1 - Math.abs(roll)*0.9);          // pitching lengthens, rolling narrows her from above
     ctx.transform(1, 0, roll*0.6, 1, 0, 0);               // a slight lean to the rolling side
@@ -6752,14 +6892,14 @@
       ctx.closePath();
     };
     // shadow on the water: further off when a swell lifts her
-    ctx.save(); ctx.rotate(-boat.angle); ctx.translate(2.5 + heave*0.5, 3 + heave*0.9); ctx.rotate(boat.angle);
+    ctx.save(); ctx.rotate(-B.angle); ctx.translate(2.5 + heave*0.5, 3 + heave*0.9); ctx.rotate(B.angle);
     ctx.fillStyle=V(0.55); hullPath(1); ctx.fill();
     ctx.restore();
     // bow foam: white water curling off the stem and along both sides of the
     // bow, longer, wider and busier the faster she goes (drawn under the hull)
     {
-      const k = Math.max(0, Math.min(1, boat.speed/(MAX_SPEED*WIND_BOOST)));
-      if(k > 0.06 && !moor){
+      const k = Math.max(0, Math.min(1, B.speed/(MAX_SPEED*WIND_BOOST)));
+      if(k > 0.06 && !(g ? g.moored : moor)){
         const half = x=> 10.5*Math.max(0, 1 - Math.pow((x-5)/16, 2));          // the hull's half-width near the bow
         const n = 3 + Math.round(k*7), len = 6 + 16*k;
         const P = new Path2D(), add = (x, y, r)=>{ P.moveTo(x + r, y); P.arc(x, y, r, 0, Math.PI*2); };
@@ -6775,7 +6915,7 @@
       }
     }
     // rudder: a blade hung off the transom, turned by the wheel
-    const rud = wheelAngle/WHEEL_MAX;
+    const rud = g ? 0 : wheelAngle/WHEEL_MAX;
     {
       const ra = Math.PI - rud*0.75;                     // points astern, swings with the helm
       ctx.save(); ctx.translate(-15.5, 0); ctx.rotate(ra);
@@ -6785,7 +6925,7 @@
       ctx.restore();
     }
     // hull: paper; blinks to ink when hit
-    const blink = hurtFlash>0 && Math.floor(hurtFlash*20)%2===0;
+    const blink = !g && hurtFlash>0 && Math.floor(hurtFlash*20)%2===0;
     ctx.fillStyle = blink ? INKC : PAPERC;
     hullPath(1); ctx.fill();
     // gunwale line and two thwarts, then the ink outline
@@ -6811,7 +6951,7 @@
       }
     }
 
-    if(anchored){                                      // anchor rode running down from the bow
+    if(!g && anchored){                                // anchor rode running down from the bow
       ctx.strokeStyle = INKC; ctx.lineWidth = 1*LWK; ctx.setLineDash([2,1.5]);
       ctx.beginPath(); ctx.moveTo(19,0); ctx.quadraticCurveTo(26, 2+Math.sin(t*1.5)*1.5, 31, 0); ctx.stroke();
       ctx.setLineDash([]);
@@ -6822,13 +6962,13 @@
     ctx.beginPath(); ctx.moveTo(-15,0); ctx.lineTo(-15+Math.cos(rud*0.75)*7, Math.sin(rud*0.75)*7); ctx.stroke();
     // oars: slide out from the gunwales; when turning, they row in
     // opposite senses on the two sides, which is what spins the boat
-    if(boat.oarK > 0.01){
-      const k = boat.oarK, e = k*k*(3-2*k);
+    if(B.oarK > 0.01){
+      const k = B.oarK, e = k*k*(3-2*k);
       const turnDir = Math.sign(rud) || 1;
       for(const sd of [-1,1]){
         // turning: the two sides row against each other; going straight: they pull together
         const turningNow = Math.abs(rud)>0.08;
-        const sweep = Math.sin(boat.oarPh + (turningNow && sd<0 ? Math.PI : 0))*0.45 * (turningNow || sailLevel===SAIL_MIN ? 1 : 0.15);
+        const sweep = Math.sin(B.oarPh + (turningNow && sd<0 ? Math.PI : 0))*0.45 * (turningNow || sailLevel===SAIL_MIN ? 1 : 0.15);
         const a = sd*Math.PI/2 + sd*turnDir*sweep - sd*0.15;
         const ux = Math.cos(a), uy = Math.sin(a);
         const px = -2, py = sd*8.5;                     // rowlock on the gunwale
@@ -6841,7 +6981,7 @@
         ctx.fillStyle = PAPERC; ctx.lineWidth = 1.1*LWK;
         ctx.beginPath(); ctx.ellipse(0,0,4.2*e,1.9*e,0,0,Math.PI*2); ctx.fill(); ctx.stroke();
         ctx.restore();
-        const bite = Math.max(0, Math.cos(boat.oarPh + (turningNow && sd<0 ? Math.PI : 0)));
+        const bite = Math.max(0, Math.cos(B.oarPh + (turningNow && sd<0 ? Math.PI : 0)));
         if((turningNow || sailLevel===SAIL_MIN) && bite>0.7 && e>0.9){
           ctx.globalAlpha = (bite-0.7)/0.3*0.6; ctx.lineWidth = 1*LWK;
           ctx.beginPath(); ctx.arc(bx+ux*3, by+uy*3, 3+(1-bite)*10, 0, Math.PI*2); ctx.stroke();
@@ -6850,7 +6990,7 @@
       }
     }
     // --- square sail on a yard, pivoting at the mast (centre) ---
-    const face = boat.boomSigned;
+    const face = B.boomSigned;
     const nx = Math.cos(face), ny = Math.sin(face);
     const ux = -ny, uy = nx;
     const mx = 2, my = 0;
@@ -6860,13 +7000,13 @@
     // at anchor the cloth is gathered up to the yard (only a look: the sail
     // itself stays set); it spreads again as soon as the anchor comes up
     {
-      const now = performance.now(), fdt = Math.min(0.05, (now - (boat.furlLast || now))/1000); boat.furlLast = now;
-      const want = anchored && weighT <= 0 ? 1 : 0;
-      boat.furl = (boat.furl === undefined ? want : boat.furl) + (want - (boat.furl||0))*Math.min(1, fdt*(want ? 2.2 : 3.5));
+      const now = performance.now(), fdt = Math.min(0.05, (now - (B.furlLast || now))/1000); B.furlLast = now;
+      const want = g ? (g.moored ? 1 : 0) : anchored && weighT <= 0 ? 1 : 0;
+      B.furl = (B.furl === undefined ? want : B.furl) + (want - (B.furl||0))*Math.min(1, fdt*(want ? 2.2 : 3.5));
     }
-    const furl = boat.furl, open = 1 - furl;
-    const p = boat.sailPower*open;
-    const reef = (0.3 + 0.7*boat.sailAmount)*(1 - 0.9*furl);
+    const furl = B.furl, open = 1 - furl;
+    const p = B.sailPower*open;
+    const reef = (0.3 + 0.7*B.sailAmount)*(1 - 0.9*furl);
     const belly = (1.5 + p*10)*reef*SAIL_SIZE;
     const luff = p < 0.25 ? (1 - p/0.25) : 0;
     const ripple = Math.sin(t*22)*3*luff*open;          // (a furled sail doesn't flap)
@@ -6878,7 +7018,7 @@
     const c2y = ay + dy*2/3 + ny*(belly - ripple)*k;
     const sailPath=()=>{ ctx.beginPath(); ctx.moveTo(ax,ay); ctx.bezierCurveTo(c1x,c1y,c2x,c2y,bx,by); };
     // cloth: a dotted tan (SAIL_TONE) when drawing well, darker when slack or reefed
-    const tone = SAIL_TONE - 0.14*(1-p) - 0.1*(1-boat.sailAmount) - 0.08*furl;
+    const tone = SAIL_TONE - 0.14*(1-p) - 0.1*(1-B.sailAmount) - 0.08*furl;
     ctx.fillStyle = V(tone);
     sailPath(); ctx.closePath(); ctx.fill();
     // one centre seam, then the ink edge of the cloth
@@ -6960,6 +7100,7 @@
       ctx.globalAlpha = 1;
       for(const g of gulls) if(inView(g.x+26,g.y+32,16)) drawGullShadow(g);
     });
+    layer(()=>{ for(const g of guests) if(inView(g.x, g.y, 40)) drawBoat(g); });   // the clients' boats
     drawBoat();
     layer(()=>drawStreaks());
     layer(()=>{
