@@ -209,7 +209,10 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   Opening/closing it plays `Sfx.book(open)`: paper flutter, and the cover's thump on closing. The list also shows the day of the voyage
   (`dayNo`, +1 at each dawn). A tiny faint frame-rate counter (`#fps`, refreshed twice a second while the logbook is open) sits on the
   paper, in the bottom right corner of the right page. Keyboard: arrows, Space = anchor.
-- **Hazards:** rocks, faraglioni, whirlpools (appear/disappear/wander; from day 1, `WHIRL_FROM_DAY` = 1), rollers (big waves: within ~66° of their travel = surf boost (`SURF_COS`), otherwise they hurt). A quiet hand on
+- **Hazards:** rocks, faraglioni, whirlpools (appear/disappear/wander; from day 1, `WHIRL_FROM_DAY` = 1), rollers (big waves: within ~66° of their travel = surf boost (`SURF_COS`), otherwise they hurt). How often: every
+  ~2–6 s (`ROLLER_RATE` = 2, twice the old pace; a little rarer near home and among islands, most in open water), at
+  most 12 about in open water (8 elsewhere); never in home waters (they die down there) or within 280 px of a pier, only
+  with open water ahead of them, quieter while the nets are out, and they die early on reaching shoal water. A quiet hand on
   the waves near the boat (`rollerPace`, eased): one coming up astern (within 220 px, full effect within 140) while she
   runs with it hurries to her pace + `ROLLER_CATCH` (25 px/s, at most 3× its own) and lives a little longer, so it
   catches her and she surfs; one about to hit her badly slows to `ROLLER_SPARE` (0.55) of its pace, time to turn away.
@@ -220,8 +223,8 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   pace + `ROLLER_CATCH`, living 5.5–6.5 s; one at a time. `rollerPace` then does the rest (it hurries only while she's
   in line with its crest).
 - **Atmosphere:** macchia (tree-spurge domes + Mediterranean pines; the pines come in `PINE_MODELS` = 4 shapes made each game, each maybe mirrored), clouds with parallax and shadows (`CLOUD_MODELS` = 4 shapes, made each game, still: they only drift), gulls, wind streaks,
-  traders (`TRADERS` = 8 motor boats, one on each A* lane: home to each village and between neighbouring villages,
-  dealt home lanes first, so they show the way out; they don't avoid the player, a collision just shoves them aside
+  traders (motor boats on A* lanes: `TRADERS_HOME` = 2 on the four home-to-village lanes, two of them picked at random,
+  and `TRADERS_VILLAGES` = 4 between neighbouring villages, one a lane; they don't avoid the player, a collision just shoves them aside
   with no damage, then they drift back to their lane; they hail with a speech bubble), fog of war (buoys and a
   340 px radius round each village always show through), clouds see-through at the rim and denser in the middle, each with its shadow at a fixed offset down-right,
   a third of them rain clouds (darker; rain falls from the cloud onto its shadow on the sea, with a rain sound when you're near: a broad soft wash (between a hiss and a murmur) in gusts plus a patter of soft noise ticks (no watery bubble 'plips': tried and dropped as too intense), sparse at the edge, thick beneath; `rain()` and `rainDrop()` in Sound),

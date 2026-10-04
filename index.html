@@ -756,7 +756,7 @@
   const WHIRL_PULL = 22;             // px/s pull at the edge of the core…
   const WHIRL_CURVE = 4;             // …rising exponentially from ~0 at the rim
   const WHIRL_FADE = 3;              // seconds for a whirlpool to open up / die down
-  const ROLLER_RATE = 1;             // how often big waves come (2 = twice as often, 0.5 = half)
+  const ROLLER_RATE = 2;             // how often big waves come (2 = twice as often as at first, 1 = the old pace)
   const ROLLER_CATCH = 25;           // px/s a wave from astern runs faster than the boat, so it catches her to surf (0 = never helps)
   const DOWNWIND_DEG = 120;          // she's running downwind when the wind comes from at least this far round from her bow (180 = dead astern); from here the wind from behind adds speed too
   const SURF_WAVE_AFTER = 1.5;         // seconds running downwind before a wave may come up astern for her to surf
@@ -783,7 +783,8 @@
   const DISH_PRICE = 6;              // coins per specialty dish
 
   // -- World --
-  const TRADERS = 8;                 // trading boats: one on each lane, home lanes first (8 = one per lane; 12 put two on each home lane) (world)
+  const TRADERS_HOME = 2;            // trading boats between home and the villages (on 2 of the 4 home lanes, picked at random) (world)
+  const TRADERS_VILLAGES = 4;        // trading boats between neighbouring villages (one on each of those 4 lanes) (world)
   const ISLAND_SCALE = 2.5;          // size of the wild islands (1 = the old small ones) (world)
   const ISLAND_COUNT = Math.round(210*WK2*3.5/(ISLAND_SCALE*ISLAND_SCALE));   // wild islands at most (about 58 at scale 2.5; the clusters fill up first) (world)
   const CLUSTER_SHARE = 0.32;        // share of the sea taken by clusters of islands; the rest is open water (world)
@@ -2105,8 +2106,10 @@
     }
   }
   let homeInside = null;
-  for(let k=0; lanes.length && k<TRADERS; k++){          // dealt round the lanes, home lanes first
-    const L = lanes[k % lanes.length];
+  const homeLanes = lanes.filter(L=> L.a === 0).sort(()=> Math.random() - 0.5), farLanes = lanes.filter(L=> L.a !== 0);
+  const dealt = [...Array.from({length: homeLanes.length ? TRADERS_HOME : 0}, (_,k)=> homeLanes[k % homeLanes.length]),
+                 ...Array.from({length: farLanes.length ? TRADERS_VILLAGES : 0}, (_,k)=> farLanes[k % farLanes.length])];
+  for(const L of dealt){                                  // home lanes first, then village to village
     traders.push({lane:L, dir: Math.random()<0.5?1:-1, s: rand(0.1,0.9)*L.len, speed: rand(24,32), wait: 0, x:0, y:0, a:0, ph: rand(0,6.3),
                   kx: 0, ky: 0, kvx: 0, kvy: 0, yaw: 0, yv: 0, bumpCool: 0, talkT: 0, talkCool: rand(0,5), marks: [], foam: [], foamT: 0});
   }
@@ -4102,8 +4105,8 @@
       if(rollerT<=0){
         const dg = danger(boat.x, boat.y);
         const open = 1 - archipelago(boat.x, boat.y);
-        rollerT = rand(0.8,1.2) * (5.5 - 3.2*dg) * (1.6 - 1.1*open) / ROLLER_RATE;   // rarer near home and among islands, frequent far out on open sea
-        if(rollers.length < (open > 0.6 ? 9 : 6) && dg > 0.05) spawnRoller();
+        rollerT = rand(0.8,1.2) * (4.5 - 2.2*dg) * (1.4 - 0.9*open) / ROLLER_RATE;   // a little rarer near home and among islands, frequent far out on open sea
+        if(rollers.length < (open > 0.6 ? 12 : 8)) spawnRoller();            // (anywhere past home waters: spawnRoller keeps them out of those)
       }
     }
     for(let k=rollers.length-1;k>=0;k--){
