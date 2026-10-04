@@ -227,8 +227,8 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   and spreading) and the old one goes into the hold in its place. Each sail has its own speed curve, in Tuning
   (`SAIL_POLAR_SQUARE`, `SAIL_POLAR_LATEEN`: [degrees off the wind, share of top speed]; `POLARS` picks by `boat.rig`):
   the square one is fastest running free and poor on the wind, the **lateen** points higher and is at its best with
-  the wind on the beam (50° off the wind 0.56 vs 0.25, beam 0.92 vs 0.56, 110° 0.95 vs 0.71) but poorer running
-  free (150° 0.82 vs 0.93, dead downwind 0.74 vs 1.0): pick the sail by the course to the next port. The lateen is drawn by
+  the wind on the beam (50° off the wind 0.68 vs 0.15, beam 1.0 vs 0.42, 110° 0.97 vs 0.60) but poor running
+  free (150° 0.68 vs 0.95, dead downwind 0.54 vs 1.0): pick the sail by the course to the next port. The lateen is drawn by
   `drawLateenSail`: a long slanted yard on a short mast near the bow, the triangle of cloth trailing aft, eased out
   to leeward about half the wind's angle off the bow (`boat.boomSigned`), bellied to leeward, a sheet to the stern
   quarter; it furls along the yard at anchor. Changing tack, the heavy yard swings across slowly (`LATEEN_SWING` in
