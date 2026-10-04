@@ -144,7 +144,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   (`ROUTE_BANK_SHARE`) lie along the sea roads, home to each village and village to village, within `ROUTE_BANK_SPREAD` of
   the straight line (`routeSpot`), so the fish lead from place to place; home waters have all kinds and plenty of banks (`HOME_BANKS` = 9 in the smaller world, same density as 18 before; refilled as they are fished).
   Fishing: stop on a bank for 2 s and the nets go over; drop anchor on a bank and they go over after 0.25 s.
-  **Hold: `HOLD_MAX` = 9 slots**, each fish or dish takes one (`slotsUsed` = `fishAboard` + `dishesAboard`; the gifts
+  **Hold: `HOLD_MAX` = 9 slots**, each fish or dish takes one, and the spare sail one (`slotsUsed` = `fishAboard` + `dishesAboard` + `spareSlots`; the gifts
   are kept apart, below the slots, and take none): with a full hold the nets stay aboard (a popup "the hold is full",
   once per bank; the hub doesn't turn into a fish), and a haul brings in only what fits. The Cargo shows the slots as a
   3×3 grid (fish first, then dishes, empty slots dashed) and the count ("n/9", `TEXT.logbook.holdCount`). At the
@@ -208,9 +208,11 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   paper), darker when slack or reefed. At anchor (and moored) the cloth is drawn gathered up to the yard (`boat.furl`,
   eased; a look only: the sail stays set as far as the physics goes), and it spreads again as the anchor comes up.
   **Two sails** (`SPARE_SAIL` in Tuning): she carries one (`boat.rig`, 'square' at the start) and the other is the
-  spare, shown in the logbook's Cargo below the slots (`spareHTML`, "Spare sail", its own icon in `ITEM_ICONS`,
-  takes no slot); a tap on it rigs it (`swapSail`: toast "… rigged", a thunk and a buzz, the new sail bent on furled
-  and spreading) and the old one goes into the hold in its place. Each sail has its own speed curve (`POLARS`):
+  spare, in the hold: it takes one of the `HOLD_MAX` slots (`spareSlots`, counted in `slotsUsed` and at the market in
+  `mkSlotsAfter`), always the first slot of the Cargo grid, a tappable slot with its own icon in `ITEM_ICONS`
+  (`spareHTML`); a tap on it rigs it (`swapSail`: toast "… rigged", a thunk and a buzz, the new sail bent on furled
+  and spreading) and the old one goes into the hold in its place. Each sail has its own speed curve, in Tuning
+  (`SAIL_POLAR_SQUARE`, `SAIL_POLAR_LATEEN`: [degrees off the wind, share of top speed]; `POLARS` picks by `boat.rig`):
   the square one is fastest running free, the **lateen** points higher and reaches well (50° off the wind 0.40 vs
   0.30, beam 0.70 vs 0.62) but gives a little less dead downwind (0.9 vs 1.0). The lateen is drawn by
   `drawLateenSail`: a long slanted yard on a short mast near the bow, the triangle of cloth trailing aft, eased out

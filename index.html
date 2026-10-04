@@ -386,10 +386,8 @@
   #shoplist .slot.fish svg{width:30px; height:16px;}
   #shoplist .hold-goods{display:flex; flex-wrap:wrap; gap:4px; padding-top:6px; border-top:1.5px dashed var(--ink);}
   #shoplist .hold-goods svg{width:26px; height:26px; display:block;}
-  #shoplist .hold-spare{display:flex; align-items:center; gap:8px; padding-top:6px; margin-top:6px; border-top:1.5px dashed var(--ink); font-size:12px; font-style:italic;}
-  #shoplist .spare-sail{width:38px; height:38px; padding:0; background:none; color:var(--ink); border:1.5px solid var(--ink); border-radius:3px; display:flex; align-items:center; justify-content:center; cursor:pointer;}
+  #shoplist .spare-sail{padding:0; background:none; color:var(--ink); cursor:pointer;}   /* the spare sail: a slot you can tap */
   #shoplist .spare-sail:active{transform:translate(1px,1px);}
-  #shoplist .spare-sail svg{width:30px; height:30px; display:block;}
   #wheel{
     transition:opacity .35s;
     position:fixed;
@@ -701,7 +699,6 @@
     sails: {
       square:  'Square sail',
       lateen:  'Lateen sail',
-      spare:   'Spare sail',
       hint:    '{sail}: tap to rig it',
       rigged:  '{sail} rigged',
     },
@@ -897,8 +894,12 @@
   const CLOUD_MODELS = 4;            // cloud shapes, shared by all the clouds in the sky (world)
   const MAP_RES = 280;               // the sea chart in the logbook: its pixels a side (fewer = coarser)
   const SAIL_SIZE = 1.15;             // size of the boat's sail (1 = the old one: a yard 30 px wide)
+  // the two sails' speed curves: [degrees off the wind, share of top speed]. The square sail runs free fastest;
+  // the lateen points higher and reaches well, a little less dead downwind
+  const SAIL_POLAR_SQUARE = [[0,0.02],[20,0.06],[35,0.15],[50,0.30],[70,0.48],[90,0.62],[110,0.74],[130,0.84],[150,0.92],[170,0.98],[180,1.0]];
+  const SAIL_POLAR_LATEEN = [[0,0.02],[20,0.08],[35,0.22],[50,0.40],[70,0.58],[90,0.70],[110,0.79],[130,0.86],[150,0.90],[170,0.91],[180,0.9]];
   const SAIL_TONE = 0.72;            // the sail's cloth when drawing well (1 = paper white, 0 = ink); slack or reefed it's a little darker
-  const SPARE_SAIL = true;           // she carries a spare sail in the hold (the lateen at the start), and a tap on it in the logbook swaps the two
+  const SPARE_SAIL = true;           // she carries a spare sail in the hold (the lateen at the start; it takes one of the HOLD_MAX slots), and a tap on it in the logbook swaps the two
   const PINE_MODELS = 4;             // stone pine shapes, reused (each also mirrored) all over the map (world)
   // draw the scene on the processor (true) or on the graphics card (false): the frame is tiny, and Firefox
   // on Android is slow with the card (24 fps); add ?scene=gpu or ?scene=cpu to the address to compare
@@ -2189,14 +2190,8 @@
   let playing = false;
   const popups = [];               // floating "+15" / "-8" texts
 
-  // polar-ish speed curve: [angleDeg, factor]
-  const POLARS = {
-    square: [[0,0.02],[20,0.06],[35,0.15],[50,0.30],[70,0.48],
-             [90,0.62],[110,0.74],[130,0.84],[150,0.92],[170,0.98],[180,1.0]],
-    // the lateen sail points higher and reaches well, a little less dead downwind
-    lateen: [[0,0.02],[20,0.08],[35,0.22],[50,0.40],[70,0.58],
-             [90,0.70],[110,0.79],[130,0.86],[150,0.90],[170,0.91],[180,0.9]]
-  };
+  // polar-ish speed curve per sail: [angleDeg, factor] (see Tuning)
+  const POLARS = {square: SAIL_POLAR_SQUARE, lateen: SAIL_POLAR_LATEEN};
   function speedFactor(relDeg){
     relDeg = Math.abs(relDeg);
     const POLAR = POLARS[boat.rig] || POLARS.square;
@@ -4019,7 +4014,8 @@
   let settleT = 0;
   const fishAboard = ()=> FISH_KEYS.reduce((a,k)=> a + counts[k], 0);
   const dishesAboard = ()=> Object.values(dishHold).reduce((a,n)=> a + n, 0);
-  const slotsUsed = ()=> fishAboard() + dishesAboard();          // the hold's HOLD_MAX slots: a fish or a dish each (gifts are kept apart)
+  const spareSlots = ()=> SPARE_SAIL ? 1 : 0;                     // the spare sail takes a slot too
+  const slotsUsed = ()=> fishAboard() + dishesAboard() + spareSlots();   // the hold's HOLD_MAX slots: a fish, a dish or the spare sail each (gifts are kept apart)
   const holdFull = ()=> slotsUsed() >= HOLD_MAX;
   let fullSaid = null;                                   // the bank we've already said "the hold is full" over
   function bankUnderBoat(){
@@ -4465,7 +4461,7 @@
     mkKey = key; stockTable(marketV); drawTable();
   }
   const mkBalance = ()=> mkItems.reduce((a,it)=> a + (it.side===it.origin ? 0 : it.origin==='you' ? it.value : -it.value), 0);
-  const mkSlotsAfter = ()=> mkItems.filter(it=> it.side === 'you').length;      // what the hold would carry after the trade
+  const mkSlotsAfter = ()=> mkItems.filter(it=> it.side === 'you').length + spareSlots();   // what the hold would carry after the trade (the spare sail stays aboard)
   const COIN_SVG = '<svg class="coin" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="var(--paper)" stroke="currentColor" stroke-width="1.4"/><circle cx="6" cy="6" r="2.4" fill="none" stroke="currentColor" stroke-width="1"/></svg>';
   const FOOD_SVG = '<svg viewBox="0 0 30 22" aria-hidden="true"><path d="M3 9 H27 L24 20 H6 Z" fill="var(--paper)" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7 9 Q15 -1 23 9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 12 H22 M9 15.5 H21" stroke="currentColor" stroke-width="1.1"/><circle cx="12" cy="7" r="2.6" fill="currentColor"/><circle cx="18" cy="6.5" r="2.2" fill="url(#sh-mid)" stroke="currentColor" stroke-width="0.8"/></svg>';
   // one small icon per dish and gift (24×24, ink on paper), so the cargo in
@@ -4801,25 +4797,23 @@
   // at the market) and everything bought on the voyage (dishes, and any gift)
   const elHoldPage = document.getElementById('hold-page');
   function holdHTML(){
-    // HOLD_MAX slots in a grid: fish first, then dishes, the rest empty; the gifts are kept apart, below
-    const items = [...FISH_KEYS.flatMap(k=> Array(counts[k]).fill({name: FISH_NAME[k].one, svg: document.querySelector('#wood .fish-'+k+' svg').outerHTML, fish:true})),
+    // HOLD_MAX slots in a grid: the spare sail, fish, then dishes, the rest empty; the gifts are kept apart, below
+    const items = [...(SPARE_SAIL ? [{sail: true}] : []), ...FISH_KEYS.flatMap(k=> Array(counts[k]).fill({name: FISH_NAME[k].one, svg: document.querySelector('#wood .fish-'+k+' svg').outerHTML, fish:true})),
                    ...ALL_DISHES.flatMap(d=> Array(dishHold[d.icon]||0).fill({name: d.name, svg: itemIcon(d.icon)}))];
     const gifts = VILLAGES.filter(v=> v.giftGot).map(v=> ({name: v.gift, icon: v.giftIcon}));
-    const slot = k=> { const it = items[k]; return it ? '<span class="slot'+(it.fish?' fish':'')+'" title="'+it.name+'" role="img" aria-label="'+it.name+'">'+it.svg+'</span>' : '<span class="slot empty"></span>'; };
+    const slot = k=> { const it = items[k]; if(it && it.sail) return spareHTML(); return it ? '<span class="slot'+(it.fish?' fish':'')+'" title="'+it.name+'" role="img" aria-label="'+it.name+'">'+it.svg+'</span>' : '<span class="slot empty"></span>'; };
     return '<div class="hold-head"><h3>'+TEXT.logbook.cargo+'</h3><span class="hold-count">'+fmt(TEXT.logbook.holdCount, {n: items.length, max: HOLD_MAX})+'</span><span class="purse" aria-label="Purse: '+coins+' coins">'+COIN_SVG+coins+'</span></div>'
       + '<div class="hold-slots">'+Array.from({length: Math.max(HOLD_MAX, items.length)}, (_,k)=> slot(k)).join('')+'</div>'
-      + (gifts.length ? '<div class="hold-goods">'+gifts.map(g=> '<span title="'+g.name+'" role="img" aria-label="'+g.name+'">'+itemIcon(g.icon)+'</span>').join('')+'</div>' : '')
-      + spareHTML();
+      + (gifts.length ? '<div class="hold-goods">'+gifts.map(g=> '<span title="'+g.name+'" role="img" aria-label="'+g.name+'">'+itemIcon(g.icon)+'</span>').join('')+'</div>' : '');
   }
-  // the spare sail, apart from the slots: a tap on it rigs it, and the sail
-  // she carried goes into the hold in its place
+  // the spare sail, in a slot of its own among the others: a tap on it rigs
+  // it, and the sail she carried goes into the hold in its place
   const spareRig = ()=> boat.rig === 'lateen' ? 'square' : 'lateen';
   const SAIL_ICON = {square: 'Square sail', lateen: 'Lateen sail'};
   function spareHTML(){
     if(!SPARE_SAIL) return '';
     const name = TEXT.sails[spareRig()], hint = fmt(TEXT.sails.hint, {sail: name});
-    return '<div class="hold-spare"><span>'+TEXT.sails.spare+'</span><button type="button" class="spare-sail" data-swap="1" title="'+hint+'" aria-label="'+hint+'">'
-      + itemIcon(SAIL_ICON[spareRig()])+'</button></div>';
+    return '<button type="button" class="slot spare-sail" data-swap="1" title="'+hint+'" aria-label="'+hint+'">'+itemIcon(SAIL_ICON[spareRig()])+'</button>';
   }
   function swapSail(){
     boat.rig = spareRig();
