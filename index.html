@@ -254,6 +254,16 @@
   #btn-list.open .log-pages{opacity:1; transform:none;}
   #btn-list{left:9px; right:auto; bottom:calc(10px + env(safe-area-inset-bottom,0px));}   /* bottom left; the compass sits above it */
   body.at-market #btn-list{display:none;}
+  /* the fair-wind power: an icon drawn like the logbook's, bottom right; dimmed once the day's uses are spent */
+  #btn-power{width:80px; height:80px; background:none; border:none; box-shadow:none; border-radius:0; left:auto; right:9px;
+    bottom:calc(10px + env(safe-area-inset-bottom,0px));}
+  #btn-power:active{box-shadow:none;}
+  #btn-power canvas{position:absolute; left:2px; top:2px; width:76px; height:76px; image-rendering:pixelated; transition:opacity .3s;
+    filter:drop-shadow(1.5px 0 0 var(--paper)) drop-shadow(-1.5px 0 0 var(--paper)) drop-shadow(0 1.5px 0 var(--paper)) drop-shadow(0 -1.5px 0 var(--paper)) drop-shadow(3px 4px 0 rgba(0,0,0,.3));}
+  #btn-power .pw-spent{opacity:0;}
+  #btn-power.spent .pw-ready{opacity:0;} #btn-power.spent .pw-spent{opacity:1;}
+  #btn-power.blowing canvas{animation:logWiggle 1.2s ease-in-out infinite;}
+  body.at-market #btn-power{display:none;}
   /* at the barter table the sail badge and the compass (with its fish counters) step aside */
   body.at-market #sail, body.at-market #compass, body.at-market #wood, body.at-market #wheel{display:none;}
   /* the shopping list: slides down from the top of the screen */
@@ -497,6 +507,9 @@
     <svg viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="6.2" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.4"/><circle cx="9" cy="9" r="3.6" fill="none" stroke="var(--ink)" stroke-width="0.9"/><path d="M1.2 3 V7.5 M0.4 3 V5.5 M2 3 V5.5 M1.2 7.5 V15.5 M16.8 3 Q15.4 6 16.8 9 V15.5" fill="none" stroke="var(--ink)" stroke-width="1.1" stroke-linecap="round"/></svg>
     <div class="mood-track"><div class="mood-fill" id="mood-fill"></div></div>
   </div>
+  <button id="btn-power" class="helm-btn" type="button" aria-label="Fair wind: the wind blows from astern for a while, once a day">
+    <canvas class="pw-ready" aria-hidden="true"></canvas><canvas class="pw-spent" aria-hidden="true"></canvas>
+  </button>
   <button id="btn-list" class="helm-btn" type="button" aria-label="Logbook" aria-expanded="false" aria-controls="shoplist">
     <!-- the logbook: a leather-bound book; tapping it swings the cover open on its spine and shows the written pages -->
     <span class="logbook" aria-hidden="true">
@@ -626,6 +639,7 @@
       holdFull: 'the hold is full',
       netsIn:   'nets hauled in',
       surf:     'surf!',
+      fairWind: 'fair wind!',
       whirl:    'Whirlpool! -{damage}',
       bought:   '+ {item}',
       coinsIn:  '+{n} coins',
@@ -787,7 +801,11 @@
   const BUOY_R = Math.round(880*WORLD_K);          // radius of each village's ring of buoys (world)
   const BUOYS_PER_VILLAGE = Math.round(24*WORLD_K), HOME_BUOYS = Math.round(32*WORLD_K);   // buoys per ring (world)
   const OPEN_ROCK_TRIES = Math.round(127*WK2);     // clusters of rocks tried out in open water (world)
-  const DAY_LEN = 360;               // seconds for a whole day (dawn to dawn)
+  const DAY_LEN = 720;               // seconds for a whole day, dawn to dawn (was 360)
+  const TUTORIAL_ON = false;         // the first-voyage tutorial (controls shown one at a time with tips); off for now
+  const RUINS_ON = false;            // the ruins on the diagonals and their powers; off for now (world)
+  const POWER_PER_DAY = 1;           // uses a day of the fair wind (the button bottom right); back at first light
+  const POWER_WIND_T = 10;           // seconds the fair wind blows from astern, whichever way she steers
   const DAWN_HOUR = 5;               // the hour on the watch at first light (5 puts the golden hour at about 19)
   const DINNER_HOUR = 19;            // the day's order must be home by this hour; then dinner is served (marked on the watch)
   const WATCH_MARK = DINNER_HOUR;    // the hour marked on the watch's rim
@@ -1525,7 +1543,7 @@
   // Four islands on the diagonals, each with the stones of an ancient
   // sanctuary and a stone pier. Docking there grants a mysterious power.
   const RUIN_COOLDOWN = 180;          // seconds before the same ruin answers again
-  const RUINS = [
+  const RUINS = !RUINS_ON ? [] : [
     { name:TEXT.ruins.name, ux:-1, uy:-1 },
     { name:TEXT.ruins.name, ux: 1, uy:-1 },
     { name:TEXT.ruins.name, ux: 1, uy: 1 },
@@ -2051,13 +2069,13 @@
   }
 
   // ---------- Wind ----------
-  let windAngle = Math.PI/2;        // direction wind blows FROM: south, so it pushes the boat north at the start
+  let windAngle = rand(0, Math.PI*2);   // direction wind blows FROM: random at the start
   // Wind holds steady, then every so often shifts to a new direction over a
   // few seconds (smoothstep tween), then holds again.
   let windTimer = rand(28,36);     // seconds of steady wind before next shift (long at the start)
   // at the start of the voyage the wind guides you: it blows from wherever you
   // are toward the northern village, until you've tied up there
-  let guideWind = true;
+  let guideWind = false;                                        // (the guiding wind is off: the wind is random from the start)
   let shiftFrom = windAngle, shiftDelta = 0, shiftT = 0, shiftDur = 0;
   let windStrength = 1;
   let windStrengthT = 0;
@@ -2959,7 +2977,7 @@
   // with it shut; a tap swings it up on its hinge (top). Once it's open, a
   // tap turns the face over, like a card, between the compass and a 24-hour
   // watch (one hand, 0 at the top, a mark on WATCH_MARK), and back again
-  let lidOpen = false, lidT = 1, lidLastT = performance.now();   // lidT: 1 shut, 0 open
+  let lidOpen = true, lidT = 0, lidLastT = performance.now();   // lidT: 1 shut, 0 open (the lid is gone for now: always open)
   let watchOn = false, watchT = 0;                                // watchT: 0 compass, 1 watch (eased: the turn)
   function toggleLid(){
     if(!lidOpen){
@@ -3096,8 +3114,8 @@
         c.beginPath(); c.roundRect(-4, 30.5, 8, 4, 1.5); c.fill(); c.stroke();
         c.restore();
       }
-      c.fillStyle = g(195); c.strokeStyle = INKW; c.lineWidth = 1.1;         // the hinge
-      c.beginPath(); c.roundRect(cx-6, 0.8, 12, 4.4, 1.6); c.fill(); c.stroke();
+      if(lidT > 0.02){ c.fillStyle = g(195); c.strokeStyle = INKW; c.lineWidth = 1.1;   // the hinge (only with a lid)
+        c.beginPath(); c.roundRect(cx-6, 0.8, 12, 4.4, 1.6); c.fill(); c.stroke(); }
     }
     c.setTransform(1,0,0,1,0,0);
     ditherUI(c, CMP_PX, CMP_PX);
@@ -3560,6 +3578,7 @@
   const TUT_ORDER = ['intro','book','compass','anchor','wheel','drop','done'];
   const tutAt = (stage)=> TUT_ORDER.indexOf(tut) >= TUT_ORDER.indexOf(stage);   // reached this step yet?
   function tutSet(stage){
+    if(!TUTORIAL_ON) stage = 'done';                                            // (Tuning: the tutorial is off)
     tut = stage;
     document.body.classList.toggle('tut-no-compass', !tutAt('compass'));
     document.body.classList.toggle('tut-compass', stage === 'compass');
@@ -3678,15 +3697,16 @@
     dayT = 0.1; dayNo = 1; howlT = 12;
     boonWindT = 0; boonFish = 0; for(const r of RUINS) r.readyAt = 0;
     rollers.length = 0; rollerT = 6; boat.surfT = 0;
-    windAngle = Math.PI/2; shiftDur = 0; windTimer = rand(28,36); guideWind = true;
+    windAngle = rand(0, Math.PI*2); shiftDur = 0; windTimer = rand(28,36); guideWind = false;
     explored.fill(0);
     wake.length = 0; popups.length = 0;
     voyageTime = 0; hurtFlash = 0; shake = 0;
     gameover.classList.add('hidden');
-    playing = true; lidOpen = false; watchOn = false; watchT = 0;   // a new voyage: the compass lid starts shut, compass side up
+    playing = true; watchOn = false; watchT = 0;           // a new voyage: compass side up
     prevWheel = wheelAngle = 0;
     repairT = 0; moor = mooredAtSpawn(); moorLock = null;
     resetOrders(); elListBtn.classList.remove('news');
+    powerLeft = POWER_PER_DAY; powerUI();
     coins = 0;
     closeDialog();
     Sfx.init();
@@ -4593,6 +4613,26 @@
       c.fillStyle = INKW; c.beginPath(); c.arc(43.5, 24, 0.9, 0, Math.PI*2); c.fill();
       c.strokeStyle = INKW; c.lineWidth = 1.6; cover(); c.stroke();
     });
+    // the fair-wind power: a brass medallion with a gust blowing across it;
+    // spent, the same medallion pale and flat, the gust only dotted
+    const medal = (c, spent)=>{
+      c.fillStyle = g(90); c.beginPath(); c.arc(30, 31, 21, 0, Math.PI*2); c.fill();                     // shadow
+      const lg = c.createLinearGradient(8, 6, 48, 48);
+      lg.addColorStop(0, g(spent ? 225 : 120)); lg.addColorStop(1, g(spent ? 175 : 35));                  // dark, lit top left
+      c.fillStyle = lg; c.beginPath(); c.arc(28, 28, 21, 0, Math.PI*2); c.fill();
+      c.strokeStyle = INKW; c.lineWidth = 1.6; c.stroke();
+      c.strokeStyle = g(spent ? 140 : 215); c.lineWidth = 1.2; c.beginPath(); c.arc(28, 28, 17.5, Math.PI*0.75, Math.PI*1.75); c.stroke();   // lit rim
+      for(let k=0;k<4;k++){ const a = (k+0.5)*Math.PI/2, x = 28+Math.cos(a)*19, y = 28+Math.sin(a)*19;   // rivets
+        c.fillStyle = INKW; c.beginPath(); c.arc(x, y, 1.2, 0, Math.PI*2); c.fill(); }
+      c.strokeStyle = spent ? g(110) : PAPW; c.lineCap = 'round';                                           // the gust: three curling lines
+      if(spent) c.setLineDash([1.5, 2.5]);
+      const gust = (y, len, curl, lw)=>{ c.lineWidth = lw; c.beginPath(); c.moveTo(14, y); c.lineTo(14+len, y);
+        c.arc(14+len, y - curl, curl, Math.PI/2, -Math.PI*0.7, true); c.stroke(); };
+      gust(21, 20, 4, 2.6); gust(29, 25, 3.4, 2.6); gust(37, 16, 3, 2.2);
+      c.setLineDash([]);
+    };
+    paint(elPower.querySelector('.pw-ready'), c=> medal(c, false));
+    paint(elPower.querySelector('.pw-spent'), c=> medal(c, true));
     // open: two pages over the cover, a crease, a few lines of writing
     paint(elListBtn.querySelector('.log-pages'), c=>{
       c.fillStyle = g(90); c.beginPath(); c.roundRect(5, 14, 48, 32, 4); c.fill();                        // shadow
@@ -4635,6 +4675,22 @@
     }
   }
   elListBtn.addEventListener('click', ()=>{ toggleList(); elListBtn.blur(); });
+
+  // ---------- Fair wind (a power, POWER_PER_DAY a day) ----------
+  // The button bottom right: for POWER_WIND_T seconds the wind swings round
+  // to blow from astern whichever way she steers (the same spell as the ruins'
+  // friendly wind, boonWindT). Its uses come back at first light.
+  const elPower = document.getElementById('btn-power');
+  let powerLeft = POWER_PER_DAY;
+  function powerUI(){ elPower.classList.toggle('spent', powerLeft <= 0); }
+  elPower.addEventListener('click', ()=>{
+    elPower.blur(); Sfx.init();
+    if(!playing || powerLeft <= 0 || boonWindT > 0){ buzz(12); return; }
+    powerLeft--; powerUI();
+    boonWindT = POWER_WIND_T; shiftDur = 0;
+    popups.push({x:boat.x, y:boat.y-26, text:TEXT.popups.fairWind, life:1.6, max:1.6});
+    Sfx.surf(); buzz([20,40,60]);
+  });
 
   // ---------- Sea chart ----------
   // The logbook's second spread: a rough chart of the sea, drawn across both
@@ -5005,6 +5061,7 @@
         dayT -= 1; dayNo++;
         if(order && !order.closed) serveDinner();
         newOrder(dayNo); freshLines.clear();
+        powerLeft = POWER_PER_DAY; powerUI();                               // the fair wind is back
         toast(TEXT.toasts.newOrder); elListBtn.classList.add('news');
         if(elList.classList.contains('open')) renderList();
       }
@@ -5317,6 +5374,7 @@
       const pct = Math.round(satisfaction*100), show = playing;
       if(pct !== moodShown){ moodShown = pct; elMoodFill.style.width = pct+'%'; elMood.setAttribute('aria-valuenow', pct); }
       if(show !== elMood.classList.contains('show')) elMood.classList.toggle('show', show);
+      if((boonWindT > 0) !== elPower.classList.contains('blowing')) elPower.classList.toggle('blowing', boonWindT > 0);
       if(satPulse > 0){ if(!elMood.classList.contains('pulse')) elMood.classList.add('pulse'); satPulse -= dt; if(satPulse <= 0) elMood.classList.remove('pulse'); }
     }
     healthShowT = Math.max(0, healthShowT-dt);

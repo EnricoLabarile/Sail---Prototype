@@ -92,9 +92,13 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
 - **Home waters** (`SAFE_R` ≈ 665 px round home): no whirlpools (pull ring included) and no big waves (any that drift in
   die down harmlessly); a ring of 22 buoys (`HOME_BUOYS`) marks the edge, with toasts "Leaving home waters" / "Back in home waters".
   Inside them, a calm **lagoon** (`LAGOON_R` ≈ 455 px round home): no islands and no rocks, room to learn the controls.
-- **Guiding wind:** from the start until you first tie up at Nordania, the wind always blows toward Nordania from
-  wherever you are (shortest way round the torus; `guideWind`); after that the normal shifting winds apply.
-- **Ruins** on the diagonals: dock there for a random power (friendly wind 60 s, blessed nets ×3, full hull).
+- **Wind:** random from the start (the old guiding wind toward Nordania, `guideWind`, is off), then the normal shifting winds.
+  **Fair wind** (a power, the medallion button bottom right, `#btn-power`, drawn like the logbook icon in
+  `drawLogbookIcon`: a dark brass medallion with a gust; pale and dotted once spent; wiggles while it blows):
+  `POWER_PER_DAY` (1) uses a day, back at first light; each makes the wind blow from astern whichever way she steers for
+  `POWER_WIND_T` (10 s) (the same spell as the ruins' friendly wind: `boonWindT`, the badge top left shows the seconds).
+- **Ruins** on the diagonals: **off for now** (`RUINS_ON` = false in Tuning: `RUINS` is empty). When on: dock there for
+  a random power (friendly wind 60 s, blessed nets ×3, full hull).
 - **Fish:** sardines (N), mackerel (E), red mullet (S), sea bream (W). Banks denser far from home; half the open-sea banks
   (`ROUTE_BANK_SHARE`) lie along the sea roads, home to each village and village to village, within `ROUTE_BANK_SPREAD` of
   the straight line (`routeSpot`), so the fish lead from place to place; home waters have all kinds and plenty of banks (`HOME_BANKS` = 9 in the smaller world, same density as 18 before; refilled as they are fished).
@@ -116,16 +120,16 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
 - **Compass** (95 px, `CMP_PX`, top centre of the screen (the open logbook covers it); in its tutorial step the bubble hangs under it; hidden in the tutorial
   until its own tutorial step): points home, a dot per village filled once a dish is bought there; drawn like the
   wheel (greys into a low-res canvas, then dithered): brass bezel with rivets, shaded card, wind rose, glass glare.
-  It has a hinged brass **lid** (engraved rings, a small star, hinge on top, catch below; `lidOpen`, `toggleLid`): shut at
-  the start of every voyage, a tap (or Enter/Space) swings it up on the hinge and shows the compass. Once open, a tap
-  turns the face over like a card (`watchOn`, `watchT`: squeezed sideways, then the other side opens out) to a
+  The hinged brass **lid** is gone for now (`lidOpen` always true, `lidT` 0; the drawing is still there). A tap
+  (or Enter/Space) turns the face over like a card (`watchOn`, `watchT`: squeezed sideways, then the other side opens out) to a
   **24-hour watch** and back: one hand, 0 at the top, 0/6/12/18 numbered, a tick every hour, and a mark on the rim at
   `WATCH_MARK` = 19 (`drawWatchFace`). The time is `watchHour()` = `DAWN_HOUR` (5) + `dayT`×24, so the golden hour
-  falls at about 19. The lid never shuts again until the next voyage.
+  falls at about 19.
   The old fish counters round it are hidden (`#wood`); the cargo is shown on the logbook's right page.
 - **Intro:** two lines about the restaurant and the daily orders (`TEXT.intro`; no course list). On "Set sail" the card rolls up into a scroll that is tossed into the list button (skipped with reduced motion).
 
-- **Tutorial** (first voyage, `tut` in the Tutorial section): controls appear one at a time, hidden and disabled
+- **Tutorial**: **off for now** (`TUTORIAL_ON` = false: `tutSet` goes straight to 'done', every control shows at once).
+  When on (first voyage, `tut` in the Tutorial section): controls appear one at a time, hidden and disabled
   (keys too) until their step: logbook shimmers (open and close it; an open made while the intro scroll is still
   flying in counts, and if the book is already open when the step starts, closing it is enough) -> the compass appears and
   shimmers with its bubble ("tap to open it"); opening the lid ends the step, else after `TUT_COMPASS_T` = 4.5 s it moves on
@@ -197,7 +201,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   with no damage, then they drift back to their lane; they hail with a speech bubble), fog of war (buoys and a
   340 px radius round each village always show through), clouds see-through at the rim and denser in the middle, each with its shadow at a fixed offset down-right,
   a third of them rain clouds (darker; rain falls from the cloud onto its shadow on the sea, with a rain sound when you're near: a broad soft wash (between a hiss and a murmur) in gusts plus a patter of soft noise ticks (no watery bubble 'plips': tried and dropped as too intense), sparse at the edge, thick beneath; `rain()` and `rainDrop()` in Sound),
-  day/night palette cycle (6 min), afternoon cicada chorus (kept low; only within ~220 px of a wild island's shore, never at home or on village islands,
+  day/night palette cycle (`DAY_LEN` = 720 s = 12 min a day, was 6), afternoon cicada chorus (kept low; only within ~220 px of a wild island's shore, never at home or on village islands,
   from early afternoon to before the golden hour: 3 Cicada orni + 1 Lyristes plebejus,
   pulsed ~5–8 times a second around 4–5 kHz, in bouts with rests; see `cicadas()` in Sound) with dark nights lit by lanterns, lighthouses and windows.
 
