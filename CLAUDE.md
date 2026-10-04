@@ -85,7 +85,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   **Foliage** is scattered at any angle (`vegPoint`, `sandAt`; the spurge in `scatterMacchia` by uniform tries over the
   island's box), never along the ISL_N spokes, which on big islands showed as lines; the spurge thins out in irregular
   open patches (a smooth noise of four crossing waves, new per island).
-- **Villages** (cardinal, ~1733 px from home: `VILLAGE_DIST`; each game nudged by `placeVillages`: pushed out by up to
+- **Villages** (for now three: E, S, W; Nordania's place is the Temple of Eolus' while `EOLUS_ON`) (cardinal, ~1733 px from home: `VILLAGE_DIST`; each game nudged by `placeVillages`: pushed out by up to
   `VILLAGE_OUT_MAX`, slid sideways by up to `VILLAGE_SIDE_MAX`, kept `VILLAGE_EDGE` from the map edge, never closer to
   each other or to the ruins than in the plain cross, measured on the map; across the wrapped edge N–S and E–W do get closer), one course each, two specialties (1 unit each, all at `DISH_PRICE` = 6
   coins) + a gift: Nordania (N) Antipasti: Fiori di Zucca, Mozzarelle, gift Tarallini. Estolia (E) Primi: Orecchiette
@@ -125,9 +125,20 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
 - **Wind:** random from the start (the old guiding wind toward Nordania, `guideWind`, is off), then the normal shifting winds.
   **Fair wind** (a power, the medallion button bottom right, `#btn-power`, drawn like the logbook icon in
   `drawLogbookIcon`: a dark brass medallion with a gust; pale and dotted once spent; wiggles while it blows):
-  `POWER_USES` (1) uses, all back every time she ties up at a pier; each makes the wind blow from astern whichever way she steers for
-  `POWER_WIND_T` (10 s) (the same spell as the ruins' friendly wind: `boonWindT`, the badge top left shows the seconds).
-- **Ruins** on the diagonals: **off for now** (`RUINS_ON` = false in Tuning: `RUINS` is empty). When on: dock there for
+  **locked until the Temple of Eolus gives it** (`powerOwned`; the button is dimmed and disabled, class `locked`);
+  `POWER_USES` (1) uses; a spent use comes back `POWER_RECHARGE` (60 s) after it was used (`powerT`, `rechargePower`,
+  counted from the moment it's used, so also while it blows; no more refill at the piers); each makes the wind blow
+  from astern whichever way she steers for `POWER_WIND_T` (30 s) (the same spell as the ruins' friendly wind:
+  `boonWindT`, the badge top left shows the seconds).
+- **Temple of Eolus** (`EOLUS_ON` in Tuning, world): it stands in the north, where **Nordania** was, as far out as the
+  villages (`VILLAGE_DIST`, not nudged): a ruin island (`makeRuinIsland`, an entry in `RUINS` with `eolus: true`, stone
+  pier, temple with columns) whose fog is always clear for `VILLAGE_CLEAR` like a village. Docking there the first time
+  gives the fair wind (`startRuin`: bell, flutter, `TEXT.eolus.gift`); later visits just say `TEXT.eolus.again`.
+  While it's on, **Nordania is gone**: `VILLAGES` holds only Estolia, Sudia and Westa (its texts stay in `TEXT.villages.nord`,
+  unused; sardines still swim in the north). The compass has one dot per village (`DOT_ANG` from each village's
+  direction), the trade lanes are home to each village plus each village to the next round (`pairs`, any number), and
+  the world generator's preview marks temples with a small diamond.
+- **Ruins** on the diagonals (the temples): **off for now** (`RUINS_ON` = false in Tuning: `RUINS` is empty). When on: dock there for
   a random power (friendly wind 60 s, blessed nets ×3, full hull).
 - **Fish:** sardines (N), mackerel (E), red mullet (S), sea bream (W). Banks denser far from home; half the open-sea banks
   (`ROUTE_BANK_SHARE`) lie along the sea roads, home to each village and village to village, within `ROUTE_BANK_SPREAD` of
@@ -269,7 +280,8 @@ Cloud shadows (clouds) · Ambient life: gulls
 pip install playwright && playwright install chromium
 python tests/smoke.py
 ```
-The smoke test checks there are no JS errors. With the orders off (now): a trip to a village to buy a dish with foreign
+The smoke test checks there are no JS errors. With the orders off (now): the fair wind locked, a visit to the Temple of
+Eolus that gives it, then a trip to a village to buy a dish with foreign
 fish, back home, a new day, and the logbook shows it. With `ORDERS_ON`: two days of orders (day 1: 3 fish home before
 dinner; day 2: the ordered dish bought at its village, everything brought home and delivered).
 For quick manual testing on the phone: `python -m http.server 8000` and open `http://<pc-ip>:8000` on the same Wi-Fi.

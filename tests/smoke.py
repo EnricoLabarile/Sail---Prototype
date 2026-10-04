@@ -18,6 +18,7 @@ HOOK = ('requestAnimationFrame(loop);\n})();',
         'get order(){return order},get sat(){return satisfaction},satOn:SATISFACTION_ON,get moor(){return moor},'
         'get dayT(){return dayT},set dayT(v){dayT=v},'
         'dinnerT:(DINNER_HOUR-DAWN_HOUR)/24,ordersOn:ORDERS_ON,get dayNo(){return dayNo},'
+        'RUINS,get powerOwned(){return powerOwned},'
         'unmoor(){moor=null;moorLock=null;}};'
         'tutSet("done");'                  # skip the tutorial: the test drives the controls directly
         'requestAnimationFrame(loop);\n})();')
@@ -62,10 +63,20 @@ def buy_dish(pg, k, name, icon):
     assert pg.evaluate(f"__d.dishHold[{icon!r}]") >= 1, f"{name} not in the hold"
     leave(pg)
 
+def eolus(pg):
+    # the fair wind is locked until the Temple of Eolus gives it
+    if not pg.evaluate('__d.RUINS.some(r=>r.eolus)'): return
+    assert not pg.evaluate('__d.powerOwned'), 'the fair wind is not locked at the start'
+    dock_at(pg, 'd.RUINS.find(r=>r.eolus).pier')
+    assert pg.evaluate('__d.powerOwned'), 'Eolus did not give the fair wind'
+    pg.wait_for_timeout(5000)                                      # (his words run, then she may leave)
+    leave(pg)
+
 def trip(pg):
     global ORDERS; ORDERS = False
     leave(pg)
     assert not pg.evaluate('!!__d.moor'), 'did not leave the home pier'
+    eolus(pg)
     d = pg.evaluate('__d.VILLAGES[0].dishes[0]')
     buy_dish(pg, 0, d['name'], d['icon'])
     dock_at(pg, 'd.PIER')

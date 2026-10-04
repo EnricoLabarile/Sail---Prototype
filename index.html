@@ -261,6 +261,7 @@
   #btn-power canvas{position:absolute; left:2px; top:2px; width:76px; height:76px; image-rendering:pixelated; transition:opacity .3s;
     filter:drop-shadow(1.5px 0 0 var(--paper)) drop-shadow(-1.5px 0 0 var(--paper)) drop-shadow(0 1.5px 0 var(--paper)) drop-shadow(0 -1.5px 0 var(--paper)) drop-shadow(3px 4px 0 rgba(0,0,0,.3));}
   #btn-power .pw-spent{opacity:0;}
+  #btn-power.locked{opacity:.35; pointer-events:none;}   /* until Eolus gives the fair wind */
   #btn-power.spent .pw-ready{opacity:0;} #btn-power.spent .pw-spent{opacity:1;}
   #btn-power.blowing canvas{animation:logWiggle 1.2s ease-in-out infinite;}
   body.at-market #btn-power{display:none;}
@@ -521,7 +522,7 @@
     <svg viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="6.2" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.4"/><circle cx="9" cy="9" r="3.6" fill="none" stroke="var(--ink)" stroke-width="0.9"/><path d="M1.2 3 V7.5 M0.4 3 V5.5 M2 3 V5.5 M1.2 7.5 V15.5 M16.8 3 Q15.4 6 16.8 9 V15.5" fill="none" stroke="var(--ink)" stroke-width="1.1" stroke-linecap="round"/></svg>
     <div class="mood-track"><div class="mood-fill" id="mood-fill"></div></div>
   </div>
-  <button id="btn-power" class="helm-btn" type="button" aria-label="Fair wind: the wind blows from astern for a while, once a day">
+  <button id="btn-power" class="helm-btn" type="button" aria-label="Fair wind: the wind blows from astern for a while">
     <canvas class="pw-ready" aria-hidden="true"></canvas><canvas class="pw-spent" aria-hidden="true"></canvas>
   </button>
   <button id="btn-list" class="helm-btn" type="button" aria-label="Logbook" aria-expanded="false" aria-controls="shoplist">
@@ -709,6 +710,12 @@
     pier: {
       weighHint: 'Hold the centre of the wheel to weigh anchor.',
     },
+    // the Temple of Eolus, in the north: the god of the winds gives the fair wind
+    eolus: {
+      name:    'Temple of Eolus',
+      gift:    'A warm breath stirs among the columns. Eolus lends you his wind: call it, and for a while it will blow at your back.',
+      again:   'The columns hum softly in the breeze. Eolus is watching over your sails.',
+    },
     ruins: {
       name:    'Ruins',
       silent:  'The stones are silent.',
@@ -835,8 +842,10 @@
   const DAY_LEN = 720;               // seconds for a whole day, dawn to dawn (was 360)
   const TUTORIAL_ON = false;         // the first-voyage tutorial (controls shown one at a time with tips); off for now
   const RUINS_ON = false;            // the ruins on the diagonals and their powers; off for now (world)
-  const POWER_USES = 1;              // uses of the fair wind (the button bottom right); all back every time she ties up at a pier
-  const POWER_WIND_T = 10;           // seconds the fair wind blows from astern, whichever way she steers
+  const EOLUS_ON = true;             // the Temple of Eolus stands in the north, where Nordania was (Nordania is gone while it's on); docking there gives the fair wind (world)
+  const POWER_USES = 1;              // uses of the fair wind (the button bottom right, locked until Eolus gives it)
+  const POWER_RECHARGE = 60;         // seconds for a spent use of the fair wind to come back
+  const POWER_WIND_T = 30;           // seconds the fair wind blows from astern, whichever way she steers
   const DAWN_HOUR = 5;               // the hour on the watch at first light (5 puts the golden hour at about 19)
   const DINNER_HOUR = 19;            // the day's order must be home by this hour; then dinner is served (marked on the watch)
   const WATCH_MARK = DINNER_HOUR;    // the hour marked on the watch's rim
@@ -1420,7 +1429,7 @@
       dishes:[{name:VT.sud.dishes[0], icon:'Zampina', price:DISH_PRICE}, {name:VT.sud.dishes[1], icon:'Pesce Arrosto', price:DISH_PRICE}], gift:VT.sud.gift, giftIcon:'Vino Rosso' },
     { name:VT.ovest.name, ux:-1, uy:0, course:VT.ovest.course, own:'orate', line:VT.ovest.line,
       dishes:[{name:VT.ovest.dishes[0], icon:'Cartellate', price:DISH_PRICE}, {name:VT.ovest.dishes[1], icon:'Tiramisu', price:DISH_PRICE}], gift:VT.ovest.gift, giftIcon:'Limoncello' }
-  ];
+  ].filter(v=> !(EOLUS_ON && v.uy === -1));          // the Temple of Eolus stands where Nordania was
   // ---------- Orders ----------
   // Every day the restaurant at home has an order for dinner: on day 1 a few
   // fish of any kind, from day 2 fish of one kind and one or two village
@@ -1654,14 +1663,14 @@
   // Four islands on the diagonals, each with the stones of an ancient
   // sanctuary and a stone pier. Docking there grants a mysterious power.
   const RUIN_COOLDOWN = 180;          // seconds before the same ruin answers again
-  const RUINS = !RUINS_ON ? [] : [
+  const RUINS = [...(!RUINS_ON ? [] : [
     { name:TEXT.ruins.name, ux:-1, uy:-1 },
     { name:TEXT.ruins.name, ux: 1, uy:-1 },
     { name:TEXT.ruins.name, ux: 1, uy: 1 },
     { name:TEXT.ruins.name, ux:-1, uy: 1 }
-  ];
+  ]), ...(EOLUS_ON ? [{ name:TEXT.eolus.name, ux:0, uy:-1, eolus:true, d:VILLAGE_DIST }] : [])];   // (the temple: north, as far out as the villages)
   function makeRuinIsland(r){
-    const d = VILLAGE_DIST/Math.SQRT2*1.02;
+    const d = r.d || VILLAGE_DIST/Math.SQRT2*1.02;
     const x = wrapX(START.x + r.ux*d), y = wrapY(START.y + r.uy*d);
     const isl = makeIsland(x, y, rand(96,110));
     for(let i=0;i<ISL_N;i++) isl.radii[i] = isl.R*0.5 + isl.radii[i]*0.5;
@@ -2092,7 +2101,8 @@
   const lanes = [];
   {
     const ports = [PIER, ...VILLAGES.map(v=>v.pier)];
-    const pairs = [[0,1],[0,2],[0,3],[0,4], [1,2],[2,3],[3,4],[4,1]];   // home (0) to each village first, then village to village
+    const n = VILLAGES.length;                                                 // home (0) to each village first, then each village to the next one round
+    const pairs = [...VILLAGES.map((v,i)=> [0, i+1]), ...(n > 2 ? VILLAGES.map((v,i)=> [i+1, (i+1)%n + 1]) : n === 2 ? [[1,2]] : [])];
     for(const [a,b] of pairs){ const L = findLane(portPoint(ports[a]), portPoint(ports[b])); if(L){ L.a = a; L.b = b; lanes.push(L); } }
   }
   function lanePoint(L, s){
@@ -3086,8 +3096,8 @@
   const cmpL = cmpLo.getContext('2d', {willReadFrequently:true});
   (function(){ const k = Math.max(1, Math.round(window.devicePixelRatio||1)); cmp.width = CMP_PX*k; cmp.height = CMP_PX*k; cmpCtx.imageSmoothingEnabled = false; })();
   // village dots on the rim: N, E, S, W (screen up is north); pop when filled
-  const DOT_ANG = [-Math.PI/2, 0, Math.PI/2, Math.PI];
-  const dotState = [false,false,false,false], dotPop = [0,0,0,0];
+  const DOT_ANG = VILLAGES.map(v=> Math.atan2(v.uy, v.ux));   // where each village's dot sits on the rim
+  const dotState = VILLAGES.map(()=> false), dotPop = VILLAGES.map(()=> 0);
   let cmpWander = 0;
   // the lid: a hinged brass cover, like a pocket compass. The voyage starts
   // with it shut; a tap swings it up on its hinge (top). Once it's open, a
@@ -3161,7 +3171,7 @@
     }
     // one dot per village, empty until visited, then filled (with a little pop)
     let changed = false;
-    for(let i=0;i<4;i++){
+    for(let i=0;i<VILLAGES.length;i++){
       const done = VILLAGES[i].done;
       if(done!==dotState[i]){ dotState[i]=done; changed=true; if(done) dotPop[i]=1; }
       dotPop[i] = Math.max(0, dotPop[i]-0.03);
@@ -3846,6 +3856,11 @@
       c.strokeStyle = '#fff'; c.lineWidth = 3; c.beginPath(); c.arc(v.isl.x*k, v.isl.y*k, 4, 0, Math.PI*2); c.stroke();
       c.strokeStyle = '#000'; c.lineWidth = 1.5; c.stroke();
     }
+    for(const r of RUINS){                                          // temples: a small diamond
+      const x = r.isl.x*k, y = r.isl.y*k;
+      c.beginPath(); c.moveTo(x, y-4); c.lineTo(x+4, y); c.lineTo(x, y+4); c.lineTo(x-4, y); c.closePath();
+      c.strokeStyle = '#fff'; c.lineWidth = 3; c.stroke(); c.strokeStyle = '#000'; c.lineWidth = 1.5; c.stroke();
+    }
     ditherUI(c, N, N);
     }, 0);
   })();
@@ -3871,7 +3886,7 @@
     repairT = 0; moor = mooredAtSpawn(); moorLock = null;
     resetOrders(); elListBtn.classList.remove('news');
     resetGuests(); homeStage = homeStageFor(satisfaction); rebakeHome();
-    powerLeft = POWER_USES; powerUI();
+    powerOwned = !EOLUS_ON; powerLeft = POWER_USES; powerT = 0; powerUI();
     coins = 0;
     closeDialog();
     Sfx.init();
@@ -4367,6 +4382,12 @@
     elBoon.classList.toggle('show', parts.length>0);
   }
   function startRuin(r){
+    if(r.eolus){                                          // the Temple of Eolus: the fair wind, once and for all
+      Sfx.bell(); buzz([14,22,14,22,14,22,14,22,14,22,40]);
+      if(!powerOwned){ powerOwned = true; powerLeft = POWER_USES; powerUI(); openDialog(r.name, TEXT.eolus.gift, 5); }
+      else openDialog(r.name, TEXT.eolus.again, 3);
+      return;
+    }
     const now = voyageTime;
     if(now < r.readyAt){
       openDialog(r.name, TEXT.ruins.silent, 3);
@@ -4878,16 +4899,30 @@
   }
   elListBtn.addEventListener('click', ()=>{ toggleList(); elListBtn.blur(); });
 
-  // ---------- Fair wind (a power, POWER_USES of it, refilled at every pier) ----------
+  // ---------- Fair wind (a power, POWER_USES of it, given by Eolus) ----------
   // The button bottom right: for POWER_WIND_T seconds the wind swings round
   // to blow from astern whichever way she steers (the same spell as the ruins'
-  // friendly wind, boonWindT). Its uses come back at first light.
+  // friendly wind, boonWindT). It's locked until she docks at the Temple of
+  // Eolus; a spent use comes back after POWER_RECHARGE seconds.
   const elPower = document.getElementById('btn-power');
-  let powerLeft = POWER_USES;
-  function powerUI(){ elPower.classList.toggle('spent', powerLeft <= 0); }
+  let powerOwned = !EOLUS_ON, powerLeft = POWER_USES, powerT = 0;   // (powerT: seconds until a spent use comes back)
+  function powerUI(){
+    const locked = !powerOwned;
+    elPower.classList.toggle('spent', locked || powerLeft <= 0);
+    elPower.classList.toggle('locked', locked);
+    elPower.disabled = locked;                           // until Eolus gives it, the button does nothing
+  }
+  // a spent use comes back POWER_RECHARGE seconds later (counted while she sails)
+  function rechargePower(dt){
+    if(!powerOwned || powerLeft >= POWER_USES) return;
+    powerT -= dt;
+    if(powerT <= 0){ powerLeft++; powerUI(); powerT = POWER_RECHARGE; buzz(10); }
+  }
+  powerUI();                                             // (locked from the start, until Eolus)
   elPower.addEventListener('click', ()=>{
     elPower.blur(); Sfx.init();
-    if(!playing || powerLeft <= 0 || boonWindT > 0){ buzz(12); return; }
+    if(!playing || !powerOwned || powerLeft <= 0 || boonWindT > 0){ buzz(12); return; }
+    if(powerLeft === POWER_USES) powerT = POWER_RECHARGE;   // the recharge starts with the first use spent
     powerLeft--; powerUI();
     boonWindT = POWER_WIND_T; shiftDur = 0;
     popups.push({x:boat.x, y:boat.y-26, text:TEXT.popups.fairWind, life:1.6, max:1.6});
@@ -5009,7 +5044,7 @@
   // and a wide one round every village, so the towns can be seen from
   // afar and steered for
   const VILLAGE_CLEAR = 340;
-  for(const v of VILLAGES){
+  for(const v of [...VILLAGES, ...RUINS.filter(r=> r.eolus)]){                   // (and round the Temple of Eolus)
     const C = FOG_CELL, r = VILLAGE_CLEAR, x = v.isl.x, y = v.isl.y;
     for(let j=Math.floor((y-r)/C); j<=Math.floor((y+r)/C); j++)
       for(let i=Math.floor((x-r)/C); i<=Math.floor((x+r)/C); i++)
@@ -5208,6 +5243,7 @@
     Sfx.ambient(dt, Math.min(1, boat.speed/MAX_SPEED));
     Sfx.rain(playing ? rainNear() : 0);
 
+    rechargePower(dt);                                // a spent fair wind comes back in time
     // wind drift (or, under the ruins' spell, always from astern)
     if(boonWindT>0){
       boonWindT = Math.max(0, boonWindT-dt);
@@ -5351,7 +5387,6 @@
         boat.y = moor.fy + (moor.by-moor.fy)*e;
         boat.angle = moor.fa + norm(moor.ba-moor.fa)*e;
         if(k>=1){ anchored = true; weighT = 0; anchorUI(); moor.phase = 'moored'; repairT = 0.4; Sfx.thunk(0.35); buzz([35,90,15]);   // bump, then tied up
-          if(powerLeft < POWER_USES){ powerLeft = POWER_USES; powerUI(); }                                // the fair wind is ready again
         }
       } else {
         boat.x = moor.bx; boat.y = moor.by; boat.angle = moor.ba;
