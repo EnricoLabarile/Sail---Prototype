@@ -271,7 +271,8 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   0.35 to `OAR_RATE_MAX` 0.7 turns a second, faster with power (`oarCycle`; calm, so there's time to look at the sea
   too). Each time it comes back up to the mark is the moment to press: the disc **swells** as it nears (`OAR_WARN` =
   0.2 of a turn, class `ready`) and **goes ink for the whole window** to press (class `now`, pressed or not: a cue to
-  catch from the corner of the eye). A press **on time** (within `OAR_WINDOW` = 0.13 of a turn either side) adds
+  catch from the corner of the eye), and at that same instant a short wooden **knock** of the oarlock sounds
+  (`Sfx.oarCue`, loudness `OAR_CUE_VOL` in Tuning), so it can be rowed by ear: hear the knock, press. A press **on time** (within `OAR_WINDOW` = 0.13 of a turn either side) adds
   `OAR_GOOD` (0.22, less near full), a little pop (class `hit`), a firm buzz and a **powerful stroke** sound
   (`Sfx.oar(k, true)`: a fuller, brighter, louder gloop); **too early or too late** only `OAR_MISS` (0.04), a light
   buzz and an **ordinary stroke** (softer, never a "wrong" sound); one press a turn counts (`oarPressedTurn`). A mark

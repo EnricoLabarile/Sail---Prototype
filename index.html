@@ -925,6 +925,7 @@
   const OAR_MISS = 0.04;             // …and a press too early or too late (a little)
   const OAR_WINDOW = 0.13;           // how far from the mark a press still counts as on time (share of a turn, either side)
   const OAR_WARN = 0.2;              // the button swells this share of a turn before the pointer reaches the mark (time to react)
+  const OAR_CUE_VOL = 1;            // loudness of the knock that sounds as the oar button goes ink (the moment to press; 0 = silent)
   const OAR_SPIN_FADE = 0.05;        // a slow steady drain of the rowing's power (a share of it per second)…
   const OAR_SKIP = 0.65;             // …and the power kept when the pointer passes the mark without a press (she slows; a few skipped and she stops)
   const OAR_RATE_MIN = 0.35; // turns of the oar button a second as the rowing starts…
@@ -2976,6 +2977,21 @@
       src.connect(lp); lp.connect(g); g.connect(master);
       src.start(t0, Math.random()*0.4, 0.55);
     }
+    // the oarlock's knock as the oar button goes ink: the moment to press, so it can be rowed by ear (k: loudness)
+    function oarCue(k){
+      if(!ac || ac.state!=='running' || !(k > 0)) return;
+      const t0 = ac.currentTime;
+      const o = ac.createOscillator(); o.type='triangle';
+      o.frequency.setValueAtTime(560, t0); o.frequency.exponentialRampToValueAtTime(420, t0+0.06);
+      const og = ac.createGain();
+      og.gain.setValueAtTime(0.0001, t0); og.gain.exponentialRampToValueAtTime(0.07*k, t0+0.004); og.gain.exponentialRampToValueAtTime(0.0001, t0+0.09);
+      o.connect(og); og.connect(master); o.start(t0); o.stop(t0+0.1);
+      const src = ac.createBufferSource(); src.buffer = noise;
+      const bp = ac.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=1600; bp.Q.value=2.5;
+      const g = ac.createGain();
+      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.05*k, t0+0.002); g.gain.exponentialRampToValueAtTime(0.0001, t0+0.035);
+      src.connect(bp); bp.connect(g); g.connect(master); src.start(t0, Math.random()*0.5, 0.05);
+    }
     // hull hit: a dull thud and a short, strained creak of wood
     function crash(k){                 // k: 0..1 how hard
       if(!ac || ac.state!=='running') return;
@@ -3272,7 +3288,7 @@
     }
 
 
-    return {init, oar, tick, thunk, wheel, ambient, rain, cicadas, book, pageTurn, pickup, hammer, bell, whirl, type, splash, drone, gull, crash, waveBreak, waveHit, surf, townEvent, chatter, cricket, howl, anchor, buoy, coins, engine};
+    return {init, oar, oarCue, tick, thunk, wheel, ambient, rain, cicadas, book, pageTurn, pickup, hammer, bell, whirl, type, splash, drone, gull, crash, waveBreak, waveHit, surf, townEvent, chatter, cricket, howl, anchor, buoy, coins, engine};
   })();
 
   // ---------- Ship's wheel ----------
@@ -4785,15 +4801,13 @@
       if(turn >= 1 && turn > oarSkipped && turn > oarPressedTurn){ oarSkipped = turn; oarSpin *= OAR_SKIP; if(oarSpin < 0.06) oarSpin = 0; }
     }
     if(oarSpin > 0.01){                                       // the pointer goes round once a stroke
-      const prev = oarCycle;
       oarCycle += dt*(OAR_RATE_MIN + (OAR_RATE_MAX - OAR_RATE_MIN)*oarSpin);
-
     }
     const ph = oarCycle % 1, rowingNow = oarSpin > 0.01;
     const ready = rowingNow && ph > 1 - OAR_WARN && ph < 1 - OAR_WINDOW;          // about to come round: it swells
     const now = rowingNow && (ph >= 1 - OAR_WINDOW || ph <= OAR_WINDOW) && oarCycle > 0.5;   // the time to press: the disc goes ink (pressed or not)
     if(ready !== elOar.classList.contains('ready')) elOar.classList.toggle('ready', ready);
-    if(now !== elOar.classList.contains('now')) elOar.classList.toggle('now', now);
+    if(now !== elOar.classList.contains('now')){ elOar.classList.toggle('now', now); if(now) Sfx.oarCue(OAR_CUE_VOL); }   // the knock and the ink together
     oarHitT = Math.max(0, oarHitT - dt);
     if((oarHitT > 0) !== elOar.classList.contains('hit')) elOar.classList.toggle('hit', oarHitT > 0);
     const deg = Math.round(ph*3600)/10;
