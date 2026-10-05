@@ -1405,7 +1405,7 @@
   // the boat starts moored at the end of the pier.
   const HOME_R = 100;
   const HOME_BLD = 1.2;
-  const BASE_LEVEL = 1;             // how home looks at the start: 0 a fisherman's hut, 1 the masseria, 2 a fortified palace (the logbook's last spread switches it, for a preview)
+  const BASE_LEVEL = 0;             // how home looks at the start: 0 a fisherman's hut, 1 the masseria, 2 a fortified palace (the logbook's last spread switches it, for a preview)
   let baseLevel = BASE_LEVEL;             // buildings on the home island are drawn a bit larger, to read at a glance
   const PIER_W = 12, PIER_LEN = 50, PIER_DIR = -Math.PI/2;  // pier points north
   const home = (function(){
@@ -7767,6 +7767,16 @@
     // tiller inside the stern: swings opposite to the rudder blade
     ctx.strokeStyle = INKC; ctx.lineWidth = 1.6*LWK; ctx.lineCap='round';
     ctx.beginPath(); ctx.moveTo(-15,0); ctx.lineTo(-15+Math.cos(rud*0.75)*7, Math.sin(rud*0.75)*7); ctx.stroke();
+    // the helmsman: a black figure seen from above, sitting aft beside the tiller with a hand on it,
+    // leaning a touch into the turn
+    {
+      const tx = -15+Math.cos(rud*0.75)*7, ty = Math.sin(rud*0.75)*7;           // the tiller's end
+      const mx = -11.2, my = 3.4 + rud*0.6;
+      ctx.fillStyle = INKC; ctx.strokeStyle = INKC;
+      ctx.lineWidth = 1.5*LWK; ctx.beginPath(); ctx.moveTo(mx+0.4, my-1.8); ctx.lineTo(tx, ty); ctx.stroke();   // the arm on the tiller
+      ctx.beginPath(); ctx.ellipse(mx, my, 2.3, 3.4, 0, 0, Math.PI*2); ctx.fill();                              // shoulders
+      ctx.beginPath(); ctx.arc(mx+0.7, my, 1.9, 0, Math.PI*2); ctx.fill();                                      // head
+    }
     // oars: slide out from the gunwales; when turning, they row in
     // opposite senses on the two sides, which is what spins the boat
     if(B.oarK > 0.01){

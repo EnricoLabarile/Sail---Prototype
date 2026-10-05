@@ -119,7 +119,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   the clients' boats (`guests`, drawn with the player's boat model, `drawBoat(g)`, sail furled when tied up) take up to
   `GUEST_BOATS_MAX` (4) berths, two a side (one alongside, one rafted outside it); round(satisfaction × 4) of them: one
   more sails in from the open sea (`GUEST_IN_T` = 10 s, foam at the bow) or one sails away when the mood changes.
-- **Home's three looks** (`baseLevel`, starting at `BASE_LEVEL` = 1 in Tuning; for now a preview, switched from the
+- **Home's three looks** (`baseLevel`, starting at `BASE_LEVEL` = 0, the hut, in Tuning; for now a preview, switched from the
   logbook's third spread): 0 a **fisherman's hut** (`drawHut`: a stone hut under a pitched tiled roof, a fire pit,
   a fenced vegetable patch, crates and oars, the drying net), 1 the **masseria** above (its look still follows
   `homeStage`), 2 a **fortified palace** (the masseria at its best, stage 4, plus a longer house with an arcaded
@@ -233,6 +233,8 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   drawn like the compass, in greys then dithered: a light brass bezel (lit top left) with four rivets round a shaded
   face with a glint; sailing, a light face with an ink anchor; at anchor, a dark face, one light rim and a paper anchor (same size both ways). Over a fish bank (not fishing, not
   at anchor) the anchor on the hub turns into a little fish (ink silhouette, paper eye) to point at its use there.
+  **The helmsman**: a black silhouette seen from above (shoulders and head) sits aft on the starboard side of the
+  tiller, his arm on its end, so he follows the helm (drawn in `drawBoat`, on every boat).
   **Bow foam**: a small cushion of ragged white lumps at the stem that boil and flicker (in `drawBoat`, under the hull),
   and spray (`bowSpray`, updated with the wake, drawn in its layer): white bits of random size peel off both sides of
   the stem, flung outward, more and bigger with speed; the water stays put, so they fall astern as she sails on, grow,
