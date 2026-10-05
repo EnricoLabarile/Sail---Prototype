@@ -81,7 +81,8 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   whirlpools and big waves (up to ~2× as often): room to run free and surf. Villages may land in either. Up to
   `ISLAND_COUNT` (~58) wild islands, the clusters filling up first. It multiplies the older rule that the sea gets
   wilder with distance from home (`danger`).
-  **Spiral** (`SPIRAL` in Tuning and in the world generator, world, 0 = off, the default): the field is mixed
+  **Spiral** (`SPIRAL` in Tuning and in the world generator, world, 0 = off; by default **random each new world**
+  between `SPIRAL_MIN` 0.5 and `SPIRAL_MAX` 1, shown in its field; a value set in the generator stays): the field is mixed
   with `spiralField`, `SPIRAL_ARMS` (3) logarithmic arms winding out from home (`SPIRAL_TWIST` 2.4) plus a denser
   heart round it, each fading with distance and summed over home's neighbouring copies on the wrapped map, so the
   arms meet seamlessly at the edges; both fields are scaled to the same spread (`WAVE_SD`, `SPIRAL_SD`) and mixed
@@ -307,7 +308,10 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   there's power, the blades sweep with the cycle (`oarPh`: forward at the catch, aft at the finish) with a splash
   ring mid-pull (rowing, the stroke never flips as the helm crosses the middle). The stroke never jumps or freezes: when
   she stops rowing the beat winds down to a halt as the oars come in, and a press while they're
-  still out carries on from where the blades are (no reset to the mark). Turning is `ROW_TURN_MULT` × quicker while rowing (`boat.rowing`). With manual oars the sail is never
+  still out carries on from where the blades are (no reset to the mark). **No rowing when the sail drives her
+  fast**: once the sail alone would give her more than `OAR_LOCK_SPEED` (16 px/s, `boat.sailV`; free again below 0.8 ×)
+  the oars are shipped (power 0, they come in) and the button is greyed and dashed, untouchable (class `locked`,
+  label `TEXT.oars.locked`); rowing is for slow going, e.g. close to the wind. Turning is `ROW_TURN_MULT` × quicker while rowing (`boat.rowing`). With manual oars the sail is never
   brailed up.
   **Sail badge** (`#sail-btn`, a round badge on the right under the oar button, which sits above it; shown only while
   a sail is rigged and the market is shut; `updateSailBtn`): it shows the rigged sail's icon. A **tap** sets or furls

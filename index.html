@@ -199,6 +199,9 @@
   #oar-ctl.now .oar-disc svg{color:var(--paper) !important;}
   #oar-ctl.hit .oar-disc{transform:scale(1.22);}                    /* pressed right on time: a little pop */
   body.at-market #oar-ctl{display:none;}
+  #oar-ctl.locked{pointer-events:none; cursor:default;}            /* the sail drives her fast: the oars are shipped */
+  #oar-ctl.locked .oar-disc{opacity:.35; border-style:dashed; transform:none;}
+  #oar-ctl.locked .oar-mark{opacity:.35;}
   #dock-btn{position:fixed; z-index:6; width:52px; height:52px; margin:-26px 0 0 -26px; padding:0; border-radius:50%;
     background:var(--paper); color:var(--ink); border:2px solid var(--ink); box-shadow:2px 3px 0 var(--ink); cursor:pointer;
     display:flex; align-items:center; justify-content:center; animation:dockBob 1.6s ease-in-out infinite;}
@@ -715,14 +718,14 @@
 
   // what's new, newest first (a few lines, shown under the build time so Enrico knows what to look for); update it with every commit
   const CHANGES = [
+    'Oars: greyed out and shipped while the sail alone drives her faster than 16 px/s (row only when slow)',
+    'World gen: SPIRAL is now random each new world, between 0.5 and 1 (set it to fix it)',
     'World gen: SPIRAL (0 to 1) strings the island clusters along spiral arms round home, like a galaxy; SPIRAL_ARMS sets how many (try SPIRAL 0.7)',
     'Fish banks all look alike (a few big dark fish): the catch is a surprise',
     'Anchor: hold the hub for a shorter time to drop or weigh it (0.32 s, was 0.5)',
     'Intro scroll: the rows stay straight and just fade near the rolls; the newest change in bold',
-    'Intro card: an open scroll, the paper curls into a roll at top and bottom',
-    'This list of what changed, under the build time',
   ];
-  const BUILD = '2026-10-05 16:23';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-05 16:38';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
   // {braces} are filled in by the game (keep the braces and the word inside;
@@ -823,6 +826,7 @@
     // the oar handle on the right (rowing by hand)
     oars: {
       label: 'Oars: press to row, then press again each time the pointer comes round to the mark',
+      locked: 'Oars shipped: the sail drives her fast enough',
     },
     // home's storehouse: drag goods between the hold and the store (what's left here waits at home)
     store: {
@@ -966,6 +970,7 @@
   const OAR_MISS = 0.04;             // …and a press too early or too late (a little)
   const OAR_WINDOW = 0.13;           // how far from the mark a press still counts as on time (share of a turn, either side)
   const OAR_WARN = 0.2;              // the button swells this share of a turn before the pointer reaches the mark (time to react)
+  const OAR_LOCK_SPEED = 16;         // px/s: once the sail alone drives her faster than this the oars are shipped and the oar button is disabled (back below 0.8 × this)
   const OAR_CUE_VOL = 1;            // loudness of the knock that sounds as the oar button goes ink (the moment to press; 0 = silent)
   const OAR_SPIN_FADE = 0.05;        // a slow steady drain of the rowing's power (a share of it per second)…
   const OAR_SKIP = 0.65;             // …and the power kept when the pointer passes the mark without a press (she slows; a few skipped and she stops)
@@ -1030,7 +1035,8 @@
   const ISLAND_SCALE = knob('ISLAND_SCALE', 2.5);          // size of the wild islands (1 = the old small ones) (world)
   const ISLAND_COUNT = knob('ISLAND_COUNT', Math.round(210*WK2*3.5/(ISLAND_SCALE*ISLAND_SCALE)));   // wild islands at most (about 58 at scale 2.5; the clusters fill up first) (world)
   const CLUSTER_SHARE = knob('CLUSTER_SHARE', 0.32);        // share of the sea taken by clusters of islands; the rest is open water (world)
-  const SPIRAL = knob('SPIRAL', 0);                         // 0 = clusters scattered as before … 1 = clusters strung along spiral arms round home, like a galaxy, denser near it (world)
+  const SPIRAL_MIN = 0.5, SPIRAL_MAX = 1;                   // each new world picks SPIRAL at random between these, unless it's set in the world generator (world)
+  const SPIRAL = knob('SPIRAL', +(SPIRAL_MIN + Math.random()*(SPIRAL_MAX - SPIRAL_MIN)).toFixed(2));   // 0 = clusters scattered … 1 = clusters strung along spiral arms round home, like a galaxy, denser near it (world)
   const SPIRAL_ARMS = knob('SPIRAL_ARMS', 3);               // how many arms the spiral has (world)
   const SPIRAL_TWIST = 2.4;          // how tightly the arms wind round home (higher = more turns) (world)
   const OPEN_ISLANDS = knob('OPEN_ISLANDS', 6);            // small islands scattered in the open water between the clusters (world)
@@ -4870,11 +4876,11 @@
   // (OAR_SPIN_FADE) and she stops. Her way is OAR_MAX × power, in surges,
   // plus a kick for each stroke on time (OAR_KICK, fading).
   const elOar = document.getElementById('oar-ctl'), elOarRot = elOar.querySelector('.oar-rot');
-  let oarSpin = 0, oarCycle = 0, oarRate = 0, oarKick = 0, oarShown = -1, oarPressedTurn = -1, oarHitT = 0, oarSkipped = 0;
+  let oarLocked = false, oarSpin = 0, oarCycle = 0, oarRate = 0, oarKick = 0, oarShown = -1, oarPressedTurn = -1, oarHitT = 0, oarSkipped = 0;
   elOar.setAttribute('aria-label', TEXT.oars.label);
   function pressOar(){
     Sfx.init();
-    if(anchored || moor || !playing) return;
+    if(anchored || moor || !playing || oarLocked) return;
     if(oarSpin < 0.02){                                      // starting: she begins to row, slowly; the pointer sets off from the mark
       oarSpin = OAR_START;
       if(boat.oarK > 0.05){ oarPressedTurn = oarSkipped = Math.floor(oarCycle); }   // the oars still out: carry on from where the blades are, no jump
@@ -4898,7 +4904,13 @@
   function updateOarCtl(dt){
     const show = MANUAL_OARS && playing && !moor && !marketV;
     if(show !== !elOar.classList.contains('hidden')) elOar.classList.toggle('hidden', !show);
-    if(anchored || moor || boat.whirl) oarSpin = 0;
+    // the sail drives her fast: no rowing (the oars come in, the button is greyed and can't be pressed); back a little below
+    const lockNow = (boat.sailV || 0) > (oarLocked ? 0.8 : 1)*OAR_LOCK_SPEED;
+    if(lockNow !== oarLocked){
+      oarLocked = lockNow; elOar.classList.toggle('locked', oarLocked); elOar.setAttribute('aria-disabled', oarLocked);
+      elOar.setAttribute('aria-label', oarLocked ? TEXT.oars.locked : TEXT.oars.label); elOar.title = oarLocked ? TEXT.oars.locked : '';
+    }
+    if(anchored || moor || boat.whirl || oarLocked) oarSpin = 0;
     oarSpin = Math.max(0, oarSpin - OAR_SPIN_FADE*oarSpin*dt);              // a slow steady drain
     if(oarSpin > 0.01){                                                     // a mark passed without a press: she loses way
       const turn = Math.floor(oarCycle - OAR_WINDOW);
@@ -6090,6 +6102,7 @@
     boat.sailAmount += ((boat.sailFurled ? 0 : SAIL_LEVELS[sailLevel].amount)-boat.sailAmount)*Math.min(1,dt*2.5);   // (furled from the badge: no drive)
     const sf = windSf*boat.sailAmount;                    // actual drive
     let targetSpeed = anchored ? 0 : MAX_SPEED*sf*WIND_BOOST*downwindBonus(relDeg);   // a well-trimmed sail pays off more
+    boat.sailV = targetSpeed;                                      // the way the sail alone gives her (fast enough: the oars are shipped)
     if(!anchored && sailLevel===SAIL_MIN) targetSpeed = Math.max(targetSpeed, ROW_SPEED);        // at minimum sail the oars keep her going
     // rowing by hand: the way the strokes give her (it dies off unless she keeps pulling)
     // the oars push in surges: the pull (blades sweeping aft, the first half of each cycle) drives her on, the
