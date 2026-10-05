@@ -292,7 +292,22 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   sail's only, up to 1.25×) and nearly dead on and across the wind (50° 0.05, beam 0.25, 110° 0.45); the **lateen**
   is for the wind on the beam (50° 0.90, 70° 1.08, beam 1.10, 110° 0.90) and can point up (35° 0.60, 20° 0.22), but
   crawls running free (150° 0.38, dead downwind 0.22): pick the sail by the course to the next port. The wind card
-  draws the curves with the square's run bonus (radius 40, room for 1.25×). The lateen is drawn by
+  draws the curves with the square's run bonus (radius 40, room for 1.25×).
+  **Beyond the curves** (Tuning, each `{square, lateen}`, 1 with no sail; `rigK(tbl)`): the square is the open sea's sail,
+  the lateen the islands'. (1) **The wind where she is** (`updateLocalWind`, every frame: `boat.windMul`, `boat.windOff`,
+  used for her angle off the wind and the drive as `localWind` / `localStrength`): on open sea steady and
+  `OPEN_WIND_BONUS` (0.12) fresher; among the islands (`archipelago`) gusts and lulls every `GUST_EVERY` (3.5 s ±40%,
+  +`GUST_RISE` 0.3 / −`GUST_DROP` 0.45) and veering ±`GUST_SHIFT` (35°); in the lee of land within `LEE_DIST` (140 px)
+  upwind it drops by up to `LEE_DROP` (0.6). (2) **Retrim** (`boat.trimA` follows her angle off the wind at
+  `RIG_RETRIM` 0.4 / 3.5 a second; the drive × max(`RETRIM_FLOOR` 0.3, 1 − mis-trim/`RETRIM_SPAN` 60°·0.7)): after a 60°
+  shift the square needs ~5 s to be back to 90%, the lateen ~0.5 s; sharp turns cost the square too. (3) **The
+  lateen's tack**: while its yard swings across (`boat.swingAcross`) the drive is × `LATEEN_TACK_DRIVE` (0.35), and on its
+  bad tack (wind from port, `sailSide` < 0, 'a la mala') × `LATEEN_MALA` (0.85). (4) **Handling**: turning × `RIG_TURN`
+  (0.8 / 1.25), gathering way × `RIG_ACCEL` (0.7 / 1.4). (5) **Leeway** (`boat.lwx/lwy`, added to her motion): to
+  leeward, × `RIG_LEEWAY` (0.35 / 0.08) × her speed, full close-hauled (≤50° off), none from 130°. (6) **Big waves**:
+  surfing push and length × `RIG_SURF` (1.35 / 0.7, `boat.surfK`), damage × `RIG_WAVE_HIT` (0.6 / 1.4), the slew round
+  × `RIG_BROACH` (0.6 / 2.2). Measured (sail-only target): open sea, square at 150° ~51 px/s, lateen at 70° ~55; among
+  the islands both drop (gusts, lulls, lee) and the square most. The lateen is drawn by
   `drawLateenSail`: a long slanted yard on a short mast near the bow, the triangle of cloth trailing aft, eased out
   to leeward about half the wind's angle off the bow (`boat.boomSigned`), bellied to leeward, a sheet to the stern
   quarter; it furls along the yard at anchor. Changing tack, the heavy yard swings across slowly (`LATEEN_SWING` in

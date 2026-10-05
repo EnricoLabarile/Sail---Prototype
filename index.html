@@ -188,6 +188,27 @@
   const SAIL_POLAR_SQUARE = [[0,0],[20,0],[35,0.02],[50,0.05],[70,0.12],[90,0.25],[110,0.45],[130,0.72],[150,0.92],[170,1.0],[180,1.0]];
   const SAIL_POLAR_LATEEN = [[0,0.02],[20,0.22],[35,0.60],[50,0.90],[70,1.08],[90,1.10],[110,0.90],[130,0.60],[150,0.38],[170,0.26],[180,0.22]];
   const SQUARE_RUN_BONUS = 0.25;     // running downwind (from DOWNWIND_DEG to dead astern) the square sail gains up to this much more (the lateen none)
+  // -- how the two sails differ beyond their speed curves: the square sail for the open sea and steady wind, the lateen
+  //    for the islands' channels and shifting wind (each value: {square, lateen}; with no sail rigged, 1) --
+  const RIG_TURN = {square: 0.8, lateen: 1.25};      // turning speed × (the lateen is nimble, the square clumsy in narrow water)
+  const RIG_ACCEL = {square: 0.7, lateen: 1.4};      // how quickly she gathers way × (the lateen picks up at once, the square slowly)
+  const RIG_RETRIM = {square: 0.4, lateen: 3.5};     // how quickly the sail is trimmed again when the wind (or her heading) changes (higher = quicker)
+  const RETRIM_SPAN = 60;            // degrees of mis-trim at which the sail gives only RETRIM_FLOOR of its drive
+  const RETRIM_FLOOR = 0.3;          // the least a badly trimmed sail still gives
+  const LATEEN_TACK_DRIVE = 0.35;    // the lateen's drive while its yard swings across the mast on a change of tack
+  const LATEEN_MALA = 0.85;          // the lateen's drive on its 'bad' tack ('a la mala': wind from port, the sail pressed against the mast)
+  const RIG_LEEWAY = {square: 0.35, lateen: 0.08};   // she slips sideways to leeward at this × her speed close-hauled (less on a reach, none running free)
+  const RIG_SURF = {square: 1.35, lateen: 0.7};      // surfing a big wave: its push and how long it lasts ×
+  const RIG_WAVE_HIT = {square: 0.6, lateen: 1.4};   // damage from a big wave taken badly ×
+  const RIG_BROACH = {square: 0.6, lateen: 2.2};     // how far a bad wave slews her round × (the lateen broaches)
+  // -- the wind where she is --
+  const OPEN_WIND_BONUS = 0.12;      // out on the open sea the wind is steady and this much fresher
+  const GUST_EVERY = 3.5;            // seconds between gusts and lulls among the islands (±40%)
+  const GUST_RISE = 0.3;             // a gust among the islands freshens the wind up to this much…
+  const GUST_DROP = 0.45;            // …and a lull drops it up to this much
+  const GUST_SHIFT = 35;             // degrees the wind veers back and forth among the islands
+  const LEE_DIST = 140;              // px: land this close upwind puts her in its lee
+  const LEE_DROP = 0.6;              // how much of the wind the lee takes (land right upwind; less the farther it is)
   const LATEEN_SWING = 0.9;          // how quickly the lateen yard swings across when she changes tack (3 = as quick as the sail trims; lower = heavier)
   const SAIL_STOW_HOLD = 1.1;        // seconds holding the sail badge to unbend the sail and stow it in the hold
   const SAIL_SHAKE_AFTER = 0.2;      // a press longer than this is a hold (the badge shakes); shorter is a tap (set or furl)
@@ -205,6 +226,14 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Wind by place: steady and fresher on open sea; gusts, lulls and veering among the islands; it drops in the lee of an island',
+      'Sails retrim after a shift: the square slowly (it loses way at each shift or sharp turn), the lateen at once',
+      'Lateen: changing tack its yard swings across and drives little; on one tack (wind from port) it gives a bit less',
+      'Handling: the lateen turns quicker and picks up speed at once; the square turns slowly and gathers way slowly',
+      'Leeway: close-hauled the square sail slips sideways to leeward (watch the rocks); the lateen hardly',
+      'Big waves: the square sail surfs longer and stronger and takes less damage; the lateen surfs less, broaches and takes more',
+    ]},
+    {build: '2026-10-05 19:19', items: [
       'Oars: the answer to a press on time is now a soft, short, woody tock (lower, quieter, no whistle) that sets off the cue instead of competing with it',
     ]},
     {build: '2026-10-05 19:14', items: [
@@ -214,12 +243,8 @@
       'A Vibration slider on this screen (0 to 1, for the whole game; starts at 0, so no vibration until you raise it; remembered)',
       'Code: the Tuning block and the texts now sit at the very top of index.html',
     ]},
-    {build: '2026-10-05 18:36', items: [
-      'Rocks: always at least about two boat lengths of water between two rocks, or a rock and the shore (unless they touch), so she never gets stuck',
-      'Rocks: varied sizes, some up to about twice the usual',
-    ]},
   ];
-  const BUILD = '2026-10-05 19:19';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-05 19:47';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -2324,6 +2349,9 @@
     sailSide: 1,      // which side the boom is on (+1 / -1), with hysteresis
     boomSigned: 0,    // smoothed angle the square sail faces, or the lateen yard's angle off the centreline (boat frame)
     rig: START_RIG,   // the sail she carries: 'square', 'lateen' or null (none: the oars only); the others ride in the hold
+    windMul: 1, windOff: 0, gustM: 1, gustA: 0, leeK: 0,   // the wind where she is: strength ×, direction offset; gust and lee state
+    trimA: 0,         // the angle off the wind the sail is trimmed for (it follows the true one at RIG_RETRIM)
+    lwx: 0, lwy: 0,   // leeway: her sideways slip to leeward (px/s)
     r: 16
   };
   const wake=[]; let wakeAcc=0;
@@ -2595,6 +2623,24 @@
   let shiftFrom = windAngle, shiftDelta = 0, shiftT = 0, shiftDur = 0;
   let windStrength = 1;
   let windStrengthT = 0;
+  // the wind where she is: out on open sea steady and a little fresher (OPEN_WIND_BONUS); among the islands
+  // (archipelago) gusts and lulls every few seconds and veering back and forth (GUST_*); in the lee of an island
+  // (land within LEE_DIST upwind) it drops (LEE_DROP). Sets boat.windMul and boat.windOff
+  const rigK = (tbl)=> boat.rig ? tbl[boat.rig] : 1;
+  let gustT = 0, gustM = 1, gustA = 0;
+  function updateLocalWind(dt){
+    const arch = archipelago(boat.x, boat.y);
+    gustT -= dt;
+    if(gustT <= 0){ gustT = GUST_EVERY*rand(0.6, 1.4); gustM = 1 + rand(-GUST_DROP, GUST_RISE); gustA = rand(-1, 1)*GUST_SHIFT*Math.PI/180; }
+    boat.gustM += (gustM - boat.gustM)*Math.min(1, dt*1.5);
+    boat.gustA += (gustA - boat.gustA)*Math.min(1, dt*1.2);
+    const fx = Math.cos(windAngle), fy = Math.sin(windAngle);       // toward where the wind comes from
+    let lee = 0;
+    for(const f of [0.3, 0.65, 1]) if(onLand(wrapX(boat.x + fx*LEE_DIST*f), wrapY(boat.y + fy*LEE_DIST*f), 0)){ lee = 1.15 - 0.5*f; break; }
+    boat.leeK += (Math.min(1, lee) - boat.leeK)*Math.min(1, dt*1.5);
+    boat.windMul = (1 + OPEN_WIND_BONUS*(1 - arch))*(1 + (boat.gustM - 1)*arch)*(1 - LEE_DROP*boat.leeK);
+    boat.windOff = boat.gustA*arch;
+  }
 
   // ---------- Input ----------
   let turnLeft=false, turnRight=false;
@@ -4792,18 +4838,18 @@
       w.hit = true;
       const c = Math.cos(boat.angle)*w.ux + Math.sin(boat.angle)*w.uy;   // 1 = sailing with the wave
       if(c > SURF_COS){
-        boat.surfT = 2.6;
+        boat.surfK = rigK(RIG_SURF); boat.surfT = 2.6*boat.surfK;      // the square sail runs before a wave best, the lateen worst
         popups.push({x:boat.x, y:boat.y-24, text:TEXT.popups.surf, life:1.4, max:1.4});
         Sfx.surf();
         boat.rock = Math.min(2.5, (boat.rock||0) + 0.8);
         buzz([180,50,120,50,70]);                   // riding the wave: a sustained rumble
       } else {
         const k2 = s*(0.6 + 0.4*(1-Math.max(0,c)));        // head-on and broadside hurt most
-        const dmg = Math.round(6 + 10*k2);
+        const dmg = Math.round((6 + 10*k2)*rigK(RIG_WAVE_HIT));        // (the lateen suffers most, the square least)
         boat.health = Math.max(0, boat.health - dmg);
         boat.kx += w.ux*45*s; boat.ky += w.uy*45*s; boat.kdamp = 2.2;
         boat.speed *= 0.4;
-        boat.angle += (Math.random()<0.5?-1:1)*0.25*k2;
+        boat.angle += (Math.random()<0.5?-1:1)*0.25*k2*rigK(RIG_BROACH);   // slewed round (the lateen broaches)
         hurtFlash = 0.35; shake = 0.28; showHealth();
         popups.push({x:boat.x, y:boat.y-24, text:'-'+dmg, life:1.1, max:1.1});
         Sfx.waveHit(k2);
@@ -6153,7 +6199,7 @@
       const step = Math.max(Math.abs(wheelAngle)*3.5, 0.8)*dt;
       wheelAngle = Math.abs(wheelAngle)<=step ? 0 : wheelAngle - Math.sign(wheelAngle)*step;
     }
-    if(!moor && !boat.whirl) boat.angle += TURN_RATE*(sailLevel===SAIL_MIN || boat.rowing ? ROW_TURN_MULT : 1)*(wheelAngle/WHEEL_MAX)*dt;   // slow sail = nimble, safe handling
+    if(!moor && !boat.whirl) boat.angle += TURN_RATE*rigK(RIG_TURN)*(sailLevel===SAIL_MIN || boat.rowing ? ROW_TURN_MULT : 1)*(wheelAngle/WHEEL_MAX)*dt;   // (RIG_TURN: the lateen nimble, the square clumsy)   // slow sail = nimble, safe handling
     wheelSound(dt);
     Sfx.ambient(dt, Math.min(1, boat.speed/MAX_SPEED));
     Sfx.rain(playing ? rainNear() : 0);
@@ -6232,7 +6278,9 @@
     camFx = boat.x + wdx(camFx, boat.x); camFy = boat.y + wdy(camFy, boat.y);   // follow wraps
     camFx += (fx-camFx)*kf; camFy += (fy-camFy)*kf;
 
-    const relDeg = norm(boat.angle-windAngle)*180/Math.PI;
+    if(playing) updateLocalWind(dt);
+    const localWind = windAngle + boat.windOff, localStrength = windStrength*boat.windMul;   // the wind where she is
+    const relDeg = norm(boat.angle-localWind)*180/Math.PI;
     // the sail looks after itself: when she's crawling and the wind can't help
     // (head to wind, or nearly), the sail is brailed up and the oars come out;
     // once the sail could drive her well again it's set and the oars come in.
@@ -6248,7 +6296,14 @@
         if(rowT > ROW_DELAY){ sailLevel = 0; rowT = 0; }
       }
     }
-    const windSf = speedFactor(relDeg)*windStrength;   // how well the sail is fed
+    // the sail is trimmed for the angle it had: when the wind shifts (or she turns) it takes a while to trim it again,
+    // slowly for the square sail, at once for the lateen (RIG_RETRIM); meanwhile it gives less (RETRIM_SPAN, _FLOOR)
+    const absRel = Math.abs(relDeg);
+    boat.trimA += (absRel - boat.trimA)*Math.min(1, dt*rigK(RIG_RETRIM));
+    const trimEff = Math.max(RETRIM_FLOOR, 1 - Math.abs(absRel - boat.trimA)/RETRIM_SPAN*(1 - RETRIM_FLOOR));
+    // the lateen changing tack: its yard swings across the mast and drives little; and on its bad tack it gives less
+    const tackEff = boat.rig === 'lateen' ? (boat.swingAcross ? LATEEN_TACK_DRIVE : boat.sailSide < 0 ? LATEEN_MALA : 1) : 1;
+    const windSf = speedFactor(relDeg)*localStrength*trimEff*tackEff;   // how well the sail is fed
     boat.sailAmount += ((boat.sailFurled ? 0 : SAIL_LEVELS[sailLevel].amount)-boat.sailAmount)*Math.min(1,dt*2.5);   // (furled from the badge: no drive)
     const sf = windSf*boat.sailAmount;                    // actual drive
     let targetSpeed = anchored ? 0 : MAX_SPEED*sf*WIND_BOOST*downwindBonus(relDeg);   // a well-trimmed sail pays off more
@@ -6266,7 +6321,7 @@
     // belly faces where the wind blows TO (in boat frame), braced round at
     // most ~60° from the bow. Dead downwind the yard is square across the
     // hull; with wind on the beam it's braced round toward fore-and-aft.
-    const relR = norm(boat.angle-windAngle);
+    const relR = norm(boat.angle-localWind);
     const MAX_BRACE = 1.05;
     // only ambiguous when head-to-wind: keep the side there (hysteresis)
     const wantSide = relR>=0 ? 1 : -1;
@@ -6280,11 +6335,19 @@
     if(boat.swingAcross && (boat.rig !== 'lateen' || Math.abs(faceTarget - boat.boomSigned) < 0.08)) boat.swingAcross = false;
     boat.boomSigned += (faceTarget - boat.boomSigned)*Math.min(1, dt*(boat.swingAcross ? LATEEN_SWING : 3));
     // surfing a roller from astern: a temporary push above normal top speed
-    const surf = boat.surfT>0 ? SURF_BOOST*Math.min(1, boat.surfT/0.8) : 0;
+    const surf = boat.surfT>0 ? SURF_BOOST*(boat.surfK || 1)*Math.min(1, boat.surfT/0.8) : 0;
     boat.surfT = Math.max(0, (boat.surfT||0) - dt);
     // she gathers way slowly (BOAT_ACCEL), loses it at the old pace; the anchor bites quickly
     const gaining = targetSpeed + surf > boat.speed;
-    boat.speed += (targetSpeed + surf - boat.speed)*Math.min(1,dt*(anchored ? 4 : surf>0 ? 3 : gaining ? BOAT_ACCEL : 1.6));
+    boat.speed += (targetSpeed + surf - boat.speed)*Math.min(1,dt*(anchored ? 4 : surf>0 ? 3 : gaining ? BOAT_ACCEL*rigK(RIG_ACCEL) : 1.6));
+    // leeway: close-hauled (and less on a reach) the sail pushes her sideways too, to leeward (the square sail most)
+    {
+      const close = Math.max(0, Math.min(1, (130 - absRel)/80)), drive = boat.rig && !anchored && !moor && !boat.whirl ? boat.sailAmount*close : 0;
+      const lv = rigK(RIG_LEEWAY)*Math.max(0, boat.speed - boat.rowV*0.5)*drive;
+      const tx = Math.cos(localWind + Math.PI), ty = Math.sin(localWind + Math.PI), hx = Math.cos(boat.angle), hy = Math.sin(boat.angle);
+      const along = tx*hx + ty*hy, px = tx - along*hx, py = ty - along*hy, pl = Math.hypot(px, py) || 1;
+      boat.lwx = px/pl*lv; boat.lwy = py/pl*lv;
+    }
     if(!anchored && boat.rowV > boat.speed) boat.speed += (boat.rowV - boat.speed)*Math.min(1, dt*3.5);   // the oars bite quickly
 
     const hullR = boat.r*0.75;
@@ -6431,8 +6494,8 @@
           w.escaping = true;
         }
       } else {
-        boat.x += Math.cos(boat.angle)*boat.speed*dt + boat.kx*dt;
-        boat.y += Math.sin(boat.angle)*boat.speed*dt + boat.ky*dt;
+        boat.x += Math.cos(boat.angle)*boat.speed*dt + (boat.kx + boat.lwx)*dt;
+        boat.y += Math.sin(boat.angle)*boat.speed*dt + (boat.ky + boat.lwy)*dt;
         const kd = Math.exp(-boat.kdamp*dt);              // rebound fades out
         boat.kx *= kd; boat.ky *= kd;
       }
