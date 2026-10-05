@@ -264,8 +264,8 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   `refreshList`, only when the rounded angle, the sail or the breeze changes).
   **Oars: rowed by hand** (`MANUAL_OARS` in Tuning; false brings back the old automatic oars below): an oar handle on
   the right (`#oar-ctl`, above the fair-wind medallion; hidden when moored or at the market): a dotted slot and a
-  wooden grip (`oarPos` 0 top .. 1 bottom). The finger only **pulls down**: the grip follows it, never up
-  (`oarTarget` only grows), and a little behind, as if dragging through water (`OAR_RESIST` = 5, heaviest at the start
+  wooden grip (`oarPos` 0 top .. 1 bottom); a short slot, 76 px tall, so a pull is a short flick of the thumb. The finger only **pulls down**: the grip follows it, never up
+  (`oarTarget` only grows), and a little behind, as if dragging through water (`OAR_RESIST` = 9, heaviest at the start
   of the pull: rate × (0.35 + 0.65 × `oarPos`)); let go and it swings back up by itself in `OAR_RETURN` (0.45 s), no
   push (grab it again on the way up to pull from there). Each bit of pull adds way (`boat.rowV`: a full pull adds
   `OAR_STROKE` = 8 px/s, up to `OAR_MAX` = 14), which dies off when she stops pulling (`OAR_FADE` = 0.45 /s). Feel and
