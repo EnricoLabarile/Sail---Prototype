@@ -520,14 +520,34 @@
     font-style:italic;
   }
   #intro p, #gameover p{font-size:14.5px; line-height:1.5; margin:8px 0;}
-  .intro-card{text-align:left;}
+  .intro-card{text-align:left; position:relative; display:flex; flex-direction:column; padding:0; overflow:visible;
+    max-height:calc(100% - 28px); margin:14px 0;}          /* room for the rolls above and below */
+  .intro-card .scroll-body{position:relative; overflow-y:auto; min-height:0; flex:1 1 auto; padding:44px 20px 44px;
+    scrollbar-width:none; -webkit-overflow-scrolling:touch;}
+  .intro-card .scroll-body::-webkit-scrollbar{display:none;}
+  /* the two rolls the paper winds onto: like the scroll it rolls up into on setting sail, a little wider than the sheet */
+  .card-roll{position:absolute; left:-10px; right:-10px; height:24px; z-index:2; pointer-events:none;
+    background:var(--paper); border:2px solid var(--ink); border-radius:12px; box-shadow:3px 3px 0 var(--ink);
+    background-image:repeating-linear-gradient(0deg, transparent 0 5px, rgba(27,26,23,.35) 5px 6px);}
+  .card-roll::before, .card-roll::after{content:""; position:absolute; top:3px; width:12px; height:14px; border-radius:4px; background:var(--ink);}
+  .card-roll::before{left:-9px;} .card-roll::after{right:-9px;}
+  .card-roll.top{top:-13px;} .card-roll.bottom{bottom:-13px;}
+  /* the paper darkens a little as it curves away into each roll */
+  .curl-shade{position:absolute; left:0; right:0; height:30px; z-index:1; pointer-events:none;
+    background-image:radial-gradient(var(--ink) 0.8px, transparent 1px); background-size:3px 3px;}
+  .curl-shade.top{top:0; -webkit-mask-image:linear-gradient(to bottom, rgba(0,0,0,.55), transparent); mask-image:linear-gradient(to bottom, rgba(0,0,0,.55), transparent);}
+  .curl-shade.bottom{bottom:0; -webkit-mask-image:linear-gradient(to top, rgba(0,0,0,.55), transparent); mask-image:linear-gradient(to top, rgba(0,0,0,.55), transparent);}
+  #intro.leaving .card-roll, #intro.leaving .curl-shade{display:none;}
+  #wg-changes{margin:4px 0 12px; padding:6px 8px 6px 22px; font:11px/1.35 ui-monospace, monospace; border:1.5px dashed var(--ink); border-radius:3px; clear:both;}
+  #wg-changes li{list-style:'· ';}
+  #wg-changes li.head{list-style:none; margin-left:-14px; font-weight:bold;}
   #wg-title{margin:0 0 8px; font-size:18px; font-style:italic;}
   #wg-map{display:block; width:200px; height:200px; margin:0 auto 10px; border:2px solid var(--ink); image-rendering:pixelated;}
   #wg-knobs{display:grid; grid-template-columns:1fr 74px; gap:3px 8px; font:11.5px/1.3 ui-monospace, monospace;}
   #wg-knobs label{align-self:center; overflow:hidden; text-overflow:ellipsis;}
   #wg-knobs input{width:100%; box-sizing:border-box; font:inherit; padding:2px 4px; background:var(--paper); color:var(--ink); border:1.5px solid var(--ink); border-radius:2px;}
   #wg-knobs input.changed{background:var(--ink); color:var(--paper);}
-  #wg-build{float:right; margin:5px 0 0; font:11px/1.2 ui-monospace, monospace; opacity:0.65;}
+  #wg-build{margin:0 0 4px; font:11px/1.2 ui-monospace, monospace; opacity:0.65;}
   .wg-row{display:flex; gap:10px; justify-content:center;}
   #intro .wg-row button{padding:7px 16px; font-size:14px; background:var(--paper); color:var(--ink);}
   .shopping{margin:10px 0 18px; padding-left:22px; font-size:15px; line-height:1.7;}
@@ -621,13 +641,19 @@
 
   <div id="intro">
    <div class="card intro-card">
+    <!-- an open scroll: a roll at the top and at the bottom, the paper between them scrolls and curls into them -->
+    <div class="card-roll top"></div><div class="card-roll bottom"></div>
+    <div class="curl-shade top"></div><div class="curl-shade bottom"></div>
+    <div class="scroll-body">
     <!-- the world generator: a preview of this world, its knobs, and Generate (reloads with them in the address) -->
     <p id="wg-build"></p>
+    <ul id="wg-changes"></ul>
     <h2 id="wg-title"></h2>
     <canvas id="wg-map" aria-label="Preview of the world"></canvas>
     <div id="wg-knobs"></div>
     <div class="wg-row"><button id="wg-reset" type="button"></button><button id="wg-gen" type="button"></button></div>
     <button id="start-btn">Set sail</button>
+    </div>
    </div>
   </div>
 
@@ -686,7 +712,16 @@
   "use strict";
 
 
-  const BUILD = '2026-10-05 14:03';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  // what's new, newest first (a few lines, shown under the build time so Enrico knows what to look for); update it with every commit
+  const CHANGES = [
+    'Intro card: an open scroll, the paper curls into a roll at top and bottom',
+    'This list of what changed, under the build time',
+    'Quay badge: coins jingle at a village, the storehouse door creaks at home',
+    'Build time on this screen',
+    'Oars: one steady beat, a kick of speed on each stroke on time',
+    'Oars: a wooden knock as the button goes dark',
+  ];
+  const BUILD = '2026-10-05 15:23';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
   // {braces} are filled in by the game (keep the braces and the word inside;
@@ -699,6 +734,7 @@
       title:    'World',
       generate: 'Generate',
       reset:    'Defaults',
+      changes:  'New in this build',
       build:    'Build {time}',                       // top right of the first screen: when this version was made
     },
     intro: {                                        // (not shown for now: the first screen is the world generator)
@@ -3937,6 +3973,25 @@
 
   // ---------- Intro ----------
   const intro = document.getElementById('intro');
+  // the open scroll: rows of the sheet near a roll tip back and fade as if the paper curved away into it
+  const scrollBody = intro.querySelector('.scroll-body'), CURL_BAND = 42;
+  function curlScroll(){
+    if(intro.classList.contains('hidden')) return;
+    const H = scrollBody.clientHeight, st = scrollBody.scrollTop;
+    for(const el of scrollBody.querySelectorAll(':scope > *:not(#wg-knobs):not(#wg-changes), #wg-knobs > *, #wg-changes > li')){
+      let y = 0; for(let e = el; e && e !== scrollBody; e = e.offsetParent) y += e.offsetTop;   // (a transformed row is its children's offsetParent)
+      const top = y - st, bot = H - (top + el.offsetHeight);
+      let t = 0, sg = 1;
+      if(top < CURL_BAND && top < bot){ t = (CURL_BAND - top)/CURL_BAND; el.style.transformOrigin = '50% 100%'; }
+      else if(bot < CURL_BAND){ t = (CURL_BAND - bot)/CURL_BAND; sg = -1; el.style.transformOrigin = '50% 0%'; }
+      t = Math.max(0, Math.min(1, t));
+      el.style.transform = t > 0.01 ? 'perspective(240px) rotateX(' + (sg*t*80).toFixed(1) + 'deg)' : '';
+      el.style.opacity = t > 0.01 ? (1 - 0.7*t).toFixed(2) : '';
+    }
+  }
+  scrollBody.addEventListener('scroll', curlScroll, {passive:true});
+  addEventListener('resize', curlScroll);
+  requestAnimationFrame(()=> requestAnimationFrame(curlScroll));
   document.getElementById('start-btn').addEventListener('click', ()=>{
     buzz([25,50,40]);
     playing = true; camFx = boat.x; camFy = boat.y;          // the camera starts on the boat
@@ -4120,6 +4175,8 @@
     const box = document.getElementById('wg-knobs'), T = TEXT.worldGen;
     document.getElementById('wg-title').textContent = T.title;
     document.getElementById('wg-build').textContent = fmt(T.build, {time: BUILD});
+    const ch = document.getElementById('wg-changes'); ch.innerHTML = '';
+    for(const [k, line] of [[0, T.changes], ...CHANGES.map(c=> [1, c])]){ const li = document.createElement('li'); li.textContent = line; if(!k) li.className = 'head'; ch.appendChild(li); }
     const gen = document.getElementById('wg-gen'), reset = document.getElementById('wg-reset');
     gen.textContent = T.generate; reset.textContent = T.reset;
     for(const [k, v] of Object.entries(K)){

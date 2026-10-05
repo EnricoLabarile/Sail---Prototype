@@ -13,6 +13,9 @@
   top of the first screen ("Build 2026-10-05 14:05", `TEXT.worldGen.build`), so Enrico can tell the phone runs the
   latest version. The pre-commit hook `tools/hooks/pre-commit` stamps it on every commit touching `index.html`;
   **enable it once in each fresh clone/session: `git config core.hooksPath tools/hooks`**.
+  Under it, **`CHANGES`** (next to `BUILD`): a short bullet list of what's new, newest first, shown in a dashed box
+  ("New in this build", `TEXT.worldGen.changes`). **Update it with every commit** (one plain line per change Enrico
+  should look for; keep about the last six).
 - **Keep the Texts section up to date.** Every word the player reads lives in `TEXT`, the `// ---------- Texts ----------`
   section at the very top of the script (intro, villages and their dishes/gifts/lines, fish, toasts, popups, tutorial,
   market, logbook, ruins, endings, sinking, HUD). Enrico authors them by hand. New player-facing text goes there, never
@@ -215,7 +218,10 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   `TRADERS_VILLAGES`, `ROLLER_RATE`, `CLOUD_COUNT`; a changed field turns dark), **Generate** (reloads the page with the
   changed fields, and those already there, in the address: `?ISLAND_SCALE=1.5&…`; untouched knobs keep their own rule,
   e.g. `ISLAND_COUNT` follows `ISLAND_SCALE`) and **Defaults** (reloads with a bare address). In Tuning those knobs are
-  `knob('NAME', value)`: a value in the address wins. Then "Set sail": the card rolls up into a scroll that is tossed into the list button (skipped with reduced motion).
+  `knob('NAME', value)`: a value in the address wins. The card is an **open scroll**: a roll at the top and one at
+  the bottom (`.card-roll`, the look of the scroll it rolls into on setting sail), the sheet between them scrolls
+  (`.scroll-body`, no scrollbar) and each row near a roll tips back and fades as if the paper curved away into it
+  (`curlScroll`, `CURL_BAND` 42 px: rotateX up to 80°), with a dotted shade on the paper by each roll (`.curl-shade`). Then "Set sail": the card rolls up into a scroll that is tossed into the list button (skipped with reduced motion).
 
 - **Tutorial**: **off for now** (`TUTORIAL_ON` = false: `tutSet` goes straight to 'done', every control shows at once).
   When on (first voyage, `tut` in the Tutorial section): controls appear one at a time, hidden and disabled
