@@ -1,0 +1,9 @@
+#!/bin/sh
+# Stamps the build time (Italian time) into index.html on every commit that touches it,
+# so the first screen shows which version is running. Enable once per clone:
+#   git config core.hooksPath tools/hooks
+if git diff --cached --name-only | grep -qx 'index.html'; then
+  now=$(TZ=Europe/Rome date '+%Y-%m-%d %H:%M')
+  sed -i "s/^  const BUILD = '[^']*';/  const BUILD = '$now';/" index.html
+  git add index.html
+fi

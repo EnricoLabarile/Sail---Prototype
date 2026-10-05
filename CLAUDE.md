@@ -9,6 +9,10 @@
   public repo). Enrico reads and edits files there from the browser: if he says he changed something on GitHub, `git pull`
   first. The game is also served by GitHub Pages at https://enricolabarile.github.io/Sail---Prototype/ (from `master`,
   root; `.nojekyll` keeps it served as is), updated by each push, besides the claude.ai artifact link for the phone.
+- **Build stamp**: `BUILD` (just above the Texts section) is the time of the last commit, Italian time, shown at the
+  top of the first screen ("Build 2026-10-05 14:05", `TEXT.worldGen.build`), so Enrico can tell the phone runs the
+  latest version. The pre-commit hook `tools/hooks/pre-commit` stamps it on every commit touching `index.html`;
+  **enable it once in each fresh clone/session: `git config core.hooksPath tools/hooks`**.
 - **Keep the Texts section up to date.** Every word the player reads lives in `TEXT`, the `// ---------- Texts ----------`
   section at the very top of the script (intro, villages and their dishes/gifts/lines, fish, toasts, popups, tutorial,
   market, logbook, ruins, endings, sinking, HUD). Enrico authors them by hand. New player-facing text goes there, never
@@ -187,7 +191,8 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   counters) and wheel/anchor are hidden. Buttons: Quit (left) and Trade (right); both close it and leave you moored
   with the anchor back, so you can linger. **Nothing opens by itself on docking**: tied up at a village or at home, a
   round badge bobs beside the quay where it leaves the beach, on the far side from the boat (`#dock-btn`, `updateDockBtn`, placed from the camera each frame; coins at
-  a village, a crate at home; hidden while the table is open); a tap opens the market, or at home the **storehouse**,
+  a village, a crate at home; hidden while the table is open); a tap opens the market (with the purse's jingle, `Sfx.coins`), or at home the **storehouse** (a creak of its door
+  and a wooden thump, `Sfx.crate`),
   as many times as you like while moored.
   **Home storehouse** (`homeStore` = {fish, dish, bottles}; texts in `TEXT.store`; cleared on a new voyage by
   `resetStore`): the same table (`openStore` → `openMarket(STORE)`, a `store` branch in `stockTable`, `drawTable` and

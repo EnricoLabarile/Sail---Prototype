@@ -527,6 +527,7 @@
   #wg-knobs label{align-self:center; overflow:hidden; text-overflow:ellipsis;}
   #wg-knobs input{width:100%; box-sizing:border-box; font:inherit; padding:2px 4px; background:var(--paper); color:var(--ink); border:1.5px solid var(--ink); border-radius:2px;}
   #wg-knobs input.changed{background:var(--ink); color:var(--paper);}
+  #wg-build{float:right; margin:5px 0 0; font:11px/1.2 ui-monospace, monospace; opacity:0.65;}
   .wg-row{display:flex; gap:10px; justify-content:center;}
   #intro .wg-row button{padding:7px 16px; font-size:14px; background:var(--paper); color:var(--ink);}
   .shopping{margin:10px 0 18px; padding-left:22px; font-size:15px; line-height:1.7;}
@@ -621,6 +622,7 @@
   <div id="intro">
    <div class="card intro-card">
     <!-- the world generator: a preview of this world, its knobs, and Generate (reloads with them in the address) -->
+    <p id="wg-build"></p>
     <h2 id="wg-title"></h2>
     <canvas id="wg-map" aria-label="Preview of the world"></canvas>
     <div id="wg-knobs"></div>
@@ -684,6 +686,7 @@
   "use strict";
 
 
+  const BUILD = '2026-10-05 14:03';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
   // {braces} are filled in by the game (keep the braces and the word inside;
@@ -696,6 +699,7 @@
       title:    'World',
       generate: 'Generate',
       reset:    'Defaults',
+      build:    'Build {time}',                       // top right of the first screen: when this version was made
     },
     intro: {                                        // (not shown for now: the first screen is the world generator)
       lead:  'You run a little restaurant on your island. Every morning brings an order for tonight\'s dinner.',
@@ -3224,6 +3228,22 @@
       src.connect(bp); bp.connect(g); g.connect(master); src.start(t0, Math.random()*0.5, 0.22);
     }
     // paying at the market: a handful of coins clinking onto the counter
+    // the storehouse opening: a short creak of the wooden door, then its thump against the frame
+    function crate(){
+      if(!ac || ac.state!=='running') return;
+      const t0 = ac.currentTime + 0.01;
+      const cr = ac.createOscillator(); cr.type='sawtooth';
+      cr.frequency.setValueAtTime(180, t0); cr.frequency.linearRampToValueAtTime(260, t0+0.22);
+      const bp = ac.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=900; bp.Q.value=4;
+      const am = ac.createGain(); am.gain.value = 0;                     // stick-slip: the creak comes in little grabs
+      const lfo = ac.createOscillator(); lfo.type='square'; lfo.frequency.value=34;
+      const lg = ac.createGain(); lg.gain.value = 0.5; lfo.connect(lg); lg.connect(am.gain);
+      const g = ac.createGain();
+      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.09, t0+0.03); g.gain.exponentialRampToValueAtTime(0.0001, t0+0.24);
+      cr.connect(bp); bp.connect(am); am.connect(g); g.connect(master);
+      cr.start(t0); cr.stop(t0+0.26); lfo.start(t0); lfo.stop(t0+0.26);
+      setTimeout(()=> thunk(0.9), 230);
+    }
     function coins(){
       if(!ac || ac.state!=='running') return;
       const n = 7 + Math.floor(Math.random()*4);
@@ -3290,7 +3310,7 @@
     }
 
 
-    return {init, oar, oarCue, tick, thunk, wheel, ambient, rain, cicadas, book, pageTurn, pickup, hammer, bell, whirl, type, splash, drone, gull, crash, waveBreak, waveHit, surf, townEvent, chatter, cricket, howl, anchor, buoy, coins, engine};
+    return {init, oar, oarCue, crate, tick, thunk, wheel, ambient, rain, cicadas, book, pageTurn, pickup, hammer, bell, whirl, type, splash, drone, gull, crash, waveBreak, waveHit, surf, townEvent, chatter, cricket, howl, anchor, buoy, coins, engine};
   })();
 
   // ---------- Ship's wheel ----------
@@ -4099,6 +4119,7 @@
                OPEN_ROCK_TRIES, TRADERS_HOME, TRADERS_VILLAGES, ROLLER_RATE, CLOUD_COUNT};
     const box = document.getElementById('wg-knobs'), T = TEXT.worldGen;
     document.getElementById('wg-title').textContent = T.title;
+    document.getElementById('wg-build').textContent = fmt(T.build, {time: BUILD});
     const gen = document.getElementById('wg-gen'), reset = document.getElementById('wg-reset');
     gen.textContent = T.generate; reset.textContent = T.reset;
     for(const [k, v] of Object.entries(K)){
@@ -4846,7 +4867,8 @@
     Sfx.init(); buzz(10);
     if(!moor || moor.phase !== 'moored') return;
     const isl = moor.pier.isl;
-    if(isl.village) openMarket(isl.village); else if(isl.home) openStore();
+    if(isl.village){ Sfx.coins(); openMarket(isl.village); }            // the purse jingles as the stall opens
+    else if(isl.home){ Sfx.crate(); openStore(); }                      // the storehouse door: a creak and a wooden thump
   });
   const fishValue = (v, k)=> k===v.own ? COIN_LOCAL : COIN_FOREIGN;
   const fishWorth = (v)=> FISH_KEYS.reduce((a,k)=> a + counts[k]*fishValue(v,k), 0);   // the whole hold, sold here
