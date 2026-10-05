@@ -315,8 +315,9 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   catch from the corner of the eye), and at that same instant a short wooden **knock** of the oarlock sounds
   (`Sfx.oarCue`, loudness `OAR_CUE_VOL` in Tuning), so it can be rowed by ear: hear the knock, press. A press **on time** (within `OAR_WINDOW` = 0.13 of a turn either side) adds
   `OAR_GOOD` (0.22, less near full), a little pop (class `hit`), a **kick** of extra way (`oarKick` = `OAR_KICK` 20 px/s, half of it added to her speed at once, a
-  jolt, the rest carried by the oars and fading at `OAR_KICK_FADE` 1.3 a second: a long glide), the cue's knock again **an octave up** (`Sfx.oarCue(…, 2)`, loudness ×
-  `OAR_HIT_VOL`), a firm buzz and a **powerful stroke** sound
+  jolt, the rest carried by the oars and fading at `OAR_KICK_FADE` 1.3 a second: a long glide), a **soft woody tock** answering the cue (`Sfx.oarHit`: a damped sine a fifth
+  above the cue, 840→700 Hz, and a dull click, quieter than the cue so it sets it off; loudness × `OAR_HIT_VOL`; an
+  octave-up triangle was tried and sounded like a whistle), a firm buzz and a **powerful stroke** sound
   (`Sfx.oar(k, true)`: a fuller, brighter, louder gloop); **too early or too late** only `OAR_MISS` (0.04), a light
   buzz and an **ordinary stroke** (softer, never a "wrong" sound); one press a turn counts (`oarPressedTurn`). A mark
   passed with no press keeps only `OAR_SKIP` (0.65) of the power (`oarSkipped`; no sound); below 0.06 she stops; plus

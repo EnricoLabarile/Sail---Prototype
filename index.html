@@ -44,7 +44,7 @@
   const OAR_WINDOW = 0.13;           // how far from the mark a press still counts as on time (share of a turn, either side)
   const OAR_WARN = 0.2;              // the button swells this share of a turn before the pointer reaches the mark (time to react)
   const OAR_LOCK_SPEED = 16;         // px/s: once the sail alone drives her faster than this the oars are shipped and the oar button is disabled (back below 0.8 × this)
-  const OAR_HIT_VOL = 1;             // loudness of the knock an octave up that answers a press on time (× OAR_CUE_VOL; 0 = silent)
+  const OAR_HIT_VOL = 1;             // loudness of the soft tock that answers a press on time (× OAR_CUE_VOL; 0 = silent)
   const OAR_CUE_VOL = 1;            // loudness of the knock that sounds as the oar button goes ink (the moment to press; 0 = silent)
   const OAR_SPIN_FADE = 0.05;        // a slow steady drain of the rowing's power (a share of it per second)…
   const OAR_SKIP = 0.65;             // …and the power kept when the pointer passes the mark without a press (she slows; a few skipped and she stops)
@@ -205,6 +205,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Oars: the answer to a press on time is now a soft, short, woody tock (lower, quieter, no whistle) that sets off the cue instead of competing with it',
+    ]},
+    {build: '2026-10-05 19:14', items: [
       'Oars: a press on time answers the cue with the same wooden knock an octave higher',
     ]},
     {build: '2026-10-05 18:55', items: [
@@ -215,11 +218,8 @@
       'Rocks: always at least about two boat lengths of water between two rocks, or a rock and the shore (unless they touch), so she never gets stuck',
       'Rocks: varied sizes, some up to about twice the usual',
     ]},
-    {build: '2026-10-05 18:17', items: [
-      'Messages in a bottle: where a message puts its cross, a wrecked cruise ship now lies, broken in two on a reef (solid; a toast when you first come close)',
-    ]},
   ];
-  const BUILD = '2026-10-05 19:14';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-05 19:19';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -3134,6 +3134,22 @@
       src.start(t0, Math.random()*0.4, 0.55);
     }
     // the oarlock's knock as the oar button goes ink: the moment to press, so it can be rowed by ear (k: loudness)
+    // the answer to a press on time: a soft, short, woody tock a fifth above the cue (a sine, quickly damped, and a
+    // dull click), quieter than the cue, so it sets it off rather than competing with it
+    function oarHit(k){
+      if(!ac || ac.state!=='running' || !(k > 0)) return;
+      const t0 = ac.currentTime;
+      const o = ac.createOscillator(); o.type='sine';
+      o.frequency.setValueAtTime(840, t0); o.frequency.exponentialRampToValueAtTime(700, t0+0.04);
+      const og = ac.createGain();
+      og.gain.setValueAtTime(0.0001, t0); og.gain.exponentialRampToValueAtTime(0.045*k, t0+0.003); og.gain.exponentialRampToValueAtTime(0.0001, t0+0.055);
+      o.connect(og); og.connect(master); o.start(t0); o.stop(t0+0.07);
+      const src = ac.createBufferSource(); src.buffer = noise;
+      const bp = ac.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=1100; bp.Q.value=3;
+      const g = ac.createGain();
+      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.03*k, t0+0.002); g.gain.exponentialRampToValueAtTime(0.0001, t0+0.025);
+      src.connect(bp); bp.connect(g); g.connect(master); src.start(t0, Math.random()*0.5, 0.04);
+    }
     function oarCue(k, pitch){                     // pitch: 1 = the cue; 2 = an octave up, the answer to a stroke on time
       if(!ac || ac.state!=='running' || !(k > 0)) return;
       const t0 = ac.currentTime, f = pitch || 1;
@@ -3460,7 +3476,7 @@
     }
 
 
-    return {init, oar, oarCue, crate, tick, thunk, wheel, ambient, rain, cicadas, book, pageTurn, pickup, hammer, bell, whirl, type, splash, drone, gull, crash, waveBreak, waveHit, surf, townEvent, chatter, cricket, howl, anchor, buoy, coins, engine};
+    return {init, oar, oarCue, oarHit, crate, tick, thunk, wheel, ambient, rain, cicadas, book, pageTurn, pickup, hammer, bell, whirl, type, splash, drone, gull, crash, waveBreak, waveHit, surf, townEvent, chatter, cricket, howl, anchor, buoy, coins, engine};
   })();
 
   // ---------- Ship's wheel ----------
@@ -5026,7 +5042,7 @@
     if(off <= OAR_WINDOW){
       oarSpin = Math.min(1, oarSpin + OAR_GOOD*(1 - 0.5*oarSpin));
       oarHitT = 0.18; oarKick = OAR_KICK; boat.speed += OAR_KICK*0.5; buzz([14,25,30]);   // a jolt forward at once, then the glide Sfx.oar(0.5 + 0.5*oarSpin, true);   // a powerful stroke
-      Sfx.oarCue(OAR_CUE_VOL*OAR_HIT_VOL, 2);                      // and the cue's knock again, an octave up: on time!
+      Sfx.oarHit(OAR_CUE_VOL*OAR_HIT_VOL);                         // and a soft woody tock answering the cue: on time!
     } else {
       oarSpin = Math.min(1, oarSpin + OAR_MISS);
       buzz(8); Sfx.oar(0.35 + 0.3*oarSpin);                  // an ordinary stroke (not wrong, just less)
