@@ -722,6 +722,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Deep water: the sea where big waves can rise and run is drawn darker (away from land, harbours and home waters); waves die down as they leave it',
+    ]},
+    {build: '2026-10-05 17:24', items: [
       'Whirlpools: the slingshot now works going round WITH the swirl as drawn (it was the wrong way round)',
       'Sails: much starker: the square sail flies downwind (up to +25% running) and is nearly dead on and across the wind; the lateen is fastest on the beam and can point up, but crawls downwind',
       'Oars: a stroke on time gives a stronger jolt forward and a longer glide',
@@ -733,11 +736,8 @@
       'Oars: greyed out and shipped while the sail alone drives her faster than 16 px/s (row only when slow)',
       'World gen: SPIRAL is now random each new world, between 0.5 and 1 (set it to fix it)',
     ]},
-    {build: '2026-10-05 16:23', items: [
-      'World gen: SPIRAL (0 to 1) strings the island clusters along spiral arms round home, like a galaxy; SPIRAL_ARMS sets how many',
-    ]},
   ];
-  const BUILD = '2026-10-05 17:24';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-05 17:36';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
   // {braces} are filled in by the game (keep the braces and the word inside;
@@ -1012,6 +1012,11 @@
   const WHIRL_FLING_MAX = 200;        // …up to this much above her normal speed (it fades once she's out)
   const WHIRL_FLING_COS = 0.8;       // how well her heading must follow the swirl to be flung (cos of ~37°)
   const ROLLER_RATE = knob('ROLLER_RATE', 2);             // how often big waves come (2 = twice as often as at first, 1 = the old pace)
+  // deep water: where the big waves can rise and run (shown as a darker sea); they die down on leaving it
+  const DEEP_SHORE = 70;             // px from any land at which the deep water begins (world)
+  const DEEP_PIER = 280;             // px from any pier (harbours are never deep) (world)
+  const DEEP_TINT = 0.13;            // how much darker the deep water is drawn (0 = not shown, ~0.25 = strong)
+  const DEEP_CELL = 24;              // px a side of the cells the deep water is worked out in (smaller = finer edge, more work)
   const ROLLER_CATCH = 25;           // px/s a wave from astern runs faster than the boat, so it catches her to surf (0 = never helps)
   const DOWNWIND_DEG = 120;          // she's running downwind when the wind comes from at least this far round from her bow (180 = dead astern); from here the wind from behind adds speed too
   const SURF_WAVE_AFTER = 0.1;         // seconds running downwind before a wave may come up astern for her to surf
@@ -4551,6 +4556,45 @@
     return {x: (i0+bx0)*C, y: (j0+by0)*C, w: fw*C, h: fh*C};
   }
 
+  // ---------- Deep water ----------
+  // Where the big waves live: past DEEP_SHORE from any land, DEEP_PIER from any pier, and out of home waters.
+  // Worked out per cell the first time a cell is needed (then kept); drawn as a soft darker tint on the sea,
+  // like the fog: a pixel a cell, stretched smoothly, redone only when the view crosses into another cell.
+  const DEEP_N = Math.round(WORLD.w/DEEP_CELL), deepGrid = new Int8Array(DEEP_N*DEEP_N).fill(-1);
+  const dci = (i)=>((i%DEEP_N)+DEEP_N)%DEEP_N;
+  function deepCell(i, j){
+    const k = dci(j)*DEEP_N + dci(i);
+    if(deepGrid[k] < 0){
+      const x = (dci(i)+0.5)*DEEP_CELL, y = (dci(j)+0.5)*DEEP_CELL;
+      deepGrid[k] = !onLand(x, y, DEEP_SHORE) && pierDist(x, y).d >= DEEP_PIER && wdist(x, y, START.x, START.y) >= SAFE_R + 120 ? 1 : 0;
+    }
+    return deepGrid[k] === 1;
+  }
+  const deepAt = (x, y)=> deepCell(Math.floor(x/DEEP_CELL), Math.floor(y/DEEP_CELL));
+  const deepCv = document.createElement('canvas'), deepCtx = sceneCtx(deepCv);
+  const deepBig = document.createElement('canvas'), deepBigCtx = sceneCtx(deepBig);
+  let deepImg = null, deepKey = '', deepBox = null;
+  function drawDeep(camX, camY, w, h){
+    if(DEEP_TINT <= 0) return;
+    const C = DEEP_CELL, i0 = Math.floor(camX/C)-1, j0 = Math.floor(camY/C)-1, nx = Math.ceil(w/C)+3, ny = Math.ceil(h/C)+3;
+    const key = i0 + '|' + j0 + '|' + nx + '|' + ny;
+    if(key !== deepKey){
+      deepKey = key;
+      if(deepCv.width !== nx || deepCv.height !== ny || !deepImg){ deepCv.width = nx; deepCv.height = ny; deepImg = deepCtx.createImageData(nx, ny); }
+      const d = deepImg.data;
+      for(let j=0;j<ny;j++) for(let i=0;i<nx;i++){ const p = (j*nx+i)*4; d[p] = d[p+1] = d[p+2] = 0; d[p+3] = deepCell(i0+i, j0+j) ? 255 : 0; }
+      deepCtx.putImageData(deepImg, 0, 0);
+      if(deepBig.width < nx*C || deepBig.height < ny*C){ deepBig.width = Math.max(deepBig.width, nx*C); deepBig.height = Math.max(deepBig.height, ny*C); }
+      deepBigCtx.clearRect(0, 0, nx*C, ny*C);
+      deepBigCtx.imageSmoothingEnabled = true;           // a soft edge where the shelf drops off
+      deepBigCtx.drawImage(deepCv, 0, 0, nx, ny, 0, 0, nx*C, ny*C);
+      deepBox = {x: i0*C, y: j0*C, w: nx*C, h: ny*C};
+    }
+    ctx.globalAlpha = DEEP_TINT;
+    ctx.drawImage(deepBig, 0, 0, deepBox.w, deepBox.h, deepBox.x, deepBox.y, deepBox.w, deepBox.h);
+    ctx.globalAlpha = 1;
+  }
+
   // ---------- Rollers: big breaking waves ----------
   // Now and then a big wave rolls in from upwind, well away from any shore.
   // It builds up, breaks into tumbling foam, then fades out. Crossing its
@@ -4573,10 +4617,8 @@
   // a wave rising at (x,y), travelling downwind, if the spot allows it
   function rollerAt(x, y){
     const dw = windAngle + Math.PI, ux = Math.cos(dw), uy = Math.sin(dw);   // travel direction
-    if(pierDist(wrapX(x),wrapY(y)).d < 280) return null;          // never inside or at a harbour
-    if(wdist(wrapX(x),wrapY(y),START.x,START.y) < SAFE_R + 120) return null;   // never in home waters
-    // needs a bit of open water ahead of it (not right on a beach)
-    for(let k=0;k<=2;k++) if(onLand(wrapX(x+ux*k*120), wrapY(y+uy*k*120), 70)) return null;
+    // only in deep water (the darker sea: away from land, harbours and home waters), with some ahead of it
+    if(!deepAt(wrapX(x), wrapY(y)) || !deepAt(wrapX(x+ux*120), wrapY(y+uy*120))) return null;
     const speed = rand(25,30), w = {x, y, ux, uy, L: rand(45,75), bow: rand(5,8), thick: rand(9,13),
                     speed, base: speed, t:0, dur: rand(4,6), hit:false, broke:false, seed: rand(0,100)};
     rollers.push(w);
@@ -4647,8 +4689,8 @@
       const w = rollers[k];
       w.t += dt * rollerPace(w, dt);
       w.x += w.ux*w.speed*dt; w.y += w.uy*w.speed*dt;
-      if(onLand(wrapX(w.x+w.ux*40), wrapY(w.y+w.uy*40), 60) || pierDist(wrapX(w.x),wrapY(w.y)).d < 170)
-        w.t = Math.max(w.t, w.dur*0.75);                  // dies on shoaling water or at a harbour mouth
+      if(!deepAt(wrapX(w.x+w.ux*40), wrapY(w.y+w.uy*40)))
+        w.t = Math.max(w.t, w.dur*0.75);                  // dies on leaving deep water (shoaling near land, a harbour mouth)
       if(wdist(wrapX(w.x),wrapY(w.y),START.x,START.y) < SAFE_R + 60){ w.hit = true; w.t = Math.max(w.t, w.dur*0.8); }   // home waters: it dies down harmlessly
       const s = rollerStrength(w);
       const dx = wdx(boat.x, w.x), dy = wdy(boat.y, w.y);
@@ -8261,6 +8303,7 @@
     ctx.save();
     ctx.translate(-camX,-camY);
     drawSea(camX,camY,w,h);
+    drawDeep(camX,camY,w,h);                                   // the deep water, where big waves run: a darker sea
 
     // near an edge the view overlaps a neighbouring copy of the world:
     // draw each layer once per copy that touches the screen

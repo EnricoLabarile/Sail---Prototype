@@ -369,8 +369,13 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   popup (`boat.flingW`); the swirl's way round in the physics (`tx`, `ty`, and the drift) matches the drawn foam
   spiralling in (it was flipped: the fling worked going against the drawn swirl); the pull toward the eye still works, so going deeper is a gamble), rollers (big waves: within ~66° of their travel = surf boost (`SURF_COS`), otherwise they hurt). How often: every
   ~2–6 s (`ROLLER_RATE` = 2, twice the old pace; a little rarer near home and among islands, most in open water), at
-  most 12 about in open water (8 elsewhere); never in home waters (they die down there) or within 280 px of a pier, only
-  with open water ahead of them, quieter while the nets are out, and they die early on reaching shoal water. A quiet hand on
+  most 12 about in open water (8 elsewhere); quieter while the nets are out. **Deep water** (section "Deep water",
+  Tuning: `DEEP_SHORE` 70 px from any land, `DEEP_PIER` 280 px from any pier, and out of home waters, `SAFE_R` + 120):
+  the only sea where they rise (`rollerAt`: the spot and 120 px ahead of it must be deep) and run (on leaving it,
+  40 px ahead, a wave jumps to the last quarter of its life and dies down). It's worked out per `DEEP_CELL` (24 px)
+  cell the first time a cell is needed (`deepGrid`, `deepCell`, `deepAt`) and **drawn as a darker sea**
+  (`drawDeep`, right after `drawSea`: ink at `DEEP_TINT` 0.13, a pixel a cell stretched smoothly like the fog, redone
+  only when the view crosses into another cell), so the player sees where the big waves can come. A quiet hand on
   the waves near the boat (`rollerPace`, eased): one coming up astern (within 220 px, full effect within 140) while she
   runs with it hurries to her pace + `ROLLER_CATCH` (25 px/s, at most 3× its own) and lives a little longer, so it
   catches her and she surfs; one about to hit her badly slows to `ROLLER_SPARE` (0.55) of its pace, time to turn away.
