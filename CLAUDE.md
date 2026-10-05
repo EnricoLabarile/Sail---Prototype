@@ -286,6 +286,12 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   there's power, the blades sweep with the cycle (`oarPh`: forward at the catch, aft at the finish) with a splash
   ring mid-pull; turning is `ROW_TURN_MULT` × quicker while rowing (`boat.rowing`). With manual oars the sail is never
   brailed up.
+  **Sail badge** (`#sail-btn`, a round badge on the right under the oar button, which sits above it; shown only while
+  a sail is rigged and the market is shut; `updateSailBtn`): it shows the rigged sail's icon. A **tap** sets or furls
+  the sail (`boat.sailFurled`: no drive, the cloth gathered to the yard, the badge inked). **Hold it**: past
+  `SAIL_SHAKE_AFTER` (0.2 s) it shakes, and at `SAIL_STOW_HOLD` (1.1 s) the sail is unbent and stowed in the hold
+  (`boat.rig` = null, toast "… stowed in the hold"; refused with "the hold is full" if no slot is free), leaving her on
+  the oars. Both knobs in Tuning.
   **Sail: automatic** (no button; the old switch `#sail` / `drawSail` is hidden and unused, the halyard rope before it is
   gone). The sail is up by default. When she's slower than `ROW_ENTER` and the wind can't drive her past it either
   (head to wind, or nearly), after `ROW_DELAY` the sail is brailed up and the oars come out (`sailLevel` = `SAIL_MIN`:

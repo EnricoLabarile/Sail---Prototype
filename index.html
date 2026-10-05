@@ -178,7 +178,17 @@
     cursor:pointer;
   }
   /* the oar button: a disc with a pointer that turns with the strokes, under a fixed mark; press as the pointer comes round to it */
-  #oar-ctl{position:fixed; right:12px; bottom:calc(108px + env(safe-area-inset-bottom,0px)); width:64px; height:74px; z-index:5; touch-action:none; cursor:pointer;}
+  #oar-ctl{position:fixed; right:12px; bottom:calc(178px + env(safe-area-inset-bottom,0px)); width:64px; height:74px; z-index:5; touch-action:none; cursor:pointer;}
+  /* the sail badge, under the oar button: a tap sets or furls the sail, a long press stows it in the hold */
+  #sail-btn{position:fixed; right:16px; bottom:calc(104px + env(safe-area-inset-bottom,0px)); width:56px; height:56px; z-index:5; padding:0;
+    border-radius:50%; background:var(--paper); color:var(--ink); border:2px solid var(--ink); box-shadow:2px 3px 0 var(--ink); cursor:pointer;
+    display:flex; align-items:center; justify-content:center; touch-action:none;}
+  #sail-btn svg{width:36px; height:36px;}
+  #sail-btn.furled{background:var(--ink); color:var(--paper);}       /* furled: inked */
+  #sail-btn.furled svg{opacity:.85;}
+  #sail-btn.shaking{animation:sailShake .09s linear infinite;}       /* held: about to be stowed */
+  @keyframes sailShake{0%{translate:0 0} 25%{translate:-2px 1px} 50%{translate:1px -1px} 75%{translate:2px 1px} 100%{translate:0 0}}
+  body.at-market #sail-btn{display:none;}
   #oar-ctl .oar-mark{position:absolute; left:50%; top:0; width:0; height:0; margin-left:-6px; border-left:6px solid transparent; border-right:6px solid transparent;
     border-top:9px solid var(--ink); filter:drop-shadow(0 0 1.5px var(--paper));}   /* the fixed mark: the moment to press */
   #oar-ctl .oar-disc{position:absolute; left:4px; top:12px; width:56px; height:56px; border-radius:50%; background:var(--paper); border:2px solid var(--ink);
@@ -636,6 +646,7 @@
     <div id="mk-foot"></div>
   </div>
   <!-- the oar handle, right side: slide it down to pull the oars (rowing by hand) -->
+  <button id="sail-btn" type="button" class="hidden"></button>
   <div id="oar-ctl" class="hidden" role="button" tabindex="0">
     <div class="oar-mark"></div>
     <div class="oar-disc"><svg viewBox="-28 -28 56 56" aria-hidden="true"><g class="oar-rot">
@@ -822,6 +833,8 @@
       spareLine: '- - - in the hold',
       none:      'No sail: the oars',
       rigged:  '{sail} rigged',
+      badge:   '{sail}: tap to set or furl it, hold to stow it in the hold',
+      stowed:  '{sail} stowed in the hold',
     },
     logbook: {
       order:   'Tonight\'s order',
@@ -1036,6 +1049,8 @@
   const SAIL_POLAR_SQUARE = [[0,0.01],[20,0.03],[35,0.07],[50,0.15],[70,0.28],[90,0.42],[110,0.60],[130,0.80],[150,0.95],[170,1.0],[180,1.0]];
   const SAIL_POLAR_LATEEN = [[0,0.02],[20,0.12],[35,0.40],[50,0.68],[70,0.88],[90,1.0],[110,0.97],[130,0.84],[150,0.68],[170,0.57],[180,0.54]];
   const LATEEN_SWING = 0.9;          // how quickly the lateen yard swings across when she changes tack (3 = as quick as the sail trims; lower = heavier)
+  const SAIL_STOW_HOLD = 1.1;        // seconds holding the sail badge to unbend the sail and stow it in the hold
+  const SAIL_SHAKE_AFTER = 0.2;      // a press longer than this is a hold (the badge shakes); shorter is a tap (set or furl)
   const SAIL_TONE = 0.72;            // the sail's cloth when drawing well (1 = paper white, 0 = ink); slack or reefed it's a little darker
   const SPARE_SAIL = true;           // both sails ride in the hold (a slot each, the one not rigged); a tap on one in the logbook rigs it
   const START_RIG = null;            // the sail rigged at the start: null = none, she sets out on the oars ('square' or 'lateen' = that one)
@@ -4109,7 +4124,7 @@
   })();
   document.getElementById('restart-btn').addEventListener('click', ()=>{
     boat.x = SPAWN.x; boat.y = SPAWN.y; boat.angle = SPAWN.angle;
-    boat.speed = 0; boat.health = MAX_HEALTH; boat.kx = boat.ky = 0; boat.whirl = null; boat.rig = START_RIG;
+    boat.speed = 0; boat.health = MAX_HEALTH; boat.kx = boat.ky = 0; boat.whirl = null; boat.rig = START_RIG; boat.sailFurled = false;
     for(const w of whirlpools) whirlAsleep(w);           // a calm first day again
     boat.oarK = 0; boat.oarsOut = false;
     for(const k in counts) counts[k] = 0;
@@ -4681,6 +4696,51 @@
   const storeCount = ()=> Object.values(homeStore.fish).reduce((a,n)=> a+n, 0) + Object.values(homeStore.dish).reduce((a,n)=> a+n, 0) + homeStore.bottles.length;
   function resetStore(){ homeStore.fish = {}; homeStore.dish = {}; homeStore.bottles = []; }
   function openStore(){ openMarket(STORE); }
+  // ---- the sail badge (under the oar button, while a sail is rigged) ----
+  // A tap sets or furls the sail (furled: the cloth gathered to the yard, no
+  // drive; the badge inked). Hold it: after a moment it shakes, and after
+  // SAIL_STOW_HOLD seconds the sail is unbent and stowed in the hold (a slot;
+  // not with a full hold), leaving her on the oars.
+  const elSailBtn = document.getElementById('sail-btn');
+  let sailHold = null, sailBtnKey = '';
+  elSailBtn.addEventListener('pointerdown', ev=>{
+    ev.preventDefault(); Sfx.init(); if(!boat.rig) return;
+    elSailBtn.setPointerCapture(ev.pointerId);
+    sailHold = {t0: performance.now(), id: ev.pointerId, done: false};
+  });
+  const sailRelease = ev=>{
+    const h = sailHold; if(!h || ev.pointerId !== h.id) return;
+    sailHold = null; elSailBtn.classList.remove('shaking');
+    if(h.done || ev.type === 'pointercancel') return;
+    if(performance.now() - h.t0 < SAIL_SHAKE_AFTER*1000){                 // a tap: set or furl
+      boat.sailFurled = !boat.sailFurled;
+      Sfx.thunk(0.2); buzz(boat.sailFurled ? [10,30,10] : [20,30,20]);
+    }
+  };
+  elSailBtn.addEventListener('pointerup', sailRelease); elSailBtn.addEventListener('pointercancel', sailRelease);
+  function updateSailBtn(){
+    const show = !!boat.rig && playing && !marketV;
+    if(show !== !elSailBtn.classList.contains('hidden')) elSailBtn.classList.toggle('hidden', !show);
+    if(!show){ sailHold = null; return; }
+    const key = boat.rig + '|' + !!boat.sailFurled;
+    if(key !== sailBtnKey){
+      sailBtnKey = key;
+      elSailBtn.innerHTML = itemIcon(SAIL_ICON[boat.rig]);
+      elSailBtn.classList.toggle('furled', !!boat.sailFurled);
+      const lbl = fmt(TEXT.sails.badge, {sail: TEXT.sails[boat.rig]}); elSailBtn.title = lbl; elSailBtn.setAttribute('aria-label', lbl);
+    }
+    const h = sailHold; if(!h || h.done) return;
+    const held = (performance.now() - h.t0)/1000;
+    if(held > SAIL_SHAKE_AFTER && !elSailBtn.classList.contains('shaking')){ elSailBtn.classList.add('shaking'); buzz(10); }
+    if(held >= SAIL_STOW_HOLD){                                            // held long enough: stow it
+      h.done = true; elSailBtn.classList.remove('shaking');
+      if(slotsUsed() >= HOLD_MAX){ popups.push({x:boat.x, y:boat.y-24, text:TEXT.popups.holdFull, life:1.6, max:1.6}); buzz(20); return; }
+      const name = TEXT.sails[boat.rig];
+      boat.rig = null; boat.sailFurled = false;
+      toast(fmt(TEXT.sails.stowed, {sail: name})); Sfx.thunk(0.35); buzz([30,40,30]);
+      if(elList.classList.contains('open')) renderList();
+    }
+  }
   // ---- rowing by hand: the oar button on the right, pressed in rhythm ----
   // Like grinding berries: the first press sets her rowing, slowly (power
   // oarSpin = OAR_START), and the button's disc starts turning, its pointer
@@ -5257,7 +5317,7 @@
     return '<button type="button" class="slot spare-sail" data-swap="'+rig+'" title="'+hint+'" aria-label="'+hint+'">'+itemIcon(SAIL_ICON[rig])+'</button>';
   }
   function swapSail(rig){                                // rig this sail; the one she carried (if any) goes into the hold
-    boat.rig = rig;
+    boat.rig = rig; boat.sailFurled = false;
     boat.furl = 1;                                       // the new sail is bent on furled, then spreads
     toast(fmt(TEXT.sails.rigged, {sail: TEXT.sails[boat.rig]}));
     Sfx.thunk(0.3); buzz([20,40,20]);
@@ -5906,7 +5966,7 @@
       }
     }
     const windSf = speedFactor(relDeg)*windStrength;   // how well the sail is fed
-    boat.sailAmount += (SAIL_LEVELS[sailLevel].amount-boat.sailAmount)*Math.min(1,dt*2.5);
+    boat.sailAmount += ((boat.sailFurled ? 0 : SAIL_LEVELS[sailLevel].amount)-boat.sailAmount)*Math.min(1,dt*2.5);   // (furled from the badge: no drive)
     const sf = windSf*boat.sailAmount;                    // actual drive
     let targetSpeed = anchored ? 0 : MAX_SPEED*sf*WIND_BOOST*downwindBonus(relDeg);   // a well-trimmed sail pays off more
     if(!anchored && sailLevel===SAIL_MIN) targetSpeed = Math.max(targetSpeed, ROW_SPEED);        // at minimum sail the oars keep her going
@@ -6250,6 +6310,7 @@
     refreshList();
     updateDockBtn();
     updateOarCtl(dt);
+    updateSailBtn();
   }
 
   // ---------- 1-bit rendering ----------
@@ -7933,7 +7994,7 @@
     // itself stays set); it spreads again as soon as the anchor comes up
     {
       const now = performance.now(), fdt = Math.min(0.05, (now - (B.furlLast || now))/1000); B.furlLast = now;
-      const want = g ? (g.moored ? 1 : 0) : anchored && weighT <= 0 ? 1 : 0;
+      const want = g ? (g.moored ? 1 : 0) : (anchored && weighT <= 0) || boat.sailFurled ? 1 : 0;
       B.furl = (B.furl === undefined ? want : B.furl) + (want - (B.furl||0))*Math.min(1, fdt*(want ? 2.2 : 3.5));
     }
     if(B.rig === 'lateen'){ drawLateenSail(B); ctx.restore(); ctx.restore(); return; }

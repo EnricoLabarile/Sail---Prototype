@@ -120,6 +120,14 @@ def trip(pg):
         rig = pg.evaluate('__d.rig')
         pg.click('.spare-sail'); pg.wait_for_timeout(200)
         assert pg.evaluate('__d.rig') != rig, 'the spare sail was not rigged'
+        # the sail badge: a tap furls the sail, holding it stows the sail in the hold
+        pg.click('#btn-list', force=True); pg.wait_for_timeout(900)
+        pg.wait_for_selector('#sail-btn:not(.hidden)', timeout=3000)
+        bb = pg.query_selector('#sail-btn').bounding_box(); cx, cy = bb['x']+bb['width']/2, bb['y']+bb['height']/2
+        pg.mouse.move(cx, cy); pg.mouse.down(); pg.mouse.up(); pg.wait_for_timeout(200)
+        assert pg.evaluate('__d.boat.sailFurled'), 'a tap on the sail badge did not furl the sail'
+        pg.mouse.down(); pg.wait_for_timeout(1500); pg.mouse.up(); pg.wait_for_timeout(200)
+        assert pg.evaluate('__d.rig') is None, 'holding the sail badge did not stow the sail'
 
 def orders(pg):
         global ORDERS; ORDERS = True
