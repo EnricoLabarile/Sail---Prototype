@@ -266,8 +266,10 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   **Oars: rowed by hand, like a rowing machine** (`MANUAL_OARS` in Tuning; false brings back the old automatic oars
   below): an oar handle on the right (`#oar-ctl`, above the fair-wind medallion, a short slot 76 px tall; hidden when
   moored or at the market). A **flywheel** (`oarSpin` 0..1) drives the oars in a steady cycle (`oarCycle`,
-  `OAR_RATE_MIN` 0.45 to `OAR_RATE_MAX` 1.25 strokes a second, never frantic) and her way (`OAR_MAX` 14 px/s × power,
-  `boat.rowV`, wherever she points, even head to wind; it counts only when it's more than the sail gives:
+  `OAR_RATE_MIN` 0.45 to `OAR_RATE_MAX` 1.25 strokes a second, never frantic) and her way (`OAR_MAX` 14 px/s × power
+  on average, `boat.rowV`, **in surges**: the pull, the first half of each cycle as the blades sweep aft, drives her on
+  and the recovery lets her coast: × (1 − `OAR_SURGE` + `OAR_SURGE`·π·max(0, sin 2π·phase)), `OAR_SURGE` = 0.5, at
+  full power about 11 → 18 → 11 px/s a stroke; the oars bite quickly, rate 3.5; wherever she points, even head to wind; it counts only when it's more than the sail gives:
   `targetSpeed` = max(sail, `rowV`)); friction slows it to a stop (`OAR_SPIN_FADE` 0.12 a second); at anchor or moored
   it's 0. The finger **pulls the grip down** (only down, `oarTarget` only grows; let go and it swings back up in
   `OAR_RETURN` 0.35 s, grab it again on the way up): every bit of pull adds power (`OAR_PULL` 0.32 a full pull, less

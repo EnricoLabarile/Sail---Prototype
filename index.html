@@ -907,6 +907,7 @@
   const OAR_SPIN_FADE = 0.12;        // power the rowing loses per second when nobody presses (it slows down, then stops)
   const OAR_RATE_MIN = 0.45;         // strokes a second as the rowing starts…
   const OAR_RATE_MAX = 1.25;         // …and at full power (steady, never frantic)
+  const OAR_SURGE = 0.5;             // how much of her way on the oars comes in a surge as the blades sweep aft (0 = steady glide, 1 = all of it), then she coasts on the recovery
   const OAR_MAX = 14;                // px/s at full power (rowing is slow, but goes any way she points)
   const WHEEL_MAX = Math.PI;         // how far the wheel turns for full lock (π = half a turn each way)
   const SURF_BOOST = 32;             // extra px/s while surfing a big wave
@@ -5894,7 +5895,10 @@
     let targetSpeed = anchored ? 0 : MAX_SPEED*sf*WIND_BOOST*downwindBonus(relDeg);   // a well-trimmed sail pays off more
     if(!anchored && sailLevel===SAIL_MIN) targetSpeed = Math.max(targetSpeed, ROW_SPEED);        // at minimum sail the oars keep her going
     // rowing by hand: the way the strokes give her (it dies off unless she keeps pulling)
-    boat.rowV = MANUAL_OARS && !(anchored || moor || boat.whirl) ? OAR_MAX*oarSpin : 0;
+    // the oars push in surges: the pull (blades sweeping aft, the first half of each cycle) drives her on, the
+    // recovery lets her coast; on average OAR_MAX × power
+    const oarSurge = 1 - OAR_SURGE + OAR_SURGE*Math.PI*Math.max(0, Math.sin(2*Math.PI*(oarCycle % 1)));
+    boat.rowV = MANUAL_OARS && !(anchored || moor || boat.whirl) ? OAR_MAX*oarSpin*oarSurge : 0;
     if(boat.rowV > targetSpeed) targetSpeed = boat.rowV;
     boat.sailPower += (windSf-boat.sailPower)*Math.min(1,dt*3);
 
@@ -5921,7 +5925,7 @@
     // she gathers way slowly (BOAT_ACCEL), loses it at the old pace; the anchor bites quickly
     const gaining = targetSpeed + surf > boat.speed;
     boat.speed += (targetSpeed + surf - boat.speed)*Math.min(1,dt*(anchored ? 4 : surf>0 ? 3 : gaining ? BOAT_ACCEL : 1.6));
-    if(!anchored && boat.rowV > boat.speed) boat.speed += (boat.rowV - boat.speed)*Math.min(1, dt*2);   // the oars bite quickly
+    if(!anchored && boat.rowV > boat.speed) boat.speed += (boat.rowV - boat.speed)*Math.min(1, dt*3.5);   // the oars bite quickly
 
     const hullR = boat.r*0.75;
     // ---- mooring at the home pier ----
