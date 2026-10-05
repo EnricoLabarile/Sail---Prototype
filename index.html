@@ -722,6 +722,11 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Whirlpools: the slingshot now works going round WITH the swirl as drawn (it was the wrong way round)',
+      'Sails: much starker: the square sail flies downwind (up to +25% running) and is nearly dead on and across the wind; the lateen is fastest on the beam and can point up, but crawls downwind',
+      'Oars: a stroke on time gives a stronger jolt forward and a longer glide',
+    ]},
+    {build: '2026-10-05 16:39', items: [
       'The list of changes: numbered, split into this build and the three before it',
     ]},
     {build: '2026-10-05 16:38', items: [
@@ -731,12 +736,8 @@
     {build: '2026-10-05 16:23', items: [
       'World gen: SPIRAL (0 to 1) strings the island clusters along spiral arms round home, like a galaxy; SPIRAL_ARMS sets how many',
     ]},
-    {build: '2026-10-05 16:03', items: [
-      'Fish banks all look alike (a few big dark fish): the catch is a surprise',
-      'Anchor: hold the hub for a shorter time to drop or weigh it (0.32 s, was 0.5)',
-    ]},
   ];
-  const BUILD = '2026-10-05 16:39';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-05 17:24';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
   // {braces} are filled in by the game (keep the braces and the word inside;
@@ -988,8 +989,8 @@
   const OAR_SKIP = 0.65;             // …and the power kept when the pointer passes the mark without a press (she slows; a few skipped and she stops)
   const OAR_RATE = 0.52;              // turns of the oar button a second: one steady beat, whatever the power (calm: time to look at the sea too)
   const OAR_RATE_EASE = 2;           // how quickly the button gets up to that beat when she starts rowing, and winds down to a halt when she stops
-  const OAR_KICK = 10;               // px/s of extra way a stroke pulled right on time gives her at once (a visible surge)…
-  const OAR_KICK_FADE = 2.2;         // …fading away at this rate a second
+  const OAR_KICK = 20;               // px/s of extra way a stroke pulled right on time gives her (a visible surge; half of it at once)…
+  const OAR_KICK_FADE = 1.3;         // …fading away at this rate a second (lower = she glides on longer)
   const OAR_SURGE = 0.5;             // how much of her way on the oars comes in a surge as the blades sweep aft (0 = steady glide, 1 = all of it), then she coasts on the recovery
   const OAR_MAX = 14;                // px/s at full power (rowing is slow, but goes any way she points)
   const WHEEL_MAX = Math.PI;         // how far the wheel turns for full lock (π = half a turn each way)
@@ -1110,10 +1111,13 @@
   const CLOUD_MODELS = 4;            // cloud shapes, shared by all the clouds in the sky (world)
   const MAP_RES = 280;               // the sea chart in the logbook: its pixels a side (fewer = coarser)
   const SAIL_SIZE = 1.15;             // size of the boat's sail (1 = the old one: a yard 30 px wide)
-  // the two sails' speed curves: [degrees off the wind, share of top speed]. The square sail runs free fastest
-  // and is poor on the wind; the lateen points higher and is at its best with the wind on the beam, poorer running free
-  const SAIL_POLAR_SQUARE = [[0,0.01],[20,0.03],[35,0.07],[50,0.15],[70,0.28],[90,0.42],[110,0.60],[130,0.80],[150,0.95],[170,1.0],[180,1.0]];
-  const SAIL_POLAR_LATEEN = [[0,0.02],[20,0.12],[35,0.40],[50,0.68],[70,0.88],[90,1.0],[110,0.97],[130,0.84],[150,0.68],[170,0.57],[180,0.54]];
+  // the two sails' speed curves: [degrees off the wind, share of top speed], made starker than real life so each
+  // sail has its own way to sail. The square sail: the open sea, the wind from astern (and SQUARE_RUN_BONUS on top);
+  // almost dead on the wind, weak on the beam. The lateen: the wind on the beam (its best is faster than the square's
+  // best on the beam by far) and it can point up toward the wind; poor running free
+  const SAIL_POLAR_SQUARE = [[0,0],[20,0],[35,0.02],[50,0.05],[70,0.12],[90,0.25],[110,0.45],[130,0.72],[150,0.92],[170,1.0],[180,1.0]];
+  const SAIL_POLAR_LATEEN = [[0,0.02],[20,0.22],[35,0.60],[50,0.90],[70,1.08],[90,1.10],[110,0.90],[130,0.60],[150,0.38],[170,0.26],[180,0.22]];
+  const SQUARE_RUN_BONUS = 0.25;     // running downwind (from DOWNWIND_DEG to dead astern) the square sail gains up to this much more (the lateen none)
   const LATEEN_SWING = 0.9;          // how quickly the lateen yard swings across when she changes tack (3 = as quick as the sail trims; lower = heavier)
   const SAIL_STOW_HOLD = 1.1;        // seconds holding the sail badge to unbend the sail and stow it in the hold
   const SAIL_SHAKE_AFTER = 0.2;      // a press longer than this is a hold (the badge shakes); shorter is a tap (set or furl)
@@ -2516,9 +2520,10 @@
   }
   // extra reward for having the wind from behind: rises from a broad reach
   // (120°) to dead downwind (180°), up to +10%
-  function downwindBonus(relDeg){
+  function downwindBonus(relDeg, rig){                 // the square sail's own: the wind from astern fills it best
+    if((rig === undefined ? boat.rig : rig) !== 'square') return 1;
     const a = Math.abs(relDeg), k = Math.max(0, Math.min(1, (a-DOWNWIND_DEG)/(180-DOWNWIND_DEG)));
-    return 1 + 0.1*k*k*(3-2*k);
+    return 1 + SQUARE_RUN_BONUS*k*k*(3-2*k);
   }
 
   // ---------- Wind ----------
@@ -4911,7 +4916,7 @@
     const off = Math.abs(oarCycle - turn);                   // how far from the mark, in turns
     if(off <= OAR_WINDOW){
       oarSpin = Math.min(1, oarSpin + OAR_GOOD*(1 - 0.5*oarSpin));
-      oarHitT = 0.18; oarKick = OAR_KICK; buzz([14,25,30]); Sfx.oar(0.5 + 0.5*oarSpin, true);   // a powerful stroke
+      oarHitT = 0.18; oarKick = OAR_KICK; boat.speed += OAR_KICK*0.5; buzz([14,25,30]);   // a jolt forward at once, then the glide Sfx.oar(0.5 + 0.5*oarSpin, true);   // a powerful stroke
     } else {
       oarSpin = Math.min(1, oarSpin + OAR_MISS);
       buzz(8); Sfx.oar(0.35 + 0.3*oarSpin);                  // an ordinary stroke (not wrong, just less)
@@ -5399,10 +5404,10 @@
   const windRel = ()=> norm(boat.angle - windAngle)*180/Math.PI;          // degrees off the wind, signed by side
   const windCardKey = ()=> [Math.round(windRel()/2), boat.rig, Math.round(windStrength*20)].join('|');
   function windHTML(){
-    const Rr = 46, f = n=> n.toFixed(1);
-    const curve = rig=>{ let d = ''; for(let a = 0; a <= 360; a += 5){ const k = speedFactor(a > 180 ? 360 - a : a, rig)*Rr, r = a*Math.PI/180;
+    const Rr = 40, f = n=> n.toFixed(1);                  // (room for the square sail's run, up to 1.25 ×)
+    const curve = rig=>{ let d = ''; for(let a = 0; a <= 360; a += 5){ const b = a > 180 ? 360 - a : a, k = speedFactor(b, rig)*downwindBonus(b, rig)*Rr, r = a*Math.PI/180;
       d += (a ? 'L' : 'M') + f(Math.sin(r)*k) + ' ' + f(-Math.cos(r)*k); } return d + 'Z'; };
-    const rel = windRel(), r = rel*Math.PI/180, eff = speedFactor(rel), hx = Math.sin(r), hy = -Math.cos(r);
+    const rel = windRel(), r = rel*Math.PI/180, eff = speedFactor(rel)*downwindBonus(rel), hx = Math.sin(r), hy = -Math.cos(r);
     const spare = sailsInHold().map(r=> '<path d="'+curve(r)+'" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2.5 2.5" opacity=".75"/>').join('');
     return '<h3>'+TEXT.sails.windTitle+'</h3>'
       + '<svg class="wind-polar" viewBox="-58 -60 116 112" aria-hidden="true">'
@@ -6242,12 +6247,12 @@
           const k = 1 - (d-w.core)/(w.r-w.core);          // 0 at rim → 1 at core edge
           const pull = w.s*WHIRL_PULL*(Math.exp(WHIRL_CURVE*k)-1)/(Math.exp(WHIRL_CURVE)-1);
           const ux = -dx/(d||1), uy = -dy/(d||1);
-          boat.x += (ux*pull - uy*w.dir*pull*0.35)*dt;
-          boat.y += (uy*pull + ux*w.dir*pull*0.35)*dt;
+          boat.x += (ux*pull + uy*w.dir*pull*0.35)*dt;            // (the drift goes the way the swirl is drawn turning)
+          boat.y += (uy*pull - ux*w.dir*pull*0.35)*dt;
           // slingshot: running round the ring with the swirl (heading along
           // it, not into the eye), the water flings her on: extra speed,
           // more the deeper in she dares, fading once she's out
-          const tx = -uy*w.dir, ty = ux*w.dir;                    // the swirl's way round
+          const tx = uy*w.dir, ty = -ux*w.dir;                    // the swirl's way round (as drawn: the foam spirals in this way)
           const al = Math.cos(boat.angle)*tx + Math.sin(boat.angle)*ty;
           if(al > WHIRL_FLING_COS && boat.speed > ROW_ENTER && !anchored){
             const f = w.s*(al - WHIRL_FLING_COS)/(1 - WHIRL_FLING_COS)*(0.35 + 0.65*k);

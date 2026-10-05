@@ -271,9 +271,12 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   `ITEM_ICONS` (`spareHTML(rig)`); a tap on one rigs it (`swapSail(rig)`: toast "… rigged", a thunk and a buzz, the
   new sail bent on furled and spreading) and the one she carried (if any) goes into the hold in its place. Each sail has its own speed curve, in Tuning
   (`SAIL_POLAR_SQUARE`, `SAIL_POLAR_LATEEN`: [degrees off the wind, share of top speed]; `POLARS` picks by `boat.rig`):
-  the square one is fastest running free and poor on the wind, the **lateen** points higher and is at its best with
-  the wind on the beam (50° off the wind 0.68 vs 0.15, beam 1.0 vs 0.42, 110° 0.97 vs 0.60) but poor running
-  free (150° 0.68 vs 0.95, dead downwind 0.54 vs 1.0): pick the sail by the course to the next port. The lateen is drawn by
+  made **starker than real life** so each sail forces its own way of sailing: the **square** one is for the open sea
+  with the wind astern (1.0 from 170°, plus `SQUARE_RUN_BONUS` 0.25 running downwind: `downwindBonus` is the square
+  sail's only, up to 1.25×) and nearly dead on and across the wind (50° 0.05, beam 0.25, 110° 0.45); the **lateen**
+  is for the wind on the beam (50° 0.90, 70° 1.08, beam 1.10, 110° 0.90) and can point up (35° 0.60, 20° 0.22), but
+  crawls running free (150° 0.38, dead downwind 0.22): pick the sail by the course to the next port. The wind card
+  draws the curves with the square's run bonus (radius 40, room for 1.25×). The lateen is drawn by
   `drawLateenSail`: a long slanted yard on a short mast near the bow, the triangle of cloth trailing aft, eased out
   to leeward about half the wind's angle off the bow (`boat.boomSigned`), bellied to leeward, a sheet to the stern
   quarter; it furls along the yard at anchor. Changing tack, the heavy yard swings across slowly (`LATEEN_SWING` in
@@ -295,8 +298,8 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   0.2 of a turn, class `ready`) and **goes ink for the whole window** to press (class `now`, pressed or not: a cue to
   catch from the corner of the eye), and at that same instant a short wooden **knock** of the oarlock sounds
   (`Sfx.oarCue`, loudness `OAR_CUE_VOL` in Tuning), so it can be rowed by ear: hear the knock, press. A press **on time** (within `OAR_WINDOW` = 0.13 of a turn either side) adds
-  `OAR_GOOD` (0.22, less near full), a little pop (class `hit`), a **kick** of extra way at once (`oarKick` = `OAR_KICK` 10 px/s, fading at
-  `OAR_KICK_FADE` 2.2 a second: each stroke on time is a visible surge, e.g. 10 → 23 px/s near full power), a firm buzz and a **powerful stroke** sound
+  `OAR_GOOD` (0.22, less near full), a little pop (class `hit`), a **kick** of extra way (`oarKick` = `OAR_KICK` 20 px/s, half of it added to her speed at once, a
+  jolt, the rest carried by the oars and fading at `OAR_KICK_FADE` 1.3 a second: a long glide), a firm buzz and a **powerful stroke** sound
   (`Sfx.oar(k, true)`: a fuller, brighter, louder gloop); **too early or too late** only `OAR_MISS` (0.04), a light
   buzz and an **ordinary stroke** (softer, never a "wrong" sound); one press a turn counts (`oarPressedTurn`). A mark
   passed with no press keeps only `OAR_SKIP` (0.65) of the power (`oarSkipped`; no sound); below 0.06 she stops; plus
@@ -363,7 +366,8 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   running round a whirlpool's outer ring with its swirl, heading within ~37° of the way it turns (`WHIRL_FLING_COS`),
   she gains speed, `WHIRL_FLING` px/s² × how well she follows it × how deep in she is (0.35 at the rim → 1 at the core),
   up to `WHIRL_FLING_MAX` above her normal speed, fading once she's out; once a pass a whoosh, a buzz and a "flung!"
-  popup (`boat.flingW`); the pull toward the eye still works, so going deeper is a gamble), rollers (big waves: within ~66° of their travel = surf boost (`SURF_COS`), otherwise they hurt). How often: every
+  popup (`boat.flingW`); the swirl's way round in the physics (`tx`, `ty`, and the drift) matches the drawn foam
+  spiralling in (it was flipped: the fling worked going against the drawn swirl); the pull toward the eye still works, so going deeper is a gamble), rollers (big waves: within ~66° of their travel = surf boost (`SURF_COS`), otherwise they hurt). How often: every
   ~2–6 s (`ROLLER_RATE` = 2, twice the old pace; a little rarer near home and among islands, most in open water), at
   most 12 about in open water (8 elsewhere); never in home waters (they die down there) or within 280 px of a pier, only
   with open water ahead of them, quieter while the nets are out, and they die early on reaching shoal water. A quiet hand on
