@@ -285,7 +285,9 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   max(sail, `rowV`)); at anchor or moored the power is 0. `Sfx.oar`: a sine falling 150→70 Hz (210→85 for a powerful
   stroke) and a low-passed swirl of noise. Enter/Space on the button press it too. On the boat the oars come out while
   there's power, the blades sweep with the cycle (`oarPh`: forward at the catch, aft at the finish) with a splash
-  ring mid-pull; turning is `ROW_TURN_MULT` × quicker while rowing (`boat.rowing`). With manual oars the sail is never
+  ring mid-pull (rowing, the stroke never flips as the helm crosses the middle). The stroke never jumps or freezes: when
+  she stops rowing the cycle runs out slowly as the oars come in (`OAR_RATE_MIN` × `oarK`), and a press while they're
+  still out carries on from where the blades are (no reset to the mark). Turning is `ROW_TURN_MULT` × quicker while rowing (`boat.rowing`). With manual oars the sail is never
   brailed up.
   **Sail badge** (`#sail-btn`, a round badge on the right under the oar button, which sits above it; shown only while
   a sail is rigged and the market is shut; `updateSailBtn`): it shows the rigged sail's icon. A **tap** sets or furls
