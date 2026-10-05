@@ -172,8 +172,16 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   hold slot (`bottleHold`, counted in `slotsUsed` and `mkSlotsAfter`; a full hold leaves it in the sea), shown in the
   Cargo after the spare sail as a tappable slot (`bottleSlotHTML`, a dot while unread). A tap reads it (`readBottle`):
   the unrolled message `#letter` over everything (a tap rolls it up), and the first reading puts an ink cross on the
-  sea chart (`marks`, for now at a random spot at sea; drawn by `renderMap` whether that sea is explored or not) with
-  a toast. 12 messages (placeholder lorem ipsum for now, `TEXT.bottles.texts`), dealt in a shuffled order (`msgQueue`)
+  sea chart (`marks`, at a random spot at sea with room round it: no land within 0.8 × `WRECK_LEN`, away from piers,
+  home waters, rocks and other wrecks; drawn by `renderMap` whether that sea is explored or not) with a toast, and
+  **a wreck lies there** (`addWreck`, `wrecks`): a modern white cruise ship, `WRECK_LEN` (190 px) long, broken in two
+  on a reef, each half turned a little off the line (`sa`, `ba`) and listing (its dark hull side showing), decks with
+  rows of windows, lifeboats (some gone), a pool and a funnel aft, the bridge forward, the broken ends gutted and
+  jagged, the bow going under, a dark slick with foam and flotsam round it, a shadow down-right (`paintWreck`, a
+  sprite painted once; `drawWreck` adds a dashed surf ring, live, in the rocks' layer). It's solid: a row of hidden
+  rocks along each half (`hidden`, skipped when drawing) plus four real rocks by the break; the first time she comes
+  within 220 px a toast ("The wreck from the message!", `TEXT.bottles.wreck`). A new voyage clears them
+  (`clearWrecks`, `rockGrid.remove`). 12 messages (placeholder lorem ipsum for now, `TEXT.bottles.texts`), dealt in a shuffled order (`msgQueue`)
   so they don't repeat until all have come up. A new voyage clears them all (`resetBottles`).
 - **Ruins** on the diagonals (the temples): **off for now** (`RUINS_ON` = false in Tuning: `RUINS` is empty). When on: dock there for
   a random power (friendly wind 60 s, blessed nets ×3, full hull).

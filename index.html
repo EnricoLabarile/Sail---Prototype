@@ -722,6 +722,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Messages in a bottle: where a message puts its cross, a wrecked cruise ship now lies, broken in two on a reef (solid; a toast when you first come close)',
+    ]},
+    {build: '2026-10-05 17:36', items: [
       'Deep water: the sea where big waves can rise and run is drawn darker (away from land, harbours and home waters); waves die down as they leave it',
     ]},
     {build: '2026-10-05 17:24', items: [
@@ -732,12 +735,8 @@
     {build: '2026-10-05 16:39', items: [
       'The list of changes: numbered, split into this build and the three before it',
     ]},
-    {build: '2026-10-05 16:38', items: [
-      'Oars: greyed out and shipped while the sail alone drives her faster than 16 px/s (row only when slow)',
-      'World gen: SPIRAL is now random each new world, between 0.5 and 1 (set it to fix it)',
-    ]},
   ];
-  const BUILD = '2026-10-05 17:36';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-05 18:17';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
   // {braces} are filled in by the game (keep the braces and the word inside;
@@ -864,6 +863,7 @@
       title:   'A message in a bottle',
       close:   'Tap to roll it up again.',
       marked:  'A cross on the sea chart',
+      wreck:   'The wreck from the message!',          // the first time she comes close to it
       // the messages (placeholders for now): each bottle fished up brings the next one, in a shuffled order
       texts: [
         'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore. (1)',
@@ -1034,6 +1034,7 @@
   const FISH_CATCH_MIN = 1, FISH_CATCH_MAX = 2;   // fish per haul (random in between)
   const BOTTLE_COUNT = 6;            // messages in a bottle floating about the sea at once (one fished up, another drifts in elsewhere) (world)
   const BOTTLE_SIZE = 1.8;           // how big a bottle is drawn (1 = true to the boat's scale; bigger reads better)
+  const WRECK_LEN = 190;             // px long, the wrecked cruise ship that lies where a message's cross is (in two halves)
   const BOTTLE_TIME = 1.2;           // seconds with the net out before a bottle is hauled in (fish take FISH_TIME_MIN–MAX)
   const HOLD_MAX = 9;                // slots in the hold: each fish or dish takes one; when it's full the nets stay aboard
   const FISH_REACH = 1.35;           // a bank counts out to this × its radius (a little past its circle)
@@ -1258,6 +1259,7 @@
     let stamp = 0;
     const key = '_g'+nx;                       // per-grid visit stamp on each object
     return {
+      remove(o){ for(const c of cells){ const k = c.indexOf(o); if(k >= 0) c.splice(k, 1); } },
       add(o,x,y,rad){
         for(let j=Math.floor((y-rad)/cell); j<=Math.floor((y+rad)/cell); j++)
           for(let i=Math.floor((x-rad)/cell); i<=Math.floor((x+rad)/cell); i++)
@@ -2445,7 +2447,31 @@
       return;
     }
   }
+  // ---- the wreck at a message's cross: a cruise ship broken in two on a reef ----
+  // Two halves, each turned a little off the line where she broke; solid (a row of
+  // hidden rocks along each half), with real rocks round the break. Painted once into a sprite.
+  const wrecks = [];
+  function addWreck(x, y){
+    const L = WRECK_LEN, a = rand(0, Math.PI*2), w = {x, y, a, L, B: L*0.2, sa: rand(-0.16, -0.06), ba: rand(0.1, 0.22),
+      list: Math.random() < 0.5 ? 1 : -1, solid: [], seen: false, sprite: null};
+    const ca = Math.cos(a), sa = Math.sin(a), toW = (lx, ly)=> [wrapX(x + lx*ca - ly*sa), wrapY(y + lx*sa + ly*ca)];
+    // collision: circles along each half's middle (the bow half pivots on its broken end at +L*0.06, the stern on -L*0.02)
+    const half = (from, to, pivot, ang, dy)=>{ for(let u = from; u <= to; u += L*0.1){ const lx = pivot + (u - pivot)*Math.cos(ang), ly = dy + (u - pivot)*Math.sin(ang);
+      const [wx, wy] = toW(lx, ly), o = {x: wx, y: wy, r: w.B*0.5, hidden: true, wreck: w}; rocks.push(o); rockGrid.add(o, wx, wy, 0); w.solid.push(o); } };
+    half(-L*0.46, -L*0.04, -L*0.02, w.sa, 0); half(L*0.1, L*0.44, L*0.06, w.ba, L*0.03);
+    for(let k=0;k<4;k++){                                    // the reef she broke on
+      const [rx, ry] = toW(L*0.02 + rand(-L*0.12, L*0.12), (Math.random()<0.5?-1:1)*w.B*rand(0.75, 1.3));
+      const o = makeRock(rx, ry, rand(4, 8)); o.wreck = w; rocks.push(o); rockGrid.add(o, rx, ry, 0); w.solid.push(o);
+    }
+    wrecks.push(w);
+    return w;
+  }
+  function clearWrecks(){
+    for(const w of wrecks) for(const o of w.solid){ rockGrid.remove(o); const k = rocks.indexOf(o); if(k >= 0) rocks.splice(k, 1); }
+    wrecks.length = 0;
+  }
   function resetBottles(){
+    clearWrecks();
     bottles.length = 0; bottleHold.length = 0; marks.length = 0; msgQueue = [];
     for(let k=0;k<BOTTLE_COUNT;k++) spawnBottle(false);
   }
@@ -5499,10 +5525,11 @@
     Sfx.book(true); buzz(12);
     if(!b.read){                                         // the first reading: a cross on the chart (for now anywhere at sea)
       b.read = true;
-      for(let tries=0; tries<200; tries++){
-        const x = rand(0, WORLD.w), y = rand(0, WORLD.h);
-        if(onLand(x, y, 30) && tries < 199) continue;
-        marks.push({x, y}); break;
+      for(let tries=0; tries<400; tries++){              // a spot at sea with room for the wreck, away from home and harbours
+        const x = rand(0, WORLD.w), y = rand(0, WORLD.h), last = tries === 399;
+        if(!last && (onLand(x, y, WRECK_LEN*0.8) || pierDist(x, y).d < 220 || wdist(x, y, START.x, START.y) < SAFE_R
+          || rockGrid.query(x, y, WRECK_LEN*0.7, ()=> true) || wrecks.some(w=> wdist(x, y, w.x, w.y) < WRECK_LEN*3))) continue;
+        marks.push({x, y}); addWreck(x, y); break;
       }
       toast(TEXT.bottles.marked);
       renderList();
@@ -6417,6 +6444,7 @@
         boat.speed*=0.25;
       }
     });
+    for(const wk of wrecks) if(!wk.seen && wdist(boat.x, boat.y, wk.x, wk.y) < 220){ wk.seen = true; toast(TEXT.bottles.wreck); buzz([20,40,20]); }   // the wreck from the message, first sighted
     // rock collision
     if(!moor && !boat.whirl) rockGrid.query(boat.x, boat.y, 40, o=>{
       const dx=wdx(boat.x,o.x), dy=wdy(boat.y,o.y);
@@ -7931,6 +7959,88 @@
     ctx.stroke(); ctx.globalAlpha=1;
     for(const o of list){ const sp = o.sprite || rockSprite(o); ctx.drawImage(sp.c, sp.x0, sp.y0); }
   }
+  // the wreck: a slick of dark water and foam round it, its shadow, then the two halves of a white cruise
+  // ship (hull side showing as she lists, decks with rows of windows, a pool, lifeboats, a funnel aft, the
+  // bridge forward), the broken ends gutted and jagged; a sprite painted once
+  function drawWreck(wk){
+    if(!wk.sprite){
+      const S = Math.ceil(wk.L*1.5), c = document.createElement('canvas'); c.width = c.height = S;
+      const saved = ctx; ctx = sceneCtx(c); ctx.translate(S/2, S/2); ctx.rotate(wk.a); paintWreck(wk); ctx = saved;
+      wk.sprite = {c, S};
+    }
+    // surf breaking round it, live (like the rocks'), then the ship
+    const r = wk.L*0.52 + Math.sin(t*1.6)*2;
+    ctx.save(); ctx.translate(wk.x, wk.y); ctx.rotate(wk.a);
+    ctx.strokeStyle = INKC; ctx.lineWidth = 1; ctx.globalAlpha = 0.35; ctx.setLineDash([3, 5]); ctx.lineDashOffset = -t*6;
+    ctx.beginPath(); ctx.ellipse(0, 0, r, wk.B*1.3 + Math.sin(t*1.6)*1.5, 0, 0, Math.PI*2); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha = 1; ctx.restore();
+    ctx.drawImage(wk.sprite.c, wk.x - wk.sprite.S/2, wk.y - wk.sprite.S/2);
+  }
+  function paintWreck(wk){
+    const L = wk.L, B = wk.B, hb = B/2, lt = wk.list;
+    const rnd = (k)=> hash(k, Math.floor(wk.x), 77);                 // steady randomness per wreck
+    // the slick of dark water and churned foam round her
+    ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.beginPath(); ctx.ellipse(0, 0, L*0.58, B*1.5, 0, 0, Math.PI*2); ctx.fill();
+    for(let k=0;k<26;k++){
+      const u = (rnd(k)-0.5)*L*0.95, side = rnd(k+40) < 0.5 ? -1 : 1, v = side*(hb + 2 + rnd(k+80)*B*0.6);
+      ctx.fillStyle = PAPERC; ctx.strokeStyle = INKC; ctx.lineWidth = 0.7;
+      ctx.beginPath(); ctx.ellipse(u, v, 1.5 + rnd(k+9)*2.5, 1 + rnd(k+13)*1.4, rnd(k+5)*3, 0, Math.PI*2); ctx.fill(); if(k%3 === 0) ctx.stroke();
+    }
+    for(let k=0;k<7;k++){                                            // flotsam: deck chairs, planks
+      const u = (rnd(k+200)-0.5)*L*0.8, v = (rnd(k+220) < 0.5 ? -1 : 1)*(hb + 6 + rnd(k+240)*B*0.7);
+      ctx.save(); ctx.translate(u, v); ctx.rotate(rnd(k+260)*3); ctx.fillStyle = V(0.5); ctx.fillRect(-2, -0.8, 4, 1.6); ctx.restore();
+    }
+    // each half in its own frame: pivot on the break, turned by ang, set off sideways by dy
+    const halfFrame = (pivot, ang, dy, fn)=>{ ctx.save(); ctx.translate(pivot, dy); ctx.rotate(ang); ctx.translate(-pivot, 0); fn(); ctx.restore(); };
+    const jag = (x0, s)=>{ const pts = []; for(let k=0;k<=6;k++) pts.push([x0 + s*(rnd(k+300+x0|0)*4), -hb + k*B/6]); return pts; };
+    const sternPath = (x0, x1)=>{                                     // squared, rounded stern at x0, broken at x1
+      const j = jag(x1, -1); ctx.beginPath(); ctx.moveTo(x0 + 7, -hb); ctx.lineTo(j[0][0], -hb);
+      for(const [jx, jy] of j) ctx.lineTo(jx, jy);
+      ctx.lineTo(x0 + 7, hb); ctx.quadraticCurveTo(x0, hb, x0, hb - 7); ctx.lineTo(x0, -hb + 7); ctx.quadraticCurveTo(x0, -hb, x0 + 7, -hb); ctx.closePath();
+    };
+    const bowPath = (x0, x1)=>{                                       // broken at x0, a fine bow at x1
+      const j = jag(x0, 1); ctx.beginPath(); ctx.moveTo(j[0][0], -hb); ctx.lineTo(x1 - L*0.16, -hb);
+      ctx.quadraticCurveTo(x1 - L*0.03, -hb*0.8, x1, 0); ctx.quadraticCurveTo(x1 - L*0.03, hb*0.8, x1 - L*0.16, hb);
+      for(let k=j.length-1;k>=0;k--) ctx.lineTo(j[k][0], j[k][1]); ctx.closePath();
+    };
+    const windows = (x0, x1, y, light)=>{ ctx.fillStyle = light ? PAPERC : INKC; for(let u = x0; u < x1; u += 3) ctx.fillRect(u, y - 0.5, 1.4, 1); };
+    const drawHalf = (path, x0, x1, isStern)=>{
+      ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.save(); ctx.translate(5, 4); path(x0, x1); ctx.fill(); ctx.restore();   // shadow down-right
+      ctx.fillStyle = V(0.18); ctx.save(); ctx.translate(0, lt*4); path(x0, x1); ctx.fill(); ctx.restore();          // the hull side, showing as she lists
+      windows(Math.min(x0, x1) + 6, Math.max(x0, x1) - 6, lt*(hb + 1.6), true);                                    // portholes on it
+      ctx.fillStyle = PAPERC; ctx.strokeStyle = INKC; ctx.lineWidth = 1.6; path(x0, x1); ctx.fill(); ctx.stroke(); // the deck
+      // the superstructure: two tiers of white decks with rows of windows
+      const a0 = Math.min(x0, x1) + (isStern ? 9 : 4), a1 = Math.max(x0, x1) - (isStern ? 4 : L*0.17);
+      ctx.fillStyle = V(0.92); ctx.fillRect(a0, -hb + 3, a1 - a0, B - 6); ctx.strokeRect(a0, -hb + 3, a1 - a0, B - 6);
+      windows(a0 + 2, a1 - 2, -hb + 4.5, false); windows(a0 + 2, a1 - 2, hb - 4.5, false);
+      ctx.fillStyle = PAPERC; ctx.fillRect(a0 + 4, -hb + 6.5, a1 - a0 - 8, B - 13); ctx.strokeRect(a0 + 4, -hb + 6.5, a1 - a0 - 8, B - 13);
+      // lifeboats along both sides (a few gone)
+      for(let u = a0 + 4; u < a1 - 6; u += 9) for(const sd of [-1, 1]){ if(rnd(u*7 + sd) < 0.3) continue;
+        ctx.fillStyle = V(0.8); ctx.beginPath(); ctx.ellipse(u + 3, sd*(hb - 1.2), 3, 1.1, 0, 0, Math.PI*2); ctx.fill(); ctx.lineWidth = 0.6; ctx.stroke(); ctx.lineWidth = 1.2; }
+      if(isStern){                                                     // the pool and the funnel
+        ctx.fillStyle = V(0.55); ctx.fillRect(a0 + L*0.06, -2.5, L*0.07, 5); ctx.strokeRect(a0 + L*0.06, -2.5, L*0.07, 5);
+        const fx = a1 - L*0.1; ctx.fillStyle = INKC; ctx.beginPath(); ctx.ellipse(fx, 0, 5, 3.4, 0, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = PAPERC; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.ellipse(fx, 0, 3.4, 2.2, 0, 0, Math.PI*2); ctx.stroke(); ctx.strokeStyle = INKC; ctx.lineWidth = 1.2;
+      } else {                                                         // the bridge: a dark band of windows across, and a mast
+        ctx.fillStyle = INKC; ctx.fillRect(a1 - 4, -hb + 3, 2.5, B - 6);
+        ctx.beginPath(); ctx.arc(a1 - 12, 0, 1.6, 0, Math.PI*2); ctx.fill();
+      }
+    };
+    const xb = -L*0.02, xf = L*0.06;
+    halfFrame(xb, wk.sa, 0, ()=>{
+      drawHalf(sternPath, -L*0.47, xb, true);
+      ctx.fillStyle = V(0.12); ctx.fillRect(xb - 3, -hb + 1, 3, B - 2);                             // the gutted break
+    });
+    halfFrame(xf, wk.ba, L*0.03, ()=>{
+      drawHalf(bowPath, xf, L*0.47, false);
+      ctx.fillStyle = V(0.12); ctx.fillRect(xf, -hb + 1, 3, B - 2);
+      ctx.fillStyle = 'rgba(235,231,220,0.35)'; ctx.beginPath(); ctx.ellipse(L*0.42, 0, L*0.08, hb + 2, 0, 0, Math.PI*2); ctx.fill();   // the bow going under
+    });
+    // twisted plates and foam boiling in the gap between the halves
+    ctx.strokeStyle = INKC; ctx.lineWidth = 1;
+    for(let k=0;k<5;k++){ const u = (xb + xf)/2 + (rnd(k+400)-0.5)*6, v = (rnd(k+410)-0.5)*B; ctx.beginPath(); ctx.moveTo(u - 2, v); ctx.lineTo(u + 1, v + 2 + rnd(k+420)*3); ctx.stroke(); }
+    for(let k=0;k<6;k++){ ctx.fillStyle = PAPERC; ctx.beginPath(); ctx.arc((xb + xf)/2 + (rnd(k+500)-0.5)*8, (rnd(k+510)-0.5)*B*1.4, 1.2 + rnd(k+520)*1.8, 0, Math.PI*2); ctx.fill(); }
+  }
   function rockSprite(o){
     const H = o.stack ? o.h : 0, xs = o.pts.map(p=>p[0]), ys = o.pts.map(p=>p[1]);
     const x0 = Math.floor(o.x + Math.min(...xs) - 3), x1 = Math.ceil(o.x + Math.max(...xs) + H*0.55 + 3);
@@ -8333,7 +8443,8 @@
     layer(()=>{ for(const wp of whirlpools) if(wp.s>0 && inView(wp.x,wp.y,wp.r+10)){ ctx.globalAlpha = wp.s; drawWhirlpool(wp); ctx.globalAlpha = 1; } });
     layer(()=>{ for(const isl of visIslands()) drawIslandWater(isl); }, true);
     layer(()=>{ for(const isl of visIslands()) drawIslandLand(isl); }, true);
-    layer(()=>{ const vis = []; rockGrid.query(view.x+w/2, view.y+h/2, Math.max(w,h)/2+20, o=>{ if(inView(o.x,o.y,o.r+6)) vis.push(o); }); drawRocks(vis); });
+    layer(()=>{ const vis = []; rockGrid.query(view.x+w/2, view.y+h/2, Math.max(w,h)/2+20, o=>{ if(!o.hidden && inView(o.x,o.y,o.r+6)) vis.push(o); }); drawRocks(vis);
+      for(const wk of wrecks) if(inView(wk.x, wk.y, wk.L*0.7)) drawWreck(wk); });
     layer(()=>{ for(const b of banks) drawBank(b); for(const bo of bottles) drawBottle(bo); });
     layer(()=>{ for(const w of rollers) drawRoller(w); });
     layer(()=>{ for(const b of buoys) drawBuoy(b); for(const tr of traders) drawTrader(tr); });   // under the fog
