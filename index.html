@@ -187,6 +187,7 @@
   // best on the beam by far) and it can point up toward the wind; poor running free
   const SAIL_POLAR_SQUARE = [[0,0],[20,0],[35,0.02],[50,0.05],[70,0.12],[90,0.25],[110,0.45],[130,0.72],[150,0.92],[170,1.0],[180,1.0]];
   const SAIL_POLAR_LATEEN = [[0,0.02],[20,0.22],[35,0.60],[50,0.90],[70,1.06],[90,1.10],[110,1.02],[130,0.88],[150,0.72],[170,0.60],[180,0.55]];
+  // (the curves, SQUARE_RUN_BONUS and the RIG_ values below can also be set live on the first screen, section 'Sails')
   const SQUARE_RUN_BONUS = 0.25;     // running downwind (from DOWNWIND_DEG to dead astern) the square sail gains up to this much more (the lateen none)
   // -- how the two sails differ beyond their speed curves: the square sail for the open sea and steady wind, the lateen
   //    for the islands' channels and shifting wind (each value: {square, lateen}; with no sail rigged, 1) --
@@ -226,6 +227,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'First screen: a new folding section, Sails: each sail\'s speed curve, drawn live, with a slider per angle and for its handling; the values hold in the game and on this phone (Reset this sail brings back the Tuning ones)',
+    ]},
+    {build: '2026-10-05 21:05', items: [
       'First screen: all three sections (What\'s new, Settings, World) start folded',
     ]},
     {build: '2026-10-05 20:53', items: [
@@ -234,16 +238,8 @@
     {build: '2026-10-05 20:44', items: [
       'Lateen: a rounder curve, falling off gently aft of the beam to 55% dead downwind (was 22%)',
     ]},
-    {build: '2026-10-05 19:47', items: [
-      'Wind by place: steady and fresher on open sea; gusts, lulls and veering among the islands; it drops in the lee of an island',
-      'Sails retrim after a shift: the square slowly (it loses way at each shift or sharp turn), the lateen at once',
-      'Lateen: changing tack its yard swings across and drives little; on one tack (wind from port) it gives a bit less',
-      'Handling: the lateen turns quicker and picks up speed at once; the square turns slowly and gathers way slowly',
-      'Leeway: close-hauled the square sail slips sideways to leeward (watch the rocks); the lateen hardly',
-      'Big waves: the square sail surfs longer and stronger and takes less damage; the lateen surfs less, broaches and takes more',
-    ]},
   ];
-  const BUILD = '2026-10-05 21:05';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-05 21:27';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -263,6 +259,13 @@
       vibration: 'Vibration',                       // the slider for the strength of the phone's vibrations (the whole game)
       earlier:  'Earlier: build {time}',                // a heading for each of the few builds before this one
       build:    'Build {time}',                       // top right of the first screen: when this version was made
+      // the sail editor (a folding section of the first screen): each sail's speed curve and handling, live
+      sailsTitle: 'Sails',
+      sailsHint: 'Drag a slider: the curve follows. The values hold in the game and on this phone; the line under each sail can be pasted into Tuning.',
+      sailsCurve: 'Speed by angle off the wind',      // above the eleven sliders of a sail's curve
+      sailsMore: 'Handling',                        // above the other sliders of a sail
+      sailsReset: 'Reset this sail',
+      sailsParams: {turn: 'Turning', accel: 'Pick-up', retrim: 'Retrim', leeway: 'Leeway', surf: 'Surfing', waveHit: 'Wave damage', broach: 'Broaching', runBonus: 'Run bonus'},
     },
     intro: {                                        // (not shown for now: the first screen is the world generator)
       lead:  'You run a little restaurant on your island. Every morning brings an order for tonight\'s dinner.',
@@ -993,6 +996,17 @@
   .wg-setting label{flex:0 0 auto;}
   .wg-setting input{flex:1 1 auto; accent-color:var(--ink);}
   .wg-setting span{flex:0 0 2.6em; text-align:right;}
+  #wg-sails .sl-hint{margin:0 0 8px; font:italic 12px/1.35 Georgia, serif;}
+  #wg-sails .sl-sail{margin:0 0 6px; padding:6px 0 4px; border-top:1px dashed var(--ink);}
+  #wg-sails .sl-name{margin:0; text-align:center; font:bold 14px/1.3 Georgia, serif;}
+  #wg-sails svg{display:block; width:176px; height:176px; margin:0 auto;}
+  #wg-sails .sl-sub{margin:6px 0 3px; font:italic 12px/1.3 Georgia, serif;}
+  #wg-sails .sl-row{display:grid; grid-template-columns:8em 1fr 2.8em; align-items:center; gap:6px; font:11.5px/1.3 ui-monospace, monospace;}
+  #wg-sails .sl-row input{width:100%; margin:3px 0; accent-color:var(--ink);}
+  #wg-sails .sl-row span{text-align:right;}
+  #wg-sails .sl-row.changed label, #wg-sails .sl-row.changed span{font-weight:bold;}
+  #wg-sails .sl-code{margin:6px 0 4px; padding:4px; font:10px/1.35 ui-monospace, monospace; word-break:break-all; user-select:all; -webkit-user-select:all; border:1px dotted var(--ink);}
+  #intro #wg-sails .sl-reset{display:block; margin:4px auto 0; padding:5px 12px; font-size:13px; background:var(--paper); color:var(--ink);}
   .wg-sec{margin:0 0 10px; border-top:1.5px solid var(--ink);}
   .wg-sec > summary{list-style:none; cursor:pointer; padding:6px 0 6px 18px; position:relative; font:italic bold 17px/1.2 Georgia, serif; user-select:none;}
   .wg-sec > summary::-webkit-details-marker{display:none;}
@@ -1113,6 +1127,7 @@
     <details class="wg-sec" id="wg-sec-changes"><summary id="wg-sum-changes"></summary><div id="wg-changes"></div></details>
     <details class="wg-sec" id="wg-sec-settings"><summary id="wg-sum-settings"></summary>
     <div class="wg-setting"><label for="wg-haptics" id="wg-haptics-label"></label><input id="wg-haptics" type="range" min="0" max="1" step="0.05"><span id="wg-haptics-val"></span></div></details>
+    <details class="wg-sec" id="wg-sec-sails"><summary id="wg-sum-sails"></summary><div id="wg-sails"></div></details>
     <details class="wg-sec" id="wg-sec-world"><summary id="wg-title"></summary>
     <canvas id="wg-map" aria-label="Preview of the world"></canvas>
     <div id="wg-knobs"></div>
@@ -2617,7 +2632,15 @@
   function downwindBonus(relDeg, rig){                 // the square sail's own: the wind from astern fills it best
     if((rig === undefined ? boat.rig : rig) !== 'square') return 1;
     const a = Math.abs(relDeg), k = Math.max(0, Math.min(1, (a-DOWNWIND_DEG)/(180-DOWNWIND_DEG)));
-    return 1 + SQUARE_RUN_BONUS*k*k*(3-2*k);
+    return 1 + squareRunBonus*k*k*(3-2*k);
+  }
+  let squareRunBonus = SQUARE_RUN_BONUS;               // (the sail editor on the first screen can change it)
+  // a sail's curve as an SVG path, the wind from the top: the share of top speed on every heading, radius Rr = 1
+  function polarPath(rig, Rr){
+    const f = n=> n.toFixed(1); let d = '';
+    for(let a = 0; a <= 360; a += 5){ const b = a > 180 ? 360 - a : a, k = speedFactor(b, rig)*downwindBonus(b, rig)*Rr, r = a*Math.PI/180;
+      d += (a ? 'L' : 'M') + f(Math.sin(r)*k) + ' ' + f(-Math.cos(r)*k); }
+    return d + 'Z';
   }
 
   // ---------- Wind ----------
@@ -4162,7 +4185,7 @@
   function curlScroll(){
     if(intro.classList.contains('hidden')) return;
     const H = scrollBody.clientHeight, st = scrollBody.scrollTop;
-    for(const el of scrollBody.querySelectorAll(':scope > *:not(details), #wg-knobs > *, #wg-changes > *, #wg-changes li, .wg-sec > *:not(#wg-knobs):not(#wg-changes)')){
+    for(const el of scrollBody.querySelectorAll(':scope > *:not(details), #wg-knobs > *, #wg-changes > *, #wg-changes li, #wg-sails > *:not(.sl-sail), .sl-sail > *, .wg-sec > *:not(#wg-knobs):not(#wg-changes):not(#wg-sails)')){
       let y = 0; for(let e = el; e && e !== scrollBody; e = e.offsetParent) y += e.offsetTop;   // (a transformed row is its children's offsetParent)
       const top = y - st, bot = H - (top + el.offsetHeight);
       const t = Math.max(0, Math.min(1, (CURL_BAND - Math.min(top, bot))/CURL_BAND));
@@ -4349,6 +4372,68 @@
   // field each; a preview of this world (land in ink, the clusters' zones
   // dotted, home a square, the villages rings); "Generate" reloads the page
   // with the fields in the address, "Defaults" without them.
+  // the sail editor (the 'Sails' section of the first screen): each sail's speed curve (a slider per angle) and its
+  // handling (the RIG_ values; the square's run bonus), changed live in the game, with the curve redrawn as it
+  // goes. The values are kept on this phone (vv.sails) until a Reset, or until the Tuning defaults themselves change.
+  function sailEditor(T){
+    const box = document.getElementById('wg-sails'), P = T.sailsParams;
+    document.getElementById('wg-sum-sails').textContent = T.sailsTitle;
+    const RIGS = {turn: RIG_TURN, accel: RIG_ACCEL, retrim: RIG_RETRIM, leeway: RIG_LEEWAY, surf: RIG_SURF, waveHit: RIG_WAVE_HIT, broach: RIG_BROACH};
+    const NAMES = {turn: 'RIG_TURN', accel: 'RIG_ACCEL', retrim: 'RIG_RETRIM', leeway: 'RIG_LEEWAY', surf: 'RIG_SURF', waveHit: 'RIG_WAVE_HIT', broach: 'RIG_BROACH'};
+    const MAX = {turn: 3, accel: 3, retrim: 6, leeway: 1, surf: 3, waveHit: 3, broach: 4};
+    const snap = ()=> ({polar: {square: POLARS.square.map(p=> p[1]), lateen: POLARS.lateen.map(p=> p[1])},
+                        rig: Object.fromEntries(Object.entries(RIGS).map(([k, o])=> [k, {square: o.square, lateen: o.lateen}])), run: squareRunBonus});
+    const DEF = snap(), defKey = JSON.stringify(DEF);
+    const apply = v=>{
+      for(const r of ['square', 'lateen']){ v.polar[r].forEach((f, i)=> POLARS[r][i][1] = f); for(const k in RIGS) RIGS[k][r] = v.rig[k][r]; }
+      squareRunBonus = v.run;
+    };
+    const save = ()=>{ try{ localStorage.setItem('vv.sails', JSON.stringify({def: defKey, v: snap()})); }catch(e){} };
+    try{ const st = JSON.parse(localStorage.getItem('vv.sails') || 'null'); if(st && st.def === defKey) apply(st.v); }catch(e){}
+    const n2 = x=> +(+x).toFixed(2);
+    box.innerHTML = '<p class="sl-hint">' + T.sailsHint + '</p>';
+    for(const rig of ['square', 'lateen']){
+      const other = rig === 'square' ? 'lateen' : 'square', sec = document.createElement('div'); sec.className = 'sl-sail';
+      const rows = [];   // {label, min, max, step, get, set, def}
+      POLARS[rig].forEach((p, i)=> rows.push({grp: 0, label: p[0] + '°', min: 0, max: 1.5, step: 0.01, get: ()=> POLARS[rig][i][1], set: v=> POLARS[rig][i][1] = v, def: DEF.polar[rig][i]}));
+      if(rig === 'square') rows.push({grp: 1, label: P.runBonus, min: 0, max: 0.6, step: 0.01, get: ()=> squareRunBonus, set: v=> squareRunBonus = v, def: DEF.run});
+      for(const k in RIGS) rows.push({grp: 1, label: P[k], min: 0, max: MAX[k], step: 0.01, get: ()=> RIGS[k][rig], set: v=> RIGS[k][rig] = v, def: DEF.rig[k][rig]});
+      sec.innerHTML = '<p class="sl-name">' + TEXT.sails[rig] + '</p>'
+        + '<svg viewBox="-53 -53 106 106" aria-hidden="true"><circle r="40" fill="none" stroke="currentColor" stroke-width=".7" stroke-dasharray="1 3"/>'
+        + '<path d="M0 -40 V40 M-40 0 H40" stroke="currentColor" stroke-width=".5" opacity=".5"/>'
+        + '<path class="sl-other" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2.5 2.5" opacity=".75"/>'
+        + '<path class="sl-curve" fill="url(#sh-light)" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>'
+        + '<path d="M0 -51 V-43 M-3.5 -47 L0 -42.5 L3.5 -47" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      const svg = sec.querySelector('svg'), code = document.createElement('p'); code.className = 'sl-code';
+      const draw = ()=>{
+        svg.querySelector('.sl-curve').setAttribute('d', polarPath(rig, 40));
+        svg.querySelector('.sl-other').setAttribute('d', polarPath(other, 40));
+        code.textContent = 'SAIL_POLAR_' + rig.toUpperCase() + ' = [' + POLARS[rig].map(p=> '[' + p[0] + ',' + n2(p[1]) + ']').join(',') + '];'
+          + (rig === 'square' ? ' SQUARE_RUN_BONUS = ' + n2(squareRunBonus) + ';' : '')
+          + Object.keys(RIGS).map(k=> ' ' + NAMES[k] + '.' + rig + ' = ' + n2(RIGS[k][rig]) + ';').join('');
+      };
+      const inputs = [];
+      rows.forEach((r, j)=>{
+        if(j === 0 || r.grp !== rows[j-1].grp){ const h = document.createElement('p'); h.className = 'sl-sub'; h.textContent = r.grp ? T.sailsMore : T.sailsCurve; sec.appendChild(h); }
+        const row = document.createElement('div'); row.className = 'sl-row';
+        const id = 'sl-' + rig + '-' + j, lab = document.createElement('label'), inp = document.createElement('input'), val = document.createElement('span');
+        lab.htmlFor = id; lab.textContent = r.label; inp.id = id; inp.type = 'range'; inp.min = r.min; inp.max = r.max; inp.step = r.step;
+        const show = ()=>{ inp.value = r.get(); val.textContent = n2(r.get()).toFixed(2); row.classList.toggle('changed', Math.abs(r.get() - r.def) > 1e-6); };
+        inp.addEventListener('input', ()=>{ r.set(+inp.value); show(); save(); });
+        show(); inputs.push(show);
+        row.append(lab, inp, val); sec.appendChild(row);
+      });
+      sec.appendChild(code);
+      const rb = document.createElement('button'); rb.type = 'button'; rb.className = 'sl-reset'; rb.textContent = T.sailsReset;
+      rb.addEventListener('click', ()=>{ for(const r of rows) r.set(r.def); inputs.forEach(f=> f()); redrawAll(); save(); buzz([20]); });
+      sec.appendChild(rb);
+      sec._draw = draw; box.appendChild(sec);
+    }
+    // a change to one sail moves the other's dashed curve too
+    function redrawAll(){ for(const s of box.querySelectorAll('.sl-sail')) s._draw(); }
+    box.addEventListener('input', redrawAll);
+    redrawAll();
+  }
   (function worldGen(){
     const K = {ISLAND_SCALE, ISLAND_COUNT, CLUSTER_SHARE, SPIRAL, SPIRAL_ARMS, OPEN_ISLANDS, ISLAND_BIG, ISLAND_L, ISLAND_C, ISLAND_ATOLL,
                OPEN_ROCK_TRIES, TRADERS_HOME, TRADERS_VILLAGES, ROLLER_RATE, CLOUD_COUNT};
@@ -4372,6 +4457,7 @@
     hs.value = haptics; hv.textContent = (+haptics).toFixed(2);
     hs.addEventListener('input', ()=>{ setHaptics(+hs.value); hv.textContent = (+hs.value).toFixed(2); });
     hs.addEventListener('change', ()=> buzz([30, 60, 30]));
+    sailEditor(T);
     const gen = document.getElementById('wg-gen'), reset = document.getElementById('wg-reset');
     gen.textContent = T.generate; reset.textContent = T.reset;
     for(const [k, v] of Object.entries(K)){
@@ -5588,8 +5674,7 @@
   const windCardKey = ()=> [Math.round(windRel()/2), boat.rig, Math.round(windStrength*20)].join('|');
   function windHTML(){
     const Rr = 40, f = n=> n.toFixed(1);                  // (room for the square sail's run, up to 1.25 ×)
-    const curve = rig=>{ let d = ''; for(let a = 0; a <= 360; a += 5){ const b = a > 180 ? 360 - a : a, k = speedFactor(b, rig)*downwindBonus(b, rig)*Rr, r = a*Math.PI/180;
-      d += (a ? 'L' : 'M') + f(Math.sin(r)*k) + ' ' + f(-Math.cos(r)*k); } return d + 'Z'; };
+    const curve = rig=> polarPath(rig, Rr);
     const rel = windRel(), r = rel*Math.PI/180, eff = speedFactor(rel)*downwindBonus(rel), hx = Math.sin(r), hy = -Math.cos(r);
     const spare = sailsInHold().map(r=> '<path d="'+curve(r)+'" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2.5 2.5" opacity=".75"/>').join('');
     return '<h3>'+TEXT.sails.windTitle+'</h3>'
