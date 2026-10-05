@@ -715,14 +715,14 @@
 
   // what's new, newest first (a few lines, shown under the build time so Enrico knows what to look for); update it with every commit
   const CHANGES = [
+    'Fish banks all look alike (a few big dark fish): the catch is a surprise',
+    'Anchor: hold the hub for a shorter time to drop or weigh it (0.32 s, was 0.5)',
     'Intro scroll: the rows stay straight and just fade near the rolls; the newest change in bold',
     'Intro card: an open scroll, the paper curls into a roll at top and bottom',
     'This list of what changed, under the build time',
     'Quay badge: coins jingle at a village, the storehouse door creaks at home',
-    'Build time on this screen',
-    'Oars: one steady beat, a kick of speed on each stroke on time',
   ];
-  const BUILD = '2026-10-05 15:32';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-05 16:03';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
   // {braces} are filled in by the game (keep the braces and the word inside;
@@ -1016,6 +1016,7 @@
   const FISH_REACH = 1.35;           // a bank counts out to this × its radius (a little past its circle)
   const FISH_STOP = 12;              // px/s: slow enough to count as stopped on a bank
   const FISH_SETTLE = 2;             // seconds stopped on a bank before the nets go over
+  const BANK_LOOK = [4, 5, 1.45];    // every fish bank looks alike, whatever it holds: [fewest fish, most fish, their size] (dark, going round)
   const FISH_ANCHOR_SETTLE = 0.25;   // …or this long after dropping anchor on a bank
   const FISH_TIME_MIN = 2, FISH_TIME_MAX = 4;   // seconds with the nets out before the haul
   const COIN_LOCAL = 1;              // a village pays this for its own kind of fish
@@ -1080,7 +1081,7 @@
   const TUT_PAUSE = 1500;            // ms between one step and the next
   const TUT_COMPASS_T = 4500;        // ms the compass step lasts (no input needed)
   const TUT_DROP_WAIT = 3000, TUT_DROP_T = 3000;   // after the wheel: wait, then the optional drop-anchor tip for a while (ms)
-  const HUB_HOLD = 500;              // ms to hold the hub to drop or weigh anchor
+  const HUB_HOLD = 320;              // ms to hold the hub to drop or weigh anchor (was 500)
 
   // -- Look --
   const UI_TINT = 0.7;               // how much the interface takes on the day/night colours (0 = never, 1 = like the world)
@@ -2216,9 +2217,8 @@
       if(!spotIsClear(x,y,r)) continue;
       const sec = home ? ['nord','est','sud','ovest'][Math.floor(Math.random()*4)] : sectorAt(x,y);
       const fish = [];
-      // each kind looks different: sardines many and small and pale,
-      // mackerel lighter-dotted, red mullet mid-grey, sea bream few, big and dark
-      const LOOK = { nord:[12,15,0.62], est:[9,11,0.9], sud:[7,8,1.1], ovest:[4,5,1.45] }[sec];
+      // every bank looks the same (the catch is a surprise): a few big dark fish going round (the old sea bream's look)
+      const LOOK = BANK_LOOK;
       const n = LOOK[0] + Math.floor(rand(0, LOOK[1]-LOOK[0]+1));
       for(let k=0;k<n;k++) fish.push({a:rand(0,6.3), rad:rand(0.25,0.8), sp:rand(0.5,0.9)*(Math.random()<0.5?-1:1),
                                       ph:rand(0,6.3), wob:rand(0.15,0.35), size:LOOK[2]*rand(0.9,1.1)});
@@ -7866,7 +7866,7 @@
       stampDot(softDot('bank', [[0,0.13],[0.7,0.07],[1,0]]), b.x+ox, b.y+oy, rr, 1);
     }
     // the fish, in the shade of their kind (same as the counter icons)
-    const shade = {nord:PAPERC, est:V(0.78), sud:V(0.45), ovest:INKC}[b.sec], outline = b.sec!=='ovest';
+    const shade = INKC, outline = false;                            // all alike: the kind is only known once hauled in
     const net = fishing && fishing.bank===b ? netAmount() : 0;
     const pull = fishing && fishing.bank===b && fishing.phase==='wait' ? Math.min(1, fishing.t/fishing.dur) : 0;
     for(const f of b.fish){

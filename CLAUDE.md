@@ -171,6 +171,8 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
 - **Fish:** sardines (N), mackerel (E), red mullet (S), sea bream (W). Banks denser far from home; half the open-sea banks
   (`ROUTE_BANK_SHARE`) lie along the sea roads, home to each village and village to village, within `ROUTE_BANK_SPREAD` of
   the straight line (`routeSpot`), so the fish lead from place to place; home waters have all kinds and plenty of banks (`HOME_BANKS` = 9 in the smaller world, same density as 18 before; refilled as they are fished).
+  **Every bank looks alike** (`BANK_LOOK` in Tuning: 4–5 big dark fish going round over the darker water, the old sea
+  bream's look), so what's in it is only known when the net comes up.
   Fishing: stop on a bank for 2 s and the nets go over; drop anchor on a bank and they go over after 0.25 s.
   **Hold: `HOLD_MAX` = 9 slots**, each fish or dish takes one, and the spare sail one (`slotsUsed` = `fishAboard` + `dishesAboard` + `spareSlots`; the gifts
   are kept apart, below the slots, and take none): with a full hold the nets stay aboard (a popup "the hold is full",
@@ -239,7 +241,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   logbook bottom left (compass at the top centre), wheel bottom centre; nothing bottom right (the sail is automatic).
   Hub of the wheel = anchor only:
   No rudder gauge above the wheel (removed): the wheel's turn and the rudder on the boat show the helm.
-  **long press 0.5 s = anchor**. At anchor the wheel fades out and only the hub (dark) remains. The hub is always drawn big (`hubScale` = 2, the
+  **long press 0.32 s = anchor** (`HUB_HOLD`, was 0.5). At anchor the wheel fades out and only the hub (dark) remains. The hub is always drawn big (`hubScale` = 2, the
   size it once grew to only at anchor); while sailing its grip is just the hub (`HUB_SAIL_R`), so the spokes still steer. The hub is
   drawn like the compass, in greys then dithered: a light brass bezel (lit top left) with four rivets round a shaded
   face with a glint; sailing, a light face with an ink anchor; at anchor, a dark face, one light rim and a paper anchor (same size both ways). Over a fish bank (not fishing, not
