@@ -119,6 +119,14 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   the clients' boats (`guests`, drawn with the player's boat model, `drawBoat(g)`, sail furled when tied up) take up to
   `GUEST_BOATS_MAX` (4) berths, two a side (one alongside, one rafted outside it); round(satisfaction × 4) of them: one
   more sails in from the open sea (`GUEST_IN_T` = 10 s, foam at the bow) or one sails away when the mood changes.
+- **Home's three looks** (`baseLevel`, starting at `BASE_LEVEL` = 1 in Tuning; for now a preview, switched from the
+  logbook's third spread): 0 a **fisherman's hut** (`drawHut`: a stone hut under a pitched tiled roof, a fire pit,
+  a fenced vegetable patch, crates and oars, the drying net), 1 the **masseria** above (its look still follows
+  `homeStage`), 2 a **fortified palace** (the masseria at its best, stage 4, plus a longer house with an arcaded
+  loggia, a second tower with a pennant on the south-west corner, a fountain with four paths in the court, and
+  outside the walls `drawPalaceGrounds`: a whitewashed chapel with an apse, a bell gable and a cross to the
+  north-west, an olive grove in three rows to the south; no drying net). Home's `yard` also clears the palace's
+  ground of macchia at every level. Night lights follow the level (court and trulli lit at the palace, plus the chapel).
 - **Home waters** (`SAFE_R` ≈ 665 px round home): no whirlpools (pull ring included) and no big waves (any that drift in
   die down harmlessly); a ring of 22 buoys (`HOME_BUOYS`) marks the edge, with toasts "Leaving home waters" / "Back in home waters".
   Inside them, a calm **lagoon** (`LAGOON_R` ≈ 455 px round home): no islands and no rocks, room to learn the controls.
@@ -178,7 +186,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   The market is a centred window over the world (no dark backdrop; a clear `#mk-shade` still catches stray taps); while it's open the compass (with its fish
   counters) and wheel/anchor are hidden. Buttons: Quit (left) and Trade (right); both close it and leave you moored
   with the anchor back, so you can linger. **Nothing opens by itself on docking**: tied up at a village or at home, a
-  round badge bobs over the root of the quay (`#dock-btn`, `updateDockBtn`, placed from the camera each frame; coins at
+  round badge bobs beside the quay where it leaves the beach, on the far side from the boat (`#dock-btn`, `updateDockBtn`, placed from the camera each frame; coins at
   a village, a crate at home; hidden while the table is open); a tap opens the market, or at home the **storehouse**,
   as many times as you like while moored.
   **Home storehouse** (`homeStore` = {fish, dish, bottles}; texts in `TEXT.store`; cleared on a new voyage by
@@ -274,14 +282,19 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   crossed off since the book was last opened), a crease, and the **Cargo** on the
   right page (`holdHTML`: purse, every fish as a small icon, then every dish aboard and gift as an icon only, name on
   hover; the book grows to fit). Each dish and gift has its own 24×24 ink icon (`ITEM_ICONS`, `itemIcon(name)`), used at the market stall too.
-  **Two spreads**: a sideways swipe across the open book turns the page (left = forward to the **sea chart**, right = back
-  to the list and cargo; `turnPage`, `logSpread`): a sheet swings over on the spine (copies of the pages, `snapPage`), with
+  **Three spreads**: a sideways swipe across the open book turns the page (left = forward: the list and cargo, the
+  **sea chart**, then **home's look**; right = back; `turnPage`, `logSpread` 0..2): a sheet swings over on the spine (copies of the pages, `snapPage`), with
   `Sfx.pageTurn()` and a buzz; the book remembers the spread it was left on and opens there. The **sea chart** (`renderMap`)
   is drawn across both pages and the crease, square, `MAP_RES` pixels a side then dithered like the widgets: only the
   cells the boat has seen (fog of war's `explored`; land inked round its coast) and nothing else: no marks for home,
   ports, ruins or the boat (Enrico's choice: you find your way by the coastlines). It is drawn only when
   shown (book opened on it, or a page turned to it), never while sailing (~3 ms; the land under each pixel is worked out
   once, ~10 ms, on the first showing).
+  **Home's look** (third spread, class `on-base`; `renderBase`, texts in `TEXT.base`): the left page has a title, a
+  hint and three buttons, each a little ink drawing (`BASE_ICONS`: hut, walled court with a tower, palace with two
+  towers and a flag) and its name, the chosen one inked solid; the right page a preview of home as it would look
+  (`drawBasePreview`: home's water and land drawn into a 150 px canvas, then dithered like the widgets) with its
+  name. A tap switches home itself (`baseLevel`, `rebakeHome`), with a thunk and a buzz.
   Opening/closing it plays `Sfx.book(open)`: paper flutter, and the cover's thump on closing. The list also shows the day of the voyage
   (`dayNo`, +1 at each dawn). A tiny faint frame-rate counter (`#fps`, refreshed twice a second while the logbook is open) sits on the
   paper, in the bottom right corner of the right page. Keyboard: arrows, Space = anchor.

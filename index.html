@@ -339,6 +339,18 @@
   /* the second spread: the sea chart, drawn across both pages and the crease */
   #shoplist{touch-action:none;}
   #shoplist .map-cv{display:none; width:100%; image-rendering:pixelated;}
+  /* the third spread: home's look, three to choose from (a preview) */
+  #base-l, #base-r{display:none;}
+  #shoplist.on-base #base-l, #shoplist.on-base #base-r{display:block;}
+  #shoplist.on-base #shoplist-body, #shoplist.on-base #hold-page{display:none;}
+  #base-l h2{margin:0 0 6px;}
+  #base-l .base-hint{font-size:12px; font-style:italic; margin:0 0 8px; opacity:.85;}
+  #base-l .base-pick{display:flex; align-items:center; gap:8px; width:100%; margin:0 0 6px; padding:3px 6px 3px 3px; font:inherit; font-size:13px;
+    color:var(--ink); background:none; border:1.5px dashed var(--ink); border-radius:3px; cursor:pointer; text-align:left;}
+  #base-l .base-pick.on{border-style:solid; background:var(--ink); color:var(--paper);}
+  #base-l .base-pick svg{width:34px; height:34px; flex:none;}
+  #base-r canvas{width:100%; display:block; image-rendering:pixelated; border:1.5px solid var(--ink); border-radius:2px;}
+  #base-name{margin:6px 0 14px; text-align:center; font-weight:bold; font-style:italic;}
   #shoplist.on-map .map-cv{display:block;}
   #shoplist.on-map #shoplist-body, #shoplist.on-map #hold-page{display:none;}
   #shoplist.on-map .page.left{padding:10px 0 10px 10px;}
@@ -570,11 +582,11 @@
     <div class="pages">
       <!-- the front cover: its inside is the left page; folded shut it lies over the right page, leather side up -->
       <div class="leaf">
-        <div class="page left"><div id="shoplist-body"></div><canvas class="map-cv" id="map-l"></canvas></div>
+        <div class="page left"><div id="shoplist-body"></div><canvas class="map-cv" id="map-l"></canvas><div id="base-l"></div></div>
         <div class="leaf-back" aria-hidden="true"><svg viewBox="0 0 24 24"><g fill="var(--paper)"><path d="M12 1.5 L13.6 9.2 L21 12 L13.6 14.8 L12 22.5 L10.4 14.8 L3 12 L10.4 9.2 Z"/><path d="M12 6 L13 11 L18 12 L13 13 L12 18 L11 13 L6 12 L11 11 Z" transform="rotate(45 12 12)" opacity=".7"/></g><circle cx="12" cy="12" r="6.6" fill="none" stroke="var(--paper)" stroke-width="0.9"/><circle cx="12" cy="12" r="1.2" fill="var(--ink)"/></svg></div>
       </div>
       <div class="crease" aria-hidden="true"><canvas class="map-cv" id="map-c"></canvas></div>
-      <div class="page right"><div id="hold-page"></div><canvas class="map-cv" id="map-r"></canvas></div>
+      <div class="page right"><div id="hold-page"></div><canvas class="map-cv" id="map-r"></canvas><div id="base-r"><canvas id="base-prev"></canvas><p id="base-name"></p></div></div>
     </div>
   </div>
   <!-- the compass, top centre of the main view (not interactive; the open logbook may cover it) -->
@@ -730,6 +742,12 @@
       balPay:     'Balance: <b>{n}</b> {icon} paid from your purse',
       balShort:   'Balance: <b>{n}</b> {icon} not enough: offer more fish',
       balFull:    'No room in the hold: {n} too many',
+    },
+    // the logbook's last spread: how home could look (a preview for now)
+    base: {
+      title:   'Home',
+      hint:    'Tap to see how home could grow. (A preview for now.)',
+      levels:  ['Fisherman\'s hut', 'Masseria', 'Fortified palace'],
     },
     // home's storehouse: drag goods between the hold and the store (what's left here waits at home)
     store: {
@@ -1386,7 +1404,9 @@
   // A tiny sandy islet in the middle of the map with a hut and a pier;
   // the boat starts moored at the end of the pier.
   const HOME_R = 100;
-  const HOME_BLD = 1.2;             // buildings on the home island are drawn a bit larger, to read at a glance
+  const HOME_BLD = 1.2;
+  const BASE_LEVEL = 1;             // how home looks at the start: 0 a fisherman's hut, 1 the masseria, 2 a fortified palace (the logbook's last spread switches it, for a preview)
+  let baseLevel = BASE_LEVEL;             // buildings on the home island are drawn a bit larger, to read at a glance
   const PIER_W = 12, PIER_LEN = 50, PIER_DIR = -Math.PI/2;  // pier points north
   const home = (function(){
     const x=START.x, y=START.y;
@@ -1407,7 +1427,8 @@
     isl.patches.forEach(b=>b.forEach(q=>q[1]=my(q[1])));
     const B = HOME_BLD;
     // the masseria's walled court (and its tower) and the cluster of trulli east of it
-    isl.yard=[[x-2*B,y-1*B,37*B],[x+18*B,y-28*B,13*B],[x+41*B,y+7*B,17*B],[x-14*B,y+19*B,14*B],[x+10*B,y+19*B,14*B]];
+    isl.yard=[[x-2*B,y-1*B,37*B],[x+18*B,y-28*B,13*B],[x+41*B,y+7*B,17*B],[x-14*B,y+19*B,14*B],[x+10*B,y+19*B,14*B],
+              [x-44*B,y-16*B,14*B],[x-14*B,y+38*B,18*B],[x+18*B,y+38*B,16*B]];   // (the last three: the palace's chapel and olive grove)
     const inYard=(px,py)=>isl.yard.some(([cx,cy,r])=>Math.hypot(px-cx,py-cy)<r+2);
     isl.tufts=[];
     for(let k=0;k<90 && isl.tufts.length<55;k++){ const a=rand(0,6.3), d=Math.sqrt(Math.random())*(HOME_R-14); const tx=x+Math.cos(a)*d, ty=y+Math.sin(a)*d; if(!inYard(tx,ty)) isl.tufts.push([tx,ty]); }
@@ -4617,7 +4638,9 @@
     if(!show) return;
     if(!elDock.classList.contains(kind)){ elDock.classList.remove('coins','crate'); elDock.classList.add(kind);
       const lbl = kind === 'coins' ? TEXT.store.openMarket : TEXT.store.openStore; elDock.setAttribute('aria-label', lbl); elDock.title = lbl; }
-    const pr = moor.pier, wx = pr.x0 - pr.dx*34, wy = pr.y0 - pr.dy*34;           // a little inland from the root of the quay
+    // beside the quay where it leaves the beach, on the far side from the boat (so it hides neither the town nor her)
+    const pr = moor.pier, a = pr.shoreAlong + 6, sd = -(moor.side || 1)*34;
+    const wx = pr.x0 + pr.dx*a - pr.dy*sd, wy = pr.y0 + pr.dy*a + pr.dx*sd;
     const k = viewW()/(GW*PX), sx = viewW()/2 + wdx(wx, camFx)*k, sy = viewH()/2 + wdy(wy, camFy)*k;
     const pos = Math.round(sx)+'|'+Math.round(sy);
     if(pos !== dockPos){ dockPos = pos; elDock.style.left = Math.round(sx)+'px'; elDock.style.top = Math.round(sy)+'px'; }
@@ -5270,7 +5293,7 @@
     Sfx.init();
     if(on){
       renderList(); elListBtn.classList.remove('news');                        // seen: stop the shimmer
-      if(logSpread === 1) renderMap(); else freshLines.clear();               // (a line crossed off waits for the list page)
+      if(logSpread === 1) renderMap(); else if(logSpread === 2) renderBase(); else freshLines.clear();   // (a line crossed off waits for the list page)
       if(tut === 'book' || tut === 'intro') tutBookSeen = true;   // (opened while the scroll was still flying in counts too)
       elList.classList.add('open');
       bookT = setTimeout(()=>{ elList.classList.add('unfold'); Sfx.book(true); buzz([6,40,4]); }, BOOK_DROP);   // landed: open it
@@ -5360,8 +5383,52 @@
     }
   }
 
+  // ---------- Home's look (the logbook's third spread) ----------
+  // Three looks for home, from a fisherman's hut to a fortified palace: the
+  // left page has a button for each (a little ink drawing and its name), the
+  // right page a preview of home drawn as it would look, dithered like the
+  // chart. A tap switches home itself too (baseLevel; its tiles are baked
+  // again), for now just to see how each one feels.
+  const BASE_ICONS = [
+    // a hut: a pitched roof and a door
+    '<svg viewBox="0 0 24 24" aria-hidden="true" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" fill="none"><path d="M4 12 L12 5 L20 12"/><path d="M6 11 V19 H18 V11"/><path d="M10.5 19 V15 H13.5 V19"/></svg>',
+    // the masseria: a walled court with a tower on its corner
+    '<svg viewBox="0 0 24 24" aria-hidden="true" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" fill="none"><path d="M3 20 V11 H14 V20 Z"/><path d="M14 20 V6 H20 V20 Z"/><path d="M14 6 V4.5 H15.5 V6 M17 6 V4.5 H18.5 V6"/><path d="M7 20 V16 H10 V20"/><path d="M3 11 V9.5 H4.5 V11 M6.5 11 V9.5 H8 V11 M10 11 V9.5 H11.5 V11"/></svg>',
+    // the palace: two towers, a long house between them and a flag
+    '<svg viewBox="0 0 24 24" aria-hidden="true" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" fill="none"><path d="M2 21 V8 H6 V21 M18 21 V8 H22 V21"/><path d="M6 21 V12 H18 V21"/><path d="M2 8 V6.5 H3.5 V8 M4.5 8 V6.5 H6 M18 8 V6.5 H19.5 V8 M20.5 8 V6.5 H22 V8"/><path d="M10 21 V16 Q12 14 14 16 V21"/><path d="M20 6.5 V2 L23 3 L20 4"/></svg>'];
+  const elBaseL = document.getElementById('base-l'), elBasePrev = document.getElementById('base-prev'), elBaseName = document.getElementById('base-name');
+  function renderBase(){
+    const B = TEXT.base;
+    elBaseL.innerHTML = '<h2>'+B.title+'</h2><p class="base-hint">'+B.hint+'</p>'
+      + B.levels.map((name,i)=> '<button type="button" class="base-pick'+(i===baseLevel?' on':'')+'" data-level="'+i+'">'+BASE_ICONS[i]+'<span>'+name+'</span></button>').join('');
+    elBaseName.textContent = B.levels[baseLevel];
+    drawBasePreview();
+  }
+  // home drawn into a small canvas (its land as the tiles have it), then dithered to the book's ink
+  function drawBasePreview(){
+    const S = 150, span = 190;                               // canvas pixels; world px shown across it
+    const lo = document.createElement('canvas'); lo.width = S; lo.height = S;
+    const c = lo.getContext('2d', {willReadFrequently:true});
+    c.fillStyle = '#fff'; c.fillRect(0, 0, S, S);
+    const saved = ctx; ctx = c;
+    ctx.setTransform(S/span, 0, 0, S/span, 0, 0); ctx.translate(span/2 - home.x, span/2 - home.y + 8);
+    bakeR = {x0: home.x - span/2, y0: home.y - span/2 - 8, x1: home.x + span/2, y1: home.y + span/2 - 8};
+    drawIslandWaterStatic(home); drawIslandLandStatic(home);
+    bakeR = null; ctx = saved;
+    c.setTransform(1, 0, 0, 1, 0, 0); ditherUI(c, S, S);
+    const k = 2; elBasePrev.width = S*k; elBasePrev.height = S*k;
+    const x = elBasePrev.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(lo, 0, 0, S*k, S*k);
+  }
+  elBaseL.addEventListener('click', e=>{
+    const b = e.target.closest('[data-level]'); if(!b) return;
+    e.stopPropagation(); Sfx.init();
+    const lv = +b.dataset.level; if(lv === baseLevel) return;
+    baseLevel = lv; rebakeHome(); renderBase();
+    Sfx.thunk(0.3); buzz([10,30,15]);
+  });
+
   // ---------- Turning the logbook's pages ----------
-  // Two spreads: 0 = the dinner list and the cargo, 1 = the sea chart. A
+  // Three spreads: 0 = the dinner list and the cargo, 1 = the sea chart, 2 = home's look. A
   // swipe across the open book turns the page (left: forward, right: back);
   // the book remembers the spread it was left on.
   let logSpread = 0, turning = false;
@@ -5387,12 +5454,13 @@
   }
   function turnPage(dir){                       // +1: forward, -1: back
     const to = logSpread + dir;
-    if(turning || to < 0 || to > 1 || !elList.classList.contains('unfold')) return;
+    if(turning || to < 0 || to > 2 || !elList.classList.contains('unfold')) return;
     turning = true;
     const fwd = dir > 0, oldL = snapPage(elPageL), oldR = snapPage(elPageR);
     logSpread = to;
     elList.classList.toggle('on-map', to === 1);
-    if(to === 1) renderMap(); else { renderList(); freshLines.clear(); }
+    elList.classList.toggle('on-base', to === 2);
+    if(to === 1) renderMap(); else if(to === 2) renderBase(); else { renderList(); freshLines.clear(); }
     const base = elPages.getBoundingClientRect();
     // the page that stays put until the turning sheet lands on it
     const under = fwd ? oldL : oldR; under.classList.add('under'); placeAt(under, fwd ? elPageL : elPageR, base);
@@ -6126,8 +6194,10 @@
     const L = [[boat.x, boat.y, 82*fl, 140*fl, 1]];                    // the boat's lantern: wide, crisp edge
     L.push([START.x-14, START.y+18, 8, 34, 1], [PIER.x1, PIER.y1, 4, 22, 1]);   // home: the house, the pier lamp
     if(GUEST_PIER) L.push([GUEST_PIER.x1, GUEST_PIER.y1, 3, 18, 0.8]);
-    if(homeStage >= 3) L.push([START.x+10, START.y-8, 10, 46, 1]);          // the court lit for dinner
-    if(homeStage >= 4) L.push([START.x+48, START.y+8, 6, 30, 0.9]);         // and the trulli
+    const hst = baseLevel >= 2 ? 4 : baseLevel <= 0 ? 0 : homeStage;
+    if(hst >= 3) L.push([START.x+10, START.y-8, 10, 46, 1]);                // the court lit for dinner
+    if(hst >= 4) L.push([START.x+48, START.y+8, 6, 30, 0.9]);               // and the trulli
+    if(baseLevel >= 2) L.push([START.x-52*HOME_BLD, START.y-17*HOME_BLD, 5, 26, 0.9]);   // the chapel
     for(const v of VILLAGES){
       const vl = v.isl.vl;
       L.push([v.isl.x, v.isl.y, 8, 40, 1]);                             // piazza lamp
@@ -6899,11 +6969,13 @@
   // and weeds when it's low; tables, a pergola, lanterns and a pennant as it
   // rises. Drawn in home units (scaled by HOME_BLD round the island's centre).
   function drawHomeBuildings(isl){
-    const x=isl.x, y=isl.y, st=homeStage;
+    const x=isl.x, y=isl.y, pal = baseLevel >= 2, st = pal ? 4 : homeStage;   // (the palace: the masseria at its best, and more)
     ctx.save();
     ctx.translate(x,y); ctx.scale(HOME_BLD,HOME_BLD); ctx.translate(-x,-y);
     const R=(x0,y0,w,h,c)=>{ ctx.fillStyle=c; ctx.fillRect(x0,y0,w,h); };
     const ink=(lw)=>{ ctx.strokeStyle=INKC; ctx.lineWidth=lw; };
+    if(baseLevel <= 0){ drawHut(x, y, R, ink); drawDryingNet(x, y); ctx.restore(); return; }
+    if(pal) drawPalaceGrounds(x, y, R, ink);                                         // the chapel and the olive grove, outside the walls
     // --- the court and its walls ---
     const WX=x-30, WY=y-24, WW=56, WH=46, T=4;
     R(WX+4,WY+4,WW,WH,V(0.35));                                  // the walls' shadow
@@ -6940,12 +7012,16 @@
     R(x-3.5,WY-1,6,T+2,V(0.3)); ink(0.8); ctx.strokeRect(x-3.5,WY-1,6,T+2);           // the north gate's wooden leaves, open
     R(x-3.5,WY+WH-T-1,6,T+2,V(0.3)); ctx.strokeRect(x-3.5,WY+WH-T-1,6,T+2);         // the south gate
     // --- the owner's house along the south wall: a flat roof terrace ---
-    const HX=WX+T, HY=WY+WH-T-15, HW=24, HH=15;
+    const HX=WX+T, HY=WY+WH-T-15, HW=pal ? 34 : 24, HH=15;                            // (the palace's house runs further along the wall)
     R(HX+2,HY+2,HW,HH,V(0.45)); R(HX,HY,HW,HH,PAPERC);
     ink(1); ctx.strokeRect(HX+1.5,HY+1.5,HW-3,HH-3);                                  // the parapet
     ctx.beginPath(); for(let k=0;k<4;k++){ ctx.moveTo(HX+HW-1,HY+3+k*2.5); ctx.lineTo(HX+HW+4,HY+3+k*2.5); } ctx.stroke();   // stair down to the court
     skPoly([[HX,HY],[HX+HW,HY],[HX+HW,HY+HH],[HX,HY+HH]], true, 1.6, 1.2);
     R(HX+3,HY+3,2.5,2.5,INKC);                                                         // chimney
+    if(pal){                                                                           // the palace: an arcaded loggia along the front of the house
+      ink(0.9); ctx.fillStyle=V(0.35);
+      for(let u=HX+3; u<HX+HW-4; u+=4.4){ ctx.beginPath(); ctx.moveTo(u,HY-0.2); ctx.lineTo(u,HY-3); ctx.arc(u+1.6,HY-3,1.6,Math.PI,0); ctx.lineTo(u+3.2,HY-0.2); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+    }
     if(st >= 2){                                                                       // a striped awning on the terrace
       R(HX+8,HY+4,11,7,PAPERC); ink(1.1); ctx.beginPath(); for(let u=HX+9; u<HX+19; u+=2.4){ ctx.moveTo(u,HY+4); ctx.lineTo(u,HY+11); } ctx.stroke(); ctx.strokeRect(HX+8,HY+4,11,7);
     }
@@ -6959,6 +7035,19 @@
       ink(1); ctx.beginPath(); ctx.moveTo(TX+TS/2,TY+TS/2); ctx.lineTo(TX+TS/2,TY-7); ctx.stroke();
       ctx.fillStyle=INKC; ctx.beginPath(); ctx.moveTo(TX+TS/2,TY-7); ctx.lineTo(TX+TS/2+8,TY-5); ctx.lineTo(TX+TS/2,TY-3); ctx.closePath(); ctx.fill();
     }
+    if(pal){                                                                           // a second tower on the south-west corner
+      const T2X=WX-4, T2Y=WY+WH-12, T2=14;
+      R(T2X+5,T2Y+5,T2,T2,V(0.3)); R(T2X,T2Y,T2,T2,PAPERC); ink(1.6); ctx.strokeRect(T2X,T2Y,T2,T2);
+      R(T2X+3,T2Y+3,T2-6,T2-6,V(0.78)); ink(1); ctx.strokeRect(T2X+3,T2Y+3,T2-6,T2-6);
+      ctx.fillStyle=INKC; for(let q=1.5; q<T2-1; q+=3){ ctx.fillRect(T2X+q,T2Y+0.8,1.2,1); ctx.fillRect(T2X+q,T2Y+T2-1.8,1.2,1); ctx.fillRect(T2X+0.8,T2Y+q,1,1.2); ctx.fillRect(T2X+T2-1.8,T2Y+q,1,1.2); }
+      ink(1); ctx.beginPath(); ctx.moveTo(T2X+T2/2,T2Y+T2/2); ctx.lineTo(T2X+T2/2,T2Y-6); ctx.stroke();
+      ctx.fillStyle=INKC; ctx.beginPath(); ctx.moveTo(T2X+T2/2,T2Y-6); ctx.lineTo(T2X+T2/2+7,T2Y-4); ctx.lineTo(T2X+T2/2,T2Y-2); ctx.closePath(); ctx.fill();
+      // a fountain in the middle of the court, with a basin and four paths
+      const FX=x+2, FY=y-4;
+      ctx.strokeStyle=V(0.72); ctx.lineWidth=2.2; ctx.beginPath(); ctx.moveTo(FX-14,FY); ctx.lineTo(FX+14,FY); ctx.moveTo(FX,FY-12); ctx.lineTo(FX,FY+10); ctx.stroke();
+      ctx.fillStyle=V(0.82); ctx.beginPath(); ctx.arc(FX,FY,5.5,0,Math.PI*2); ctx.fill(); ink(1.2); ctx.stroke();
+      ctx.fillStyle=PAPERC; ctx.beginPath(); ctx.arc(FX,FY,2,0,Math.PI*2); ctx.fill(); ink(0.9); ctx.stroke();
+    }
     // --- in the court: the well, then life (or weeds) ---
     const WLX=x-10, WLY=y-8;
     ctx.fillStyle=PAPERC; ctx.beginPath(); ctx.arc(WLX,WLY,3.6,0,Math.PI*2); ctx.fill(); ink(1.2); ctx.stroke();
@@ -6971,8 +7060,8 @@
       for(let v=PY; v<=PY+PH; v+=5.6){ ctx.moveTo(PX,v); ctx.lineTo(PX+PW,v); }
       ctx.stroke(); ctx.globalAlpha=1;
     }
-    const TABLES=[[x+4,y-12],[x+12,y-4],[x+3,y+2],[x+14,y+7],[x-16,y-14],[x-8,y+3],[x+20,y-14],[x-18,y-3]];
-    TABLES.slice(0, st*2).forEach(([tx,ty])=>{                                         // tables laid for dinner, each with four chairs
+    const TABLES = pal ? [[x+12,y-14],[x+14,y+6],[x-16,y-14],[x-8,y+5],[x+20,y-4],[x-18,y-3]] : [[x+4,y-12],[x+12,y-4],[x+3,y+2],[x+14,y+7],[x-16,y-14],[x-8,y+3],[x+20,y-14],[x-18,y-3]];
+    TABLES.slice(0, Math.min(TABLES.length, st*2)).forEach(([tx,ty])=>{                                         // tables laid for dinner, each with four chairs
       ctx.fillStyle=INKC; for(const [ox,oy] of [[-3,0],[3,0],[0,-3],[0,3]]) ctx.fillRect(tx+ox-0.6,ty+oy-0.6,1.3,1.3);
       R(tx-1.8,ty-1.8,3.6,3.6,PAPERC); ink(0.9); ctx.strokeRect(tx-1.8,ty-1.8,3.6,3.6);
     });
@@ -7005,7 +7094,11 @@
       }
     });
 
-    // --- fishing net drying between two poles, on the west beach ---
+    if(!pal) drawDryingNet(x, y);                                                       // (the palace has its chapel there)
+    ctx.restore();
+  }
+  // fishing net drying between two poles, on the west beach
+  function drawDryingNet(x, y){
     const P1=[x-62,y+10], P2=[x-44,y+22], sag=5;
     ctx.save();
     ctx.beginPath();
@@ -7023,7 +7116,47 @@
     ctx.beginPath(); skSeg(P1[0],P1[1],P2[0],P2[1],1.5); ctx.stroke();
     ctx.fillStyle=INKC;
     for(const [qx,qy] of [P1,P2]){ ctx.beginPath(); ctx.arc(qx,qy,1.8,0,Math.PI*2); ctx.fill(); }
-    ctx.restore();
+  }
+  // home at its humblest: a fisherman's hut of rough stone under a pitched
+  // roof, a fire pit, a vegetable patch, a few crates and a rowboat's oars
+  function drawHut(x, y, R, ink){
+    const HX=x-12, HY=y-8, HW=18, HH=13;
+    R(HX+3,HY+3,HW,HH,V(0.35));                                                        // shadow
+    R(HX,HY,HW,HH,V(0.8)); ink(1.3); ctx.strokeRect(HX,HY,HW,HH);                      // the roof, seen from above
+    ctx.fillStyle=V(0.55); ctx.fillRect(HX+HW/2,HY,HW/2,HH);                           // its shaded half
+    ink(1.4); ctx.beginPath(); ctx.moveTo(HX+HW/2,HY); ctx.lineTo(HX+HW/2,HY+HH); ctx.stroke();   // the ridge
+    ink(0.7); ctx.beginPath(); for(let v=HY+2.5; v<HY+HH; v+=2.5){ ctx.moveTo(HX+1,v); ctx.lineTo(HX+HW-1,v); } ctx.stroke();   // courses of tiles
+    R(HX+HW/2-2,HY+HH,4,2.5,INKC);                                                      // the door, facing the court
+    // the fire pit: a ring of stones round the embers
+    const FX=x+6, FY=y+12;
+    for(let k=0;k<8;k++){ const a=k*Math.PI/4; ctx.fillStyle=k%2?V(0.6):PAPERC; ctx.beginPath(); ctx.arc(FX+Math.cos(a)*3.6,FY+Math.sin(a)*3.6,1.3,0,Math.PI*2); ctx.fill(); ink(0.6); ctx.stroke(); }
+    ctx.fillStyle=V(0.2); ctx.beginPath(); ctx.arc(FX,FY,2,0,Math.PI*2); ctx.fill();
+    // a vegetable patch in rows, fenced with sticks
+    const VX=x+12, VY=y-14, VW=16, VH=12;
+    R(VX,VY,VW,VH,V(0.7)); ctx.fillStyle=V(0.35);
+    for(let v=VY+2; v<VY+VH-1; v+=3) for(let u=VX+2; u<VX+VW-1; u+=3){ ctx.beginPath(); ctx.arc(u,v,1,0,Math.PI*2); ctx.fill(); }
+    ink(0.7); ctx.setLineDash([1.5,1.5]); ctx.strokeRect(VX,VY,VW,VH); ctx.setLineDash([]);
+    // crates by the door, and a pair of oars leaning on the wall
+    for(const [cx,cy] of [[HX-6,HY+HH-4],[HX-6,HY+HH-9],[HX-11,HY+HH-4]]){ R(cx,cy,4.5,4.5,PAPERC); ink(0.8); ctx.strokeRect(cx,cy,4.5,4.5); ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+4.5,cy+4.5); ctx.stroke(); }
+    ink(1.1); ctx.beginPath(); ctx.moveTo(HX+HW+2,HY+1); ctx.lineTo(HX+HW+5,HY+12); ctx.moveTo(HX+HW+4,HY+1); ctx.lineTo(HX+HW+7,HY+12); ctx.stroke();
+  }
+  // the palace's grounds outside the walls: a little chapel with a bell
+  // gable to the north-west, and an olive grove in rows to the south
+  function drawPalaceGrounds(x, y, R, ink){
+    const CX=x-52, CY=y-22, CW=16, CH=11;
+    R(CX+3,CY+3,CW,CH,V(0.35)); R(CX,CY,CW,CH,PAPERC); ink(1.3); ctx.strokeRect(CX,CY,CW,CH);   // the nave, whitewashed
+    ctx.fillStyle=PAPERC; ctx.beginPath(); ctx.arc(CX+CW,CY+CH/2,CH/2,-Math.PI/2,Math.PI/2); ctx.fill(); ink(1.3); ctx.stroke();   // the apse
+    ink(0.9); ctx.beginPath(); ctx.moveTo(CX+2,CY+CH/2); ctx.lineTo(CX+CW-2,CY+CH/2); ctx.stroke();   // the roof's ridge
+    R(CX-3,CY+2,4,CH-4,PAPERC); ink(1); ctx.strokeRect(CX-3,CY+2,4,CH-4);                 // the bell gable
+    ctx.fillStyle=INKC; ctx.beginPath(); ctx.arc(CX-1,CY+CH/2,1.1,0,Math.PI*2); ctx.fill();   // its bell
+    ink(1.1); ctx.beginPath(); ctx.moveTo(CX+CW/2-3,CY-4); ctx.lineTo(CX+CW/2-3,CY+2); ctx.moveTo(CX+CW/2-5,CY-2); ctx.lineTo(CX+CW/2-1,CY-2); ctx.stroke();   // the cross
+    // the olive grove: rows of round, silvery trees with their shadows
+    for(let r=0;r<3;r++) for(let c=0;c<6;c++){
+      const ox = x-30 + c*10 + (r%2)*5, oy = y+30 + r*8;
+      ctx.fillStyle=V(0.3); ctx.beginPath(); ctx.arc(ox+1.6,oy+1.8,3.4,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle=V(0.6); ctx.beginPath(); ctx.arc(ox,oy,3.4,0,Math.PI*2); ctx.fill(); ink(0.8); ctx.stroke();
+      ctx.fillStyle=V(0.85); ctx.beginPath(); ctx.arc(ox-1,oy-1,1.4,0,Math.PI*2); ctx.fill();
+    }
   }
   // whirlpool: dithered funnel darkening toward the eye, three ink arms
   // spiralling in, turning over time
