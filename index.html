@@ -226,6 +226,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'First screen: folding sections (tap a heading to open or shut it); What\'s new starts folded',
+    ]},
+    {build: '2026-10-05 20:44', items: [
       'Lateen: a rounder curve, falling off gently aft of the beam to 55% dead downwind (was 22%)',
     ]},
     {build: '2026-10-05 19:47', items: [
@@ -239,11 +242,8 @@
     {build: '2026-10-05 19:19', items: [
       'Oars: the answer to a press on time is now a soft, short, woody tock (lower, quieter, no whistle) that sets off the cue instead of competing with it',
     ]},
-    {build: '2026-10-05 19:14', items: [
-      'Oars: a press on time answers the cue with the same wooden knock an octave higher',
-    ]},
   ];
-  const BUILD = '2026-10-05 20:44';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-05 20:53';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -257,6 +257,8 @@
       title:    'World',
       generate: 'Generate',
       reset:    'Defaults',
+      changesTitle: 'What\'s new',                   // the heading of the (folded) list of changes
+      settings: 'Settings',                         // the heading of the settings (vibration)
       changes:  'New in this build',
       vibration: 'Vibration',                       // the slider for the strength of the phone's vibrations (the whole game)
       earlier:  'Earlier: build {time}',                // a heading for each of the few builds before this one
@@ -991,12 +993,17 @@
   .wg-setting label{flex:0 0 auto;}
   .wg-setting input{flex:1 1 auto; accent-color:var(--ink);}
   .wg-setting span{flex:0 0 2.6em; text-align:right;}
+  .wg-sec{margin:0 0 10px; border-top:1.5px solid var(--ink);}
+  .wg-sec > summary{list-style:none; cursor:pointer; padding:6px 0 6px 18px; position:relative; font:italic bold 17px/1.2 Georgia, serif; user-select:none;}
+  .wg-sec > summary::-webkit-details-marker{display:none;}
+  .wg-sec > summary::before{content:""; position:absolute; left:2px; top:50%; margin-top:-5px; border-left:7px solid var(--ink); border-top:5px solid transparent; border-bottom:5px solid transparent; transition:transform .15s;}
+  .wg-sec[open] > summary::before{transform:rotate(90deg);}
   #wg-changes{margin:4px 0 12px; padding:6px 8px; font:11px/1.35 ui-monospace, monospace; border:1.5px dashed var(--ink); border-radius:3px; clear:both;}
   #intro #wg-changes .ch-head{margin:0; font:bold 11px/1.35 ui-monospace, monospace;}
   #intro #wg-changes .ch-head.past{margin-top:7px; opacity:.75;}
   #wg-changes ol{margin:2px 0 0; padding-left:20px;}
   #wg-changes ol.past{opacity:.75;}
-  #wg-title{margin:0 0 8px; font-size:18px; font-style:italic;}
+  #wg-map{margin-top:4px;}
   #wg-map{display:block; width:200px; height:200px; margin:0 auto 10px; border:2px solid var(--ink); image-rendering:pixelated;}
   #wg-knobs{display:grid; grid-template-columns:1fr 74px; gap:3px 8px; font:11.5px/1.3 ui-monospace, monospace;}
   #wg-knobs label{align-self:center; overflow:hidden; text-overflow:ellipsis;}
@@ -1102,12 +1109,14 @@
     <div class="scroll-body">
     <!-- the world generator: a preview of this world, its knobs, and Generate (reloads with them in the address) -->
     <p id="wg-build"></p>
-    <div id="wg-changes"></div>
-    <div class="wg-setting"><label for="wg-haptics" id="wg-haptics-label"></label><input id="wg-haptics" type="range" min="0" max="1" step="0.05"><span id="wg-haptics-val"></span></div>
-    <h2 id="wg-title"></h2>
+    <!-- collapsible sections (a tap on the heading opens or shuts it): what's new (shut at first), settings, the world -->
+    <details class="wg-sec" id="wg-sec-changes"><summary id="wg-sum-changes"></summary><div id="wg-changes"></div></details>
+    <details class="wg-sec" id="wg-sec-settings" open><summary id="wg-sum-settings"></summary>
+    <div class="wg-setting"><label for="wg-haptics" id="wg-haptics-label"></label><input id="wg-haptics" type="range" min="0" max="1" step="0.05"><span id="wg-haptics-val"></span></div></details>
+    <details class="wg-sec" id="wg-sec-world" open><summary id="wg-title"></summary>
     <canvas id="wg-map" aria-label="Preview of the world"></canvas>
     <div id="wg-knobs"></div>
-    <div class="wg-row"><button id="wg-reset" type="button"></button><button id="wg-gen" type="button"></button></div>
+    <div class="wg-row"><button id="wg-reset" type="button"></button><button id="wg-gen" type="button"></button></div></details>
     <button id="start-btn">Set sail</button>
     </div>
    </div>
@@ -4153,7 +4162,7 @@
   function curlScroll(){
     if(intro.classList.contains('hidden')) return;
     const H = scrollBody.clientHeight, st = scrollBody.scrollTop;
-    for(const el of scrollBody.querySelectorAll(':scope > *:not(#wg-knobs):not(#wg-changes), #wg-knobs > *, #wg-changes > *, #wg-changes li')){
+    for(const el of scrollBody.querySelectorAll(':scope > *:not(details), #wg-knobs > *, #wg-changes > *, #wg-changes li, .wg-sec > *:not(#wg-knobs):not(#wg-changes)')){
       let y = 0; for(let e = el; e && e !== scrollBody; e = e.offsetParent) y += e.offsetTop;   // (a transformed row is its children's offsetParent)
       const top = y - st, bot = H - (top + el.offsetHeight);
       const t = Math.max(0, Math.min(1, (CURL_BAND - Math.min(top, bot))/CURL_BAND));
@@ -4345,6 +4354,9 @@
                OPEN_ROCK_TRIES, TRADERS_HOME, TRADERS_VILLAGES, ROLLER_RATE, CLOUD_COUNT};
     const box = document.getElementById('wg-knobs'), T = TEXT.worldGen;
     document.getElementById('wg-title').textContent = T.title;
+    document.getElementById('wg-sum-changes').textContent = T.changesTitle;
+    document.getElementById('wg-sum-settings').textContent = T.settings;
+    for(const d of document.querySelectorAll('.wg-sec')) d.addEventListener('toggle', ()=>{ Sfx.pageTurn && Sfx.pageTurn(); requestAnimationFrame(()=> typeof curlScroll === 'function' && curlScroll()); });
     document.getElementById('wg-build').textContent = fmt(T.build, {time: BUILD});
     const ch = document.getElementById('wg-changes'); ch.innerHTML = '';
     CHANGES.slice(0, 4).forEach((g, n)=>{                  // this build, then up to three before it; a numbered list each

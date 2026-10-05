@@ -245,7 +245,11 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   `TRADERS_VILLAGES`, `ROLLER_RATE`, `CLOUD_COUNT`; a changed field turns dark), **Generate** (reloads the page with the
   changed fields, and those already there, in the address: `?ISLAND_SCALE=1.5&…`; untouched knobs keep their own rule,
   e.g. `ISLAND_COUNT` follows `ISLAND_SCALE`) and **Defaults** (reloads with a bare address). In Tuning those knobs are
-  `knob('NAME', value)`: a value in the address wins. The card is an **open scroll**: a roll at the top and one at
+  `knob('NAME', value)`: a value in the address wins. Under the build time the card has **folding sections**
+  (`<details class="wg-sec">`, a tap on the heading opens or shuts it, a little triangle turns): "What's new"
+  (`#wg-sec-changes`, the list of changes, **shut at first**, `TEXT.worldGen.changesTitle`), "Settings" (the Vibration
+  slider, `TEXT.worldGen.settings`) and "World" (the preview, the knobs and Generate / Defaults; `TEXT.worldGen.title`);
+  "Set sail" stays outside them, always in reach. The card is an **open scroll**: a roll at the top and one at
   the bottom (`.card-roll`, the look of the scroll it rolls into on setting sail), the sheet between them scrolls
   (`.scroll-body`, no scrollbar) and each row near a roll fades out as if the paper curved away into it, staying
   straight (`curlScroll`, `CURL_BAND` 42 px, opacity down to 0.15; no distortion: Enrico's choice), with a dotted shade on the paper by each roll (`.curl-shade`). Then "Set sail": the card rolls up into a scroll that is tossed into the list button (skipped with reduced motion).
