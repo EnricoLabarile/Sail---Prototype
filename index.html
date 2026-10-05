@@ -186,7 +186,7 @@
   // almost dead on the wind, weak on the beam. The lateen: the wind on the beam (its best is faster than the square's
   // best on the beam by far) and it can point up toward the wind; poor running free
   const SAIL_POLAR_SQUARE = [[0,0],[20,0],[35,0.02],[50,0.05],[70,0.12],[90,0.25],[110,0.45],[130,0.72],[150,0.92],[170,1.0],[180,1.0]];
-  const SAIL_POLAR_LATEEN = [[0,0.02],[20,0.22],[35,0.60],[50,0.90],[70,1.08],[90,1.10],[110,0.90],[130,0.60],[150,0.38],[170,0.26],[180,0.22]];
+  const SAIL_POLAR_LATEEN = [[0,0.02],[20,0.22],[35,0.60],[50,0.90],[70,1.06],[90,1.10],[110,1.02],[130,0.88],[150,0.72],[170,0.60],[180,0.55]];
   const SQUARE_RUN_BONUS = 0.25;     // running downwind (from DOWNWIND_DEG to dead astern) the square sail gains up to this much more (the lateen none)
   // -- how the two sails differ beyond their speed curves: the square sail for the open sea and steady wind, the lateen
   //    for the islands' channels and shifting wind (each value: {square, lateen}; with no sail rigged, 1) --
@@ -226,6 +226,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Lateen: a rounder curve, falling off gently aft of the beam to 55% dead downwind (was 22%)',
+    ]},
+    {build: '2026-10-05 19:47', items: [
       'Wind by place: steady and fresher on open sea; gusts, lulls and veering among the islands; it drops in the lee of an island',
       'Sails retrim after a shift: the square slowly (it loses way at each shift or sharp turn), the lateen at once',
       'Lateen: changing tack its yard swings across and drives little; on one tack (wind from port) it gives a bit less',
@@ -239,12 +242,8 @@
     {build: '2026-10-05 19:14', items: [
       'Oars: a press on time answers the cue with the same wooden knock an octave higher',
     ]},
-    {build: '2026-10-05 18:55', items: [
-      'A Vibration slider on this screen (0 to 1, for the whole game; starts at 0, so no vibration until you raise it; remembered)',
-      'Code: the Tuning block and the texts now sit at the very top of index.html',
-    ]},
   ];
-  const BUILD = '2026-10-05 19:47';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-05 20:44';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
