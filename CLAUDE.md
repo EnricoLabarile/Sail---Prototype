@@ -264,14 +264,18 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   `refreshList`, only when the rounded angle, the sail or the breeze changes).
   **Oars: rowed by hand** (`MANUAL_OARS` in Tuning; false brings back the old automatic oars below): an oar handle on
   the right (`#oar-ctl`, above the fair-wind medallion; hidden when moored or at the market): a dotted slot and a
-  wooden grip that follows the finger (`setOarPos`, `oarPos` 0 top .. 1 bottom). Sliding it **down pulls**: each bit
-  of pull adds way (`boat.rowV`: a full pull adds `OAR_STROKE` = 6 px/s, up to `OAR_MAX` = 14), which dies off when
-  she stops pulling (`OAR_FADE` = 0.45 /s); sliding up swings the blades forward again (no push); a splash and a buzz
-  at the end of each full pull. The rowing speed counts only when it's more than the sail gives (`targetSpeed` =
-  max(sail, `rowV`)), bites quickly, and goes wherever she points, even head to wind; at anchor it does nothing. On
-  the boat the oars come out while the grip is held or she's still carrying way from them, their blades follow the
-  handle (up = forward at the catch, down = aft at the finish, `oarPh`), with a splash ring as they pull (`oarPull`);
-  turning is `ROW_TURN_MULT` × quicker while rowing (`boat.rowing`). With manual oars the sail is never brailed up.
+  wooden grip (`oarPos` 0 top .. 1 bottom). The finger only **pulls down**: the grip follows it, never up
+  (`oarTarget` only grows), and a little behind, as if dragging through water (`OAR_RESIST` = 5, heaviest at the start
+  of the pull: rate × (0.35 + 0.65 × `oarPos`)); let go and it swings back up by itself in `OAR_RETURN` (0.45 s), no
+  push (grab it again on the way up to pull from there). Each bit of pull adds way (`boat.rowV`: a full pull adds
+  `OAR_STROKE` = 8 px/s, up to `OAR_MAX` = 14), which dies off when she stops pulling (`OAR_FADE` = 0.45 /s). Feel and
+  sound (`updateOarCtl`): at the catch a low watery gloop (`Sfx.oar`: a sine falling 150→70 Hz and a low-passed swirl
+  of noise) and a buzz as the blade bites, light buzz ticks as the water pushes back along the pull, a buzz at its
+  end. The rowing speed counts only when it's more than the sail gives (`targetSpeed` = max(sail, `rowV`)), bites
+  quickly, and goes wherever she points, even head to wind; at anchor it does nothing. On the boat the oars come out
+  while the grip is held or she's still carrying way from them, their blades follow the handle (up = forward at the
+  catch, down = aft at the finish, `oarPh`), with a splash ring as they pull (`oarPull`); turning is `ROW_TURN_MULT` ×
+  quicker while rowing (`boat.rowing`). With manual oars the sail is never brailed up.
   **Sail: automatic** (no button; the old switch `#sail` / `drawSail` is hidden and unused, the halyard rope before it is
   gone). The sail is up by default. When she's slower than `ROW_ENTER` and the wind can't drive her past it either
   (head to wind, or nearly), after `ROW_DELAY` the sail is brailed up and the oars come out (`sailLevel` = `SAIL_MIN`:

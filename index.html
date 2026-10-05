@@ -763,7 +763,7 @@
     },
     // the oar handle on the right (rowing by hand)
     oars: {
-      label: 'Oars: slide the handle down to pull',
+      label: 'Oars: slide the handle down to pull; it swings back up by itself',
     },
     // home's storehouse: drag goods between the hold and the store (what's left here waits at home)
     store: {
@@ -899,8 +899,10 @@
   const ROW_DELAY = 0.6;             // seconds a condition must hold before switching (no flicker)
   const ROW_SPEED = 9;               // px/s on the oars (the old automatic oars)
   const MANUAL_OARS = true;          // the oars are rowed by hand: slide the oar handle on the right down to pull (false = the old automatic oars)
-  const OAR_STROKE = 6;              // px/s of way one full pull of the handle adds…
+  const OAR_STROKE = 8;              // px/s of way one full pull of the handle adds…
   const OAR_MAX = 14;                // …up to this much (rowing is slow, but goes any way she points)
+  const OAR_RESIST = 5;              // how readily the grip follows the finger down (lower = heavier water; it's heaviest at the start of a pull)
+  const OAR_RETURN = 0.45;           // seconds for the grip to swing back up by itself once let go
   const OAR_FADE = 0.45;             // how quickly the way from rowing dies off when she stops pulling (per second)
   const WHEEL_MAX = Math.PI;         // how far the wheel turns for full lock (π = half a turn each way)
   const SURF_BOOST = 32;             // extra px/s while surfing a big wave
@@ -2925,6 +2927,23 @@
       src.connect(bp); bp.connect(g); g.connect(master);
       src.start(t0, Math.random()*0.3, 0.65);
     }
+    // an oar biting the water: a low, round gloop and a muffled swirl of water (k: 0..1 how hard)
+    function oar(k){
+      if(!ac || ac.state!=='running') return;
+      const t0 = ac.currentTime, vol = 0.6 + 0.4*(k===undefined ? 1 : k);
+      const o = ac.createOscillator(); o.type='sine';
+      o.frequency.setValueAtTime(150 + Math.random()*30, t0); o.frequency.exponentialRampToValueAtTime(70, t0+0.2);
+      const og = ac.createGain();
+      og.gain.setValueAtTime(0.0001, t0); og.gain.exponentialRampToValueAtTime(0.09*vol, t0+0.02); og.gain.exponentialRampToValueAtTime(0.0001, t0+0.24);
+      o.connect(og); og.connect(master); o.start(t0); o.stop(t0+0.26);
+      const src = ac.createBufferSource(); src.buffer = noise;
+      const lp = ac.createBiquadFilter(); lp.type='lowpass'; lp.Q.value=1.4;
+      lp.frequency.setValueAtTime(700, t0); lp.frequency.exponentialRampToValueAtTime(180, t0+0.45);
+      const g = ac.createGain();
+      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.08*vol, t0+0.06); g.gain.exponentialRampToValueAtTime(0.0001, t0+0.5);
+      src.connect(lp); lp.connect(g); g.connect(master);
+      src.start(t0, Math.random()*0.4, 0.55);
+    }
     // hull hit: a dull thud and a short, strained creak of wood
     function crash(k){                 // k: 0..1 how hard
       if(!ac || ac.state!=='running') return;
@@ -3221,7 +3240,7 @@
     }
 
 
-    return {init, tick, thunk, wheel, ambient, rain, cicadas, book, pageTurn, pickup, hammer, bell, whirl, type, splash, drone, gull, crash, waveBreak, waveHit, surf, townEvent, chatter, cricket, howl, anchor, buoy, coins, engine};
+    return {init, oar, tick, thunk, wheel, ambient, rain, cicadas, book, pageTurn, pickup, hammer, bell, whirl, type, splash, drone, gull, crash, waveBreak, waveHit, surf, townEvent, chatter, cricket, howl, anchor, buoy, coins, engine};
   })();
 
   // ---------- Ship's wheel ----------
@@ -4649,29 +4668,49 @@
   // again (no push). The way dies off unless she keeps rowing (OAR_FADE). A
   // splash and a buzz at the end of each pull. She goes wherever she points.
   const elOar = document.getElementById('oar-ctl'), elOarGrip = elOar.querySelector('.oar-grip');
-  let oarPos = 0, oarHeld = false, oarPtr = null, oarPulled = 0;
+  let oarPos = 0, oarHeld = false, oarPtr = null, oarTarget = 0, oarGrab = null, oarStroke = false, oarTickAt = 0, oarShown = -1;
   elOar.setAttribute('aria-label', TEXT.oars.label);
-  function setOarPos(p){
-    p = Math.max(0, Math.min(1, p));
-    const d = p - oarPos; oarPos = p;
-    if(d > 0 && !anchored && !moor){                       // a pull
-      boat.rowV = Math.min(OAR_MAX, (boat.rowV||0) + d*OAR_STROKE);
-      oarPulled += d; boat.oarPull = Math.min(1, (boat.oarPull||0) + d*3);
-      if(oarPos > 0.94 && oarPulled > 0.5){ oarPulled = 0; Sfx.splash(); buzz(14); }   // the stroke's end
-    } else if(d < 0) oarPulled = Math.max(0, oarPulled + d);
-    elOarGrip.style.top = 'calc(10px + ' + (oarPos*100).toFixed(1) + '% - ' + (oarPos*20).toFixed(1) + 'px)';
-    elOar.setAttribute('aria-valuenow', Math.round(oarPos*100));
-  }
-  const oarAt = ev=>{ const r = elOar.getBoundingClientRect(); return (ev.clientY - r.top - 10)/(r.height - 20); };
-  elOar.addEventListener('pointerdown', ev=>{ ev.preventDefault(); Sfx.init(); oarPtr = ev.pointerId; elOar.setPointerCapture(ev.pointerId); oarHeld = true; elOar.classList.add('held'); setOarPos(oarAt(ev)); });
-  elOar.addEventListener('pointermove', ev=>{ if(ev.pointerId === oarPtr) setOarPos(oarAt(ev)); });
-  const oarUp = ev=>{ if(ev.pointerId !== oarPtr) return; oarPtr = null; oarHeld = false; elOar.classList.remove('held'); };
+  // the finger only ever pulls down: the grip follows it (never up), a little
+  // behind, as if the blade were dragging through water; let go, and it swings back up
+  const oarAt = ev=>{ const r = elOar.getBoundingClientRect(); return {y: ev.clientY, h: r.height - 20}; };
+  elOar.addEventListener('pointerdown', ev=>{
+    ev.preventDefault(); Sfx.init(); oarPtr = ev.pointerId; elOar.setPointerCapture(ev.pointerId);
+    oarHeld = true; elOar.classList.add('held');
+    const a = oarAt(ev); oarGrab = {y: a.y, h: a.h, from: oarPos}; oarTarget = oarPos;
+  });
+  elOar.addEventListener('pointermove', ev=>{
+    if(ev.pointerId !== oarPtr || !oarGrab) return;
+    const f = oarGrab.from + (ev.clientY - oarGrab.y)/oarGrab.h;
+    oarTarget = Math.max(oarTarget, Math.min(1, f));                    // down only
+  });
+  const oarUp = ev=>{ if(ev.pointerId !== oarPtr) return; oarPtr = null; oarHeld = false; oarGrab = null; oarStroke = false; elOar.classList.remove('held'); };
   elOar.addEventListener('pointerup', oarUp); elOar.addEventListener('pointercancel', oarUp);
-  setOarPos(0);
   function updateOarCtl(dt){
     const show = MANUAL_OARS && playing && !moor && !marketV;
     if(show !== !elOar.classList.contains('hidden')) elOar.classList.toggle('hidden', !show);
     boat.oarPull = Math.max(0, (boat.oarPull||0) - dt*2.5);   // (the splash at the blades fades after each pull)
+    const before = oarPos;
+    if(oarHeld && oarTarget > oarPos){                         // the pull: the grip drags after the finger, heaviest as the blade bites
+      const rate = OAR_RESIST*(0.35 + 0.65*oarPos);
+      oarPos += (oarTarget - oarPos)*Math.min(1, dt*rate);
+      const d = oarPos - before;
+      if(d > 0 && !anchored && !moor){
+        if(!oarStroke && d > 0.002){ oarStroke = true; oarTickAt = oarPos; Sfx.oar(Math.min(1, d*40)); buzz(22); }   // the catch: the blade bites
+        boat.rowV = Math.min(OAR_MAX, (boat.rowV||0) + d*OAR_STROKE);
+        boat.oarPull = Math.min(1, boat.oarPull + d*3);
+        if(oarPos - oarTickAt > 0.14){ oarTickAt = oarPos; buzz(6); }                    // the water pushing back, felt as it goes
+      }
+    } else if(!oarHeld && oarPos > 0){                         // let go: the oar swings back up by itself (no push)
+      oarPos = Math.max(0, oarPos - dt/OAR_RETURN);
+      oarTarget = oarPos;
+      if(oarPos === 0) oarStroke = false;
+    }
+    if(oarHeld && oarPos > 0.88 && oarStroke && !oarStroke.end){ oarStroke = {end: true}; buzz(12); }   // the end of the pull
+    if(Math.abs(oarPos - oarShown) > 0.002){
+      oarShown = oarPos;
+      elOarGrip.style.top = 'calc(10px + ' + (oarPos*100).toFixed(1) + '% - ' + (oarPos*20).toFixed(1) + 'px)';
+      elOar.setAttribute('aria-valuenow', Math.round(oarPos*100));
+    }
   }
   // the badge over the quay while she's tied up at a village (coins: the
   // market) or at home (a crate: the storehouse); it follows the quay on screen
