@@ -763,7 +763,7 @@
     },
     // the oar handle on the right (rowing by hand)
     oars: {
-      label: 'Oars: press to row; each press puts more power into the stroke',
+      label: 'Oars: pull the handle down, again and again, to get the oars going',
     },
     // home's storehouse: drag goods between the hold and the store (what's left here waits at home)
     store: {
@@ -899,8 +899,11 @@
   const ROW_EXIT = 16;               // px/s: once the sail could drive her faster than this again, it's set and the oars come in
   const ROW_DELAY = 0.6;             // seconds a condition must hold before switching (no flicker)
   const ROW_SPEED = 9;               // px/s on the oars (the old automatic oars)
-  const MANUAL_OARS = true;          // the oars are rowed by hand: each press on the oar handle (right) puts power into the rowing (false = the old automatic oars)
-  const OAR_KICK = 0.22;             // power one press adds to the rowing (0..1), less as it nears full (like a flywheel)
+  const MANUAL_OARS = true;          // the oars are rowed by hand like a rowing machine: pull the handle (right) down to spin up a flywheel (false = the old automatic oars)
+  const OAR_PULL = 0.32;             // power one full pull adds to the flywheel (0..1), less as it nears full
+  const OAR_HEAVY = 2;               // how readily the grip follows the finger with the flywheel at rest (low = heavy: it wants to stay still)…
+  const OAR_LIGHT = 16;              // …and spinning at full power (it runs light, you pull through it)
+  const OAR_RETURN = 0.35;           // seconds for the grip to swing back up by itself once let go
   const OAR_SPIN_FADE = 0.12;        // power the rowing loses per second when nobody presses (it slows down, then stops)
   const OAR_RATE_MIN = 0.45;         // strokes a second as the rowing starts…
   const OAR_RATE_MAX = 1.25;         // …and at full power (steady, never frantic)
@@ -4668,43 +4671,54 @@
   const storeCount = ()=> Object.values(homeStore.fish).reduce((a,n)=> a+n, 0) + Object.values(homeStore.dish).reduce((a,n)=> a+n, 0) + homeStore.bottles.length;
   function resetStore(){ homeStore.fish = {}; homeStore.dish = {}; homeStore.bottles = []; }
   function openStore(){ openMarket(STORE); }
-  // ---- rowing by hand: the oar handle on the right ----
-  // Not one-to-one: each press puts power into the rowing (oarSpin 0..1, a
-  // kick of OAR_KICK, smaller as it nears full), like stoking a locomotive:
-  // the oars start slow and, pressed again and again, keep turning faster
-  // (OAR_RATE_MIN..MAX strokes a second); left alone they slow and stop
-  // (OAR_SPIN_FADE). Her way on the oars is OAR_MAX × power, wherever she
-  // points. The grip rides up and down with the strokes; each catch is a low
-  // gloop and a light buzz.
+  // ---- rowing by hand: the oar handle on the right, like a rowing machine ----
+  // A flywheel (oarSpin 0..1) drives the oars in a steady cycle, OAR_RATE_MIN
+  // to OAR_RATE_MAX strokes a second, and her way (OAR_MAX × power, wherever
+  // she points); friction slows it to a stop (OAR_SPIN_FADE). The finger pulls
+  // the grip down (only down; let go and it swings back up, OAR_RETURN): every
+  // bit of pull adds power (OAR_PULL a full pull, less near full). At rest the
+  // wheel is heavy, the grip lags well behind the finger (OAR_HEAVY); spun up
+  // it runs light and follows almost at once (OAR_LIGHT). Felt as buzz ticks
+  // along the pull, heavier while it's heavy; a gloop at each catch of the oars.
   const elOar = document.getElementById('oar-ctl'), elOarGrip = elOar.querySelector('.oar-grip');
-  let oarSpin = 0, oarHeld = false, oarPtr = null, oarShown = -1, oarCycle = 0, oarPress = 0;
+  let oarSpin = 0, oarHeld = false, oarPtr = null, oarShown = -1, oarCycle = 0;
+  let oarPos = 0, oarTarget = 0, oarGrab = null, oarTickAt = 0;
   elOar.setAttribute('aria-label', TEXT.oars.label);
   elOar.addEventListener('pointerdown', ev=>{
     ev.preventDefault(); Sfx.init(); oarPtr = ev.pointerId; elOar.setPointerCapture(ev.pointerId);
-    oarHeld = true; elOar.classList.add('held'); oarPress = 1;
-    if(anchored || moor || !playing) return;
-    oarSpin = Math.min(1, oarSpin + OAR_KICK*(1 - 0.6*oarSpin));        // power in: less as it nears full
-    buzz(oarSpin < 0.3 ? 18 : 10);
+    oarHeld = true; elOar.classList.add('held');
+    const r = elOar.getBoundingClientRect(); oarGrab = {y: ev.clientY, h: r.height - 20, from: oarPos}; oarTarget = oarPos; oarTickAt = oarPos;
   });
-  const oarUp = ev=>{ if(ev.pointerId !== oarPtr) return; oarPtr = null; oarHeld = false; elOar.classList.remove('held'); };
+  elOar.addEventListener('pointermove', ev=>{
+    if(ev.pointerId !== oarPtr || !oarGrab) return;
+    oarTarget = Math.max(oarTarget, Math.min(1, oarGrab.from + (ev.clientY - oarGrab.y)/oarGrab.h));   // down only
+  });
+  const oarUp = ev=>{ if(ev.pointerId !== oarPtr) return; oarPtr = null; oarHeld = false; oarGrab = null; elOar.classList.remove('held'); };
   elOar.addEventListener('pointerup', oarUp); elOar.addEventListener('pointercancel', oarUp);
   function updateOarCtl(dt){
     const show = MANUAL_OARS && playing && !moor && !marketV;
     if(show !== !elOar.classList.contains('hidden')) elOar.classList.toggle('hidden', !show);
-    if(anchored || moor || boat.whirl) oarSpin = 0;
-    oarSpin = Math.max(0, oarSpin - OAR_SPIN_FADE*dt);
-    if(oarSpin > 0.01){                                       // the stroke cycle turns, faster with more power
+    const stopped = anchored || moor || boat.whirl;
+    if(stopped) oarSpin = 0;
+    // the pull: the grip drags after the finger, heavy at rest, light once the wheel is spinning
+    if(oarHeld && oarTarget > oarPos){
+      const before = oarPos, rate = OAR_HEAVY + (OAR_LIGHT - OAR_HEAVY)*oarSpin;
+      oarPos += (oarTarget - oarPos)*Math.min(1, dt*rate);
+      const d = oarPos - before;
+      if(d > 0 && !stopped){
+        oarSpin = Math.min(1, oarSpin + d*OAR_PULL*(1 - 0.6*oarSpin));
+        if(oarPos - oarTickAt > 0.16){ oarTickAt = oarPos; buzz(Math.round(4 + 10*(1 - oarSpin))); }   // the wheel pushing back, less as it runs
+      }
+    } else if(!oarHeld && oarPos > 0){ oarPos = Math.max(0, oarPos - dt/OAR_RETURN); oarTarget = oarPos; }   // let go: back up by itself
+    oarSpin = Math.max(0, oarSpin - OAR_SPIN_FADE*dt);       // friction
+    if(oarSpin > 0.01){                                       // the oars' cycle turns with the wheel
       const prev = oarCycle;
       oarCycle += dt*(OAR_RATE_MIN + (OAR_RATE_MAX - OAR_RATE_MIN)*oarSpin);
-      if(Math.floor(oarCycle) !== Math.floor(prev)){ Sfx.oar(0.4 + 0.6*oarSpin); buzz(6 + Math.round(8*oarSpin)); }   // a catch
+      if(Math.floor(oarCycle) !== Math.floor(prev)){ Sfx.oar(0.4 + 0.6*oarSpin); buzz(5 + Math.round(6*oarSpin)); }   // a catch
     }
-    oarPress = Math.max(0, oarPress - dt*5);
-    // the grip shows the rhythm: down through the pull, back up on the recovery; a press dips it
-    const ph = oarCycle % 1, stroke = oarSpin > 0.01 ? (ph < 0.5 ? ph*2 : 2 - ph*2) : 0;
-    const pos = Math.min(1, stroke*Math.min(1, 0.4 + oarSpin) + 0.35*oarPress);
-    if(Math.abs(pos - oarShown) > 0.004){
-      oarShown = pos;
-      elOarGrip.style.top = 'calc(10px + ' + (pos*100).toFixed(1) + '% - ' + (pos*20).toFixed(1) + 'px)';
+    if(Math.abs(oarPos - oarShown) > 0.003){
+      oarShown = oarPos;
+      elOarGrip.style.top = 'calc(10px + ' + (oarPos*100).toFixed(1) + '% - ' + (oarPos*20).toFixed(1) + 'px)';
       elOar.setAttribute('aria-valuenow', Math.round(oarSpin*100));
     }
   }
