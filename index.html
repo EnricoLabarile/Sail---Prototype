@@ -226,6 +226,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'First screen: all three sections (What\'s new, Settings, World) start folded',
+    ]},
+    {build: '2026-10-05 20:53', items: [
       'First screen: folding sections (tap a heading to open or shut it); What\'s new starts folded',
     ]},
     {build: '2026-10-05 20:44', items: [
@@ -239,11 +242,8 @@
       'Leeway: close-hauled the square sail slips sideways to leeward (watch the rocks); the lateen hardly',
       'Big waves: the square sail surfs longer and stronger and takes less damage; the lateen surfs less, broaches and takes more',
     ]},
-    {build: '2026-10-05 19:19', items: [
-      'Oars: the answer to a press on time is now a soft, short, woody tock (lower, quieter, no whistle) that sets off the cue instead of competing with it',
-    ]},
   ];
-  const BUILD = '2026-10-05 20:53';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-05 21:05';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -1109,11 +1109,11 @@
     <div class="scroll-body">
     <!-- the world generator: a preview of this world, its knobs, and Generate (reloads with them in the address) -->
     <p id="wg-build"></p>
-    <!-- collapsible sections (a tap on the heading opens or shuts it): what's new (shut at first), settings, the world -->
+    <!-- collapsible sections (a tap on the heading opens or shuts it): what's new, settings, the world, all shut at first -->
     <details class="wg-sec" id="wg-sec-changes"><summary id="wg-sum-changes"></summary><div id="wg-changes"></div></details>
-    <details class="wg-sec" id="wg-sec-settings" open><summary id="wg-sum-settings"></summary>
+    <details class="wg-sec" id="wg-sec-settings"><summary id="wg-sum-settings"></summary>
     <div class="wg-setting"><label for="wg-haptics" id="wg-haptics-label"></label><input id="wg-haptics" type="range" min="0" max="1" step="0.05"><span id="wg-haptics-val"></span></div></details>
-    <details class="wg-sec" id="wg-sec-world" open><summary id="wg-title"></summary>
+    <details class="wg-sec" id="wg-sec-world"><summary id="wg-title"></summary>
     <canvas id="wg-map" aria-label="Preview of the world"></canvas>
     <div id="wg-knobs"></div>
     <div class="wg-row"><button id="wg-reset" type="button"></button><button id="wg-gen" type="button"></button></div></details>
