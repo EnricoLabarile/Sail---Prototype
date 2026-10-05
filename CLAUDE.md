@@ -370,7 +370,11 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   Opening/closing it plays `Sfx.book(open)`: paper flutter, and the cover's thump on closing. The list also shows the day of the voyage
   (`dayNo`, +1 at each dawn). A tiny faint frame-rate counter (`#fps`, refreshed twice a second while the logbook is open) sits on the
   paper, in the bottom right corner of the right page. Keyboard: arrows, Space = anchor.
-- **Hazards:** rocks, faraglioni, whirlpools (appear/disappear/wander; from day 1, `WHIRL_FROM_DAY` = 1; **slingshot**:
+- **Hazards:** rocks, faraglioni (**spacing**, Tuning, world: two rocks, or a rock and the shore, either touch or have at
+  least `ROCK_GAP` 64 px of water between them, about twice the boat's length, so she never gets stuck in a slot:
+  `tooTight`, `shoreTight` in `tryRock` / `tryStack`; stacks stand `ROCK_GAP` + 20–60 px off the cliffs; this left ~555
+  rocks instead of ~760 and no tight pairs instead of ~930. **Sizes** vary: `rockSize`, a share `ROCK_BIG` 0.4 drawn
+  bigger, up to `ROCK_BIG_MAX` 2.2 ×), whirlpools (appear/disappear/wander; from day 1, `WHIRL_FROM_DAY` = 1; **slingshot**:
   running round a whirlpool's outer ring with its swirl, heading within ~37° of the way it turns (`WHIRL_FLING_COS`),
   she gains speed, `WHIRL_FLING` px/s² × how well she follows it × how deep in she is (0.35 at the rim → 1 at the core),
   up to `WHIRL_FLING_MAX` above her normal speed, fading once she's out; once a pass a whoosh, a buzz and a "flung!"

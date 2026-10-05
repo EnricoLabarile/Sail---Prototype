@@ -722,6 +722,10 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Rocks: always at least about two boat lengths of water between two rocks, or a rock and the shore (unless they touch), so she never gets stuck',
+      'Rocks: varied sizes, some up to about twice the usual',
+    ]},
+    {build: '2026-10-05 18:17', items: [
       'Messages in a bottle: where a message puts its cross, a wrecked cruise ship now lies, broken in two on a reef (solid; a toast when you first come close)',
     ]},
     {build: '2026-10-05 17:36', items: [
@@ -732,11 +736,8 @@
       'Sails: much starker: the square sail flies downwind (up to +25% running) and is nearly dead on and across the wind; the lateen is fastest on the beam and can point up, but crawls downwind',
       'Oars: a stroke on time gives a stronger jolt forward and a longer glide',
     ]},
-    {build: '2026-10-05 16:39', items: [
-      'The list of changes: numbered, split into this build and the three before it',
-    ]},
   ];
-  const BUILD = '2026-10-05 18:17';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-05 18:36';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
   // {braces} are filled in by the game (keep the braces and the word inside;
@@ -1075,6 +1076,9 @@
   const BUOY_R = Math.round(880*WORLD_K);          // radius of each village's ring of buoys (world)
   const BUOYS_PER_VILLAGE = Math.round(24*WORLD_K), HOME_BUOYS = Math.round(32*WORLD_K);   // buoys per ring (world)
   const OPEN_ROCK_TRIES = knob('OPEN_ROCK_TRIES', Math.round(127*WK2));     // clusters of rocks tried out in open water (world)
+  const ROCK_GAP = 64;               // px of clear water at least between two rocks, or a rock and the shore, unless they touch (about twice the boat's length, so she never gets stuck) (world)
+  const ROCK_BIG = 0.4;              // share of rocks drawn bigger than the usual (up to ROCK_BIG_MAX ×) (world)
+  const ROCK_BIG_MAX = 2.2;          // the biggest rocks are this many times the usual size (world)
   const DAY_LEN = 720;               // seconds for a whole day, dawn to dawn (was 360)
   const TUTORIAL_ON = false;         // the first-voyage tutorial (controls shown one at a time with tips); off for now
   const RUINS_ON = false;            // the ruins on the diagonals and their powers; off for now (world)
@@ -2042,12 +2046,20 @@
     const tone=(v)=>'rgb('+(v[0]+g)+','+(v[1]+g)+','+(v[2]+g)+')';
     return {x,y,r,pts,foam:rand(0,Math.PI*2), dark:tone([109,104,98]), light:tone([143,138,130])};
   }
+  // a rock's size: most as before, some bigger, the biggest ROCK_BIG_MAX × (so they don't all look alike)
+  const rockSize = (r)=> r*(Math.random() < ROCK_BIG ? 1 + (ROCK_BIG_MAX - 1)*Math.pow(Math.random(), 1.5) : rand(0.85, 1.15));
+  // between two rocks (or a rock and the shore) either they touch, or there's ROCK_GAP of water: no slot to get stuck in
+  const tooTight = (x, y, r)=> rockGrid.query(x, y, r + ROCK_GAP + 40, o=>{
+    const d = Math.hypot(wdx(o.x,x), wdy(o.y,y)), gap = d - o.r - r;
+    return gap > -0.3*Math.min(o.r, r) && gap < ROCK_GAP;            // (overlapping well into each other: one bigger rock, fine)
+  });
+  const shoreTight = (x, y, r)=> onLand(x, y, r + ROCK_GAP) && !onLand(x, y, r*0.6);   // near the shore but not on it
   function tryStack(x,y,r){
     x = wrapX(x); y = wrapY(y);
     if(wdist(x,y,START.x,START.y) < LAGOON_R) return false;
     for(const v of SPECIALS) if(v.isl && wdist(x,y,v.isl.x,v.isl.y) < v.isl.rmax+160) return false;
-    if(onLand(x,y,r+4)) return false;
-    if(rockGrid.query(x,y,60, o=> Math.hypot(wdx(o.x,x),wdy(o.y,y)) < o.r+r+10)) return false;
+    if(onLand(x,y,r+4) || shoreTight(x,y,r)) return false;
+    if(tooTight(x,y,r)) return false;
     const o = makeRock(x,y,r);
     o.stack = true; o.h = r*rand(1.4,2.4);
     rocks.push(o); rockGrid.add(o,x,y,0);
@@ -2057,8 +2069,9 @@
     x = wrapX(x); y = wrapY(y);
     if(wdist(x,y,START.x,START.y) < LAGOON_R) return false;
     for(const v of SPECIALS) if(wdist(x,y,v.isl.x,v.isl.y) < v.isl.rmax+140) return false;   // clear approach
+    r = rockSize(r);
     if(!allowShore && onLand(x,y,r*0.5+2)) return false;
-    if(rockGrid.query(x,y,30, o=> Math.hypot(wdx(o.x,x),wdy(o.y,y)) < o.r+r+2)) return false;
+    if(shoreTight(x,y,r) || tooTight(x,y,r)) return false;
     const o = makeRock(x,y,r);
     rocks.push(o); rockGrid.add(o,x,y,0);
     return true;
@@ -2079,7 +2092,7 @@
       if(Math.random() < 0.7){
         const ns = 1 + Math.floor(rand(0,3)), a0 = rand(0,Math.PI*2);
         for(let k=0, tries=0; k<ns && tries<20; tries++){
-          const a = a0 + rand(-0.7,0.7), d = rAt(isl,a) + rand(24,58);
+          const a = a0 + rand(-0.7,0.7), d = rAt(isl,a) + rand(ROCK_GAP + 20, ROCK_GAP + 60);   // clear water between them and the cliff
           if(tryStack(isl.x+Math.cos(a)*d, isl.y+Math.sin(a)*d, rand(10,17))) k++;
         }
       }
