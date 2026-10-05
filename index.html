@@ -177,6 +177,14 @@
     z-index:7;
     cursor:pointer;
   }
+  #oar-ctl{position:fixed; right:14px; bottom:calc(112px + env(safe-area-inset-bottom,0px)); width:56px; height:190px; z-index:5; touch-action:none; cursor:grab;}
+  #oar-ctl .oar-slot{position:absolute; left:50%; top:10px; bottom:10px; width:14px; margin-left:-7px; border-radius:7px;
+    background:repeating-linear-gradient(to bottom, var(--ink) 0 2px, transparent 2px 4px); opacity:.55; border:1.5px solid var(--ink);}
+  #oar-ctl .oar-grip{position:absolute; left:4px; right:4px; height:30px; margin-top:-15px; top:10px; border-radius:15px; background:var(--paper);
+    border:2px solid var(--ink); box-shadow:2px 3px 0 var(--ink); display:flex; align-items:center; justify-content:center;}
+  #oar-ctl .oar-grip span{width:24px; height:10px; border-radius:5px; background:repeating-linear-gradient(to right, var(--ink) 0 1.5px, transparent 1.5px 4px);}   /* the loom's worn grip */
+  #oar-ctl.held .oar-grip{background:var(--ink);} #oar-ctl.held .oar-grip span{background:repeating-linear-gradient(to right, var(--paper) 0 1.5px, transparent 1.5px 4px);}
+  body.at-market #oar-ctl{display:none;}
   #dock-btn{position:fixed; z-index:6; width:52px; height:52px; margin:-26px 0 0 -26px; padding:0; border-radius:50%;
     background:var(--paper); color:var(--ink); border:2px solid var(--ink); box-shadow:2px 3px 0 var(--ink); cursor:pointer;
     display:flex; align-items:center; justify-content:center; animation:dockBob 1.6s ease-in-out infinite;}
@@ -623,6 +631,10 @@
     </div>
     <div id="mk-foot"></div>
   </div>
+  <!-- the oar handle, right side: slide it down to pull the oars (rowing by hand) -->
+  <div id="oar-ctl" class="hidden" role="slider" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="100">
+    <div class="oar-slot"></div><div class="oar-grip"><span></span></div>
+  </div>
   <!-- tied up at a village or at home: a badge over the quay opens the market (coins) or the storehouse (a crate) -->
   <button id="dock-btn" type="button" class="hidden"><svg class="ico-coins" viewBox="0 0 24 24" aria-hidden="true"><g stroke="currentColor" stroke-width="1.4" fill="var(--paper)">
     <ellipse cx="9" cy="17" rx="6" ry="2.4"/><path d="M3 17 V14.5 M15 17 V14.5" fill="none"/><ellipse cx="9" cy="14.5" rx="6" ry="2.4"/><path d="M3 14.5 V12 M15 14.5 V12" fill="none"/><ellipse cx="9" cy="12" rx="6" ry="2.4"/>
@@ -748,6 +760,10 @@
       title:   'Home',
       hint:    'Tap to see how home could grow. (A preview for now.)',
       levels:  ['Fisherman\'s hut', 'Masseria', 'Fortified palace'],
+    },
+    // the oar handle on the right (rowing by hand)
+    oars: {
+      label: 'Oars: slide the handle down to pull',
     },
     // home's storehouse: drag goods between the hold and the store (what's left here waits at home)
     store: {
@@ -881,7 +897,11 @@
   const ROW_ENTER = 10;              // px/s: slower than this, with the wind unable to help, and the oars come out (sail brailed up)
   const ROW_EXIT = 16;               // px/s: once the sail could drive her faster than this again, it's set and the oars come in
   const ROW_DELAY = 0.6;             // seconds a condition must hold before switching (no flicker)
-  const ROW_SPEED = 9;               // px/s on the oars
+  const ROW_SPEED = 9;               // px/s on the oars (the old automatic oars)
+  const MANUAL_OARS = true;          // the oars are rowed by hand: slide the oar handle on the right down to pull (false = the old automatic oars)
+  const OAR_STROKE = 6;              // px/s of way one full pull of the handle adds…
+  const OAR_MAX = 14;                // …up to this much (rowing is slow, but goes any way she points)
+  const OAR_FADE = 0.45;             // how quickly the way from rowing dies off when she stops pulling (per second)
   const WHEEL_MAX = Math.PI;         // how far the wheel turns for full lock (π = half a turn each way)
   const SURF_BOOST = 32;             // extra px/s while surfing a big wave
   const SURF_COS = 0.4;              // surf if the heading is within ~66° of the wave's travel (else the wave hurts)
@@ -4623,6 +4643,36 @@
   const storeCount = ()=> Object.values(homeStore.fish).reduce((a,n)=> a+n, 0) + Object.values(homeStore.dish).reduce((a,n)=> a+n, 0) + homeStore.bottles.length;
   function resetStore(){ homeStore.fish = {}; homeStore.dish = {}; homeStore.bottles = []; }
   function openStore(){ openMarket(STORE); }
+  // ---- rowing by hand: the oar handle on the right ----
+  // Slide the grip down to pull (the blades sweep aft and she gathers way,
+  // OAR_STROKE px/s a full pull, up to OAR_MAX), up to swing them forward
+  // again (no push). The way dies off unless she keeps rowing (OAR_FADE). A
+  // splash and a buzz at the end of each pull. She goes wherever she points.
+  const elOar = document.getElementById('oar-ctl'), elOarGrip = elOar.querySelector('.oar-grip');
+  let oarPos = 0, oarHeld = false, oarPtr = null, oarPulled = 0;
+  elOar.setAttribute('aria-label', TEXT.oars.label);
+  function setOarPos(p){
+    p = Math.max(0, Math.min(1, p));
+    const d = p - oarPos; oarPos = p;
+    if(d > 0 && !anchored && !moor){                       // a pull
+      boat.rowV = Math.min(OAR_MAX, (boat.rowV||0) + d*OAR_STROKE);
+      oarPulled += d; boat.oarPull = Math.min(1, (boat.oarPull||0) + d*3);
+      if(oarPos > 0.94 && oarPulled > 0.5){ oarPulled = 0; Sfx.splash(); buzz(14); }   // the stroke's end
+    } else if(d < 0) oarPulled = Math.max(0, oarPulled + d);
+    elOarGrip.style.top = 'calc(10px + ' + (oarPos*100).toFixed(1) + '% - ' + (oarPos*20).toFixed(1) + 'px)';
+    elOar.setAttribute('aria-valuenow', Math.round(oarPos*100));
+  }
+  const oarAt = ev=>{ const r = elOar.getBoundingClientRect(); return (ev.clientY - r.top - 10)/(r.height - 20); };
+  elOar.addEventListener('pointerdown', ev=>{ ev.preventDefault(); Sfx.init(); oarPtr = ev.pointerId; elOar.setPointerCapture(ev.pointerId); oarHeld = true; elOar.classList.add('held'); setOarPos(oarAt(ev)); });
+  elOar.addEventListener('pointermove', ev=>{ if(ev.pointerId === oarPtr) setOarPos(oarAt(ev)); });
+  const oarUp = ev=>{ if(ev.pointerId !== oarPtr) return; oarPtr = null; oarHeld = false; elOar.classList.remove('held'); };
+  elOar.addEventListener('pointerup', oarUp); elOar.addEventListener('pointercancel', oarUp);
+  setOarPos(0);
+  function updateOarCtl(dt){
+    const show = MANUAL_OARS && playing && !moor && !marketV;
+    if(show !== !elOar.classList.contains('hidden')) elOar.classList.toggle('hidden', !show);
+    boat.oarPull = Math.max(0, (boat.oarPull||0) - dt*2.5);   // (the splash at the blades fades after each pull)
+  }
   // the badge over the quay while she's tied up at a village (coins: the
   // market) or at home (a crate: the storehouse); it follows the quay on screen
   const elDock = document.getElementById('dock-btn');
@@ -5696,7 +5746,7 @@
       const step = Math.max(Math.abs(wheelAngle)*3.5, 0.8)*dt;
       wheelAngle = Math.abs(wheelAngle)<=step ? 0 : wheelAngle - Math.sign(wheelAngle)*step;
     }
-    if(!moor && !boat.whirl) boat.angle += TURN_RATE*(sailLevel===SAIL_MIN ? ROW_TURN_MULT : 1)*(wheelAngle/WHEEL_MAX)*dt;   // slow sail = nimble, safe handling
+    if(!moor && !boat.whirl) boat.angle += TURN_RATE*(sailLevel===SAIL_MIN || boat.rowing ? ROW_TURN_MULT : 1)*(wheelAngle/WHEEL_MAX)*dt;   // slow sail = nimble, safe handling
     wheelSound(dt);
     Sfx.ambient(dt, Math.min(1, boat.speed/MAX_SPEED));
     Sfx.rain(playing ? rainNear() : 0);
@@ -5782,7 +5832,7 @@
     // Never because of the anchor: while it's down (or going down) the sail stays up and the oars stay in
     {
       const could = MAX_SPEED*speedFactor(relDeg)*windStrength*WIND_BOOST*downwindBonus(relDeg);   // what the sail would give
-      if(anchored || moor || boat.whirl){ sailLevel = 0; rowT = 0; }
+      if(anchored || moor || boat.whirl || MANUAL_OARS){ sailLevel = 0; rowT = 0; }   // (rowing by hand: the sail is never brailed up for the oars)
       else if(sailLevel === 0){
         rowT = (boat.speed < ROW_ENTER && could < ROW_ENTER) ? rowT + dt : 0;   // (the wind can't help: also right after weighing anchor head to wind)
         if(rowT > ROW_DELAY){ sailLevel = SAIL_MIN; rowT = 0; }
@@ -5796,6 +5846,10 @@
     const sf = windSf*boat.sailAmount;                    // actual drive
     let targetSpeed = anchored ? 0 : MAX_SPEED*sf*WIND_BOOST*downwindBonus(relDeg);   // a well-trimmed sail pays off more
     if(!anchored && sailLevel===SAIL_MIN) targetSpeed = Math.max(targetSpeed, ROW_SPEED);        // at minimum sail the oars keep her going
+    // rowing by hand: the way the strokes give her (it dies off unless she keeps pulling)
+    boat.rowV = (boat.rowV||0)*Math.exp(-OAR_FADE*dt);
+    if(anchored || moor || boat.whirl) boat.rowV = 0;
+    if(boat.rowV > targetSpeed) targetSpeed = boat.rowV;
     boat.sailPower += (windSf-boat.sailPower)*Math.min(1,dt*3);
 
     // Square sail: the yard pivots on the mast at its centre. The sail's
@@ -5821,6 +5875,7 @@
     // she gathers way slowly (BOAT_ACCEL), loses it at the old pace; the anchor bites quickly
     const gaining = targetSpeed + surf > boat.speed;
     boat.speed += (targetSpeed + surf - boat.speed)*Math.min(1,dt*(anchored ? 4 : surf>0 ? 3 : gaining ? BOAT_ACCEL : 1.6));
+    if(!anchored && boat.rowV > boat.speed) boat.speed += (boat.rowV - boat.speed)*Math.min(1, dt*2);   // the oars bite quickly
 
     const hullR = boat.r*0.75;
     // ---- mooring at the home pier ----
@@ -6085,12 +6140,13 @@
       const low = boat.speed < 9;
       const turning = !anchored && Math.abs(wheelAngle/WHEEL_MAX) > 0.08;
       const crawling = !anchored && (sailLevel===SAIL_MIN || (!boat.fromAnchor && boat.speed > 2 && boat.speed < 9));
-      const want = !moor && !boat.whirl && ((low && turning) || crawling);
+      const want = !moor && !boat.whirl && (MANUAL_OARS ? oarHeld || boat.rowV > 1 : (low && turning) || crawling);
       boat.oarHold = want ? 0.5 : Math.max(0, (boat.oarHold||0) - dt);   // a short grace so they don't flicker
       boat.oarsOut = want || boat.oarHold > 0;
       const tgt = boat.oarsOut ? 1 : 0;
       boat.oarK += Math.sign(tgt-boat.oarK)*Math.min(Math.abs(tgt-boat.oarK), dt*2.2);
-      if(boat.oarK>0 && (turning || crawling)) boat.oarPh += dt*(turning ? 4 + 5*Math.abs(wheelAngle/WHEEL_MAX) : 3.2);
+      if(MANUAL_OARS){ boat.rowing = boat.oarsOut; boat.oarPh = (oarPos - 0.5)*Math.PI; }   // the blades follow the handle: up = forward (the catch), down = aft (the finish)
+      else if(boat.oarK>0 && (turning || crawling)) boat.oarPh += dt*(turning ? 4 + 5*Math.abs(wheelAngle/WHEEL_MAX) : 3.2);
     }
     voyageTime += dt;
 
@@ -6127,6 +6183,7 @@
     elWood.classList.add('show');                                   // always visible
     refreshList();
     updateDockBtn();
+    updateOarCtl(dt);
   }
 
   // ---------- 1-bit rendering ----------
@@ -7785,7 +7842,7 @@
       for(const sd of [-1,1]){
         // turning: the two sides row against each other; going straight: they pull together
         const turningNow = Math.abs(rud)>0.08;
-        const sweep = Math.sin(B.oarPh + (turningNow && sd<0 ? Math.PI : 0))*0.45 * (turningNow || sailLevel===SAIL_MIN ? 1 : 0.15);
+        const sweep = Math.sin(B.oarPh + (turningNow && sd<0 && !B.rowing ? Math.PI : 0))*0.45 * (turningNow || sailLevel===SAIL_MIN || B.rowing ? 1 : 0.15);
         const a = sd*Math.PI/2 + sd*turnDir*sweep - sd*0.15;
         const ux = Math.cos(a), uy = Math.sin(a);
         const px = -2, py = sd*8.5;                     // rowlock on the gunwale
@@ -7798,8 +7855,8 @@
         ctx.fillStyle = PAPERC; ctx.lineWidth = 1.1*LWK;
         ctx.beginPath(); ctx.ellipse(0,0,4.2*e,1.9*e,0,0,Math.PI*2); ctx.fill(); ctx.stroke();
         ctx.restore();
-        const bite = Math.max(0, Math.cos(B.oarPh + (turningNow && sd<0 ? Math.PI : 0)));
-        if((turningNow || sailLevel===SAIL_MIN) && bite>0.7 && e>0.9){
+        const bite = B.rowing ? (B.oarPull || 0) : Math.max(0, Math.cos(B.oarPh + (turningNow && sd<0 ? Math.PI : 0)));
+        if((turningNow || sailLevel===SAIL_MIN || B.rowing) && bite>0.7 && e>0.9){
           ctx.globalAlpha = (bite-0.7)/0.3*0.6; ctx.lineWidth = 1*LWK;
           ctx.beginPath(); ctx.arc(bx+ux*3, by+uy*3, 3+(1-bite)*10, 0, Math.PI*2); ctx.stroke();
           ctx.globalAlpha = 1;
