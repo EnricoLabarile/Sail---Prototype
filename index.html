@@ -715,14 +715,14 @@
 
   // what's new, newest first (a few lines, shown under the build time so Enrico knows what to look for); update it with every commit
   const CHANGES = [
+    'World gen: SPIRAL (0 to 1) strings the island clusters along spiral arms round home, like a galaxy; SPIRAL_ARMS sets how many (try SPIRAL 0.7)',
     'Fish banks all look alike (a few big dark fish): the catch is a surprise',
     'Anchor: hold the hub for a shorter time to drop or weigh it (0.32 s, was 0.5)',
     'Intro scroll: the rows stay straight and just fade near the rolls; the newest change in bold',
     'Intro card: an open scroll, the paper curls into a roll at top and bottom',
     'This list of what changed, under the build time',
-    'Quay badge: coins jingle at a village, the storehouse door creaks at home',
   ];
-  const BUILD = '2026-10-05 16:03';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-05 16:23';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
   // {braces} are filled in by the game (keep the braces and the word inside;
@@ -1030,6 +1030,9 @@
   const ISLAND_SCALE = knob('ISLAND_SCALE', 2.5);          // size of the wild islands (1 = the old small ones) (world)
   const ISLAND_COUNT = knob('ISLAND_COUNT', Math.round(210*WK2*3.5/(ISLAND_SCALE*ISLAND_SCALE)));   // wild islands at most (about 58 at scale 2.5; the clusters fill up first) (world)
   const CLUSTER_SHARE = knob('CLUSTER_SHARE', 0.32);        // share of the sea taken by clusters of islands; the rest is open water (world)
+  const SPIRAL = knob('SPIRAL', 0);                         // 0 = clusters scattered as before … 1 = clusters strung along spiral arms round home, like a galaxy, denser near it (world)
+  const SPIRAL_ARMS = knob('SPIRAL_ARMS', 3);               // how many arms the spiral has (world)
+  const SPIRAL_TWIST = 2.4;          // how tightly the arms wind round home (higher = more turns) (world)
   const OPEN_ISLANDS = knob('OPEN_ISLANDS', 6);            // small islands scattered in the open water between the clusters (world)
   // share of the wild islands of each shape (the rest are round-ish blobs) (world):
   const ISLAND_L = knob('ISLAND_L', 0);                // L-shaped: two long arms meeting at a corner (0 = none: off for now; was 0.12)
@@ -1488,11 +1491,32 @@
   // cluster: the density changes abruptly, clusters against open water.
   const SEA_WAVES = [[1,2,1],[2,-1,0.75],[3,1,0.55],[1,-3,0.45],[3,-3,0.45],[-2,3,0.4]]
     .map(([kx,ky,a])=>({kx, ky, a, ph: rand(0, Math.PI*2)}));
-  const seaField = (x,y)=>{ let f = 0; for(const w of SEA_WAVES) f += w.a*Math.sin(2*Math.PI*(w.kx*x/WORLD.w + w.ky*y/WORLD.h) + w.ph); return f; };
+  const waveField = (x,y)=>{ let f = 0; for(const w of SEA_WAVES) f += w.a*Math.sin(2*Math.PI*(w.kx*x/WORLD.w + w.ky*y/WORLD.h) + w.ph); return f; };
+  // the spiral (SPIRAL > 0): arms winding out from home (logarithmic spirals), a denser heart round it, fading out
+  // with distance; summed over home's neighbouring copies on the wrapped map, so the arms meet seamlessly at the edges
+  const SPIRAL_PH = rand(0, Math.PI*2);
+  function spiralField(x,y){
+    const W = WORLD.w, R1 = 0.08*W, RC = 0.2*W, RW = 0.55*W;
+    let f = 0;
+    for(let i=-1;i<=1;i++) for(let j=-1;j<=1;j++){
+      const dx = wdx(x, START.x) + i*W, dy = wdy(y, START.y) + j*W, r = Math.hypot(dx, dy);
+      if(r > 1.3*W) continue;
+      const g = Math.exp(-Math.pow(r/RW, 4));                                   // each copy fades with distance
+      const arm = Math.cos(SPIRAL_ARMS*(Math.atan2(dy, dx) - SPIRAL_TWIST*Math.log(1 + r/R1)) + SPIRAL_PH);
+      f += g*(arm + 1.3*Math.exp(-(r/RC)*(r/RC)));                              // + the dense heart
+    }
+    return f;
+  }
+  // both fields scaled to the same spread, then mixed by SPIRAL
+  const [WAVE_SD, SPIRAL_SD] = (()=>{ const sd = fn=>{ let a = 0, b = 0; for(let k=0;k<1500;k++){ const v = fn(Math.random()*WORLD.w, Math.random()*WORLD.h); a += v; b += v*v; } return Math.sqrt(Math.max(1e-6, b/1500 - (a/1500)**2)); };
+    return [sd(waveField), SPIRAL > 0 ? sd(spiralField) : 1]; })();
+  const seaField = SPIRAL > 0 ? (x,y)=> (1 - SPIRAL)*waveField(x,y)/WAVE_SD + SPIRAL*spiralField(x,y)/SPIRAL_SD : waveField;
   const SEA_CUT = (()=>{ const v = []; for(let k=0;k<4000;k++) v.push(seaField(Math.random()*WORLD.w, Math.random()*WORLD.h));
     v.sort((a,b)=>a-b); return v[Math.floor((1 - CLUSTER_SHARE)*v.length)]; })();
+  // (the field round the cut is steeper once mixed: keep the same soft band, in the field's own units)
+  const SEA_BAND = SPIRAL > 0 ? 0.5/WAVE_SD : 0.5;
   function archipelago(x,y){
-    const k = Math.max(0, Math.min(1, (seaField(x,y) - SEA_CUT)/0.5 + 0.5));   // a narrow band round the cut
+    const k = Math.max(0, Math.min(1, (seaField(x,y) - SEA_CUT)/SEA_BAND + 0.5));   // a narrow band round the cut
     return k*k*(3-2*k);
   }
   const islands = [];
@@ -4167,7 +4191,7 @@
   // dotted, home a square, the villages rings); "Generate" reloads the page
   // with the fields in the address, "Defaults" without them.
   (function worldGen(){
-    const K = {ISLAND_SCALE, ISLAND_COUNT, CLUSTER_SHARE, OPEN_ISLANDS, ISLAND_BIG, ISLAND_L, ISLAND_C, ISLAND_ATOLL,
+    const K = {ISLAND_SCALE, ISLAND_COUNT, CLUSTER_SHARE, SPIRAL, SPIRAL_ARMS, OPEN_ISLANDS, ISLAND_BIG, ISLAND_L, ISLAND_C, ISLAND_ATOLL,
                OPEN_ROCK_TRIES, TRADERS_HOME, TRADERS_VILLAGES, ROLLER_RATE, CLOUD_COUNT};
     const box = document.getElementById('wg-knobs'), T = TEXT.worldGen;
     document.getElementById('wg-title').textContent = T.title;

@@ -81,6 +81,12 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   whirlpools and big waves (up to ~2× as often): room to run free and surf. Villages may land in either. Up to
   `ISLAND_COUNT` (~58) wild islands, the clusters filling up first. It multiplies the older rule that the sea gets
   wilder with distance from home (`danger`).
+  **Spiral** (`SPIRAL` in Tuning and in the world generator, world, 0 = off, the default): the field is mixed
+  with `spiralField`, `SPIRAL_ARMS` (3) logarithmic arms winding out from home (`SPIRAL_TWIST` 2.4) plus a denser
+  heart round it, each fading with distance and summed over home's neighbouring copies on the wrapped map, so the
+  arms meet seamlessly at the edges; both fields are scaled to the same spread (`WAVE_SD`, `SPIRAL_SD`) and mixed
+  (1 − SPIRAL)·waves + SPIRAL·spiral, so at ~0.6–0.85 the clusters string along the arms like a galaxy and the old
+  waves still make them lumpy; `CLUSTER_SHARE` still holds (the cut is sampled from the mixed field).
   **Island size**: `ISLAND_SCALE` (world, 2.5) scales every wild island (atolls too: ring ×scale, islets ×√scale);
   `ISLAND_COUNT` (wild islands only) falls with its square.
   **Island shapes** (`shapeProfile`, `makeIsland(x,y,R,kind)`; still one radius per angle round a centre): round-ish
@@ -216,7 +222,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
 - **First screen: the world generator** (the intro card; `worldGen`, `TEXT.worldGen`; the old intro lines in
   `TEXT.intro` aren't shown for now): a 200 px preview of this world (land in ink, the clusters' zones dotted, home a
   square, the villages rings), a field per world knob (named as in Tuning: `ISLAND_SCALE`, `ISLAND_COUNT`,
-  `CLUSTER_SHARE`, `OPEN_ISLANDS`, `ISLAND_BIG`, `ISLAND_L`, `ISLAND_C`, `ISLAND_ATOLL`, `OPEN_ROCK_TRIES`, `TRADERS_HOME`,
+  `CLUSTER_SHARE`, `SPIRAL`, `SPIRAL_ARMS`, `OPEN_ISLANDS`, `ISLAND_BIG`, `ISLAND_L`, `ISLAND_C`, `ISLAND_ATOLL`, `OPEN_ROCK_TRIES`, `TRADERS_HOME`,
   `TRADERS_VILLAGES`, `ROLLER_RATE`, `CLOUD_COUNT`; a changed field turns dark), **Generate** (reloads the page with the
   changed fields, and those already there, in the address: `?ISLAND_SCALE=1.5&…`; untouched knobs keep their own rule,
   e.g. `ISLAND_COUNT` follows `ISLAND_SCALE`) and **Defaults** (reloads with a bare address). In Tuning those knobs are
