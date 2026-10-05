@@ -13,9 +13,11 @@
   top of the first screen ("Build 2026-10-05 14:05", `TEXT.worldGen.build`), so Enrico can tell the phone runs the
   latest version. The pre-commit hook `tools/hooks/pre-commit` stamps it on every commit touching `index.html`;
   **enable it once in each fresh clone/session: `git config core.hooksPath tools/hooks`**.
-  Under it, **`CHANGES`** (next to `BUILD`): a short bullet list of what's new, newest first, shown in a dashed box
-  ("New in this build", `TEXT.worldGen.changes`); the first line, the newest and most important, is in bold. **Update it with every commit** (one plain line per change Enrico
-  should look for; keep about the last six).
+  Under it, **`CHANGES`** (next to `BUILD`): what's new, **a group per build** (`{build, items}`, newest first), shown
+  in a dashed box as numbered lists: "New in this build" (`TEXT.worldGen.changes`, the first group), then up to
+  three earlier builds, each headed "Earlier: build …" (`TEXT.worldGen.earlier`, a little paler). All lines look
+  alike (no bold). **Update it with every commit**: a new build starts a new first group, and the old first group
+  gets the `BUILD` time it had; one plain line per change Enrico should look for; drop groups past the fourth.
 - **Keep the Texts section up to date.** Every word the player reads lives in `TEXT`, the `// ---------- Texts ----------`
   section at the very top of the script (intro, villages and their dishes/gifts/lines, fish, toasts, popups, tutorial,
   market, logbook, ruins, endings, sinking, HUD). Enrico authors them by hand. New player-facing text goes there, never
