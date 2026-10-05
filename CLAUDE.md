@@ -263,22 +263,26 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   meets the curve; under it "Square sail: 47%" (that share, `speedFactor` at her angle off the wind) and the breeze
   (`windStrength`). It follows her heading live while the book is open on it (`windCardKey`, refreshed in
   `refreshList`, only when the rounded angle, the sail or the breeze changes).
-  **Oars: rowed by hand, like a rowing machine** (`MANUAL_OARS` in Tuning; false brings back the old automatic oars
-  below): an oar handle on the right (`#oar-ctl`, above the fair-wind medallion, a short slot 76 px tall; hidden when
-  moored or at the market). A **flywheel** (`oarSpin` 0..1) drives the oars in a steady cycle (`oarCycle`,
-  `OAR_RATE_MIN` 0.45 to `OAR_RATE_MAX` 1.25 strokes a second, never frantic) and her way (`OAR_MAX` 14 px/s × power
-  on average, `boat.rowV`, **in surges**: the pull, the first half of each cycle as the blades sweep aft, drives her on
-  and the recovery lets her coast: × (1 − `OAR_SURGE` + `OAR_SURGE`·π·max(0, sin 2π·phase)), `OAR_SURGE` = 0.5, at
-  full power about 11 → 18 → 11 px/s a stroke; the oars bite quickly, rate 3.5; wherever she points, even head to wind; it counts only when it's more than the sail gives:
-  `targetSpeed` = max(sail, `rowV`)); friction slows it to a stop (`OAR_SPIN_FADE` 0.12 a second); at anchor or moored
-  it's 0. The finger **pulls the grip down** (only down, `oarTarget` only grows; let go and it swings back up in
-  `OAR_RETURN` 0.35 s, grab it again on the way up): every bit of pull adds power (`OAR_PULL` 0.32 a full pull, less
-  near full). At rest the wheel is **heavy**: the grip lags well behind the finger (`OAR_HEAVY` = 2); spun up it runs
-  **light** and follows almost at once (`OAR_LIGHT` = 16); felt as buzz ticks along the pull, longer while it's heavy.
-  At each catch of the oars a low watery gloop (`Sfx.oar`: a sine falling 150→70 Hz and a low-passed swirl of noise)
-  and a light buzz, both stronger with power. On the boat the oars come out while the wheel turns, the blades sweep
-  with the cycle (`oarPh`: forward at the catch, aft at the finish) with a splash ring mid-pull; turning is
-  `ROW_TURN_MULT` × quicker while rowing (`boat.rowing`). With manual oars the sail is never brailed up.
+  **Oars: rowed by hand, in rhythm** (like grinding berries in Pokémon Emerald; `MANUAL_OARS` in Tuning; false brings
+  back the old automatic oars below): a round **oar button** on the right (`#oar-ctl`, above the fair-wind medallion;
+  hidden when moored or at the market): a paper disc with a pointer (a triangle on a dashed ring) that turns once a
+  stroke, under a **fixed mark** (an ink triangle above it). The first press sets her rowing slowly (power `oarSpin` =
+  `OAR_START` 0.2) and the pointer sets off from the mark; it goes round at `OAR_RATE_MIN` 0.45 to `OAR_RATE_MAX` 1.25
+  turns a second, faster with power (`oarCycle`). Each time it comes back up to the mark is the moment to press: the
+  disc **swells** just before (`OAR_WARN` = 0.2 of a turn, class `ready`). A press **on time** (within `OAR_WINDOW`
+  = 0.13 of a turn either side) adds `OAR_GOOD` (0.22, less near full), the disc flashes ink (class `hit`) and a firm
+  buzz; **too early or too late** only `OAR_MISS` (0.04) and a light buzz; one press a turn counts (`oarPressedTurn`).
+  A mark passed with no press keeps only `OAR_SKIP` (0.65) of the power (`oarSkipped`); below 0.06 she stops; plus a
+  slow steady drain (`OAR_SPIN_FADE` = 0.05 a second). In rhythm the power climbs to full in ~6 strokes (peaks of ~20
+  px/s); off rhythm she crawls at ~2. Her way is `OAR_MAX` (14 px/s) × power on average, `boat.rowV`, **in surges**:
+  the pull, the first half of each turn as the blades sweep aft, drives her on and the recovery lets her coast: ×
+  (1 − `OAR_SURGE` + `OAR_SURGE`·π·max(0, sin 2π·phase)), `OAR_SURGE` = 0.5; the oars bite quickly (rate 3.5); wherever
+  she points, even head to wind; it counts only when it's more than the sail gives (`targetSpeed` = max(sail,
+  `rowV`)); at anchor or moored the power is 0. At each catch (the pointer at the mark) a low watery gloop (`Sfx.oar`:
+  a sine falling 150→70 Hz and a low-passed swirl of noise), stronger with power. Enter/Space on the button press it
+  too. On the boat the oars come out while there's power, the blades sweep with the cycle (`oarPh`: forward at the
+  catch, aft at the finish) with a splash ring mid-pull; turning is `ROW_TURN_MULT` × quicker while rowing
+  (`boat.rowing`). With manual oars the sail is never brailed up.
   **Sail: automatic** (no button; the old switch `#sail` / `drawSail` is hidden and unused, the halyard rope before it is
   gone). The sail is up by default. When she's slower than `ROW_ENTER` and the wind can't drive her past it either
   (head to wind, or nearly), after `ROW_DELAY` the sail is brailed up and the oars come out (`sailLevel` = `SAIL_MIN`:

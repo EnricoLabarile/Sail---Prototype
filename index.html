@@ -177,13 +177,16 @@
     z-index:7;
     cursor:pointer;
   }
-  #oar-ctl{position:fixed; right:14px; bottom:calc(112px + env(safe-area-inset-bottom,0px)); width:56px; height:76px; z-index:5; touch-action:none; cursor:grab;}
-  #oar-ctl .oar-slot{position:absolute; left:50%; top:10px; bottom:10px; width:14px; margin-left:-7px; border-radius:7px;
-    background:repeating-linear-gradient(to bottom, var(--ink) 0 2px, transparent 2px 4px); opacity:.55; border:1.5px solid var(--ink);}
-  #oar-ctl .oar-grip{position:absolute; left:4px; right:4px; height:24px; margin-top:-12px; top:10px; border-radius:12px; background:var(--paper);
-    border:2px solid var(--ink); box-shadow:2px 3px 0 var(--ink); display:flex; align-items:center; justify-content:center;}
-  #oar-ctl .oar-grip span{width:24px; height:10px; border-radius:5px; background:repeating-linear-gradient(to right, var(--ink) 0 1.5px, transparent 1.5px 4px);}   /* the loom's worn grip */
-  #oar-ctl.held .oar-grip{background:var(--ink);} #oar-ctl.held .oar-grip span{background:repeating-linear-gradient(to right, var(--paper) 0 1.5px, transparent 1.5px 4px);}
+  /* the oar button: a disc with a pointer that turns with the strokes, under a fixed mark; press as the pointer comes round to it */
+  #oar-ctl{position:fixed; right:12px; bottom:calc(108px + env(safe-area-inset-bottom,0px)); width:64px; height:74px; z-index:5; touch-action:none; cursor:pointer;}
+  #oar-ctl .oar-mark{position:absolute; left:50%; top:0; width:0; height:0; margin-left:-6px; border-left:6px solid transparent; border-right:6px solid transparent;
+    border-top:9px solid var(--ink); filter:drop-shadow(0 0 1.5px var(--paper));}   /* the fixed mark: the moment to press */
+  #oar-ctl .oar-disc{position:absolute; left:4px; top:12px; width:56px; height:56px; border-radius:50%; background:var(--paper); border:2px solid var(--ink);
+    box-shadow:2px 3px 0 var(--ink); box-sizing:border-box; transition:transform .12s;}
+  #oar-ctl .oar-disc svg{position:absolute; inset:0; width:100%; height:100%;}
+  #oar-ctl.ready .oar-disc{transform:scale(1.12);}                  /* the pointer is nearly round: get ready */
+  #oar-ctl.hit .oar-disc{background:var(--ink);}                   /* right on time */
+  #oar-ctl.hit .oar-disc svg{color:var(--paper);}
   body.at-market #oar-ctl{display:none;}
   #dock-btn{position:fixed; z-index:6; width:52px; height:52px; margin:-26px 0 0 -26px; padding:0; border-radius:50%;
     background:var(--paper); color:var(--ink); border:2px solid var(--ink); box-shadow:2px 3px 0 var(--ink); cursor:pointer;
@@ -632,8 +635,11 @@
     <div id="mk-foot"></div>
   </div>
   <!-- the oar handle, right side: slide it down to pull the oars (rowing by hand) -->
-  <div id="oar-ctl" class="hidden" role="slider" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="100">
-    <div class="oar-slot"></div><div class="oar-grip"><span></span></div>
+  <div id="oar-ctl" class="hidden" role="button" tabindex="0">
+    <div class="oar-mark"></div>
+    <div class="oar-disc"><svg viewBox="-28 -28 56 56" aria-hidden="true" style="color:var(--ink)"><g class="oar-rot">
+      <circle r="17" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="2 3"/>
+      <path d="M0 -24 L5 -15 L-5 -15 Z" fill="currentColor"/><circle r="3" fill="currentColor"/></g></svg></div>
   </div>
   <!-- tied up at a village or at home: a badge over the quay opens the market (coins) or the storehouse (a crate) -->
   <button id="dock-btn" type="button" class="hidden"><svg class="ico-coins" viewBox="0 0 24 24" aria-hidden="true"><g stroke="currentColor" stroke-width="1.4" fill="var(--paper)">
@@ -763,7 +769,7 @@
     },
     // the oar handle on the right (rowing by hand)
     oars: {
-      label: 'Oars: pull the handle down, again and again, to get the oars going',
+      label: 'Oars: press to row, then press again each time the pointer comes round to the mark',
     },
     // home's storehouse: drag goods between the hold and the store (what's left here waits at home)
     store: {
@@ -899,12 +905,14 @@
   const ROW_EXIT = 16;               // px/s: once the sail could drive her faster than this again, it's set and the oars come in
   const ROW_DELAY = 0.6;             // seconds a condition must hold before switching (no flicker)
   const ROW_SPEED = 9;               // px/s on the oars (the old automatic oars)
-  const MANUAL_OARS = true;          // the oars are rowed by hand like a rowing machine: pull the handle (right) down to spin up a flywheel (false = the old automatic oars)
-  const OAR_PULL = 0.32;             // power one full pull adds to the flywheel (0..1), less as it nears full
-  const OAR_HEAVY = 2;               // how readily the grip follows the finger with the flywheel at rest (low = heavy: it wants to stay still)…
-  const OAR_LIGHT = 16;              // …and spinning at full power (it runs light, you pull through it)
-  const OAR_RETURN = 0.35;           // seconds for the grip to swing back up by itself once let go
-  const OAR_SPIN_FADE = 0.12;        // power the rowing loses per second when nobody presses (it slows down, then stops)
+  const MANUAL_OARS = true;          // the oars are rowed by hand: press the oar button (right) in rhythm, as its pointer comes round to the mark (false = the old automatic oars)
+  const OAR_START = 0.2;             // power the first press gives (0..1): she starts rowing, slowly
+  const OAR_GOOD = 0.22;             // power a press right on time adds (the pointer at the mark)…
+  const OAR_MISS = 0.04;             // …and a press too early or too late (a little)
+  const OAR_WINDOW = 0.13;           // how far from the mark a press still counts as on time (share of a turn, either side)
+  const OAR_WARN = 0.2;              // the button swells this share of a turn before the pointer reaches the mark (time to react)
+  const OAR_SPIN_FADE = 0.05;        // a slow steady drain of the rowing's power (a share of it per second)…
+  const OAR_SKIP = 0.65;             // …and the power kept when the pointer passes the mark without a press (she slows; a few skipped and she stops)
   const OAR_RATE_MIN = 0.45;         // strokes a second as the rowing starts…
   const OAR_RATE_MAX = 1.25;         // …and at full power (steady, never frantic)
   const OAR_SURGE = 0.5;             // how much of her way on the oars comes in a surge as the blades sweep aft (0 = steady glide, 1 = all of it), then she coasts on the recovery
@@ -4672,56 +4680,60 @@
   const storeCount = ()=> Object.values(homeStore.fish).reduce((a,n)=> a+n, 0) + Object.values(homeStore.dish).reduce((a,n)=> a+n, 0) + homeStore.bottles.length;
   function resetStore(){ homeStore.fish = {}; homeStore.dish = {}; homeStore.bottles = []; }
   function openStore(){ openMarket(STORE); }
-  // ---- rowing by hand: the oar handle on the right, like a rowing machine ----
-  // A flywheel (oarSpin 0..1) drives the oars in a steady cycle, OAR_RATE_MIN
-  // to OAR_RATE_MAX strokes a second, and her way (OAR_MAX × power, wherever
-  // she points); friction slows it to a stop (OAR_SPIN_FADE). The finger pulls
-  // the grip down (only down; let go and it swings back up, OAR_RETURN): every
-  // bit of pull adds power (OAR_PULL a full pull, less near full). At rest the
-  // wheel is heavy, the grip lags well behind the finger (OAR_HEAVY); spun up
-  // it runs light and follows almost at once (OAR_LIGHT). Felt as buzz ticks
-  // along the pull, heavier while it's heavy; a gloop at each catch of the oars.
-  const elOar = document.getElementById('oar-ctl'), elOarGrip = elOar.querySelector('.oar-grip');
-  let oarSpin = 0, oarHeld = false, oarPtr = null, oarShown = -1, oarCycle = 0;
-  let oarPos = 0, oarTarget = 0, oarGrab = null, oarTickAt = 0;
+  // ---- rowing by hand: the oar button on the right, pressed in rhythm ----
+  // Like grinding berries: the first press sets her rowing, slowly (power
+  // oarSpin = OAR_START), and the button's disc starts turning, its pointer
+  // going round once a stroke (OAR_RATE_MIN..MAX turns a second, faster with
+  // power). Each time the pointer comes back up to the fixed mark is the
+  // moment to press: the button swells just before (OAR_WARN). On time
+  // (within OAR_WINDOW of the mark) the stroke gets a proper push (OAR_GOOD,
+  // the disc flashes ink); too early or too late, only a little (OAR_MISS).
+  // One press a turn counts. Without presses the power drains away
+  // (OAR_SPIN_FADE) and she stops. Her way is OAR_MAX × power, in surges.
+  const elOar = document.getElementById('oar-ctl'), elOarRot = elOar.querySelector('.oar-rot');
+  let oarSpin = 0, oarCycle = 0, oarShown = -1, oarPressedTurn = -1, oarHitT = 0, oarSkipped = 0;
   elOar.setAttribute('aria-label', TEXT.oars.label);
-  elOar.addEventListener('pointerdown', ev=>{
-    ev.preventDefault(); Sfx.init(); oarPtr = ev.pointerId; elOar.setPointerCapture(ev.pointerId);
-    oarHeld = true; elOar.classList.add('held');
-    const r = elOar.getBoundingClientRect(); oarGrab = {y: ev.clientY, h: r.height - 20, from: oarPos}; oarTarget = oarPos; oarTickAt = oarPos;
-  });
-  elOar.addEventListener('pointermove', ev=>{
-    if(ev.pointerId !== oarPtr || !oarGrab) return;
-    oarTarget = Math.max(oarTarget, Math.min(1, oarGrab.from + (ev.clientY - oarGrab.y)/oarGrab.h));   // down only
-  });
-  const oarUp = ev=>{ if(ev.pointerId !== oarPtr) return; oarPtr = null; oarHeld = false; oarGrab = null; elOar.classList.remove('held'); };
-  elOar.addEventListener('pointerup', oarUp); elOar.addEventListener('pointercancel', oarUp);
+  function pressOar(){
+    Sfx.init();
+    if(anchored || moor || !playing) return;
+    if(oarSpin < 0.02){                                      // starting: she begins to row, slowly; the pointer sets off from the mark
+      oarSpin = OAR_START; oarCycle = 0; oarPressedTurn = 0; oarSkipped = 0;
+      buzz(16); return;
+    }
+    const turn = Math.round(oarCycle);                       // the mark this press is aimed at (the nearest one)
+    if(turn === oarPressedTurn) { buzz(4); return; }         // already pressed for this one
+    oarPressedTurn = turn;
+    const off = Math.abs(oarCycle - turn);                   // how far from the mark, in turns
+    if(off <= OAR_WINDOW){
+      oarSpin = Math.min(1, oarSpin + OAR_GOOD*(1 - 0.5*oarSpin));
+      oarHitT = 0.18; buzz([14,25,30]);
+    } else {
+      oarSpin = Math.min(1, oarSpin + OAR_MISS);
+      buzz(8);
+    }
+  }
+  elOar.addEventListener('pointerdown', ev=>{ ev.preventDefault(); pressOar(); });
+  elOar.addEventListener('keydown', ev=>{ if((ev.key === 'Enter' || ev.key === ' ') && !ev.repeat){ ev.preventDefault(); ev.stopPropagation(); pressOar(); } });
   function updateOarCtl(dt){
     const show = MANUAL_OARS && playing && !moor && !marketV;
     if(show !== !elOar.classList.contains('hidden')) elOar.classList.toggle('hidden', !show);
-    const stopped = anchored || moor || boat.whirl;
-    if(stopped) oarSpin = 0;
-    // the pull: the grip drags after the finger, heavy at rest, light once the wheel is spinning
-    if(oarHeld && oarTarget > oarPos){
-      const before = oarPos, rate = OAR_HEAVY + (OAR_LIGHT - OAR_HEAVY)*oarSpin;
-      oarPos += (oarTarget - oarPos)*Math.min(1, dt*rate);
-      const d = oarPos - before;
-      if(d > 0 && !stopped){
-        oarSpin = Math.min(1, oarSpin + d*OAR_PULL*(1 - 0.6*oarSpin));
-        if(oarPos - oarTickAt > 0.16){ oarTickAt = oarPos; buzz(Math.round(4 + 10*(1 - oarSpin))); }   // the wheel pushing back, less as it runs
-      }
-    } else if(!oarHeld && oarPos > 0){ oarPos = Math.max(0, oarPos - dt/OAR_RETURN); oarTarget = oarPos; }   // let go: back up by itself
-    oarSpin = Math.max(0, oarSpin - OAR_SPIN_FADE*dt);       // friction
-    if(oarSpin > 0.01){                                       // the oars' cycle turns with the wheel
+    if(anchored || moor || boat.whirl) oarSpin = 0;
+    oarSpin = Math.max(0, oarSpin - OAR_SPIN_FADE*oarSpin*dt);              // a slow steady drain
+    if(oarSpin > 0.01){                                                     // a mark passed without a press: she loses way
+      const turn = Math.floor(oarCycle - OAR_WINDOW);
+      if(turn >= 1 && turn > oarSkipped && turn > oarPressedTurn){ oarSkipped = turn; oarSpin *= OAR_SKIP; if(oarSpin < 0.06) oarSpin = 0; }
+    }
+    if(oarSpin > 0.01){                                       // the pointer goes round once a stroke
       const prev = oarCycle;
       oarCycle += dt*(OAR_RATE_MIN + (OAR_RATE_MAX - OAR_RATE_MIN)*oarSpin);
-      if(Math.floor(oarCycle) !== Math.floor(prev)){ Sfx.oar(0.4 + 0.6*oarSpin); buzz(5 + Math.round(6*oarSpin)); }   // a catch
+      if(Math.floor(oarCycle) !== Math.floor(prev)) Sfx.oar(0.4 + 0.6*oarSpin);   // a catch, at the mark
     }
-    if(Math.abs(oarPos - oarShown) > 0.003){
-      oarShown = oarPos;
-      elOarGrip.style.top = 'calc(10px + ' + (oarPos*100).toFixed(1) + '% - ' + (oarPos*20).toFixed(1) + 'px)';
-      elOar.setAttribute('aria-valuenow', Math.round(oarSpin*100));
-    }
+    const ph = oarCycle % 1, ready = oarSpin > 0.01 && ph > 1 - OAR_WARN && Math.round(oarCycle) !== oarPressedTurn;
+    if(ready !== elOar.classList.contains('ready')) elOar.classList.toggle('ready', ready);
+    oarHitT = Math.max(0, oarHitT - dt);
+    if((oarHitT > 0) !== elOar.classList.contains('hit')) elOar.classList.toggle('hit', oarHitT > 0);
+    const deg = Math.round(ph*3600)/10;
+    if(deg !== oarShown){ oarShown = deg; elOarRot.setAttribute('transform', 'rotate(' + deg + ')'); }
   }
   // the badge over the quay while she's tied up at a village (coins: the
   // market) or at home (a crate: the storehouse); it follows the quay on screen
