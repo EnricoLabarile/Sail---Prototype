@@ -763,7 +763,7 @@
     },
     // the oar handle on the right (rowing by hand)
     oars: {
-      label: 'Oars: slide the handle down to pull; it swings back up by itself',
+      label: 'Oars: press to row; each press puts more power into the stroke',
     },
     // home's storehouse: drag goods between the hold and the store (what's left here waits at home)
     store: {
@@ -812,7 +812,8 @@
       windTitle: 'Wind',
       drawing:   '{sail}: {pct}%',
       breeze:    'breeze {pct}%',
-      spareLine: '- - - spare sail',
+      spareLine: '- - - in the hold',
+      none:      'No sail: the oars',
       rigged:  '{sail} rigged',
     },
     logbook: {
@@ -898,12 +899,12 @@
   const ROW_EXIT = 16;               // px/s: once the sail could drive her faster than this again, it's set and the oars come in
   const ROW_DELAY = 0.6;             // seconds a condition must hold before switching (no flicker)
   const ROW_SPEED = 9;               // px/s on the oars (the old automatic oars)
-  const MANUAL_OARS = true;          // the oars are rowed by hand: slide the oar handle on the right down to pull (false = the old automatic oars)
-  const OAR_STROKE = 8;              // px/s of way one full pull of the handle adds…
-  const OAR_MAX = 14;                // …up to this much (rowing is slow, but goes any way she points)
-  const OAR_RESIST = 9;              // how readily the grip follows the finger down (lower = heavier water; it's heaviest at the start of a pull)
-  const OAR_RETURN = 0.45;           // seconds for the grip to swing back up by itself once let go
-  const OAR_FADE = 0.45;             // how quickly the way from rowing dies off when she stops pulling (per second)
+  const MANUAL_OARS = true;          // the oars are rowed by hand: each press on the oar handle (right) puts power into the rowing (false = the old automatic oars)
+  const OAR_KICK = 0.22;             // power one press adds to the rowing (0..1), less as it nears full (like a flywheel)
+  const OAR_SPIN_FADE = 0.12;        // power the rowing loses per second when nobody presses (it slows down, then stops)
+  const OAR_RATE_MIN = 0.45;         // strokes a second as the rowing starts…
+  const OAR_RATE_MAX = 1.25;         // …and at full power (steady, never frantic)
+  const OAR_MAX = 14;                // px/s at full power (rowing is slow, but goes any way she points)
   const WHEEL_MAX = Math.PI;         // how far the wheel turns for full lock (π = half a turn each way)
   const SURF_BOOST = 32;             // extra px/s while surfing a big wave
   const SURF_COS = 0.4;              // surf if the heading is within ~66° of the wave's travel (else the wave hurts)
@@ -1023,7 +1024,8 @@
   const SAIL_POLAR_LATEEN = [[0,0.02],[20,0.12],[35,0.40],[50,0.68],[70,0.88],[90,1.0],[110,0.97],[130,0.84],[150,0.68],[170,0.57],[180,0.54]];
   const LATEEN_SWING = 0.9;          // how quickly the lateen yard swings across when she changes tack (3 = as quick as the sail trims; lower = heavier)
   const SAIL_TONE = 0.72;            // the sail's cloth when drawing well (1 = paper white, 0 = ink); slack or reefed it's a little darker
-  const SPARE_SAIL = true;           // she carries a spare sail in the hold (the lateen at the start; it takes one of the HOLD_MAX slots), and a tap on it in the logbook swaps the two
+  const SPARE_SAIL = true;           // both sails ride in the hold (a slot each, the one not rigged); a tap on one in the logbook rigs it
+  const START_RIG = null;            // the sail rigged at the start: null = none, she sets out on the oars ('square' or 'lateen' = that one)
   const PINE_MODELS = 4;             // stone pine shapes, reused (each also mirrored) all over the map (world)
   // draw the scene on the processor (true) or on the graphics card (false): the frame is tiny, and Firefox
   // on Android is slow with the card (24 fps); add ?scene=gpu or ?scene=cpu to the address to compare
@@ -2169,7 +2171,7 @@
     sailAmount: 1,    // smoothed sail area (0..1): the sail is up by default
     sailSide: 1,      // which side the boom is on (+1 / -1), with hysteresis
     boomSigned: 0,    // smoothed angle the square sail faces, or the lateen yard's angle off the centreline (boat frame)
-    rig: 'square',    // the sail she carries: 'square' or 'lateen' (the other one is the spare, in the hold)
+    rig: START_RIG,   // the sail she carries: 'square', 'lateen' or null (none: the oars only); the others ride in the hold
     r: 16
   };
   const wake=[]; let wakeAcc=0;
@@ -2386,7 +2388,9 @@
   const POLARS = {square: SAIL_POLAR_SQUARE, lateen: SAIL_POLAR_LATEEN};
   function speedFactor(relDeg, rig){
     relDeg = Math.abs(relDeg);
-    const POLAR = POLARS[rig || boat.rig] || POLARS.square;
+    rig = rig === undefined ? boat.rig : rig;
+    if(!rig) return 0;                                  // no sail rigged: the wind gives her nothing
+    const POLAR = POLARS[rig] || POLARS.square;
     for(let i=0;i<POLAR.length-1;i++){
       const [a0,f0]=POLAR[i], [a1,f1]=POLAR[i+1];
       if(relDeg>=a0 && relDeg<=a1){
@@ -4092,7 +4096,7 @@
   })();
   document.getElementById('restart-btn').addEventListener('click', ()=>{
     boat.x = SPAWN.x; boat.y = SPAWN.y; boat.angle = SPAWN.angle;
-    boat.speed = 0; boat.health = MAX_HEALTH; boat.kx = boat.ky = 0; boat.whirl = null; boat.rig = 'square';
+    boat.speed = 0; boat.health = MAX_HEALTH; boat.kx = boat.ky = 0; boat.whirl = null; boat.rig = START_RIG;
     for(const w of whirlpools) whirlAsleep(w);           // a calm first day again
     boat.oarK = 0; boat.oarsOut = false;
     for(const k in counts) counts[k] = 0;
@@ -4223,7 +4227,9 @@
   let settleT = 0;
   const fishAboard = ()=> FISH_KEYS.reduce((a,k)=> a + counts[k], 0);
   const dishesAboard = ()=> Object.values(dishHold).reduce((a,n)=> a + n, 0);
-  const spareSlots = ()=> SPARE_SAIL ? 1 : 0;                     // the spare sail takes a slot too
+  const SAILS = ['square', 'lateen'];
+  const sailsInHold = ()=> SPARE_SAIL ? SAILS.filter(r=> r !== boat.rig) : [];
+  const spareSlots = ()=> sailsInHold().length;                      // the sails not rigged take a slot each
   const slotsUsed = ()=> fishAboard() + dishesAboard() + spareSlots() + bottleHold.length;   // the hold's HOLD_MAX slots: a fish, a dish, the spare sail or a bottle each (gifts are kept apart)
   const holdFull = ()=> slotsUsed() >= HOLD_MAX;
   let fullSaid = null;                                   // the bank we've already said "the hold is full" over
@@ -4663,53 +4669,43 @@
   function resetStore(){ homeStore.fish = {}; homeStore.dish = {}; homeStore.bottles = []; }
   function openStore(){ openMarket(STORE); }
   // ---- rowing by hand: the oar handle on the right ----
-  // Slide the grip down to pull (the blades sweep aft and she gathers way,
-  // OAR_STROKE px/s a full pull, up to OAR_MAX), up to swing them forward
-  // again (no push). The way dies off unless she keeps rowing (OAR_FADE). A
-  // splash and a buzz at the end of each pull. She goes wherever she points.
+  // Not one-to-one: each press puts power into the rowing (oarSpin 0..1, a
+  // kick of OAR_KICK, smaller as it nears full), like stoking a locomotive:
+  // the oars start slow and, pressed again and again, keep turning faster
+  // (OAR_RATE_MIN..MAX strokes a second); left alone they slow and stop
+  // (OAR_SPIN_FADE). Her way on the oars is OAR_MAX × power, wherever she
+  // points. The grip rides up and down with the strokes; each catch is a low
+  // gloop and a light buzz.
   const elOar = document.getElementById('oar-ctl'), elOarGrip = elOar.querySelector('.oar-grip');
-  let oarPos = 0, oarHeld = false, oarPtr = null, oarTarget = 0, oarGrab = null, oarStroke = false, oarTickAt = 0, oarShown = -1;
+  let oarSpin = 0, oarHeld = false, oarPtr = null, oarShown = -1, oarCycle = 0, oarPress = 0;
   elOar.setAttribute('aria-label', TEXT.oars.label);
-  // the finger only ever pulls down: the grip follows it (never up), a little
-  // behind, as if the blade were dragging through water; let go, and it swings back up
-  const oarAt = ev=>{ const r = elOar.getBoundingClientRect(); return {y: ev.clientY, h: r.height - 20}; };
   elOar.addEventListener('pointerdown', ev=>{
     ev.preventDefault(); Sfx.init(); oarPtr = ev.pointerId; elOar.setPointerCapture(ev.pointerId);
-    oarHeld = true; elOar.classList.add('held');
-    const a = oarAt(ev); oarGrab = {y: a.y, h: a.h, from: oarPos}; oarTarget = oarPos;
+    oarHeld = true; elOar.classList.add('held'); oarPress = 1;
+    if(anchored || moor || !playing) return;
+    oarSpin = Math.min(1, oarSpin + OAR_KICK*(1 - 0.6*oarSpin));        // power in: less as it nears full
+    buzz(oarSpin < 0.3 ? 18 : 10);
   });
-  elOar.addEventListener('pointermove', ev=>{
-    if(ev.pointerId !== oarPtr || !oarGrab) return;
-    const f = oarGrab.from + (ev.clientY - oarGrab.y)/oarGrab.h;
-    oarTarget = Math.max(oarTarget, Math.min(1, f));                    // down only
-  });
-  const oarUp = ev=>{ if(ev.pointerId !== oarPtr) return; oarPtr = null; oarHeld = false; oarGrab = null; oarStroke = false; elOar.classList.remove('held'); };
+  const oarUp = ev=>{ if(ev.pointerId !== oarPtr) return; oarPtr = null; oarHeld = false; elOar.classList.remove('held'); };
   elOar.addEventListener('pointerup', oarUp); elOar.addEventListener('pointercancel', oarUp);
   function updateOarCtl(dt){
     const show = MANUAL_OARS && playing && !moor && !marketV;
     if(show !== !elOar.classList.contains('hidden')) elOar.classList.toggle('hidden', !show);
-    boat.oarPull = Math.max(0, (boat.oarPull||0) - dt*2.5);   // (the splash at the blades fades after each pull)
-    const before = oarPos;
-    if(oarHeld && oarTarget > oarPos){                         // the pull: the grip drags after the finger, heaviest as the blade bites
-      const rate = OAR_RESIST*(0.35 + 0.65*oarPos);
-      oarPos += (oarTarget - oarPos)*Math.min(1, dt*rate);
-      const d = oarPos - before;
-      if(d > 0 && !anchored && !moor){
-        if(!oarStroke && d > 0.002){ oarStroke = true; oarTickAt = oarPos; Sfx.oar(Math.min(1, d*40)); buzz(22); }   // the catch: the blade bites
-        boat.rowV = Math.min(OAR_MAX, (boat.rowV||0) + d*OAR_STROKE);
-        boat.oarPull = Math.min(1, boat.oarPull + d*3);
-        if(oarPos - oarTickAt > 0.14){ oarTickAt = oarPos; buzz(6); }                    // the water pushing back, felt as it goes
-      }
-    } else if(!oarHeld && oarPos > 0){                         // let go: the oar swings back up by itself (no push)
-      oarPos = Math.max(0, oarPos - dt/OAR_RETURN);
-      oarTarget = oarPos;
-      if(oarPos === 0) oarStroke = false;
+    if(anchored || moor || boat.whirl) oarSpin = 0;
+    oarSpin = Math.max(0, oarSpin - OAR_SPIN_FADE*dt);
+    if(oarSpin > 0.01){                                       // the stroke cycle turns, faster with more power
+      const prev = oarCycle;
+      oarCycle += dt*(OAR_RATE_MIN + (OAR_RATE_MAX - OAR_RATE_MIN)*oarSpin);
+      if(Math.floor(oarCycle) !== Math.floor(prev)){ Sfx.oar(0.4 + 0.6*oarSpin); buzz(6 + Math.round(8*oarSpin)); }   // a catch
     }
-    if(oarHeld && oarPos > 0.88 && oarStroke && !oarStroke.end){ oarStroke = {end: true}; buzz(12); }   // the end of the pull
-    if(Math.abs(oarPos - oarShown) > 0.002){
-      oarShown = oarPos;
-      elOarGrip.style.top = 'calc(10px + ' + (oarPos*100).toFixed(1) + '% - ' + (oarPos*20).toFixed(1) + 'px)';
-      elOar.setAttribute('aria-valuenow', Math.round(oarPos*100));
+    oarPress = Math.max(0, oarPress - dt*5);
+    // the grip shows the rhythm: down through the pull, back up on the recovery; a press dips it
+    const ph = oarCycle % 1, stroke = oarSpin > 0.01 ? (ph < 0.5 ? ph*2 : 2 - ph*2) : 0;
+    const pos = Math.min(1, stroke*Math.min(1, 0.4 + oarSpin) + 0.35*oarPress);
+    if(Math.abs(pos - oarShown) > 0.004){
+      oarShown = pos;
+      elOarGrip.style.top = 'calc(10px + ' + (pos*100).toFixed(1) + '% - ' + (pos*20).toFixed(1) + 'px)';
+      elOar.setAttribute('aria-valuenow', Math.round(oarSpin*100));
     }
   }
   // the badge over the quay while she's tied up at a village (coins: the
@@ -5165,19 +5161,19 @@
     const curve = rig=>{ let d = ''; for(let a = 0; a <= 360; a += 5){ const k = speedFactor(a > 180 ? 360 - a : a, rig)*Rr, r = a*Math.PI/180;
       d += (a ? 'L' : 'M') + f(Math.sin(r)*k) + ' ' + f(-Math.cos(r)*k); } return d + 'Z'; };
     const rel = windRel(), r = rel*Math.PI/180, eff = speedFactor(rel), hx = Math.sin(r), hy = -Math.cos(r);
-    const spare = SPARE_SAIL ? '<path d="'+curve(spareRig())+'" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2.5 2.5" opacity=".75"/>' : '';
+    const spare = sailsInHold().map(r=> '<path d="'+curve(r)+'" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2.5 2.5" opacity=".75"/>').join('');
     return '<h3>'+TEXT.sails.windTitle+'</h3>'
       + '<svg class="wind-polar" viewBox="-58 -60 116 112" aria-hidden="true">'
       + '<circle r="'+Rr+'" fill="none" stroke="currentColor" stroke-width=".7" stroke-dasharray="1 3"/>'
       + '<path d="M0 -'+Rr+' V'+Rr+' M-'+Rr+' 0 H'+Rr+'" stroke="currentColor" stroke-width=".5" opacity=".5"/>'
-      + '<path d="'+curve(boat.rig)+'" fill="url(#sh-light)" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>' + spare
+      + (boat.rig ? '<path d="'+curve(boat.rig)+'" fill="url(#sh-light)" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>' : '') + spare
       + '<path d="M0 -59 V-50 M-3.5 -54 L0 -49.5 L3.5 -54" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>'   // the wind, from the top
       + '<path d="M0 0 L'+f(hx*Rr*1.08)+' '+f(hy*Rr*1.08)+'" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>'   // her heading
       + '<circle cx="'+f(hx*Rr*eff)+'" cy="'+f(hy*Rr*eff)+'" r="3.4" fill="currentColor" stroke="var(--paper)" stroke-width="1"/>'
       + '<circle r="2.2" fill="var(--paper)" stroke="currentColor" stroke-width="1.2"/>'
       + '</svg>'
-      + '<p class="wind-eff">'+fmt(TEXT.sails.drawing, {sail: TEXT.sails[boat.rig], pct: Math.round(eff*100)})+'</p>'
-      + '<p class="wind-sub">'+fmt(TEXT.sails.breeze, {pct: Math.round(windStrength*100)})+(SPARE_SAIL ? ' · '+TEXT.sails.spareLine : '')+'</p>';
+      + '<p class="wind-eff">'+(boat.rig ? fmt(TEXT.sails.drawing, {sail: TEXT.sails[boat.rig], pct: Math.round(eff*100)}) : TEXT.sails.none)+'</p>'
+      + '<p class="wind-sub">'+fmt(TEXT.sails.breeze, {pct: Math.round(windStrength*100)})+(sailsInHold().length ? ' · '+TEXT.sails.spareLine : '')+'</p>';
   }
   // the right page: the boat's hold. The purse, every fish aboard (small, as
   // at the market) and everything bought on the voyage (dishes, and any gift)
@@ -5185,13 +5181,13 @@
   let cargoSel = null;                                   // picked in the Cargo, to throw overboard: {kind:'fish'|'dish'|'bottle', key}
   function holdHTML(){
     // HOLD_MAX slots in a grid: the spare sail, fish, then dishes, the rest empty; the gifts are kept apart, below
-    const items = [...(SPARE_SAIL ? [{sail: true}] : []), ...bottleHold.map((b,i)=> ({bottle: i})), ...FISH_KEYS.flatMap(k=> Array(counts[k]).fill({name: FISH_NAME[k].one, svg: document.querySelector('#wood .fish-'+k+' svg').outerHTML, fish:true, kind:'fish', key:k})),
+    const items = [...sailsInHold().map(r=> ({sail: r})), ...bottleHold.map((b,i)=> ({bottle: i})), ...FISH_KEYS.flatMap(k=> Array(counts[k]).fill({name: FISH_NAME[k].one, svg: document.querySelector('#wood .fish-'+k+' svg').outerHTML, fish:true, kind:'fish', key:k})),
                    ...ALL_DISHES.flatMap(d=> Array(dishHold[d.icon]||0).fill({name: d.name, svg: itemIcon(d.icon), kind:'dish', key:d.icon}))];
     if(cargoSel && !items.some(it=> selIs(it))) cargoSel = null;      // (what was picked is gone)
     let selShown = false;
     const selCls = it=>{ if(selShown || !selIs(it)) return ''; selShown = true; return ' sel'; };
     const gifts = VILLAGES.filter(v=> v.giftGot).map(v=> ({name: v.gift, icon: v.giftIcon}));
-    const slot = k=> { const it = items[k]; if(it && it.sail) return spareHTML(); if(it && it.bottle !== undefined) return bottleSlotHTML(it.bottle, selCls(it)); return it ? '<button type="button" class="slot item'+(it.fish?' fish':'')+selCls(it)+'" data-item="'+it.kind+'|'+it.key+'" title="'+it.name+'" aria-label="'+it.name+'">'+it.svg+'</button>' : '<span class="slot empty"></span>'; };
+    const slot = k=> { const it = items[k]; if(it && it.sail) return spareHTML(it.sail); if(it && it.bottle !== undefined) return bottleSlotHTML(it.bottle, selCls(it)); return it ? '<button type="button" class="slot item'+(it.fish?' fish':'')+selCls(it)+'" data-item="'+it.kind+'|'+it.key+'" title="'+it.name+'" aria-label="'+it.name+'">'+it.svg+'</button>' : '<span class="slot empty"></span>'; };
     return '<div class="hold-head"><h3>'+TEXT.logbook.cargo+'</h3><span class="hold-count">'+fmt(TEXT.logbook.holdCount, {n: items.length, max: HOLD_MAX})+'</span><span class="purse" aria-label="Purse: '+coins+' coins">'+COIN_SVG+coins+'</span></div>'
       + '<div class="hold-slots">'+Array.from({length: Math.max(HOLD_MAX, items.length)}, (_,k)=> slot(k)).join('')+'</div>'
       + (cargoSel ? '<button type="button" class="throw" data-throw="1">'+TEXT.logbook.throwAway+'</button>' : '')
@@ -5224,15 +5220,13 @@
     }
   }
   elLetter.addEventListener('click', ()=>{ elLetter.classList.add('hidden'); Sfx.book(false); });
-  const spareRig = ()=> boat.rig === 'lateen' ? 'square' : 'lateen';
   const SAIL_ICON = {square: 'Square sail', lateen: 'Lateen sail'};
-  function spareHTML(){
-    if(!SPARE_SAIL) return '';
-    const name = TEXT.sails[spareRig()], hint = fmt(TEXT.sails.hint, {sail: name});
-    return '<button type="button" class="slot spare-sail" data-swap="1" title="'+hint+'" aria-label="'+hint+'">'+itemIcon(SAIL_ICON[spareRig()])+'</button>';
+  function spareHTML(rig){
+    const name = TEXT.sails[rig], hint = fmt(TEXT.sails.hint, {sail: name});
+    return '<button type="button" class="slot spare-sail" data-swap="'+rig+'" title="'+hint+'" aria-label="'+hint+'">'+itemIcon(SAIL_ICON[rig])+'</button>';
   }
-  function swapSail(){
-    boat.rig = spareRig();
+  function swapSail(rig){                                // rig this sail; the one she carried (if any) goes into the hold
+    boat.rig = rig;
     boat.furl = 1;                                       // the new sail is bent on furled, then spreads
     toast(fmt(TEXT.sails.rigged, {sail: TEXT.sails[boat.rig]}));
     Sfx.thunk(0.3); buzz([20,40,20]);
@@ -5272,7 +5266,7 @@
       cargoSel = {kind:'bottle', key:i}; readBottle(i); renderList(); return; }   // read it, and it's picked (to throw away)
     const b = e.target.closest('[data-swap]');
     if(!b || !playing) return;
-    e.stopPropagation(); Sfx.init(); swapSail();
+    e.stopPropagation(); Sfx.init(); swapSail(b.dataset.swap);
   });
   let listKey = '';
   const holdKey = ()=> [dayNo, coins, boat.rig, cargoSel ? cargoSel.kind + cargoSel.key : '', bottleHold.map(b=> b.read ? 'r' : 'u').join(''), ...FISH_KEYS.map(k=>counts[k]), ...ALL_DISHES.map(d=> dishHold[d.icon]||0), ...VILLAGES.map(v=> v.giftGot?'g':''),
@@ -5886,8 +5880,7 @@
     let targetSpeed = anchored ? 0 : MAX_SPEED*sf*WIND_BOOST*downwindBonus(relDeg);   // a well-trimmed sail pays off more
     if(!anchored && sailLevel===SAIL_MIN) targetSpeed = Math.max(targetSpeed, ROW_SPEED);        // at minimum sail the oars keep her going
     // rowing by hand: the way the strokes give her (it dies off unless she keeps pulling)
-    boat.rowV = (boat.rowV||0)*Math.exp(-OAR_FADE*dt);
-    if(anchored || moor || boat.whirl) boat.rowV = 0;
+    boat.rowV = MANUAL_OARS && !(anchored || moor || boat.whirl) ? OAR_MAX*oarSpin : 0;
     if(boat.rowV > targetSpeed) targetSpeed = boat.rowV;
     boat.sailPower += (windSf-boat.sailPower)*Math.min(1,dt*3);
 
@@ -6179,12 +6172,12 @@
       const low = boat.speed < 9;
       const turning = !anchored && Math.abs(wheelAngle/WHEEL_MAX) > 0.08;
       const crawling = !anchored && (sailLevel===SAIL_MIN || (!boat.fromAnchor && boat.speed > 2 && boat.speed < 9));
-      const want = !moor && !boat.whirl && (MANUAL_OARS ? oarHeld || boat.rowV > 1 : (low && turning) || crawling);
+      const want = !moor && !boat.whirl && (MANUAL_OARS ? oarSpin > 0.02 : (low && turning) || crawling);
       boat.oarHold = want ? 0.5 : Math.max(0, (boat.oarHold||0) - dt);   // a short grace so they don't flicker
       boat.oarsOut = want || boat.oarHold > 0;
       const tgt = boat.oarsOut ? 1 : 0;
       boat.oarK += Math.sign(tgt-boat.oarK)*Math.min(Math.abs(tgt-boat.oarK), dt*2.2);
-      if(MANUAL_OARS){ boat.rowing = boat.oarsOut; boat.oarPh = (oarPos - 0.5)*Math.PI; }   // the blades follow the handle: up = forward (the catch), down = aft (the finish)
+      if(MANUAL_OARS){ boat.rowing = boat.oarsOut; boat.oarPh = oarCycle*Math.PI*2 - Math.PI/2; }   // the blades turn with the stroke cycle (the catch at the start of each)
       else if(boat.oarK>0 && (turning || crawling)) boat.oarPh += dt*(turning ? 4 + 5*Math.abs(wheelAngle/WHEEL_MAX) : 3.2);
     }
     voyageTime += dt;
@@ -7894,7 +7887,7 @@
         ctx.fillStyle = PAPERC; ctx.lineWidth = 1.1*LWK;
         ctx.beginPath(); ctx.ellipse(0,0,4.2*e,1.9*e,0,0,Math.PI*2); ctx.fill(); ctx.stroke();
         ctx.restore();
-        const bite = B.rowing ? (B.oarPull || 0) : Math.max(0, Math.cos(B.oarPh + (turningNow && sd<0 ? Math.PI : 0)));
+        const bite = Math.max(0, Math.cos(B.oarPh + (turningNow && sd<0 && !B.rowing ? Math.PI : 0)));
         if((turningNow || sailLevel===SAIL_MIN || B.rowing) && bite>0.7 && e>0.9){
           ctx.globalAlpha = (bite-0.7)/0.3*0.6; ctx.lineWidth = 1*LWK;
           ctx.beginPath(); ctx.arc(bx+ux*3, by+uy*3, 3+(1-bite)*10, 0, Math.PI*2); ctx.stroke();
@@ -7910,6 +7903,10 @@
       B.furl = (B.furl === undefined ? want : B.furl) + (want - (B.furl||0))*Math.min(1, fdt*(want ? 2.2 : 3.5));
     }
     if(B.rig === 'lateen'){ drawLateenSail(B); ctx.restore(); ctx.restore(); return; }
+    if(B.rig === null){                                   // no sail rigged: just the bare mast
+      ctx.fillStyle=INKC; ctx.beginPath(); ctx.arc(2,0,2.4,0,Math.PI*2); ctx.fill();
+      ctx.restore(); ctx.restore(); return;
+    }
     // --- square sail on a yard, pivoting at the mast (centre) ---
     const face = B.boomSigned;
     const nx = Math.cos(face), ny = Math.sin(face);

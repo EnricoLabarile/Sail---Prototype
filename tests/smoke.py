@@ -82,7 +82,7 @@ def bottle(pg):
     # a message in a bottle: anchored on it, the net fishes it up; a tap in the Cargo reads it and marks the chart
     if not pg.evaluate('__d.bottles.length'): return
     pg.evaluate("()=>{const d=__d; d.unmoor(); const bo=d.bottles[0]; d.boat.x=bo.x-6; d.boat.y=bo.y; d.boat.speed=0;}")
-    pg.keyboard.press('Space'); pg.wait_for_timeout(4500)                # anchor down, the net goes over and comes back
+    pg.keyboard.press('Space'); pg.wait_for_timeout(6000)                # anchor down, the net goes over and comes back
     assert pg.evaluate('__d.bottleHold.length') == 1, 'the bottle was not fished up'
     pg.click('#btn-list', force=True); pg.wait_for_timeout(900)
     pg.click('.slot.bottle'); pg.wait_for_timeout(300)

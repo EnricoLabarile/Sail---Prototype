@@ -242,11 +242,12 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   The boat's square sail is drawn `SAIL_SIZE` (1.3) times the old size, its cloth a dotted grey `SAIL_TONE` (0.72; 1 =
   paper), darker when slack or reefed. At anchor (and moored) the cloth is drawn gathered up to the yard (`boat.furl`,
   eased; a look only: the sail stays set as far as the physics goes), and it spreads again as the anchor comes up.
-  **Two sails** (`SPARE_SAIL` in Tuning): she carries one (`boat.rig`, 'square' at the start) and the other is the
-  spare, in the hold: it takes one of the `HOLD_MAX` slots (`spareSlots`, counted in `slotsUsed` and at the market in
-  `mkSlotsAfter`), always the first slot of the Cargo grid, a tappable slot with its own icon in `ITEM_ICONS`
-  (`spareHTML`); a tap on it rigs it (`swapSail`: toast "… rigged", a thunk and a buzz, the new sail bent on furled
-  and spreading) and the old one goes into the hold in its place. Each sail has its own speed curve, in Tuning
+  **Two sails** (`SPARE_SAIL` in Tuning): **she sets out with no sail rigged** (`START_RIG` = null, `boat.rig` null:
+  the wind gives her nothing, `speedFactor` is 0, only the bare mast is drawn; she goes on the oars) and **both sails
+  ride in the hold**: every sail not rigged takes one of the `HOLD_MAX` slots (`sailsInHold`, `spareSlots`, counted in
+  `slotsUsed` and at the market in `mkSlotsAfter`), first in the Cargo grid, a tappable slot with its own icon in
+  `ITEM_ICONS` (`spareHTML(rig)`); a tap on one rigs it (`swapSail(rig)`: toast "… rigged", a thunk and a buzz, the
+  new sail bent on furled and spreading) and the one she carried (if any) goes into the hold in its place. Each sail has its own speed curve, in Tuning
   (`SAIL_POLAR_SQUARE`, `SAIL_POLAR_LATEEN`: [degrees off the wind, share of top speed]; `POLARS` picks by `boat.rig`):
   the square one is fastest running free and poor on the wind, the **lateen** points higher and is at its best with
   the wind on the beam (50° off the wind 0.68 vs 0.15, beam 1.0 vs 0.42, 110° 0.97 vs 0.60) but poor running
@@ -255,27 +256,26 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   to leeward about half the wind's angle off the bow (`boat.boomSigned`), bellied to leeward, a sheet to the stern
   quarter; it furls along the yard at anchor. Changing tack, the heavy yard swings across slowly (`LATEEN_SWING` in
   Tuning, 0.9 against the usual trim rate of 3; `boat.swingAcross` until it's settled on the new side). A new voyage
-  starts with the square sail rigged.
+  starts with `START_RIG` again.
   **Wind card** (the logbook's right page, first spread; `windHTML`, texts in `TEXT.sails`): a polar diagram in ink,
   the wind blowing down from the top (an arrow): the filled curve is the share of top speed the sail she carries gives
-  on each heading (its `SAIL_POLAR_*`), a dashed curve the spare sail's, a needle for her heading now with a dot where it
+  on each heading (its `SAIL_POLAR_*`; none with no sail rigged: "No sail: the oars"), a dashed curve for each sail in the hold, a needle for her heading now with a dot where it
   meets the curve; under it "Square sail: 47%" (that share, `speedFactor` at her angle off the wind) and the breeze
   (`windStrength`). It follows her heading live while the book is open on it (`windCardKey`, refreshed in
   `refreshList`, only when the rounded angle, the sail or the breeze changes).
   **Oars: rowed by hand** (`MANUAL_OARS` in Tuning; false brings back the old automatic oars below): an oar handle on
-  the right (`#oar-ctl`, above the fair-wind medallion; hidden when moored or at the market): a dotted slot and a
-  wooden grip (`oarPos` 0 top .. 1 bottom); a short slot, 76 px tall, so a pull is a short flick of the thumb. The finger only **pulls down**: the grip follows it, never up
-  (`oarTarget` only grows), and a little behind, as if dragging through water (`OAR_RESIST` = 9, heaviest at the start
-  of the pull: rate × (0.35 + 0.65 × `oarPos`)); let go and it swings back up by itself in `OAR_RETURN` (0.45 s), no
-  push (grab it again on the way up to pull from there). Each bit of pull adds way (`boat.rowV`: a full pull adds
-  `OAR_STROKE` = 8 px/s, up to `OAR_MAX` = 14), which dies off when she stops pulling (`OAR_FADE` = 0.45 /s). Feel and
-  sound (`updateOarCtl`): at the catch a low watery gloop (`Sfx.oar`: a sine falling 150→70 Hz and a low-passed swirl
-  of noise) and a buzz as the blade bites, light buzz ticks as the water pushes back along the pull, a buzz at its
-  end. The rowing speed counts only when it's more than the sail gives (`targetSpeed` = max(sail, `rowV`)), bites
-  quickly, and goes wherever she points, even head to wind; at anchor it does nothing. On the boat the oars come out
-  while the grip is held or she's still carrying way from them, their blades follow the handle (up = forward at the
-  catch, down = aft at the finish, `oarPh`), with a splash ring as they pull (`oarPull`); turning is `ROW_TURN_MULT` ×
-  quicker while rowing (`boat.rowing`). With manual oars the sail is never brailed up.
+  the right (`#oar-ctl`, above the fair-wind medallion, a short slot 76 px tall; hidden when moored or at the market).
+  **Not one-to-one, like stoking a locomotive**: each press puts power into the rowing (`oarSpin` 0..1, +`OAR_KICK` =
+  0.22 a press, less as it nears full), which drains away by itself (`OAR_SPIN_FADE` = 0.12 a second): the oars turn
+  in a steady cycle (`oarCycle`) that starts slow and, pressed again and again, quickens from `OAR_RATE_MIN` (0.45) to
+  `OAR_RATE_MAX` (1.25) strokes a second, never frantic; left alone they slow and stop. Her way on the oars is
+  `OAR_MAX` (14 px/s) × power (`boat.rowV`), wherever she points, even head to wind, and counts only when it's more
+  than the sail gives (`targetSpeed` = max(sail, `rowV`)); at anchor or moored the power drops to 0. The grip rides
+  down through each pull and back up on the recovery (deeper with more power; a press dips it); at each catch a low
+  watery gloop (`Sfx.oar`: a sine falling 150→70 Hz and a low-passed swirl of noise) and a light buzz, both stronger
+  with power; a press buzzes too. On the boat the oars come out while there's power, the blades sweep with the cycle
+  (`oarPh`: forward at the catch, aft at the finish) with a splash ring mid-pull; turning is `ROW_TURN_MULT` × quicker
+  while rowing (`boat.rowing`). With manual oars the sail is never brailed up.
   **Sail: automatic** (no button; the old switch `#sail` / `drawSail` is hidden and unused, the halyard rope before it is
   gone). The sail is up by default. When she's slower than `ROW_ENTER` and the wind can't drive her past it either
   (head to wind, or nearly), after `ROW_DELAY` the sail is brailed up and the oars come out (`sailLevel` = `SAIL_MIN`:
