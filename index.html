@@ -177,6 +177,14 @@
     z-index:7;
     cursor:pointer;
   }
+  #dock-btn{position:fixed; z-index:6; width:52px; height:52px; margin:-26px 0 0 -26px; padding:0; border-radius:50%;
+    background:var(--paper); color:var(--ink); border:2px solid var(--ink); box-shadow:2px 3px 0 var(--ink); cursor:pointer;
+    display:flex; align-items:center; justify-content:center; animation:dockBob 1.6s ease-in-out infinite;}
+  #dock-btn svg{width:32px; height:32px; display:none;}
+  #dock-btn.coins .ico-coins, #dock-btn.crate .ico-crate{display:block;}
+  #dock-btn:active{transform:translate(2px,2px); box-shadow:none;}
+  body.at-market #dock-btn{display:none;}
+  @keyframes dockBob{0%,100%{translate:0 0} 50%{translate:0 -4px}}
   #letter{position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); width:min(330px, calc(var(--fw) - 44px));
     padding:14px 17px 13px; z-index:12; cursor:pointer;}   /* a message in a bottle, unrolled: a tap rolls it up again */
   #letter.hidden{display:none;}
@@ -603,6 +611,12 @@
     </div>
     <div id="mk-foot"></div>
   </div>
+  <!-- tied up at a village or at home: a badge over the quay opens the market (coins) or the storehouse (a crate) -->
+  <button id="dock-btn" type="button" class="hidden"><svg class="ico-coins" viewBox="0 0 24 24" aria-hidden="true"><g stroke="currentColor" stroke-width="1.4" fill="var(--paper)">
+    <ellipse cx="9" cy="17" rx="6" ry="2.4"/><path d="M3 17 V14.5 M15 17 V14.5" fill="none"/><ellipse cx="9" cy="14.5" rx="6" ry="2.4"/><path d="M3 14.5 V12 M15 14.5 V12" fill="none"/><ellipse cx="9" cy="12" rx="6" ry="2.4"/>
+    <circle cx="16.5" cy="9" r="5"/><circle cx="16.5" cy="9" r="2.2" fill="none" stroke-width="1"/></g></svg>
+    <svg class="ico-crate" viewBox="0 0 24 24" aria-hidden="true"><g stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" fill="var(--paper)">
+    <rect x="3.5" y="5.5" width="17" height="14" rx="1"/><path d="M3.5 10.2 H20.5 M3.5 14.8 H20.5" fill="none" stroke-width="1.1"/><path d="M4.5 6.5 L19.5 18.5" fill="none"/><rect x="3.5" y="5.5" width="17" height="14" rx="1" fill="none"/></g></svg></button>
   <div id="letter" class="panel hidden" role="dialog" aria-live="polite">
     <div class="l-title"></div>
     <div class="l-text"></div>
@@ -716,6 +730,20 @@
       balPay:     'Balance: <b>{n}</b> {icon} paid from your purse',
       balShort:   'Balance: <b>{n}</b> {icon} not enough: offer more fish',
       balFull:    'No room in the hold: {n} too many',
+    },
+    // home's storehouse: drag goods between the hold and the store (what's left here waits at home)
+    store: {
+      title:     'Home storehouse',
+      tip:       'Drag or tap goods across: what you leave here stays safe at home.',
+      label:     'Storehouse',
+      empty:     'The storehouse is empty.',
+      hold:      'Hold after: <b>{n}/{max}</b>',
+      done:      'Done',
+      stored:    '{n} stored',
+      taken:     '{n} taken aboard',
+      // the badges over the quay while she's tied up
+      openMarket: 'Open the market',
+      openStore:  'Open the storehouse',
     },
     // the two sails: the one she carries and the spare in the hold (tap the spare to rig it)
     // messages in a bottle: fished up like a fish bank, read from the Cargo (a tap), each puts a cross on the sea chart
@@ -4015,7 +4043,7 @@
     boonWindT = 0; boonFish = 0; for(const r of RUINS) r.readyAt = 0;
     rollers.length = 0; rollerT = 6; boat.surfT = 0;
     windAngle = rand(0, Math.PI*2); shiftDur = 0; windTimer = rand(28,36); guideWind = false;
-    explored.fill(0); fogVer++; resetBottles();
+    explored.fill(0); fogVer++; resetBottles(); resetStore();
     wake.length = 0; bowSpray.length = 0; popups.length = 0;
     voyageTime = 0; hurtFlash = 0; shake = 0;
     gameover.classList.add('hidden');
@@ -4566,10 +4594,43 @@
   const elMkYou = document.getElementById('mk-you-items'), elMkThem = document.getElementById('mk-them-items');
   const elMkPurse = document.getElementById('mk-purse'), elMkBal = document.getElementById('mk-bal');
   const elMkDeal = document.getElementById('mk-deal'), elMkFoot = document.getElementById('mk-foot');
+  const elMkThemLabel = document.getElementById('mk-them-label'), elMkQuit = document.getElementById('mk-quit');
   let marketV = null, mkItems = [], mkKey = '';
+  // home's storehouse (the same table: the hold on the left, the store on the right; nothing is paid)
+  const STORE = {store: true};
+  const homeStore = {fish: {}, dish: {}, bottles: []};
+  const storeCount = ()=> Object.values(homeStore.fish).reduce((a,n)=> a+n, 0) + Object.values(homeStore.dish).reduce((a,n)=> a+n, 0) + homeStore.bottles.length;
+  function resetStore(){ homeStore.fish = {}; homeStore.dish = {}; homeStore.bottles = []; }
+  function openStore(){ openMarket(STORE); }
+  // the badge over the quay while she's tied up at a village (coins: the
+  // market) or at home (a crate: the storehouse); it follows the quay on screen
+  const elDock = document.getElementById('dock-btn');
+  let dockPos = '';
+  function dockTarget(){
+    if(!playing || !moor || moor.phase !== 'moored') return null;
+    const isl = moor.pier.isl;
+    return isl.village ? 'coins' : isl.home ? 'crate' : null;
+  }
+  function updateDockBtn(){
+    const kind = dockTarget(), show = !!kind && !marketV;
+    if(show !== !elDock.classList.contains('hidden')) elDock.classList.toggle('hidden', !show);
+    if(!show) return;
+    if(!elDock.classList.contains(kind)){ elDock.classList.remove('coins','crate'); elDock.classList.add(kind);
+      const lbl = kind === 'coins' ? TEXT.store.openMarket : TEXT.store.openStore; elDock.setAttribute('aria-label', lbl); elDock.title = lbl; }
+    const pr = moor.pier, wx = pr.x0 - pr.dx*34, wy = pr.y0 - pr.dy*34;           // a little inland from the root of the quay
+    const k = viewW()/(GW*PX), sx = viewW()/2 + wdx(wx, camFx)*k, sy = viewH()/2 + wdy(wy, camFy)*k;
+    const pos = Math.round(sx)+'|'+Math.round(sy);
+    if(pos !== dockPos){ dockPos = pos; elDock.style.left = Math.round(sx)+'px'; elDock.style.top = Math.round(sy)+'px'; }
+  }
+  elDock.addEventListener('click', ()=>{
+    Sfx.init(); buzz(10);
+    if(!moor || moor.phase !== 'moored') return;
+    const isl = moor.pier.isl;
+    if(isl.village) openMarket(isl.village); else if(isl.home) openStore();
+  });
   const fishValue = (v, k)=> k===v.own ? COIN_LOCAL : COIN_FOREIGN;
   const fishWorth = (v)=> FISH_KEYS.reduce((a,k)=> a + counts[k]*fishValue(v,k), 0);   // the whole hold, sold here
-  const mkState = (v)=> [v.name, ...v.dishes.map(d=> dishHold[d.icon]||0), coins, ...FISH_KEYS.map(k=>counts[k])].join('|');
+  const mkState = (v)=> v.store ? ['store', ...FISH_KEYS.map(k=> counts[k] + ':' + (homeStore.fish[k]||0)), ...ALL_DISHES.map(d=> (dishHold[d.icon]||0) + ':' + (homeStore.dish[d.icon]||0)), bottleHold.length, homeStore.bottles.length].join('|') : [v.name, ...v.dishes.map(d=> dishHold[d.icon]||0), coins, ...FISH_KEYS.map(k=>counts[k])].join('|');
   function openMarket(v){
     marketV = v; elMk.classList.remove('hidden');
     document.body.classList.add('at-market');
@@ -4580,6 +4641,15 @@
   // lay the table afresh from what's in the hold and on the stall
   function stockTable(v){
     mkItems = [];
+    if(v.store){                                          // home: the hold and the store, every fish, dish and bottle a unit
+      const side = (o)=> ({origin:o, side:o, value:null});
+      for(const k of FISH_KEYS){ for(let n=0;n<counts[k];n++) mkItems.push({kind:'fish', key:k, ...side('you')}); for(let n=0;n<(homeStore.fish[k]||0);n++) mkItems.push({kind:'fish', key:k, ...side('them')}); }
+      for(const d of ALL_DISHES){ for(let n=0;n<(dishHold[d.icon]||0);n++) mkItems.push({kind:'food', icon:d.icon, name:d.name, ...side('you')}); for(let n=0;n<(homeStore.dish[d.icon]||0);n++) mkItems.push({kind:'food', icon:d.icon, name:d.name, ...side('them')}); }
+      bottleHold.forEach((b,i)=> mkItems.push({kind:'bottle', b, ...side('you')}));
+      homeStore.bottles.forEach((b,i)=> mkItems.push({kind:'bottle', b, ...side('them')}));
+      mkItems.forEach((it,i)=> it.id = i);
+      return;
+    }
     for(const k of FISH_KEYS) for(let n=0;n<counts[k];n++) mkItems.push({kind:'fish', key:k, origin:'you', side:'you', value: fishValue(v,k)});
     for(const d of ALL_DISHES) for(let n=0;n<(dishHold[d.icon]||0);n++) mkItems.push({kind:'food', icon:d.icon, name:d.name, origin:'you', side:'you', value: DISH_RESALE});   // dishes aboard: any stall takes them back
     v.dishes.forEach((dsh,i)=> mkItems.push({kind:'food', dish:i, icon:dsh.icon, name:dsh.name, origin:'them', side:'them', value: dsh.price}));   // both, every visit
@@ -4594,7 +4664,7 @@
     mkKey = key; stockTable(marketV); drawTable();
   }
   const mkBalance = ()=> mkItems.reduce((a,it)=> a + (it.side===it.origin ? 0 : it.origin==='you' ? it.value : -it.value), 0);
-  const mkSlotsAfter = ()=> mkItems.filter(it=> it.side === 'you').length + spareSlots() + bottleHold.length;   // what the hold would carry after the trade (the spare sail stays aboard)
+  const mkSlotsAfter = ()=> mkItems.filter(it=> it.side === 'you').length + spareSlots() + (marketV && marketV.store ? 0 : bottleHold.length);   // (at the storehouse the bottles are on the table too)   // what the hold would carry after the trade (the spare sail stays aboard)
   const COIN_SVG = '<svg class="coin" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="var(--paper)" stroke="currentColor" stroke-width="1.4"/><circle cx="6" cy="6" r="2.4" fill="none" stroke="currentColor" stroke-width="1"/></svg>';
   const FOOD_SVG = '<svg viewBox="0 0 30 22" aria-hidden="true"><path d="M3 9 H27 L24 20 H6 Z" fill="var(--paper)" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7 9 Q15 -1 23 9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 12 H22 M9 15.5 H21" stroke="currentColor" stroke-width="1.1"/><circle cx="12" cy="7" r="2.6" fill="currentColor"/><circle cx="18" cy="6.5" r="2.2" fill="url(#sh-mid)" stroke="currentColor" stroke-width="0.8"/></svg>';
   // one small icon per dish and gift (24×24, ink on paper), so the cargo in
@@ -4636,14 +4706,33 @@
   })();
   const itemIcon = (name)=> ITEM_ICONS[name] || FOOD_SVG;
   function unitHTML(it){
-    const ico = it.kind==='food' ? itemIcon(it.icon) : document.querySelector('#wood .fish-'+it.key+' svg').outerHTML;
-    const name = it.kind==='food' ? it.name : FISH_NAME[it.key].one;
+    const ico = it.kind==='food' ? itemIcon(it.icon) : it.kind==='bottle' ? itemIcon('Message in a bottle') : document.querySelector('#wood .fish-'+it.key+' svg').outerHTML;
+    const name = it.kind==='food' ? it.name : it.kind==='bottle' ? TEXT.bottles.name : FISH_NAME[it.key].one;
     const label = it.kind==='food' ? '<span class="mk-name">'+name+'</span>' : '';
-    return '<div class="mk-unit '+it.kind+(it.side!==it.origin ? ' moved' : '')+'" data-id="'+it.id+'" data-kind="'+it.kind+'" data-origin="'+it.origin+'" role="button" aria-label="'+name+', '+it.value+(it.value===1 ? ' coin' : ' coins')+'">'
-      + ico + label + '<span class="mk-val">'+it.value+COIN_SVG+'</span></div>';
+    const priced = it.value !== null;                     // (the storehouse has no prices)
+    return '<div class="mk-unit '+(it.kind==='bottle' ? 'food' : it.kind)+(it.side!==it.origin ? ' moved' : '')+'" data-id="'+it.id+'" data-kind="'+it.kind+'" data-origin="'+it.origin+'" role="button" aria-label="'+name+(priced ? ', '+it.value+(it.value===1 ? ' coin' : ' coins') : '')+'">'
+      + ico + label + (priced ? '<span class="mk-val">'+it.value+COIN_SVG+'</span>' : '') + '</div>';
   }
   function drawTable(){
     const v = marketV;
+    elMkThemLabel.textContent = v.store ? TEXT.store.label : TEXT.market.stall;
+    elMkQuit.style.display = v.store ? 'none' : '';
+    elMkDeal.style.gridColumn = v.store ? '1 / -1' : '';      // (alone, the button takes the whole row)
+    if(v.store){
+      elMkTitle.textContent = TEXT.store.title;
+      elMkText.textContent = TEXT.store.tip;
+      const order = (a,b)=> (b.side!==b.origin) - (a.side!==a.origin) || a.id - b.id;
+      const on = side=> mkItems.filter(it=>it.side===side).sort(order).map(unitHTML).join('');
+      elMkYou.innerHTML = on('you') || '<p class="mk-empty">'+TEXT.market.emptyHold+'</p>';
+      elMkThem.innerHTML = on('them') || '<p class="mk-empty">'+TEXT.store.empty+'</p>';
+      elMkPurse.innerHTML = COIN_SVG + coins;
+      const n = mkSlotsAfter(), over = n - HOLD_MAX;
+      elMkBal.className = over > 0 ? 'short' : '';
+      elMkBal.innerHTML = over > 0 ? fmt(TEXT.market.balFull, {n: over}) : fmt(TEXT.store.hold, {n, max: HOLD_MAX});
+      elMkDeal.disabled = over > 0;
+      elMkDeal.textContent = TEXT.store.done;
+      return;
+    }
     elMkTitle.textContent = fmt(TEXT.market.title, {village: v.name});
     // at the top, how to trade (the merchants' flavour lines stay in VILLAGES, unused for now)
     elMkText.textContent = TEXT.market.tip;
@@ -4718,6 +4807,30 @@
   elMk.addEventListener('pointercancel', mkRelease);
   elMkDeal.addEventListener('click', ()=>{
     const v = marketV; if(!v) return;
+    if(v.store){                                          // the storehouse: whatever crossed over changes place
+      if(mkSlotsAfter() > HOLD_MAX) return;
+      let stored = 0, taken = 0;
+      const keep = [], fetch = [];
+      for(const it of mkItems){
+        if(it.side === it.origin) continue;
+        const toStore = it.origin === 'you';
+        if(toStore) stored++; else taken++;
+        if(it.kind === 'fish'){ counts[it.key] += toStore ? -1 : 1; homeStore.fish[it.key] = (homeStore.fish[it.key]||0) + (toStore ? 1 : -1); }
+        else if(it.kind === 'food'){ dishHold[it.icon] = (dishHold[it.icon]||0) + (toStore ? -1 : 1); homeStore.dish[it.icon] = (homeStore.dish[it.icon]||0) + (toStore ? 1 : -1); }
+        else (toStore ? keep : fetch).push(it.b);
+      }
+      for(const b of keep){ bottleHold.splice(bottleHold.indexOf(b), 1); homeStore.bottles.push(b); }
+      for(const b of fetch){ homeStore.bottles.splice(homeStore.bottles.indexOf(b), 1); bottleHold.push(b); }
+      if(stored || taken){
+        Sfx.thunk(0.3); buzz([15,40,25]);
+        [stored ? fmt(TEXT.store.stored, {n: stored}) : '', taken ? fmt(TEXT.store.taken, {n: taken}) : ''].filter(Boolean)
+          .forEach((txt,i)=> popups.push({x:boat.x, y:boat.y-26-i*16, text:txt, life:1.8, max:1.8}));
+      }
+      cargoSel = null;
+      if(elList.classList.contains('open')) renderList();
+      closeMarket();
+      return;
+    }
     const bal = mkBalance();
     if(!mkItems.some(it=>it.side!==it.origin) || coins + bal < 0) return;
     const got = [];
@@ -5674,8 +5787,8 @@
         boat.x = moor.bx; boat.y = moor.by; boat.angle = moor.ba;
         const village = moor.pier.isl.village, ruin = moor.pier.isl.ruin;
         if(!moor.started && guideWind && village === VILLAGES[0]){ guideWind = false; windTimer = rand(14,22); }   // reached the north: the wind is free again
-        if(!moor.started){ moor.started = true; moor.skipLock = true; if(village) openMarket(village); if(ruin) startRuin(ruin); }
-        if(village) renderMarket();
+        if(!moor.started){ moor.started = true; moor.skipLock = true; if(ruin) startRuin(ruin); }   // (the market and the storehouse open from the badge over the quay)
+        if(marketV) renderMarket();
         // home: whatever of today's order is aboard goes ashore for dinner
         if(ORDERS_ON && !village && !ruin && moor.pier.isl.home) deliverOrder();
         // repairs: free for now, they just happen at any pier, a patch every
@@ -5945,6 +6058,7 @@
     elStatus.classList.toggle('show', healthShowT>0);
     elWood.classList.add('show');                                   // always visible
     refreshList();
+    updateDockBtn();
   }
 
   // ---------- 1-bit rendering ----------

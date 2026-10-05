@@ -177,7 +177,15 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   cost the player has to think about is planned for later (see the TickTick list "Vento e Vele: playtest suggestions").
   The market is a centred window over the world (no dark backdrop; a clear `#mk-shade` still catches stray taps); while it's open the compass (with its fish
   counters) and wheel/anchor are hidden. Buttons: Quit (left) and Trade (right); both close it and leave you moored
-  with the anchor back, so you can linger; a market opens once per docking (leave and come back to trade again).
+  with the anchor back, so you can linger. **Nothing opens by itself on docking**: tied up at a village or at home, a
+  round badge bobs over the root of the quay (`#dock-btn`, `updateDockBtn`, placed from the camera each frame; coins at
+  a village, a crate at home; hidden while the table is open); a tap opens the market, or at home the **storehouse**,
+  as many times as you like while moored.
+  **Home storehouse** (`homeStore` = {fish, dish, bottles}; texts in `TEXT.store`; cleared on a new voyage by
+  `resetStore`): the same table (`openStore` → `openMarket(STORE)`, a `store` branch in `stockTable`, `drawTable` and
+  the deal): the hold on the left, the store on the right, every fish, dish and bottle a unit, no prices; drag or tap
+  them across, "Done" (the only button) moves them (popups "n stored" / "n taken aboard"); taking aboard more than the
+  hold's free slots is refused ("No room in the hold"). Goods left at home are meant to count toward the end goal.
 - **Compass** (95 px, `CMP_PX`, top centre of the screen (the open logbook covers it); in its tutorial step the bubble hangs under it; hidden in the tutorial
   until its own tutorial step): points home, a dot per village filled once a dish is bought there; drawn like the
   wheel (greys into a low-res canvas, then dithered): brass bezel with rivets, shaded card, wind rose, glass glare.
@@ -321,9 +329,11 @@ Cloud shadows (clouds) · Ambient life: gulls
 pip install playwright && playwright install chromium
 python tests/smoke.py
 ```
-The smoke test checks there are no JS errors. With the orders off (now): the fair wind locked, a visit to the Temple of
+The smoke test checks there are no JS errors (the market and the storehouse are opened from the quay badge,
+`press_dock`). With the orders off (now): the fair wind locked, a visit to the Temple of
 Eolus that gives it, then a trip to a village to buy a dish with foreign
-fish (after fishing up a message in a bottle, reading it: a cross on the chart, and throwing it overboard), back home, a new day, the
+fish (after fishing up a message in a bottle, reading it: a cross on the chart, and throwing it overboard), back home
+(a fish left in the storehouse), a new day, the
 logbook shows it, and a tap on the spare sail rigs it. With `ORDERS_ON`: two days of orders (day 1: 3 fish home before
 dinner; day 2: the ordered dish bought at its village, everything brought home and delivered).
 For quick manual testing on the phone: `python -m http.server 8000` and open `http://<pc-ip>:8000` on the same Wi-Fi.

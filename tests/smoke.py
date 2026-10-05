@@ -18,7 +18,7 @@ HOOK = ('requestAnimationFrame(loop);\n})();',
         'get order(){return order},get sat(){return satisfaction},satOn:SATISFACTION_ON,get moor(){return moor},'
         'get dayT(){return dayT},set dayT(v){dayT=v},'
         'dinnerT:(DINNER_HOUR-DAWN_HOUR)/24,ordersOn:ORDERS_ON,get dayNo(){return dayNo},'
-        'RUINS,get powerOwned(){return powerOwned},get rig(){return boat.rig},bottles,bottleHold,marks,'
+        'RUINS,get powerOwned(){return powerOwned},get rig(){return boat.rig},bottles,bottleHold,marks,homeStore,'
         'unmoor(){moor=null;moorLock=null;}};'
         'tutSet("done");'                  # skip the tutorial: the test drives the controls directly
         'requestAnimationFrame(loop);\n})();')
@@ -27,6 +27,11 @@ def dock_at(pg, pier_expr):
     pg.evaluate(f"""()=>{{const d=__d; d.unmoor(); const pr={pier_expr}; const a=pr.total-20;
         d.boat.x=pr.x0+pr.dx*a - pr.dy*18; d.boat.y=pr.y0+pr.dy*a + pr.dx*18; d.boat.speed=5;}}""")
     pg.wait_for_timeout(2600)
+
+def press_dock(pg):
+    # the badge over the quay (it follows the camera, which may still be on its way: press it from the page)
+    pg.wait_for_function("!document.getElementById('dock-btn').classList.contains('hidden')", timeout=5000)
+    pg.evaluate("document.getElementById('dock-btn').click()")
 
 def leave(pg):
     pg.keyboard.press('Space'); pg.wait_for_timeout(1300)          # weigh anchor
@@ -56,6 +61,7 @@ def buy_dish(pg, k, name, icon):
     # four foreign fish to pay with (3 coins each, a dish costs 6)
     pg.evaluate(f"""()=>{{const v=__d.VILLAGES[{k}]; const other=['sarde','sgombri','triglie','orate'].find(x=>x!==v.own); __d.counts[other]+=4;}}""")
     dock_at(pg, f'd.VILLAGES[{k}].pier')
+    press_dock(pg); pg.wait_for_timeout(300)               # the coins badge over the quay opens the market
     for _ in range(2):
         pg.click('#mk-you-items .mk-unit[data-origin=you]'); pg.wait_for_timeout(50)
     pg.click(f'#mk-them-items .mk-unit[data-kind=food][aria-label^="{name},"]'); pg.wait_for_timeout(50)
@@ -98,6 +104,13 @@ def trip(pg):
     buy_dish(pg, 0, d['name'], d['icon'])
     dock_at(pg, 'd.PIER')
     assert pg.evaluate('__d.moor && __d.moor.pier === __d.PIER'), 'did not tie up at home'
+    # the crate badge opens the storehouse: a fish goes into it
+    fish0 = pg.evaluate('Object.values(__d.counts).reduce((a,n)=>a+n,0)')
+    press_dock(pg); pg.wait_for_timeout(300)
+    pg.click('#mk-you-items .mk-unit[data-kind=fish]'); pg.wait_for_timeout(50)
+    pg.click('#mk-deal'); pg.wait_for_timeout(200)
+    assert pg.evaluate('Object.values(__d.counts).reduce((a,n)=>a+n,0)') == fish0 - 1, 'nothing went into the storehouse'
+    assert pg.evaluate('Object.values(__d.homeStore.fish).reduce((a,n)=>a+n,0)') == 1, 'the storehouse is empty'
     pg.evaluate('()=>{__d.dayT = 0.9995}'); pg.wait_for_timeout(1500)
     assert pg.evaluate('__d.dayNo') == 2, 'no new day at first light'
     pg.click('#btn-list', force=True); pg.wait_for_timeout(900)
