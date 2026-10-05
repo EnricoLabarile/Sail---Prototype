@@ -928,8 +928,10 @@
   const OAR_CUE_VOL = 1;            // loudness of the knock that sounds as the oar button goes ink (the moment to press; 0 = silent)
   const OAR_SPIN_FADE = 0.05;        // a slow steady drain of the rowing's power (a share of it per second)…
   const OAR_SKIP = 0.65;             // …and the power kept when the pointer passes the mark without a press (she slows; a few skipped and she stops)
-  const OAR_RATE_MIN = 0.35; // turns of the oar button a second as the rowing starts…
-  const OAR_RATE_MAX = 0.7; // …and at full power (calm: time to look at the sea too)
+  const OAR_RATE = 0.52;              // turns of the oar button a second: one steady beat, whatever the power (calm: time to look at the sea too)
+  const OAR_RATE_EASE = 2;           // how quickly the button gets up to that beat when she starts rowing, and winds down to a halt when she stops
+  const OAR_KICK = 10;               // px/s of extra way a stroke pulled right on time gives her at once (a visible surge)…
+  const OAR_KICK_FADE = 2.2;         // …fading away at this rate a second
   const OAR_SURGE = 0.5;             // how much of her way on the oars comes in a surge as the blades sweep aft (0 = steady glide, 1 = all of it), then she coasts on the recovery
   const OAR_MAX = 14;                // px/s at full power (rowing is slow, but goes any way she points)
   const WHEEL_MAX = Math.PI;         // how far the wheel turns for full lock (π = half a turn each way)
@@ -4760,15 +4762,16 @@
   // ---- rowing by hand: the oar button on the right, pressed in rhythm ----
   // Like grinding berries: the first press sets her rowing, slowly (power
   // oarSpin = OAR_START), and the button's disc starts turning, its pointer
-  // going round once a stroke (OAR_RATE_MIN..MAX turns a second, faster with
-  // power). Each time the pointer comes back up to the fixed mark is the
+  // going round once a stroke (OAR_RATE turns a second, a steady beat; it
+  // eases in at the start and winds down to a halt at the end). Each time the pointer comes back up to the fixed mark is the
   // moment to press: the button swells just before (OAR_WARN). On time
   // (within OAR_WINDOW of the mark) the stroke gets a proper push (OAR_GOOD,
   // the disc flashes ink); too early or too late, only a little (OAR_MISS).
   // One press a turn counts. Without presses the power drains away
-  // (OAR_SPIN_FADE) and she stops. Her way is OAR_MAX × power, in surges.
+  // (OAR_SPIN_FADE) and she stops. Her way is OAR_MAX × power, in surges,
+  // plus a kick for each stroke on time (OAR_KICK, fading).
   const elOar = document.getElementById('oar-ctl'), elOarRot = elOar.querySelector('.oar-rot');
-  let oarSpin = 0, oarCycle = 0, oarShown = -1, oarPressedTurn = -1, oarHitT = 0, oarSkipped = 0;
+  let oarSpin = 0, oarCycle = 0, oarRate = 0, oarKick = 0, oarShown = -1, oarPressedTurn = -1, oarHitT = 0, oarSkipped = 0;
   elOar.setAttribute('aria-label', TEXT.oars.label);
   function pressOar(){
     Sfx.init();
@@ -4785,7 +4788,7 @@
     const off = Math.abs(oarCycle - turn);                   // how far from the mark, in turns
     if(off <= OAR_WINDOW){
       oarSpin = Math.min(1, oarSpin + OAR_GOOD*(1 - 0.5*oarSpin));
-      oarHitT = 0.18; buzz([14,25,30]); Sfx.oar(0.5 + 0.5*oarSpin, true);   // a powerful stroke
+      oarHitT = 0.18; oarKick = OAR_KICK; buzz([14,25,30]); Sfx.oar(0.5 + 0.5*oarSpin, true);   // a powerful stroke
     } else {
       oarSpin = Math.min(1, oarSpin + OAR_MISS);
       buzz(8); Sfx.oar(0.35 + 0.3*oarSpin);                  // an ordinary stroke (not wrong, just less)
@@ -4802,9 +4805,11 @@
       const turn = Math.floor(oarCycle - OAR_WINDOW);
       if(turn >= 1 && turn > oarSkipped && turn > oarPressedTurn){ oarSkipped = turn; oarSpin *= OAR_SKIP; if(oarSpin < 0.06) oarSpin = 0; }
     }
-    if(oarSpin > 0.01){                                       // the pointer goes round once a stroke
-      oarCycle += dt*(OAR_RATE_MIN + (OAR_RATE_MAX - OAR_RATE_MIN)*oarSpin);
-    } else if(boat.oarK > 0.05) oarCycle += dt*OAR_RATE_MIN*boat.oarK;   // stopped rowing: the stroke runs out slowly as the oars come in (never frozen mid-sweep)
+    // the pointer goes round once a stroke at one steady beat; it eases in as she starts rowing, and when she stops
+    // it winds down to a halt as the oars come in (never frozen mid-sweep)
+    oarRate += ((oarSpin > 0.01 ? OAR_RATE : 0) - oarRate)*Math.min(1, dt*OAR_RATE_EASE);
+    if(oarSpin > 0.01 || boat.oarK > 0.05) oarCycle += dt*oarRate;
+    oarKick = oarSpin > 0.01 ? oarKick*Math.exp(-OAR_KICK_FADE*dt) : 0;
     const ph = oarCycle % 1, rowingNow = oarSpin > 0.01;
     const ready = rowingNow && ph > 1 - OAR_WARN && ph < 1 - OAR_WINDOW;          // about to come round: it swells
     const now = rowingNow && (ph >= 1 - OAR_WINDOW || ph <= OAR_WINDOW) && oarCycle > 0.5;   // the time to press: the disc goes ink (pressed or not)
@@ -5990,7 +5995,7 @@
     // the oars push in surges: the pull (blades sweeping aft, the first half of each cycle) drives her on, the
     // recovery lets her coast; on average OAR_MAX × power
     const oarSurge = 1 - OAR_SURGE + OAR_SURGE*Math.PI*Math.max(0, Math.sin(2*Math.PI*(oarCycle % 1)));
-    boat.rowV = MANUAL_OARS && !(anchored || moor || boat.whirl) ? OAR_MAX*oarSpin*oarSurge : 0;
+    boat.rowV = MANUAL_OARS && !(anchored || moor || boat.whirl) ? OAR_MAX*oarSpin*oarSurge + oarKick : 0;   // + the kick of a stroke on time
     if(boat.rowV > targetSpeed) targetSpeed = boat.rowV;
     boat.sailPower += (windSf-boat.sailPower)*Math.min(1,dt*3);
 

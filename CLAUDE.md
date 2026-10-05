@@ -267,18 +267,19 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   back the old automatic oars below): a round **oar button** on the right (`#oar-ctl`, above the fair-wind medallion;
   hidden when moored or at the market): a paper disc with a pointer (a triangle on a dashed ring) that turns once a
   stroke, under a **fixed mark** (an ink triangle above it). The first press sets her rowing slowly (power `oarSpin` =
-  `OAR_START` 0.2, an ordinary stroke sound) and the pointer sets off from the mark; it goes round at `OAR_RATE_MIN`
-  0.35 to `OAR_RATE_MAX` 0.7 turns a second, faster with power (`oarCycle`; calm, so there's time to look at the sea
-  too). Each time it comes back up to the mark is the moment to press: the disc **swells** as it nears (`OAR_WARN` =
+  `OAR_START` 0.2, an ordinary stroke sound) and the pointer sets off from the mark; it goes round at one **steady beat**, `OAR_RATE`
+  0.52 turns a second whatever the power (`oarCycle`, `oarRate`; calm, so there's time to look at the sea too), easing
+  in as she starts rowing and winding down to a halt when she stops (`OAR_RATE_EASE`). Each time it comes back up to the mark is the moment to press: the disc **swells** as it nears (`OAR_WARN` =
   0.2 of a turn, class `ready`) and **goes ink for the whole window** to press (class `now`, pressed or not: a cue to
   catch from the corner of the eye), and at that same instant a short wooden **knock** of the oarlock sounds
   (`Sfx.oarCue`, loudness `OAR_CUE_VOL` in Tuning), so it can be rowed by ear: hear the knock, press. A press **on time** (within `OAR_WINDOW` = 0.13 of a turn either side) adds
-  `OAR_GOOD` (0.22, less near full), a little pop (class `hit`), a firm buzz and a **powerful stroke** sound
+  `OAR_GOOD` (0.22, less near full), a little pop (class `hit`), a **kick** of extra way at once (`oarKick` = `OAR_KICK` 10 px/s, fading at
+  `OAR_KICK_FADE` 2.2 a second: each stroke on time is a visible surge, e.g. 10 → 23 px/s near full power), a firm buzz and a **powerful stroke** sound
   (`Sfx.oar(k, true)`: a fuller, brighter, louder gloop); **too early or too late** only `OAR_MISS` (0.04), a light
   buzz and an **ordinary stroke** (softer, never a "wrong" sound); one press a turn counts (`oarPressedTurn`). A mark
   passed with no press keeps only `OAR_SKIP` (0.65) of the power (`oarSkipped`; no sound); below 0.06 she stops; plus
   a slow steady drain (`OAR_SPIN_FADE` = 0.05 a second). In rhythm the power climbs to full in ~8 strokes (peaks of
-  ~15 px/s); off rhythm she crawls at ~2. Her way is `OAR_MAX` (14 px/s) × power on average, `boat.rowV`, **in
+  ~15 px/s); off rhythm she crawls at ~2. Her way is `OAR_MAX` (14 px/s) × power on average (+ the kick), `boat.rowV`, **in
   surges**: the pull, the first half of each turn as the blades sweep aft, drives her on and the recovery lets her
   coast: × (1 − `OAR_SURGE` + `OAR_SURGE`·π·max(0, sin 2π·phase)), `OAR_SURGE` = 0.5; the oars bite quickly (rate
   3.5); wherever she points, even head to wind; it counts only when it's more than the sail gives (`targetSpeed` =
@@ -286,7 +287,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   stroke) and a low-passed swirl of noise. Enter/Space on the button press it too. On the boat the oars come out while
   there's power, the blades sweep with the cycle (`oarPh`: forward at the catch, aft at the finish) with a splash
   ring mid-pull (rowing, the stroke never flips as the helm crosses the middle). The stroke never jumps or freezes: when
-  she stops rowing the cycle runs out slowly as the oars come in (`OAR_RATE_MIN` × `oarK`), and a press while they're
+  she stops rowing the beat winds down to a halt as the oars come in, and a press while they're
   still out carries on from where the blades are (no reset to the mark). Turning is `ROW_TURN_MULT` × quicker while rowing (`boat.rowing`). With manual oars the sail is never
   brailed up.
   **Sail badge** (`#sail-btn`, a round badge on the right under the oar button, which sits above it; shown only while
