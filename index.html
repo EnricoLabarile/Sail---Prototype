@@ -183,10 +183,11 @@
     border-top:9px solid var(--ink); filter:drop-shadow(0 0 1.5px var(--paper));}   /* the fixed mark: the moment to press */
   #oar-ctl .oar-disc{position:absolute; left:4px; top:12px; width:56px; height:56px; border-radius:50%; background:var(--paper); border:2px solid var(--ink);
     box-shadow:2px 3px 0 var(--ink); box-sizing:border-box; transition:transform .12s;}
-  #oar-ctl .oar-disc svg{position:absolute; inset:0; width:100%; height:100%;}
+  #oar-ctl .oar-disc svg{position:absolute; inset:0; width:100%; height:100%; color:var(--ink);}
   #oar-ctl.ready .oar-disc{transform:scale(1.12);}                  /* the pointer is nearly round: get ready */
-  #oar-ctl.hit .oar-disc{background:var(--ink);}                   /* right on time */
-  #oar-ctl.hit .oar-disc svg{color:var(--paper);}
+  #oar-ctl.now .oar-disc{background:var(--ink); transform:scale(1.12);}   /* now's the time to press: ink, easy to catch from the corner of the eye */
+  #oar-ctl.now .oar-disc svg{color:var(--paper) !important;}
+  #oar-ctl.hit .oar-disc{transform:scale(1.22);}                    /* pressed right on time: a little pop */
   body.at-market #oar-ctl{display:none;}
   #dock-btn{position:fixed; z-index:6; width:52px; height:52px; margin:-26px 0 0 -26px; padding:0; border-radius:50%;
     background:var(--paper); color:var(--ink); border:2px solid var(--ink); box-shadow:2px 3px 0 var(--ink); cursor:pointer;
@@ -637,7 +638,7 @@
   <!-- the oar handle, right side: slide it down to pull the oars (rowing by hand) -->
   <div id="oar-ctl" class="hidden" role="button" tabindex="0">
     <div class="oar-mark"></div>
-    <div class="oar-disc"><svg viewBox="-28 -28 56 56" aria-hidden="true" style="color:var(--ink)"><g class="oar-rot">
+    <div class="oar-disc"><svg viewBox="-28 -28 56 56" aria-hidden="true"><g class="oar-rot">
       <circle r="17" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="2 3"/>
       <path d="M0 -24 L5 -15 L-5 -15 Z" fill="currentColor"/><circle r="3" fill="currentColor"/></g></svg></div>
   </div>
@@ -913,8 +914,8 @@
   const OAR_WARN = 0.2;              // the button swells this share of a turn before the pointer reaches the mark (time to react)
   const OAR_SPIN_FADE = 0.05;        // a slow steady drain of the rowing's power (a share of it per second)…
   const OAR_SKIP = 0.65;             // …and the power kept when the pointer passes the mark without a press (she slows; a few skipped and she stops)
-  const OAR_RATE_MIN = 0.45;         // strokes a second as the rowing starts…
-  const OAR_RATE_MAX = 1.25;         // …and at full power (steady, never frantic)
+  const OAR_RATE_MIN = 0.35; // turns of the oar button a second as the rowing starts…
+  const OAR_RATE_MAX = 0.7; // …and at full power (calm: time to look at the sea too)
   const OAR_SURGE = 0.5;             // how much of her way on the oars comes in a surge as the blades sweep aft (0 = steady glide, 1 = all of it), then she coasts on the recovery
   const OAR_MAX = 14;                // px/s at full power (rowing is slow, but goes any way she points)
   const WHEEL_MAX = Math.PI;         // how far the wheel turns for full lock (π = half a turn each way)
@@ -2944,17 +2945,17 @@
       src.start(t0, Math.random()*0.3, 0.65);
     }
     // an oar biting the water: a low, round gloop and a muffled swirl of water (k: 0..1 how hard)
-    function oar(k){
+    function oar(k, strong){         // strong: a stroke pulled right on time (a fuller, brighter, more powerful gloop)
       if(!ac || ac.state!=='running') return;
-      const t0 = ac.currentTime, vol = 0.6 + 0.4*(k===undefined ? 1 : k);
+      const t0 = ac.currentTime, vol = (0.6 + 0.4*(k===undefined ? 1 : k))*(strong ? 1.5 : 1);
       const o = ac.createOscillator(); o.type='sine';
-      o.frequency.setValueAtTime(150 + Math.random()*30, t0); o.frequency.exponentialRampToValueAtTime(70, t0+0.2);
+      o.frequency.setValueAtTime((strong ? 210 : 150) + Math.random()*30, t0); o.frequency.exponentialRampToValueAtTime(strong ? 85 : 70, t0+(strong ? 0.26 : 0.2));
       const og = ac.createGain();
       og.gain.setValueAtTime(0.0001, t0); og.gain.exponentialRampToValueAtTime(0.09*vol, t0+0.02); og.gain.exponentialRampToValueAtTime(0.0001, t0+0.24);
       o.connect(og); og.connect(master); o.start(t0); o.stop(t0+0.26);
       const src = ac.createBufferSource(); src.buffer = noise;
       const lp = ac.createBiquadFilter(); lp.type='lowpass'; lp.Q.value=1.4;
-      lp.frequency.setValueAtTime(700, t0); lp.frequency.exponentialRampToValueAtTime(180, t0+0.45);
+      lp.frequency.setValueAtTime(strong ? 1300 : 700, t0); lp.frequency.exponentialRampToValueAtTime(180, t0+0.45);
       const g = ac.createGain();
       g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.08*vol, t0+0.06); g.gain.exponentialRampToValueAtTime(0.0001, t0+0.5);
       src.connect(lp); lp.connect(g); g.connect(master);
@@ -4698,7 +4699,7 @@
     if(anchored || moor || !playing) return;
     if(oarSpin < 0.02){                                      // starting: she begins to row, slowly; the pointer sets off from the mark
       oarSpin = OAR_START; oarCycle = 0; oarPressedTurn = 0; oarSkipped = 0;
-      buzz(16); return;
+      Sfx.oar(0.6); buzz(16); return;
     }
     const turn = Math.round(oarCycle);                       // the mark this press is aimed at (the nearest one)
     if(turn === oarPressedTurn) { buzz(4); return; }         // already pressed for this one
@@ -4706,10 +4707,10 @@
     const off = Math.abs(oarCycle - turn);                   // how far from the mark, in turns
     if(off <= OAR_WINDOW){
       oarSpin = Math.min(1, oarSpin + OAR_GOOD*(1 - 0.5*oarSpin));
-      oarHitT = 0.18; buzz([14,25,30]);
+      oarHitT = 0.18; buzz([14,25,30]); Sfx.oar(0.5 + 0.5*oarSpin, true);   // a powerful stroke
     } else {
       oarSpin = Math.min(1, oarSpin + OAR_MISS);
-      buzz(8);
+      buzz(8); Sfx.oar(0.35 + 0.3*oarSpin);                  // an ordinary stroke (not wrong, just less)
     }
   }
   elOar.addEventListener('pointerdown', ev=>{ ev.preventDefault(); pressOar(); });
@@ -4726,10 +4727,13 @@
     if(oarSpin > 0.01){                                       // the pointer goes round once a stroke
       const prev = oarCycle;
       oarCycle += dt*(OAR_RATE_MIN + (OAR_RATE_MAX - OAR_RATE_MIN)*oarSpin);
-      if(Math.floor(oarCycle) !== Math.floor(prev)) Sfx.oar(0.4 + 0.6*oarSpin);   // a catch, at the mark
+
     }
-    const ph = oarCycle % 1, ready = oarSpin > 0.01 && ph > 1 - OAR_WARN && Math.round(oarCycle) !== oarPressedTurn;
+    const ph = oarCycle % 1, rowingNow = oarSpin > 0.01;
+    const ready = rowingNow && ph > 1 - OAR_WARN && ph < 1 - OAR_WINDOW;          // about to come round: it swells
+    const now = rowingNow && (ph >= 1 - OAR_WINDOW || ph <= OAR_WINDOW) && oarCycle > 0.5;   // the time to press: the disc goes ink (pressed or not)
     if(ready !== elOar.classList.contains('ready')) elOar.classList.toggle('ready', ready);
+    if(now !== elOar.classList.contains('now')) elOar.classList.toggle('now', now);
     oarHitT = Math.max(0, oarHitT - dt);
     if((oarHitT > 0) !== elOar.classList.contains('hit')) elOar.classList.toggle('hit', oarHitT > 0);
     const deg = Math.round(ph*3600)/10;
