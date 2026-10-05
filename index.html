@@ -541,6 +541,7 @@
   #wg-changes{margin:4px 0 12px; padding:6px 8px 6px 22px; font:11px/1.35 ui-monospace, monospace; border:1.5px dashed var(--ink); border-radius:3px; clear:both;}
   #wg-changes li{list-style:'· ';}
   #wg-changes li.head{list-style:none; margin-left:-14px; font-weight:bold;}
+  #wg-changes li.head + li{font-weight:bold;}            /* the newest change, the one to look for first */
   #wg-title{margin:0 0 8px; font-size:18px; font-style:italic;}
   #wg-map{display:block; width:200px; height:200px; margin:0 auto 10px; border:2px solid var(--ink); image-rendering:pixelated;}
   #wg-knobs{display:grid; grid-template-columns:1fr 74px; gap:3px 8px; font:11.5px/1.3 ui-monospace, monospace;}
@@ -714,14 +715,14 @@
 
   // what's new, newest first (a few lines, shown under the build time so Enrico knows what to look for); update it with every commit
   const CHANGES = [
+    'Intro scroll: the rows stay straight and just fade near the rolls; the newest change in bold',
     'Intro card: an open scroll, the paper curls into a roll at top and bottom',
     'This list of what changed, under the build time',
     'Quay badge: coins jingle at a village, the storehouse door creaks at home',
     'Build time on this screen',
     'Oars: one steady beat, a kick of speed on each stroke on time',
-    'Oars: a wooden knock as the button goes dark',
   ];
-  const BUILD = '2026-10-05 15:23';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-05 15:32';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
   // {braces} are filled in by the game (keep the braces and the word inside;
@@ -3973,7 +3974,7 @@
 
   // ---------- Intro ----------
   const intro = document.getElementById('intro');
-  // the open scroll: rows of the sheet near a roll tip back and fade as if the paper curved away into it
+  // the open scroll: rows of the sheet fade out as they near a roll, as if the paper curved away into it (they stay straight)
   const scrollBody = intro.querySelector('.scroll-body'), CURL_BAND = 42;
   function curlScroll(){
     if(intro.classList.contains('hidden')) return;
@@ -3981,12 +3982,8 @@
     for(const el of scrollBody.querySelectorAll(':scope > *:not(#wg-knobs):not(#wg-changes), #wg-knobs > *, #wg-changes > li')){
       let y = 0; for(let e = el; e && e !== scrollBody; e = e.offsetParent) y += e.offsetTop;   // (a transformed row is its children's offsetParent)
       const top = y - st, bot = H - (top + el.offsetHeight);
-      let t = 0, sg = 1;
-      if(top < CURL_BAND && top < bot){ t = (CURL_BAND - top)/CURL_BAND; el.style.transformOrigin = '50% 100%'; }
-      else if(bot < CURL_BAND){ t = (CURL_BAND - bot)/CURL_BAND; sg = -1; el.style.transformOrigin = '50% 0%'; }
-      t = Math.max(0, Math.min(1, t));
-      el.style.transform = t > 0.01 ? 'perspective(240px) rotateX(' + (sg*t*80).toFixed(1) + 'deg)' : '';
-      el.style.opacity = t > 0.01 ? (1 - 0.7*t).toFixed(2) : '';
+      const t = Math.max(0, Math.min(1, (CURL_BAND - Math.min(top, bot))/CURL_BAND));
+      el.style.opacity = t > 0.01 ? (1 - 0.85*t).toFixed(2) : '';
     }
   }
   scrollBody.addEventListener('scroll', curlScroll, {passive:true});
