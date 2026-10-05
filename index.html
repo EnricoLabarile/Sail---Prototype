@@ -4,6 +4,427 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Vento e Vele</title>
+<script>
+// ===== Tuning and texts: first in the file, so they are easy to find and edit (on GitHub too). =====
+// Top-level consts in this script are shared with the game script further down.
+"use strict";
+  // ---------- Tuning ----------
+  const HAPTICS_DEFAULT = 0;         // vibration strength on a first visit (0 = off … 1 = strong); the slider on the first screen changes it (and it's remembered)
+  // The game's main knobs, all in one place: change a number, save, reload.
+  // Each one is used further down (search for its name to see how). When a
+  // new feature brings a new knob, it goes here too. The knobs marked (world)
+  // change how the world is generated.
+  // The world knobs wrapped in knob('NAME', value) can also be set from the
+  // first screen (the world generator): its "Generate" reloads the page with
+  // them in the address (?ISLAND_SCALE=3&…), and they win over the value here.
+  const URLP = new URLSearchParams(location.search);
+  const knob = (k, v)=> URLP.has(k) && URLP.get(k) !== '' && isFinite(+URLP.get(k)) ? +URLP.get(k) : v;
+
+  // -- Size of the world (first: the other knobs scale with it) --
+  // Distances scale with it (× WORLD_K) and counts with its area (× WORLD_K²),
+  // so the sea keeps the same density whatever its size.
+  const WORLD_SIZE = 5040;           // px a side (the world wraps round); keep it a multiple of 48 (world). Was 7200
+  const WORLD_K = WORLD_SIZE/7200;   // scale against the original 7200 world
+  const WK2 = WORLD_K*WORLD_K;
+
+  // -- Boat --
+  const MAX_SPEED = 50;              // px/s: reference speed (collision damage is scaled by it too)
+  const WIND_BOOST = 0.96;           // how much the wind gives: sets the top speed (~52 px/s dead downwind in full wind)
+  const BOAT_ACCEL = 0.7/1.2;        // how quickly she gathers way (higher = quicker); slowing down is separate
+  const TURN_RATE = 0.6;             // rad/s at full rudder (was 0.42: easier to turn)
+  const ROW_TURN_MULT = 2;           // turning is this much quicker on the oars
+  const ROW_ENTER = 10;              // px/s: slower than this, with the wind unable to help, and the oars come out (sail brailed up)
+  const ROW_EXIT = 16;               // px/s: once the sail could drive her faster than this again, it's set and the oars come in
+  const ROW_DELAY = 0.6;             // seconds a condition must hold before switching (no flicker)
+  const ROW_SPEED = 9;               // px/s on the oars (the old automatic oars)
+  const MANUAL_OARS = true;          // the oars are rowed by hand: press the oar button (right) in rhythm, as its pointer comes round to the mark (false = the old automatic oars)
+  const OAR_START = 0.2;             // power the first press gives (0..1): she starts rowing, slowly
+  const OAR_GOOD = 0.22;             // power a press right on time adds (the pointer at the mark)…
+  const OAR_MISS = 0.04;             // …and a press too early or too late (a little)
+  const OAR_WINDOW = 0.13;           // how far from the mark a press still counts as on time (share of a turn, either side)
+  const OAR_WARN = 0.2;              // the button swells this share of a turn before the pointer reaches the mark (time to react)
+  const OAR_LOCK_SPEED = 16;         // px/s: once the sail alone drives her faster than this the oars are shipped and the oar button is disabled (back below 0.8 × this)
+  const OAR_CUE_VOL = 1;            // loudness of the knock that sounds as the oar button goes ink (the moment to press; 0 = silent)
+  const OAR_SPIN_FADE = 0.05;        // a slow steady drain of the rowing's power (a share of it per second)…
+  const OAR_SKIP = 0.65;             // …and the power kept when the pointer passes the mark without a press (she slows; a few skipped and she stops)
+  const OAR_RATE = 0.52;              // turns of the oar button a second: one steady beat, whatever the power (calm: time to look at the sea too)
+  const OAR_RATE_EASE = 2;           // how quickly the button gets up to that beat when she starts rowing, and winds down to a halt when she stops
+  const OAR_KICK = 20;               // px/s of extra way a stroke pulled right on time gives her (a visible surge; half of it at once)…
+  const OAR_KICK_FADE = 1.3;         // …fading away at this rate a second (lower = she glides on longer)
+  const OAR_SURGE = 0.5;             // how much of her way on the oars comes in a surge as the blades sweep aft (0 = steady glide, 1 = all of it), then she coasts on the recovery
+  const OAR_MAX = 14;                // px/s at full power (rowing is slow, but goes any way she points)
+  const WHEEL_MAX = Math.PI;         // how far the wheel turns for full lock (π = half a turn each way)
+  const SURF_BOOST = 32;             // extra px/s while surfing a big wave
+  const SURF_COS = 0.4;              // surf if the heading is within ~66° of the wave's travel (else the wave hurts)
+
+  // -- Hull and dangers --
+  const MAX_HEALTH = 100;            // a full hull
+  const HIT_MAX_DAMAGE = 25;         // damage of a head-on hit at full speed (grazes do less)
+  const REPAIR_EVERY = 0.5;          // seconds between patches at a pier (repairs are free)
+  const FISH_HEAL = 15;              // hull points per patch
+  const WHIRL_COUNT = Math.round(200*WK2);         // whirlpools in the world (world)
+  const WHIRL_FROM_DAY = 1;          // whirlpools start opening from this day (1 = from the start; was 2, a calm first day)
+  const WHIRL_DAMAGE = 10;           // hull damage when caught in a whirlpool's core
+  const WHIRL_PULL = 22;             // px/s pull at the edge of the core…
+  const WHIRL_CURVE = 4;             // …rising exponentially from ~0 at the rim
+  const WHIRL_FADE = 3;              // seconds for a whirlpool to open up / die down
+  const WHIRL_FLING = 200;            // px/s² of extra speed while she runs round a whirlpool's outer ring with its swirl (a slingshot)…
+  const WHIRL_FLING_MAX = 200;        // …up to this much above her normal speed (it fades once she's out)
+  const WHIRL_FLING_COS = 0.8;       // how well her heading must follow the swirl to be flung (cos of ~37°)
+  const ROLLER_RATE = knob('ROLLER_RATE', 2);             // how often big waves come (2 = twice as often as at first, 1 = the old pace)
+  // deep water: where the big waves can rise and run (shown as a darker sea); they die down on leaving it
+  const DEEP_SHORE = 70;             // px from any land at which the deep water begins (world)
+  const DEEP_PIER = 280;             // px from any pier (harbours are never deep) (world)
+  const DEEP_TINT = 0.3;            // how much darker the deep water is drawn (0 = not shown, ~0.25 = strong)
+  const DEEP_CELL = 24;              // px a side of the cells the deep water is worked out in (smaller = finer edge, more work)
+  const ROLLER_CATCH = 25;           // px/s a wave from astern runs faster than the boat, so it catches her to surf (0 = never helps)
+  const DOWNWIND_DEG = 120;          // she's running downwind when the wind comes from at least this far round from her bow (180 = dead astern); from here the wind from behind adds speed too
+  const SURF_WAVE_AFTER = 0.1;         // seconds running downwind before a wave may come up astern for her to surf
+  const SURF_WAVE_CHANCE = 0.3;      // chance each second (after that) of such a wave
+  const SURF_WAVE_BACK = 100;        // px astern it rises (close enough to reach her before it dies)
+  const SURF_WAVE_SIDE = 45;         // px it may be off to either side, so catching it takes a touch of the helm
+  const ROLLER_SPARE = 0.55;         // a wave about to hit her badly slows to this share of its pace (1 = never)
+
+  // -- Fishing and market --
+  const BANK_COUNT = Math.round(240*WK2);          // fish banks out at sea (world)
+  const ROUTE_BANK_SHARE = 0.5;      // share of those banks laid along the sea roads (home to each village, village to village)
+  const ROUTE_BANK_SPREAD = Math.round(170*WORLD_K);   // px either side of a road they may lie
+  const HOME_WATERS = Math.round(950*WORLD_K);     // radius of home waters (all kinds of fish there)
+  const HOME_BANKS = Math.round(18*WK2);           // fish banks in home waters, refilled as they are fished (world)
+  const FISH_CATCH_MIN = 1, FISH_CATCH_MAX = 2;   // fish per haul (random in between)
+  const BOTTLE_COUNT = 6;            // messages in a bottle floating about the sea at once (one fished up, another drifts in elsewhere) (world)
+  const BOTTLE_SIZE = 1.8;           // how big a bottle is drawn (1 = true to the boat's scale; bigger reads better)
+  const WRECK_LEN = 190;             // px long, the wrecked cruise ship that lies where a message's cross is (in two halves)
+  const BOTTLE_TIME = 1.2;           // seconds with the net out before a bottle is hauled in (fish take FISH_TIME_MIN–MAX)
+  const HOLD_MAX = 9;                // slots in the hold: each fish or dish takes one; when it's full the nets stay aboard
+  const FISH_REACH = 1.35;           // a bank counts out to this × its radius (a little past its circle)
+  const FISH_STOP = 12;              // px/s: slow enough to count as stopped on a bank
+  const FISH_SETTLE = 2;             // seconds stopped on a bank before the nets go over
+  const BANK_LOOK = [4, 5, 1.45];    // every fish bank looks alike, whatever it holds: [fewest fish, most fish, their size] (dark, going round)
+  const FISH_ANCHOR_SETTLE = 0.25;   // …or this long after dropping anchor on a bank
+  const FISH_TIME_MIN = 2, FISH_TIME_MAX = 4;   // seconds with the nets out before the haul
+  const COIN_LOCAL = 1;              // a village pays this for its own kind of fish
+  const COIN_FOREIGN = 3;            // …and this for fish from other waters
+  const DISH_PRICE = 6;              // coins per specialty dish
+  const DISH_RESALE = 3;             // coins a stall gives for a dish from your hold (any stall takes any dish)
+
+  // -- World --
+  const TRADERS_HOME = knob('TRADERS_HOME', 2);            // trading boats between home and the villages (on 2 of the 4 home lanes, picked at random) (world)
+  const TRADERS_VILLAGES = knob('TRADERS_VILLAGES', 4);        // trading boats between neighbouring villages (one on each of those 4 lanes) (world)
+  const ISLAND_SCALE = knob('ISLAND_SCALE', 2.5);          // size of the wild islands (1 = the old small ones) (world)
+  const ISLAND_COUNT = knob('ISLAND_COUNT', Math.round(210*WK2*3.5/(ISLAND_SCALE*ISLAND_SCALE)));   // wild islands at most (about 58 at scale 2.5; the clusters fill up first) (world)
+  const CLUSTER_SHARE = knob('CLUSTER_SHARE', 0.32);        // share of the sea taken by clusters of islands; the rest is open water (world)
+  const SPIRAL_MIN = 0.5, SPIRAL_MAX = 1;                   // each new world picks SPIRAL at random between these, unless it's set in the world generator (world)
+  const SPIRAL = knob('SPIRAL', +(SPIRAL_MIN + Math.random()*(SPIRAL_MAX - SPIRAL_MIN)).toFixed(2));   // 0 = clusters scattered … 1 = clusters strung along spiral arms round home, like a galaxy, denser near it (world)
+  const SPIRAL_ARMS = knob('SPIRAL_ARMS', 3);               // how many arms the spiral has (world)
+  const SPIRAL_TWIST = 2.4;          // how tightly the arms wind round home (higher = more turns) (world)
+  const OPEN_ISLANDS = knob('OPEN_ISLANDS', 6);            // small islands scattered in the open water between the clusters (world)
+  // share of the wild islands of each shape (the rest are round-ish blobs) (world):
+  const ISLAND_L = knob('ISLAND_L', 0);                // L-shaped: two long arms meeting at a corner (0 = none: off for now; was 0.12)
+  const ISLAND_C = knob('ISLAND_C', 0);                // C-shaped: a horseshoe round a deep bay (0 = none: off for now; was 0.12)
+  const ISLAND_BIG = knob('ISLAND_BIG', 0.07);           // big islands, about 1.7 times the usual size
+  const ISLAND_ATOLL = knob('ISLAND_ATOLL', 0);            // atolls: a ring of sandy islets round a lagoon, with gaps to sail in (0 = none: off for now; was 0.05)
+  const VILLAGE_DIST = Math.round(2475*WORLD_K);   // px from home to each village (world)
+  // each game every village is nudged a little, still roughly N / E / S / W of home:
+  const VILLAGE_OUT_MAX = Math.round(300*WORLD_K);   // px it may be pushed further from home (never closer) (world)
+  const VILLAGE_SIDE_MAX = Math.round(300*WORLD_K);  // px it may slide sideways, either way; in practice the ruins keep it to about a third of VILLAGE_OUT_MAX (world)
+  const VILLAGE_EDGE = Math.round(500*WORLD_K);      // px it must keep from the edge of the map (world)
+  const SAFE_R = Math.round(950*WORLD_K);          // home waters: no whirlpools, no big waves
+  const LAGOON_R = Math.round(650*WORLD_K);        // calm lagoon round home: no islands, no rocks (world)
+  const DANGER_RING = Math.round(3400*WORLD_K);    // the sea gets wilder out to this distance from home (world)
+  const BUOY_R = Math.round(880*WORLD_K);          // radius of each village's ring of buoys (world)
+  const BUOYS_PER_VILLAGE = Math.round(24*WORLD_K), HOME_BUOYS = Math.round(32*WORLD_K);   // buoys per ring (world)
+  const OPEN_ROCK_TRIES = knob('OPEN_ROCK_TRIES', Math.round(127*WK2));     // clusters of rocks tried out in open water (world)
+  const ROCK_GAP = 64;               // px of clear water at least between two rocks, or a rock and the shore, unless they touch (about twice the boat's length, so she never gets stuck) (world)
+  const ROCK_BIG = 0.4;              // share of rocks drawn bigger than the usual (up to ROCK_BIG_MAX ×) (world)
+  const ROCK_BIG_MAX = 2.2;          // the biggest rocks are this many times the usual size (world)
+  const DAY_LEN = 720;               // seconds for a whole day, dawn to dawn (was 360)
+  const TUTORIAL_ON = false;         // the first-voyage tutorial (controls shown one at a time with tips); off for now
+  const RUINS_ON = false;            // the ruins on the diagonals and their powers; off for now (world)
+  const EOLUS_ON = true;             // the Temple of Eolus stands in the north, where Nordania was (Nordania is gone while it's on); docking there gives the fair wind (world)
+  const POWER_USES = 1;              // uses of the fair wind (the button bottom right, locked until Eolus gives it)
+  const POWER_RECHARGE = 60;         // seconds for a spent use of the fair wind to come back
+  const POWER_WIND_T = 30;           // seconds the fair wind blows from astern, whichever way she steers
+  const DAWN_HOUR = 5;               // the hour on the watch at first light (5 puts the golden hour at about 19)
+  const DINNER_HOUR = 19;            // the day's order must be home by this hour; then dinner is served (marked on the watch)
+  const WATCH_MARK = DINNER_HOUR;    // the hour marked on the watch's rim
+
+  // -- Orders and the guests --
+  const ORDERS_ON = false;           // the daily orders (in the logbook, delivered at home by dinner); off for now: the logbook shows the day and the cargo
+  const FIRST_ORDER_FISH = 3;        // day 1: this many fish, any kind
+  const ORDER_FISH_MIN = 2, ORDER_FISH_MAX = 4;   // from day 2: fish of one kind (random in between)
+  const ORDER_TWO_DISHES_FROM = 4;   // from day 2 the order asks for one village dish, from this day on for two
+  const SAT_START = 0.5;             // the guests' mood at the start (0..1; the bar top right)
+  const SAT_GAIN = 0.15;             // a complete order raises it by this much
+  const SATISFACTION_ON = false;     // the guests' mood (the bar top right, changed by each dinner); off for now: no bar, the mood stays put
+  const GUESTS_ON = false;           // the guest pier south of home and the clients' boats tied up there; off for now (world)
+  const GUEST_BOATS_MAX = 4;         // clients' boats tied up at the guest pier when the mood is full (fewer as it falls)
+  const SAT_LOSS = 0.25;             // an order with nothing delivered lowers it by this much (in proportion to what's missing)
+  const SIGHT = 220;                 // px of fog uncovered round the boat
+  const CLOUD_COUNT = knob('CLOUD_COUNT', 12);            // clouds in the sky (world)
+  const RAIN_CLOUD_EVERY = 3;        // one cloud in this many carries rain (world)
+
+  // -- Ruins' powers --
+  const BOON_WIND_T = 60;            // seconds of friendly wind (its text says "a minute")
+  const BOON_FISH_HAULS = 3;         // hauls with blessed nets (its text says "three")
+
+  // -- Tutorial --
+  const TUT_PAUSE = 1500;            // ms between one step and the next
+  const TUT_COMPASS_T = 4500;        // ms the compass step lasts (no input needed)
+  const TUT_DROP_WAIT = 3000, TUT_DROP_T = 3000;   // after the wheel: wait, then the optional drop-anchor tip for a while (ms)
+  const HUB_HOLD = 320;              // ms to hold the hub to drop or weigh anchor (was 500)
+
+  // -- Look --
+  const UI_TINT = 0.7;               // how much the interface takes on the day/night colours (0 = never, 1 = like the world)
+  const CLOUD_ALPHA = 0.45, CLOUD_CORE = 0.88;   // clouds: see-through at the rim, denser in the middle
+  const CLOUD_MODELS = 4;            // cloud shapes, shared by all the clouds in the sky (world)
+  const MAP_RES = 280;               // the sea chart in the logbook: its pixels a side (fewer = coarser)
+  const SAIL_SIZE = 1.15;             // size of the boat's sail (1 = the old one: a yard 30 px wide)
+  // the two sails' speed curves: [degrees off the wind, share of top speed], made starker than real life so each
+  // sail has its own way to sail. The square sail: the open sea, the wind from astern (and SQUARE_RUN_BONUS on top);
+  // almost dead on the wind, weak on the beam. The lateen: the wind on the beam (its best is faster than the square's
+  // best on the beam by far) and it can point up toward the wind; poor running free
+  const SAIL_POLAR_SQUARE = [[0,0],[20,0],[35,0.02],[50,0.05],[70,0.12],[90,0.25],[110,0.45],[130,0.72],[150,0.92],[170,1.0],[180,1.0]];
+  const SAIL_POLAR_LATEEN = [[0,0.02],[20,0.22],[35,0.60],[50,0.90],[70,1.08],[90,1.10],[110,0.90],[130,0.60],[150,0.38],[170,0.26],[180,0.22]];
+  const SQUARE_RUN_BONUS = 0.25;     // running downwind (from DOWNWIND_DEG to dead astern) the square sail gains up to this much more (the lateen none)
+  const LATEEN_SWING = 0.9;          // how quickly the lateen yard swings across when she changes tack (3 = as quick as the sail trims; lower = heavier)
+  const SAIL_STOW_HOLD = 1.1;        // seconds holding the sail badge to unbend the sail and stow it in the hold
+  const SAIL_SHAKE_AFTER = 0.2;      // a press longer than this is a hold (the badge shakes); shorter is a tap (set or furl)
+  const SAIL_TONE = 0.72;            // the sail's cloth when drawing well (1 = paper white, 0 = ink); slack or reefed it's a little darker
+  const SPARE_SAIL = true;           // both sails ride in the hold (a slot each, the one not rigged); a tap on one in the logbook rigs it
+  const START_RIG = null;            // the sail rigged at the start: null = none, she sets out on the oars ('square' or 'lateen' = that one)
+  const PINE_MODELS = 4;             // stone pine shapes, reused (each also mirrored) all over the map (world)
+  // draw the scene on the processor (true) or on the graphics card (false): the frame is tiny, and Firefox
+  // on Android is slow with the card (24 fps); add ?scene=gpu or ?scene=cpu to the address to compare
+  const SCENE_ON_CPU = /[?&]scene=gpu/.test(location.search) ? false : /[?&]scene=cpu/.test(location.search) ? true
+    : true;                          // <- the default
+
+  // what's new, a group per build, newest first: the first is this build (its time is BUILD), then the builds before
+  // it with their times; only the first four are shown. Update it with every commit (start a new group for a new
+  // build, giving the old first group the BUILD time it had)
+  const CHANGES = [
+    {build: '', items: [
+      'A Vibration slider on this screen (0 to 1, for the whole game; starts at 0, so no vibration until you raise it; remembered)',
+      'Code: the Tuning block and the texts now sit at the very top of index.html',
+    ]},
+    {build: '2026-10-05 18:36', items: [
+      'Rocks: always at least about two boat lengths of water between two rocks, or a rock and the shore (unless they touch), so she never gets stuck',
+      'Rocks: varied sizes, some up to about twice the usual',
+    ]},
+    {build: '2026-10-05 18:17', items: [
+      'Messages in a bottle: where a message puts its cross, a wrecked cruise ship now lies, broken in two on a reef (solid; a toast when you first come close)',
+    ]},
+    {build: '2026-10-05 17:36', items: [
+      'Deep water: the sea where big waves can rise and run is drawn darker (away from land, harbours and home waters); waves die down as they leave it',
+    ]},
+  ];
+  const BUILD = '2026-10-05 18:55';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+
+  // ---------- Texts ----------
+  // Every word the player reads, in one place, to author freely. Parts in
+  // {braces} are filled in by the game (keep the braces and the word inside;
+  // you can move them around the sentence). A few strings contain bits of
+  // HTML such as <b>…</b>: keep those tags. Accessibility labels for screen
+  // readers stay in the code for now.
+  const TEXT = {
+    // the first screen: the world generator (knob names are shown as they are in Tuning)
+    worldGen: {
+      title:    'World',
+      generate: 'Generate',
+      reset:    'Defaults',
+      changes:  'New in this build',
+      vibration: 'Vibration',                       // the slider for the strength of the phone's vibrations (the whole game)
+      earlier:  'Earlier: build {time}',                // a heading for each of the few builds before this one
+      build:    'Build {time}',                       // top right of the first screen: when this version was made
+    },
+    intro: {                                        // (not shown for now: the first screen is the world generator)
+      lead:  'You run a little restaurant on your island. Every morning brings an order for tonight\'s dinner.',
+      after: 'Fish, trade your catch in the villages if the order needs it, and bring it all home before 19:00.',
+      start: 'Set sail!',
+    },
+    // the four villages: name, the course they cook, its two dishes, the gift
+    // the merchant adds when you buy both, and the merchant's flavour line
+    // (unused for now). Renaming a dish keeps its icon.
+    villages: {
+      nord:  { name:'Nordania', course:'Antipasti', dishes:['Fiori di Zucca', 'Mozzarelle'], gift:'Tarallini',
+               line:"On the quay the grocer sets out the antipasti: fiori di zucca fried golden and mozzarelle still dripping." },
+      est:   { name:'Estolia', course:'Primi', dishes:['Orecchiette con Cime di Rapa', 'Lasagne'], gift:'Olio Santo',
+               line:"In the trattoria by the harbour the cook shapes orecchiette with her thumb, and a lasagne rests on the sill." },
+      sud:   { name:'Sudia', course:'Secondi', dishes:['Zampina', 'Pesce Arrosto'], gift:'Vino Rosso',
+               line:"At the grill by the market the butcher turns coils of zampina over the coals, and fish roasts beside them." },
+      ovest: { name:'Westa', course:'Dessert', dishes:['Cartellate', 'Tiramisu'], gift:'Limoncello',
+               line:"Grandma's pastry shop smells of honey and coffee: cartellate on the tray, a tiramisu in the cool of the cellar." },
+    },
+    fish: {
+      sarde:   { one:'sardine',    many:'sardines' },
+      sgombri: { one:'mackerel',   many:'mackerel' },
+      triglie: { one:'red mullet', many:'red mullet' },
+      orate:   { one:'sea bream',  many:'sea bream' },
+    },
+    // the little notes that slide in at the top
+    toasts: {
+      homeBack:   'Back home',
+      homeLeave:  'Leaving home',
+      villageIn:  'You approach {village}',
+      villageOut: 'Leaving {village}',
+      gift:       'Come again! This is on the house: {gift}!',
+      delivered:  'Delivered for tonight\'s dinner',
+      orderReady: 'Tonight\'s order is ready',
+      dinnerOk:   'Dinner is served: the guests are happy',
+      dinnerShort:'Dinner is served, but something was missing',
+      newOrder:   'A new order in the logbook',
+    },
+    // words that float up from the boat
+    popups: {
+      catch:    '+{n} {fish}',
+      holdFull: 'the hold is full',
+      netsIn:   'nets hauled in',
+      overboard: '{item} overboard',
+      surf:     'surf!',
+      fairWind: 'fair wind!',
+      fling:    'flung!',
+      whirl:    'Whirlpool! -{damage}',
+      bought:   '+ {item}',
+      coinsIn:  '+{n} coins',
+      coinsOut: '{n} coins',
+    },
+    // the tutorial's speech bubbles
+    tutorial: {
+      book:    'Here you will find your goals and your current cargo.',
+      compass: 'Your compass points home. Tap to open it.',
+      anchor:  'Hold to drop or raise the anchor.',
+      wheel:   'Drag the wheel round to steer.',
+      drop:    'Hold here to drop anchor and stop.',
+    },
+    market: {
+      title:      '{village} market',
+      tip:        'Drag and drop items between inventories to trade buy and sell.',
+      yourHold:   'Cargo',
+      stall:      'The stall',
+      emptyHold:  'Nothing in the hold.',
+      emptyStall: 'The stall is bare.',
+      quit:       'Quit',
+      trade:      'Trade',
+      coin: 'coin', coins: 'coins',                 // ({coins} below picks the right one)
+      balNone:    'Balance: <b>0</b>',
+      balGain:    'Balance: <b>+{n}</b> {icon} you receive {n} {coins}',
+      balEven:    'Balance: <b>0</b>: a fair swap',
+      balPay:     'Balance: <b>{n}</b> {icon} paid from your purse',
+      balShort:   'Balance: <b>{n}</b> {icon} not enough: offer more fish',
+      balFull:    'No room in the hold: {n} too many',
+    },
+    // the logbook's last spread: how home could look (a preview for now)
+    base: {
+      title:   'Home',
+      hint:    'Tap to see how home could grow. (A preview for now.)',
+      levels:  ['Fisherman\'s hut', 'Masseria', 'Fortified palace'],
+    },
+    // the oar handle on the right (rowing by hand)
+    oars: {
+      label: 'Oars: press to row, then press again each time the pointer comes round to the mark',
+      locked: 'Oars shipped: the sail drives her fast enough',
+    },
+    // home's storehouse: drag goods between the hold and the store (what's left here waits at home)
+    store: {
+      title:     'Home storehouse',
+      tip:       'Drag or tap goods across: what you leave here stays safe at home.',
+      label:     'Storehouse',
+      empty:     'The storehouse is empty.',
+      hold:      'Hold after: <b>{n}/{max}</b>',
+      done:      'Done',
+      stored:    '{n} stored',
+      taken:     '{n} taken aboard',
+      // the badges over the quay while she's tied up
+      openMarket: 'Open the market',
+      openStore:  'Open the storehouse',
+    },
+    // the two sails: the one she carries and the spare in the hold (tap the spare to rig it)
+    // messages in a bottle: fished up like a fish bank, read from the Cargo (a tap), each puts a cross on the sea chart
+    bottles: {
+      name:    'Message in a bottle',
+      hint:    'Message in a bottle: tap to read it',
+      caught:  'a message in a bottle!',
+      title:   'A message in a bottle',
+      close:   'Tap to roll it up again.',
+      marked:  'A cross on the sea chart',
+      wreck:   'The wreck from the message!',          // the first time she comes close to it
+      // the messages (placeholders for now): each bottle fished up brings the next one, in a shuffled order
+      texts: [
+        'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore. (1)',
+        'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo. (2)',
+        'Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. (3)',
+        'Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est. (4)',
+        'Curabitur pretium tincidunt lacus. Nulla gravida orci a odio, et tempus feugiat nisl a tellus. (5)',
+        'Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin. (6)',
+        'Integer in mauris eu nibh euismod gravida. Duis ac tellus et risus vulputate vehicula. (7)',
+        'Donec lobortis risus a elit. Etiam tempor. Ut ullamcorper, ligula eu tempor congue, eros est euismod. (8)',
+        'Maecenas fermentum consequat mi. Donec fermentum. Pellentesque malesuada nulla a mi. (9)',
+        'Aliquam erat volutpat. Nam dui mi, tincidunt quis, accumsan porttitor, facilisis luctus, metus. (10)',
+        'Phasellus ultrices nulla quis nibh. Quisque a lectus. Donec consectetuer ligula vulputate sem tristique. (11)',
+        'Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia curae; fusce id purus. (12)',
+      ],
+    },
+    sails: {
+      square:  'Square sail',
+      lateen:  'Lateen sail',
+      hint:    '{sail}: tap to rig it',
+      // the wind card on the logbook's right page: how well the sail she carries takes the wind
+      windTitle: 'Wind',
+      drawing:   '{sail}: {pct}%',
+      breeze:    'breeze {pct}%',
+      spareLine: '- - - in the hold',
+      none:      'No sail: the oars',
+      rigged:  '{sail} rigged',
+      badge:   '{sail}: tap to set or furl it, hold to stow it in the hold',
+      stowed:  '{sail} stowed in the hold',
+    },
+    logbook: {
+      order:   'Tonight\'s order',
+      day:     'Day {n}',
+      due:     'Bring it home by {hour}:00.',
+      fishAny: '{n} fish, any kind',
+      fishKind:'{n} {fish}',
+      ready:   'All delivered: dinner will be ready.',
+      served:  'Dinner was served. A new order comes at first light.',
+      short:   'Dinner was served without everything. A new order comes at first light.',
+      cargo:   'Cargo',
+      throwAway: 'Throw overboard',
+      holdCount: '{n}/{max}',
+      noFish:  'No fish aboard.',
+      chart:   'Sea chart',
+    },
+    // at a pier, under the dialog
+    pier: {
+      weighHint: 'Hold the centre of the wheel to weigh anchor.',
+    },
+    // the Temple of Eolus, in the north: the god of the winds gives the fair wind
+    eolus: {
+      name:    'Temple of Eolus',
+      gift:    'A warm breath stirs among the columns. Eolus lends you his wind: call it, and for a while it will blow at your back.',
+      again:   'The columns hum softly in the breeze. Eolus is watching over your sails.',
+    },
+    ruins: {
+      name:    'Ruins',
+      silent:  'The stones are silent.',
+      visit:   '{power}',
+      title:   '{ruins} · {power}',
+      // the powers (their durations are in Tuning: BOON_WIND_T, BOON_FISH_HAULS)
+      wind: { title:'the friendly wind', text:'the wind changes its voice and settles at your back.' },
+      fish: { title:'the blessed nets',  text:'you feel lucky.' },
+      heal: { title:'the hull reborn',   text:'the planks of the boat creak and close up on their own, good as new. The hull is whole again.' },
+      badgeWind: 'friendly wind {s} s',
+      badgeFish: 'blessed nets ×{n}',
+    },
+    sunk: {
+      title: 'The boat has sunk',
+      stats: 'You sailed for {min} min {sec} s and caught {fish} fish.',
+    },
+    restart: 'Set sail again',
+    hud: { hull: 'Hull' },
+  };
+  // fill the {braces} of a text
+  const fmt = (s, o)=> s.replace(/\{(\w+)\}/g, (m, k)=> (o && k in o) ? o[k] : m);
+</script>
 <style>
   :root{
     --ink:#1b1a17;
@@ -541,6 +962,10 @@
   .curl-shade.top{top:0; -webkit-mask-image:linear-gradient(to bottom, rgba(0,0,0,.55), transparent); mask-image:linear-gradient(to bottom, rgba(0,0,0,.55), transparent);}
   .curl-shade.bottom{bottom:0; -webkit-mask-image:linear-gradient(to top, rgba(0,0,0,.55), transparent); mask-image:linear-gradient(to top, rgba(0,0,0,.55), transparent);}
   #intro.leaving .card-roll, #intro.leaving .curl-shade{display:none;}
+  .wg-setting{display:flex; align-items:center; gap:8px; margin:0 0 12px; font:12px/1.3 ui-monospace, monospace;}
+  .wg-setting label{flex:0 0 auto;}
+  .wg-setting input{flex:1 1 auto; accent-color:var(--ink);}
+  .wg-setting span{flex:0 0 2.6em; text-align:right;}
   #wg-changes{margin:4px 0 12px; padding:6px 8px; font:11px/1.35 ui-monospace, monospace; border:1.5px dashed var(--ink); border-radius:3px; clear:both;}
   #intro #wg-changes .ch-head{margin:0; font:bold 11px/1.35 ui-monospace, monospace;}
   #intro #wg-changes .ch-head.past{margin-top:7px; opacity:.75;}
@@ -653,6 +1078,7 @@
     <!-- the world generator: a preview of this world, its knobs, and Generate (reloads with them in the address) -->
     <p id="wg-build"></p>
     <div id="wg-changes"></div>
+    <div class="wg-setting"><label for="wg-haptics" id="wg-haptics-label"></label><input id="wg-haptics" type="range" min="0" max="1" step="0.05"><span id="wg-haptics-val"></span></div>
     <h2 id="wg-title"></h2>
     <canvas id="wg-map" aria-label="Preview of the world"></canvas>
     <div id="wg-knobs"></div>
@@ -717,230 +1143,6 @@
   "use strict";
 
 
-  // what's new, a group per build, newest first: the first is this build (its time is BUILD), then the builds before
-  // it with their times; only the first four are shown. Update it with every commit (start a new group for a new
-  // build, giving the old first group the BUILD time it had)
-  const CHANGES = [
-    {build: '', items: [
-      'Rocks: always at least about two boat lengths of water between two rocks, or a rock and the shore (unless they touch), so she never gets stuck',
-      'Rocks: varied sizes, some up to about twice the usual',
-    ]},
-    {build: '2026-10-05 18:17', items: [
-      'Messages in a bottle: where a message puts its cross, a wrecked cruise ship now lies, broken in two on a reef (solid; a toast when you first come close)',
-    ]},
-    {build: '2026-10-05 17:36', items: [
-      'Deep water: the sea where big waves can rise and run is drawn darker (away from land, harbours and home waters); waves die down as they leave it',
-    ]},
-    {build: '2026-10-05 17:24', items: [
-      'Whirlpools: the slingshot now works going round WITH the swirl as drawn (it was the wrong way round)',
-      'Sails: much starker: the square sail flies downwind (up to +25% running) and is nearly dead on and across the wind; the lateen is fastest on the beam and can point up, but crawls downwind',
-      'Oars: a stroke on time gives a stronger jolt forward and a longer glide',
-    ]},
-  ];
-  const BUILD = '2026-10-05 18:36';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
-  // ---------- Texts ----------
-  // Every word the player reads, in one place, to author freely. Parts in
-  // {braces} are filled in by the game (keep the braces and the word inside;
-  // you can move them around the sentence). A few strings contain bits of
-  // HTML such as <b>…</b>: keep those tags. Accessibility labels for screen
-  // readers stay in the code for now.
-  const TEXT = {
-    // the first screen: the world generator (knob names are shown as they are in Tuning)
-    worldGen: {
-      title:    'World',
-      generate: 'Generate',
-      reset:    'Defaults',
-      changes:  'New in this build',
-      earlier:  'Earlier: build {time}',                // a heading for each of the few builds before this one
-      build:    'Build {time}',                       // top right of the first screen: when this version was made
-    },
-    intro: {                                        // (not shown for now: the first screen is the world generator)
-      lead:  'You run a little restaurant on your island. Every morning brings an order for tonight\'s dinner.',
-      after: 'Fish, trade your catch in the villages if the order needs it, and bring it all home before 19:00.',
-      start: 'Set sail!',
-    },
-    // the four villages: name, the course they cook, its two dishes, the gift
-    // the merchant adds when you buy both, and the merchant's flavour line
-    // (unused for now). Renaming a dish keeps its icon.
-    villages: {
-      nord:  { name:'Nordania', course:'Antipasti', dishes:['Fiori di Zucca', 'Mozzarelle'], gift:'Tarallini',
-               line:"On the quay the grocer sets out the antipasti: fiori di zucca fried golden and mozzarelle still dripping." },
-      est:   { name:'Estolia', course:'Primi', dishes:['Orecchiette con Cime di Rapa', 'Lasagne'], gift:'Olio Santo',
-               line:"In the trattoria by the harbour the cook shapes orecchiette with her thumb, and a lasagne rests on the sill." },
-      sud:   { name:'Sudia', course:'Secondi', dishes:['Zampina', 'Pesce Arrosto'], gift:'Vino Rosso',
-               line:"At the grill by the market the butcher turns coils of zampina over the coals, and fish roasts beside them." },
-      ovest: { name:'Westa', course:'Dessert', dishes:['Cartellate', 'Tiramisu'], gift:'Limoncello',
-               line:"Grandma's pastry shop smells of honey and coffee: cartellate on the tray, a tiramisu in the cool of the cellar." },
-    },
-    fish: {
-      sarde:   { one:'sardine',    many:'sardines' },
-      sgombri: { one:'mackerel',   many:'mackerel' },
-      triglie: { one:'red mullet', many:'red mullet' },
-      orate:   { one:'sea bream',  many:'sea bream' },
-    },
-    // the little notes that slide in at the top
-    toasts: {
-      homeBack:   'Back home',
-      homeLeave:  'Leaving home',
-      villageIn:  'You approach {village}',
-      villageOut: 'Leaving {village}',
-      gift:       'Come again! This is on the house: {gift}!',
-      delivered:  'Delivered for tonight\'s dinner',
-      orderReady: 'Tonight\'s order is ready',
-      dinnerOk:   'Dinner is served: the guests are happy',
-      dinnerShort:'Dinner is served, but something was missing',
-      newOrder:   'A new order in the logbook',
-    },
-    // words that float up from the boat
-    popups: {
-      catch:    '+{n} {fish}',
-      holdFull: 'the hold is full',
-      netsIn:   'nets hauled in',
-      overboard: '{item} overboard',
-      surf:     'surf!',
-      fairWind: 'fair wind!',
-      fling:    'flung!',
-      whirl:    'Whirlpool! -{damage}',
-      bought:   '+ {item}',
-      coinsIn:  '+{n} coins',
-      coinsOut: '{n} coins',
-    },
-    // the tutorial's speech bubbles
-    tutorial: {
-      book:    'Here you will find your goals and your current cargo.',
-      compass: 'Your compass points home. Tap to open it.',
-      anchor:  'Hold to drop or raise the anchor.',
-      wheel:   'Drag the wheel round to steer.',
-      drop:    'Hold here to drop anchor and stop.',
-    },
-    market: {
-      title:      '{village} market',
-      tip:        'Drag and drop items between inventories to trade buy and sell.',
-      yourHold:   'Cargo',
-      stall:      'The stall',
-      emptyHold:  'Nothing in the hold.',
-      emptyStall: 'The stall is bare.',
-      quit:       'Quit',
-      trade:      'Trade',
-      coin: 'coin', coins: 'coins',                 // ({coins} below picks the right one)
-      balNone:    'Balance: <b>0</b>',
-      balGain:    'Balance: <b>+{n}</b> {icon} you receive {n} {coins}',
-      balEven:    'Balance: <b>0</b>: a fair swap',
-      balPay:     'Balance: <b>{n}</b> {icon} paid from your purse',
-      balShort:   'Balance: <b>{n}</b> {icon} not enough: offer more fish',
-      balFull:    'No room in the hold: {n} too many',
-    },
-    // the logbook's last spread: how home could look (a preview for now)
-    base: {
-      title:   'Home',
-      hint:    'Tap to see how home could grow. (A preview for now.)',
-      levels:  ['Fisherman\'s hut', 'Masseria', 'Fortified palace'],
-    },
-    // the oar handle on the right (rowing by hand)
-    oars: {
-      label: 'Oars: press to row, then press again each time the pointer comes round to the mark',
-      locked: 'Oars shipped: the sail drives her fast enough',
-    },
-    // home's storehouse: drag goods between the hold and the store (what's left here waits at home)
-    store: {
-      title:     'Home storehouse',
-      tip:       'Drag or tap goods across: what you leave here stays safe at home.',
-      label:     'Storehouse',
-      empty:     'The storehouse is empty.',
-      hold:      'Hold after: <b>{n}/{max}</b>',
-      done:      'Done',
-      stored:    '{n} stored',
-      taken:     '{n} taken aboard',
-      // the badges over the quay while she's tied up
-      openMarket: 'Open the market',
-      openStore:  'Open the storehouse',
-    },
-    // the two sails: the one she carries and the spare in the hold (tap the spare to rig it)
-    // messages in a bottle: fished up like a fish bank, read from the Cargo (a tap), each puts a cross on the sea chart
-    bottles: {
-      name:    'Message in a bottle',
-      hint:    'Message in a bottle: tap to read it',
-      caught:  'a message in a bottle!',
-      title:   'A message in a bottle',
-      close:   'Tap to roll it up again.',
-      marked:  'A cross on the sea chart',
-      wreck:   'The wreck from the message!',          // the first time she comes close to it
-      // the messages (placeholders for now): each bottle fished up brings the next one, in a shuffled order
-      texts: [
-        'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore. (1)',
-        'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo. (2)',
-        'Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. (3)',
-        'Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est. (4)',
-        'Curabitur pretium tincidunt lacus. Nulla gravida orci a odio, et tempus feugiat nisl a tellus. (5)',
-        'Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin. (6)',
-        'Integer in mauris eu nibh euismod gravida. Duis ac tellus et risus vulputate vehicula. (7)',
-        'Donec lobortis risus a elit. Etiam tempor. Ut ullamcorper, ligula eu tempor congue, eros est euismod. (8)',
-        'Maecenas fermentum consequat mi. Donec fermentum. Pellentesque malesuada nulla a mi. (9)',
-        'Aliquam erat volutpat. Nam dui mi, tincidunt quis, accumsan porttitor, facilisis luctus, metus. (10)',
-        'Phasellus ultrices nulla quis nibh. Quisque a lectus. Donec consectetuer ligula vulputate sem tristique. (11)',
-        'Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia curae; fusce id purus. (12)',
-      ],
-    },
-    sails: {
-      square:  'Square sail',
-      lateen:  'Lateen sail',
-      hint:    '{sail}: tap to rig it',
-      // the wind card on the logbook's right page: how well the sail she carries takes the wind
-      windTitle: 'Wind',
-      drawing:   '{sail}: {pct}%',
-      breeze:    'breeze {pct}%',
-      spareLine: '- - - in the hold',
-      none:      'No sail: the oars',
-      rigged:  '{sail} rigged',
-      badge:   '{sail}: tap to set or furl it, hold to stow it in the hold',
-      stowed:  '{sail} stowed in the hold',
-    },
-    logbook: {
-      order:   'Tonight\'s order',
-      day:     'Day {n}',
-      due:     'Bring it home by {hour}:00.',
-      fishAny: '{n} fish, any kind',
-      fishKind:'{n} {fish}',
-      ready:   'All delivered: dinner will be ready.',
-      served:  'Dinner was served. A new order comes at first light.',
-      short:   'Dinner was served without everything. A new order comes at first light.',
-      cargo:   'Cargo',
-      throwAway: 'Throw overboard',
-      holdCount: '{n}/{max}',
-      noFish:  'No fish aboard.',
-      chart:   'Sea chart',
-    },
-    // at a pier, under the dialog
-    pier: {
-      weighHint: 'Hold the centre of the wheel to weigh anchor.',
-    },
-    // the Temple of Eolus, in the north: the god of the winds gives the fair wind
-    eolus: {
-      name:    'Temple of Eolus',
-      gift:    'A warm breath stirs among the columns. Eolus lends you his wind: call it, and for a while it will blow at your back.',
-      again:   'The columns hum softly in the breeze. Eolus is watching over your sails.',
-    },
-    ruins: {
-      name:    'Ruins',
-      silent:  'The stones are silent.',
-      visit:   '{power}',
-      title:   '{ruins} · {power}',
-      // the powers (their durations are in Tuning: BOON_WIND_T, BOON_FISH_HAULS)
-      wind: { title:'the friendly wind', text:'the wind changes its voice and settles at your back.' },
-      fish: { title:'the blessed nets',  text:'you feel lucky.' },
-      heal: { title:'the hull reborn',   text:'the planks of the boat creak and close up on their own, good as new. The hull is whole again.' },
-      badgeWind: 'friendly wind {s} s',
-      badgeFish: 'blessed nets ×{n}',
-    },
-    sunk: {
-      title: 'The boat has sunk',
-      stats: 'You sailed for {min} min {sec} s and caught {fish} fish.',
-    },
-    restart: 'Set sail again',
-    hud: { hull: 'Hull' },
-  };
-  // fill the {braces} of a text
-  const fmt = (s, o)=> s.replace(/\{(\w+)\}/g, (m, k)=> (o && k in o) ? o[k] : m);
   // the texts written in the page itself (intro card, buttons, labels)
   (function applyTexts(){
     const set = (sel, s)=>{ const el = document.querySelector(sel); if(el) el.textContent = s; };
@@ -950,195 +1152,6 @@
     set('#mk-quit', TEXT.market.quit); set('#mk-deal', TEXT.market.trade); set('.hp-label', TEXT.hud.hull);
   })();
 
-  // ---------- Tuning ----------
-  // The game's main knobs, all in one place: change a number, save, reload.
-  // Each one is used further down (search for its name to see how). When a
-  // new feature brings a new knob, it goes here too. The knobs marked (world)
-  // change how the world is generated.
-  // The world knobs wrapped in knob('NAME', value) can also be set from the
-  // first screen (the world generator): its "Generate" reloads the page with
-  // them in the address (?ISLAND_SCALE=3&…), and they win over the value here.
-  const URLP = new URLSearchParams(location.search);
-  const knob = (k, v)=> URLP.has(k) && URLP.get(k) !== '' && isFinite(+URLP.get(k)) ? +URLP.get(k) : v;
-
-  // -- Size of the world (first: the other knobs scale with it) --
-  // Distances scale with it (× WORLD_K) and counts with its area (× WORLD_K²),
-  // so the sea keeps the same density whatever its size.
-  const WORLD_SIZE = 5040;           // px a side (the world wraps round); keep it a multiple of 48 (world). Was 7200
-  const WORLD_K = WORLD_SIZE/7200;   // scale against the original 7200 world
-  const WK2 = WORLD_K*WORLD_K;
-
-  // -- Boat --
-  const MAX_SPEED = 50;              // px/s: reference speed (collision damage is scaled by it too)
-  const WIND_BOOST = 0.96;           // how much the wind gives: sets the top speed (~52 px/s dead downwind in full wind)
-  const BOAT_ACCEL = 0.7/1.2;        // how quickly she gathers way (higher = quicker); slowing down is separate
-  const TURN_RATE = 0.6;             // rad/s at full rudder (was 0.42: easier to turn)
-  const ROW_TURN_MULT = 2;           // turning is this much quicker on the oars
-  const ROW_ENTER = 10;              // px/s: slower than this, with the wind unable to help, and the oars come out (sail brailed up)
-  const ROW_EXIT = 16;               // px/s: once the sail could drive her faster than this again, it's set and the oars come in
-  const ROW_DELAY = 0.6;             // seconds a condition must hold before switching (no flicker)
-  const ROW_SPEED = 9;               // px/s on the oars (the old automatic oars)
-  const MANUAL_OARS = true;          // the oars are rowed by hand: press the oar button (right) in rhythm, as its pointer comes round to the mark (false = the old automatic oars)
-  const OAR_START = 0.2;             // power the first press gives (0..1): she starts rowing, slowly
-  const OAR_GOOD = 0.22;             // power a press right on time adds (the pointer at the mark)…
-  const OAR_MISS = 0.04;             // …and a press too early or too late (a little)
-  const OAR_WINDOW = 0.13;           // how far from the mark a press still counts as on time (share of a turn, either side)
-  const OAR_WARN = 0.2;              // the button swells this share of a turn before the pointer reaches the mark (time to react)
-  const OAR_LOCK_SPEED = 16;         // px/s: once the sail alone drives her faster than this the oars are shipped and the oar button is disabled (back below 0.8 × this)
-  const OAR_CUE_VOL = 1;            // loudness of the knock that sounds as the oar button goes ink (the moment to press; 0 = silent)
-  const OAR_SPIN_FADE = 0.05;        // a slow steady drain of the rowing's power (a share of it per second)…
-  const OAR_SKIP = 0.65;             // …and the power kept when the pointer passes the mark without a press (she slows; a few skipped and she stops)
-  const OAR_RATE = 0.52;              // turns of the oar button a second: one steady beat, whatever the power (calm: time to look at the sea too)
-  const OAR_RATE_EASE = 2;           // how quickly the button gets up to that beat when she starts rowing, and winds down to a halt when she stops
-  const OAR_KICK = 20;               // px/s of extra way a stroke pulled right on time gives her (a visible surge; half of it at once)…
-  const OAR_KICK_FADE = 1.3;         // …fading away at this rate a second (lower = she glides on longer)
-  const OAR_SURGE = 0.5;             // how much of her way on the oars comes in a surge as the blades sweep aft (0 = steady glide, 1 = all of it), then she coasts on the recovery
-  const OAR_MAX = 14;                // px/s at full power (rowing is slow, but goes any way she points)
-  const WHEEL_MAX = Math.PI;         // how far the wheel turns for full lock (π = half a turn each way)
-  const SURF_BOOST = 32;             // extra px/s while surfing a big wave
-  const SURF_COS = 0.4;              // surf if the heading is within ~66° of the wave's travel (else the wave hurts)
-
-  // -- Hull and dangers --
-  const MAX_HEALTH = 100;            // a full hull
-  const HIT_MAX_DAMAGE = 25;         // damage of a head-on hit at full speed (grazes do less)
-  const REPAIR_EVERY = 0.5;          // seconds between patches at a pier (repairs are free)
-  const FISH_HEAL = 15;              // hull points per patch
-  const WHIRL_COUNT = Math.round(200*WK2);         // whirlpools in the world (world)
-  const WHIRL_FROM_DAY = 1;          // whirlpools start opening from this day (1 = from the start; was 2, a calm first day)
-  const WHIRL_DAMAGE = 10;           // hull damage when caught in a whirlpool's core
-  const WHIRL_PULL = 22;             // px/s pull at the edge of the core…
-  const WHIRL_CURVE = 4;             // …rising exponentially from ~0 at the rim
-  const WHIRL_FADE = 3;              // seconds for a whirlpool to open up / die down
-  const WHIRL_FLING = 200;            // px/s² of extra speed while she runs round a whirlpool's outer ring with its swirl (a slingshot)…
-  const WHIRL_FLING_MAX = 200;        // …up to this much above her normal speed (it fades once she's out)
-  const WHIRL_FLING_COS = 0.8;       // how well her heading must follow the swirl to be flung (cos of ~37°)
-  const ROLLER_RATE = knob('ROLLER_RATE', 2);             // how often big waves come (2 = twice as often as at first, 1 = the old pace)
-  // deep water: where the big waves can rise and run (shown as a darker sea); they die down on leaving it
-  const DEEP_SHORE = 70;             // px from any land at which the deep water begins (world)
-  const DEEP_PIER = 280;             // px from any pier (harbours are never deep) (world)
-  const DEEP_TINT = 0.3;            // how much darker the deep water is drawn (0 = not shown, ~0.25 = strong)
-  const DEEP_CELL = 24;              // px a side of the cells the deep water is worked out in (smaller = finer edge, more work)
-  const ROLLER_CATCH = 25;           // px/s a wave from astern runs faster than the boat, so it catches her to surf (0 = never helps)
-  const DOWNWIND_DEG = 120;          // she's running downwind when the wind comes from at least this far round from her bow (180 = dead astern); from here the wind from behind adds speed too
-  const SURF_WAVE_AFTER = 0.1;         // seconds running downwind before a wave may come up astern for her to surf
-  const SURF_WAVE_CHANCE = 0.3;      // chance each second (after that) of such a wave
-  const SURF_WAVE_BACK = 100;        // px astern it rises (close enough to reach her before it dies)
-  const SURF_WAVE_SIDE = 45;         // px it may be off to either side, so catching it takes a touch of the helm
-  const ROLLER_SPARE = 0.55;         // a wave about to hit her badly slows to this share of its pace (1 = never)
-
-  // -- Fishing and market --
-  const BANK_COUNT = Math.round(240*WK2);          // fish banks out at sea (world)
-  const ROUTE_BANK_SHARE = 0.5;      // share of those banks laid along the sea roads (home to each village, village to village)
-  const ROUTE_BANK_SPREAD = Math.round(170*WORLD_K);   // px either side of a road they may lie
-  const HOME_WATERS = Math.round(950*WORLD_K);     // radius of home waters (all kinds of fish there)
-  const HOME_BANKS = Math.round(18*WK2);           // fish banks in home waters, refilled as they are fished (world)
-  const FISH_CATCH_MIN = 1, FISH_CATCH_MAX = 2;   // fish per haul (random in between)
-  const BOTTLE_COUNT = 6;            // messages in a bottle floating about the sea at once (one fished up, another drifts in elsewhere) (world)
-  const BOTTLE_SIZE = 1.8;           // how big a bottle is drawn (1 = true to the boat's scale; bigger reads better)
-  const WRECK_LEN = 190;             // px long, the wrecked cruise ship that lies where a message's cross is (in two halves)
-  const BOTTLE_TIME = 1.2;           // seconds with the net out before a bottle is hauled in (fish take FISH_TIME_MIN–MAX)
-  const HOLD_MAX = 9;                // slots in the hold: each fish or dish takes one; when it's full the nets stay aboard
-  const FISH_REACH = 1.35;           // a bank counts out to this × its radius (a little past its circle)
-  const FISH_STOP = 12;              // px/s: slow enough to count as stopped on a bank
-  const FISH_SETTLE = 2;             // seconds stopped on a bank before the nets go over
-  const BANK_LOOK = [4, 5, 1.45];    // every fish bank looks alike, whatever it holds: [fewest fish, most fish, their size] (dark, going round)
-  const FISH_ANCHOR_SETTLE = 0.25;   // …or this long after dropping anchor on a bank
-  const FISH_TIME_MIN = 2, FISH_TIME_MAX = 4;   // seconds with the nets out before the haul
-  const COIN_LOCAL = 1;              // a village pays this for its own kind of fish
-  const COIN_FOREIGN = 3;            // …and this for fish from other waters
-  const DISH_PRICE = 6;              // coins per specialty dish
-  const DISH_RESALE = 3;             // coins a stall gives for a dish from your hold (any stall takes any dish)
-
-  // -- World --
-  const TRADERS_HOME = knob('TRADERS_HOME', 2);            // trading boats between home and the villages (on 2 of the 4 home lanes, picked at random) (world)
-  const TRADERS_VILLAGES = knob('TRADERS_VILLAGES', 4);        // trading boats between neighbouring villages (one on each of those 4 lanes) (world)
-  const ISLAND_SCALE = knob('ISLAND_SCALE', 2.5);          // size of the wild islands (1 = the old small ones) (world)
-  const ISLAND_COUNT = knob('ISLAND_COUNT', Math.round(210*WK2*3.5/(ISLAND_SCALE*ISLAND_SCALE)));   // wild islands at most (about 58 at scale 2.5; the clusters fill up first) (world)
-  const CLUSTER_SHARE = knob('CLUSTER_SHARE', 0.32);        // share of the sea taken by clusters of islands; the rest is open water (world)
-  const SPIRAL_MIN = 0.5, SPIRAL_MAX = 1;                   // each new world picks SPIRAL at random between these, unless it's set in the world generator (world)
-  const SPIRAL = knob('SPIRAL', +(SPIRAL_MIN + Math.random()*(SPIRAL_MAX - SPIRAL_MIN)).toFixed(2));   // 0 = clusters scattered … 1 = clusters strung along spiral arms round home, like a galaxy, denser near it (world)
-  const SPIRAL_ARMS = knob('SPIRAL_ARMS', 3);               // how many arms the spiral has (world)
-  const SPIRAL_TWIST = 2.4;          // how tightly the arms wind round home (higher = more turns) (world)
-  const OPEN_ISLANDS = knob('OPEN_ISLANDS', 6);            // small islands scattered in the open water between the clusters (world)
-  // share of the wild islands of each shape (the rest are round-ish blobs) (world):
-  const ISLAND_L = knob('ISLAND_L', 0);                // L-shaped: two long arms meeting at a corner (0 = none: off for now; was 0.12)
-  const ISLAND_C = knob('ISLAND_C', 0);                // C-shaped: a horseshoe round a deep bay (0 = none: off for now; was 0.12)
-  const ISLAND_BIG = knob('ISLAND_BIG', 0.07);           // big islands, about 1.7 times the usual size
-  const ISLAND_ATOLL = knob('ISLAND_ATOLL', 0);            // atolls: a ring of sandy islets round a lagoon, with gaps to sail in (0 = none: off for now; was 0.05)
-  const VILLAGE_DIST = Math.round(2475*WORLD_K);   // px from home to each village (world)
-  // each game every village is nudged a little, still roughly N / E / S / W of home:
-  const VILLAGE_OUT_MAX = Math.round(300*WORLD_K);   // px it may be pushed further from home (never closer) (world)
-  const VILLAGE_SIDE_MAX = Math.round(300*WORLD_K);  // px it may slide sideways, either way; in practice the ruins keep it to about a third of VILLAGE_OUT_MAX (world)
-  const VILLAGE_EDGE = Math.round(500*WORLD_K);      // px it must keep from the edge of the map (world)
-  const SAFE_R = Math.round(950*WORLD_K);          // home waters: no whirlpools, no big waves
-  const LAGOON_R = Math.round(650*WORLD_K);        // calm lagoon round home: no islands, no rocks (world)
-  const DANGER_RING = Math.round(3400*WORLD_K);    // the sea gets wilder out to this distance from home (world)
-  const BUOY_R = Math.round(880*WORLD_K);          // radius of each village's ring of buoys (world)
-  const BUOYS_PER_VILLAGE = Math.round(24*WORLD_K), HOME_BUOYS = Math.round(32*WORLD_K);   // buoys per ring (world)
-  const OPEN_ROCK_TRIES = knob('OPEN_ROCK_TRIES', Math.round(127*WK2));     // clusters of rocks tried out in open water (world)
-  const ROCK_GAP = 64;               // px of clear water at least between two rocks, or a rock and the shore, unless they touch (about twice the boat's length, so she never gets stuck) (world)
-  const ROCK_BIG = 0.4;              // share of rocks drawn bigger than the usual (up to ROCK_BIG_MAX ×) (world)
-  const ROCK_BIG_MAX = 2.2;          // the biggest rocks are this many times the usual size (world)
-  const DAY_LEN = 720;               // seconds for a whole day, dawn to dawn (was 360)
-  const TUTORIAL_ON = false;         // the first-voyage tutorial (controls shown one at a time with tips); off for now
-  const RUINS_ON = false;            // the ruins on the diagonals and their powers; off for now (world)
-  const EOLUS_ON = true;             // the Temple of Eolus stands in the north, where Nordania was (Nordania is gone while it's on); docking there gives the fair wind (world)
-  const POWER_USES = 1;              // uses of the fair wind (the button bottom right, locked until Eolus gives it)
-  const POWER_RECHARGE = 60;         // seconds for a spent use of the fair wind to come back
-  const POWER_WIND_T = 30;           // seconds the fair wind blows from astern, whichever way she steers
-  const DAWN_HOUR = 5;               // the hour on the watch at first light (5 puts the golden hour at about 19)
-  const DINNER_HOUR = 19;            // the day's order must be home by this hour; then dinner is served (marked on the watch)
-  const WATCH_MARK = DINNER_HOUR;    // the hour marked on the watch's rim
-
-  // -- Orders and the guests --
-  const ORDERS_ON = false;           // the daily orders (in the logbook, delivered at home by dinner); off for now: the logbook shows the day and the cargo
-  const FIRST_ORDER_FISH = 3;        // day 1: this many fish, any kind
-  const ORDER_FISH_MIN = 2, ORDER_FISH_MAX = 4;   // from day 2: fish of one kind (random in between)
-  const ORDER_TWO_DISHES_FROM = 4;   // from day 2 the order asks for one village dish, from this day on for two
-  const SAT_START = 0.5;             // the guests' mood at the start (0..1; the bar top right)
-  const SAT_GAIN = 0.15;             // a complete order raises it by this much
-  const SATISFACTION_ON = false;     // the guests' mood (the bar top right, changed by each dinner); off for now: no bar, the mood stays put
-  const GUESTS_ON = false;           // the guest pier south of home and the clients' boats tied up there; off for now (world)
-  const GUEST_BOATS_MAX = 4;         // clients' boats tied up at the guest pier when the mood is full (fewer as it falls)
-  const SAT_LOSS = 0.25;             // an order with nothing delivered lowers it by this much (in proportion to what's missing)
-  const SIGHT = 220;                 // px of fog uncovered round the boat
-  const CLOUD_COUNT = knob('CLOUD_COUNT', 12);            // clouds in the sky (world)
-  const RAIN_CLOUD_EVERY = 3;        // one cloud in this many carries rain (world)
-
-  // -- Ruins' powers --
-  const BOON_WIND_T = 60;            // seconds of friendly wind (its text says "a minute")
-  const BOON_FISH_HAULS = 3;         // hauls with blessed nets (its text says "three")
-
-  // -- Tutorial --
-  const TUT_PAUSE = 1500;            // ms between one step and the next
-  const TUT_COMPASS_T = 4500;        // ms the compass step lasts (no input needed)
-  const TUT_DROP_WAIT = 3000, TUT_DROP_T = 3000;   // after the wheel: wait, then the optional drop-anchor tip for a while (ms)
-  const HUB_HOLD = 320;              // ms to hold the hub to drop or weigh anchor (was 500)
-
-  // -- Look --
-  const UI_TINT = 0.7;               // how much the interface takes on the day/night colours (0 = never, 1 = like the world)
-  const CLOUD_ALPHA = 0.45, CLOUD_CORE = 0.88;   // clouds: see-through at the rim, denser in the middle
-  const CLOUD_MODELS = 4;            // cloud shapes, shared by all the clouds in the sky (world)
-  const MAP_RES = 280;               // the sea chart in the logbook: its pixels a side (fewer = coarser)
-  const SAIL_SIZE = 1.15;             // size of the boat's sail (1 = the old one: a yard 30 px wide)
-  // the two sails' speed curves: [degrees off the wind, share of top speed], made starker than real life so each
-  // sail has its own way to sail. The square sail: the open sea, the wind from astern (and SQUARE_RUN_BONUS on top);
-  // almost dead on the wind, weak on the beam. The lateen: the wind on the beam (its best is faster than the square's
-  // best on the beam by far) and it can point up toward the wind; poor running free
-  const SAIL_POLAR_SQUARE = [[0,0],[20,0],[35,0.02],[50,0.05],[70,0.12],[90,0.25],[110,0.45],[130,0.72],[150,0.92],[170,1.0],[180,1.0]];
-  const SAIL_POLAR_LATEEN = [[0,0.02],[20,0.22],[35,0.60],[50,0.90],[70,1.08],[90,1.10],[110,0.90],[130,0.60],[150,0.38],[170,0.26],[180,0.22]];
-  const SQUARE_RUN_BONUS = 0.25;     // running downwind (from DOWNWIND_DEG to dead astern) the square sail gains up to this much more (the lateen none)
-  const LATEEN_SWING = 0.9;          // how quickly the lateen yard swings across when she changes tack (3 = as quick as the sail trims; lower = heavier)
-  const SAIL_STOW_HOLD = 1.1;        // seconds holding the sail badge to unbend the sail and stow it in the hold
-  const SAIL_SHAKE_AFTER = 0.2;      // a press longer than this is a hold (the badge shakes); shorter is a tap (set or furl)
-  const SAIL_TONE = 0.72;            // the sail's cloth when drawing well (1 = paper white, 0 = ink); slack or reefed it's a little darker
-  const SPARE_SAIL = true;           // both sails ride in the hold (a slot each, the one not rigged); a tap on one in the logbook rigs it
-  const START_RIG = null;            // the sail rigged at the start: null = none, she sets out on the oars ('square' or 'lateen' = that one)
-  const PINE_MODELS = 4;             // stone pine shapes, reused (each also mirrored) all over the map (world)
-  // draw the scene on the processor (true) or on the graphics card (false): the frame is tiny, and Firefox
-  // on Android is slow with the card (24 fps); add ?scene=gpu or ?scene=cpu to the address to compare
-  const SCENE_ON_CPU = /[?&]scene=gpu/.test(location.search) ? false : /[?&]scene=cpu/.test(location.search) ? true
-    : true;                          // <- the default
 
   let canvas = document.getElementById('c');
   // low-res game buffer: 1 game pixel ≈ 1 CSS px on phones (Playdate-like
@@ -2598,12 +2611,20 @@
   // API: works in Android browsers; iPhone/Safari simply ignore it.
   const canBuzz = typeof navigator!=='undefined' && typeof navigator.vibrate==='function';
   let lastBuzz = 0;
+  // the strength of every vibration in the game, 0..1 (the slider on the first screen; kept in this browser).
+  // The Vibration API has no strength, so it scales how long each pulse lasts (×1.6 at full; at 0 none at all)
+  let haptics = HAPTICS_DEFAULT;
+  try{ const v = localStorage.getItem('vv.haptics'); if(v !== null && isFinite(+v)) haptics = Math.max(0, Math.min(1, +v)); }catch(e){}
+  function setHaptics(v){ haptics = Math.max(0, Math.min(1, v)); try{ localStorage.setItem('vv.haptics', String(haptics)); }catch(e){} }
   function buzz(pattern, minGap){
-    if(!canBuzz) return;
+    if(!canBuzz || haptics <= 0) return;
     const now = performance.now();
     if(now - lastBuzz < (minGap||0)) return;
     lastBuzz = now;
-    try{ navigator.vibrate(pattern); }catch(e){}
+    const k = 1.6*haptics, on = ms=> { const d = Math.round(ms*k); return d < 4 ? 0 : d; };
+    const p = Array.isArray(pattern) ? pattern.map((ms, i)=> i%2 ? ms : on(ms)) : on(pattern);
+    if(!(Array.isArray(p) ? p.some((ms, i)=> !(i%2) && ms > 0) : p > 0)) return;
+    try{ navigator.vibrate(p); }catch(e){}
   }
 
   // ---------- Sound (procedural, Web Audio) ----------
@@ -4271,6 +4292,12 @@
       for(const line of g.items){ const li = document.createElement('li'); li.textContent = line; ol.appendChild(li); }
       ch.append(h, ol);
     });
+    // the vibration strength (for the whole game): a slider, a little buzz to feel it
+    const hs = document.getElementById('wg-haptics'), hv = document.getElementById('wg-haptics-val');
+    document.getElementById('wg-haptics-label').textContent = T.vibration;
+    hs.value = haptics; hv.textContent = (+haptics).toFixed(2);
+    hs.addEventListener('input', ()=>{ setHaptics(+hs.value); hv.textContent = (+hs.value).toFixed(2); });
+    hs.addEventListener('change', ()=> buzz([30, 60, 30]));
     const gen = document.getElementById('wg-gen'), reset = document.getElementById('wg-reset');
     gen.textContent = T.generate; reset.textContent = T.reset;
     for(const [k, v] of Object.entries(K)){

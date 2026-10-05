@@ -3,13 +3,21 @@
 ## How to work with me
 - **Always reply to me (Enrico) in Italian.** All text inside the game stays in **English**.
 - Keep changes small and focused; after every change run the smoke test (see below).
-- I test on an Android phone: haptics (Vibration API) matter, iOS ignores them.
+- I test on an Android phone: haptics (Vibration API) matter, iOS ignores them. Every vibration goes through `buzz()`,
+  scaled by the player's **Vibration** slider on the first screen (`#wg-haptics`, 0..1, `TEXT.worldGen.vibration`;
+  `haptics`, kept in `localStorage` as `vv.haptics`; first visit `HAPTICS_DEFAULT` = 0, i.e. no vibration until it's
+  raised). The API has no strength, so it scales each pulse's length (× 1.6·haptics; under 4 ms dropped).
 - Commit after every working change with a short message in English.
 - **Push after every commit** to GitHub (`origin` = https://github.com/EnricoLabarile/Sail---Prototype, branch `master`;
   public repo). Enrico reads and edits files there from the browser: if he says he changed something on GitHub, `git pull`
   first. The game is also served by GitHub Pages at https://enricolabarile.github.io/Sail---Prototype/ (from `master`,
   root; `.nojekyll` keeps it served as is), updated by each push, besides the claude.ai artifact link for the phone.
-- **Build stamp**: `BUILD` (just above the Texts section) is the time of the last commit, Italian time, shown at the
+- **Tuning and Texts sit at the very top of `index.html`**, in their own `<script>` in `<head>` (right after
+  `<title>`): first the Tuning block, then `CHANGES` / `BUILD`, then the Texts (and `fmt`). Their top-level `const`s are
+  shared with the game script further down (which starts with `applyTexts`). **Keep them there**: new knobs and texts
+  go into that first script, the code that uses them after; never let the Tuning block drift down the file again.
+  That first script must only hold plain values (it runs before the page's body exists: no DOM, no game functions).
+- **Build stamp**: `BUILD` (between the Tuning block and the Texts) is the time of the last commit, Italian time, shown at the
   top of the first screen ("Build 2026-10-05 14:05", `TEXT.worldGen.build`), so Enrico can tell the phone runs the
   latest version. The pre-commit hook `tools/hooks/pre-commit` stamps it on every commit touching `index.html`;
   **enable it once in each fresh clone/session: `git config core.hooksPath tools/hooks`**.
