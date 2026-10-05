@@ -81,7 +81,11 @@ def bottle(pg):
     pg.click('#btn-list', force=True); pg.wait_for_timeout(900)
     pg.click('.slot.bottle'); pg.wait_for_timeout(300)
     assert pg.evaluate('__d.marks.length') == 1, 'reading the message put no cross on the chart'
-    pg.click('#letter'); pg.click('#btn-list', force=True); pg.wait_for_timeout(900)
+    pg.click('#letter')
+    # the bottle is picked by that tap: throw it overboard to make room
+    pg.click('.throw'); pg.wait_for_timeout(200)
+    assert pg.evaluate('__d.bottleHold.length') == 0, 'the bottle was not thrown overboard'
+    pg.click('#btn-list', force=True); pg.wait_for_timeout(900)
     leave(pg)
 
 def trip(pg):

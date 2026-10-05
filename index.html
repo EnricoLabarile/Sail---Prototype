@@ -183,7 +183,10 @@
   #letter .l-title{font-weight:bold; font-style:italic; font-size:15px; margin-bottom:8px;}
   #letter .l-text{font-size:15px; line-height:1.5; font-style:italic;}
   #letter .l-foot{font-size:12px; margin-top:10px; border-top:1.5px solid var(--ink); padding-top:6px; opacity:.8;}
-  #shoplist .slot.bottle{padding:0; background:none; color:var(--ink); cursor:pointer; position:relative;}
+  #shoplist .slot.bottle, #shoplist .slot.item{padding:0; background:none; color:var(--ink); cursor:pointer; position:relative;}
+  #shoplist .slot.sel{outline:2px solid var(--ink); outline-offset:2px;}   /* picked, to throw overboard */
+  #shoplist .throw{display:block; margin:0 0 8px; padding:4px 10px; font:inherit; font-size:13px; font-style:italic; color:var(--ink); background:var(--paper);
+    border:1.5px solid var(--ink); border-radius:3px; cursor:pointer;}
   #shoplist .slot.bottle.unread::after{content:''; position:absolute; top:3px; right:3px; width:6px; height:6px; border-radius:50%; background:var(--ink);}   /* not read yet */
   #dlg-title{font-weight:bold; font-style:italic; font-size:15px; margin-bottom:6px; letter-spacing:.02em;}
   #dlg-text{font-size:15px; line-height:1.45; min-height:4.35em;}
@@ -680,6 +683,7 @@
       catch:    '+{n} {fish}',
       holdFull: 'the hold is full',
       netsIn:   'nets hauled in',
+      overboard: '{item} overboard',
       surf:     'surf!',
       fairWind: 'fair wind!',
       fling:    'flung!',
@@ -759,6 +763,7 @@
       served:  'Dinner was served. A new order comes at first light.',
       short:   'Dinner was served without everything. A new order comes at first light.',
       cargo:   'Cargo',
+      throwAway: 'Throw overboard',
       holdCount: '{n}/{max}',
       noFish:  'No fish aboard.',
       chart:   'Sea chart',
@@ -2268,6 +2273,7 @@
     const S = BOTTLE_SIZE;
     if(!inView(bo.x, bo.y, 14*S)) return;
     const bob = Math.sin(t*1.9 + bo.ph), tilt = bo.a + Math.sin(t*1.3 + bo.ph)*0.12;
+    stampDot(softDot('bank', [[0,0.13],[0.7,0.07],[1,0]]), bo.x, bo.y, 15*S, 1);   // a patch of darker water round it, like a fish bank's
     ctx.save(); ctx.translate(bo.x, bo.y);
     ctx.strokeStyle = INKC; ctx.lineWidth = 0.9; ctx.globalAlpha = 0.45;                         // ripple ring
     ctx.beginPath(); ctx.ellipse(0, 1, (8 + bob)*S, (4.5 + bob*0.5)*S, tilt, 0, Math.PI*2); ctx.stroke();
@@ -4951,22 +4957,27 @@
   // the right page: the boat's hold. The purse, every fish aboard (small, as
   // at the market) and everything bought on the voyage (dishes, and any gift)
   const elHoldPage = document.getElementById('hold-page');
+  let cargoSel = null;                                   // picked in the Cargo, to throw overboard: {kind:'fish'|'dish'|'bottle', key}
   function holdHTML(){
     // HOLD_MAX slots in a grid: the spare sail, fish, then dishes, the rest empty; the gifts are kept apart, below
-    const items = [...(SPARE_SAIL ? [{sail: true}] : []), ...bottleHold.map((b,i)=> ({bottle: i})), ...FISH_KEYS.flatMap(k=> Array(counts[k]).fill({name: FISH_NAME[k].one, svg: document.querySelector('#wood .fish-'+k+' svg').outerHTML, fish:true})),
-                   ...ALL_DISHES.flatMap(d=> Array(dishHold[d.icon]||0).fill({name: d.name, svg: itemIcon(d.icon)}))];
+    const items = [...(SPARE_SAIL ? [{sail: true}] : []), ...bottleHold.map((b,i)=> ({bottle: i})), ...FISH_KEYS.flatMap(k=> Array(counts[k]).fill({name: FISH_NAME[k].one, svg: document.querySelector('#wood .fish-'+k+' svg').outerHTML, fish:true, kind:'fish', key:k})),
+                   ...ALL_DISHES.flatMap(d=> Array(dishHold[d.icon]||0).fill({name: d.name, svg: itemIcon(d.icon), kind:'dish', key:d.icon}))];
+    if(cargoSel && !items.some(it=> selIs(it))) cargoSel = null;      // (what was picked is gone)
+    let selShown = false;
+    const selCls = it=>{ if(selShown || !selIs(it)) return ''; selShown = true; return ' sel'; };
     const gifts = VILLAGES.filter(v=> v.giftGot).map(v=> ({name: v.gift, icon: v.giftIcon}));
-    const slot = k=> { const it = items[k]; if(it && it.sail) return spareHTML(); if(it && it.bottle !== undefined) return bottleSlotHTML(it.bottle); return it ? '<span class="slot'+(it.fish?' fish':'')+'" title="'+it.name+'" role="img" aria-label="'+it.name+'">'+it.svg+'</span>' : '<span class="slot empty"></span>'; };
+    const slot = k=> { const it = items[k]; if(it && it.sail) return spareHTML(); if(it && it.bottle !== undefined) return bottleSlotHTML(it.bottle, selCls(it)); return it ? '<button type="button" class="slot item'+(it.fish?' fish':'')+selCls(it)+'" data-item="'+it.kind+'|'+it.key+'" title="'+it.name+'" aria-label="'+it.name+'">'+it.svg+'</button>' : '<span class="slot empty"></span>'; };
     return '<div class="hold-head"><h3>'+TEXT.logbook.cargo+'</h3><span class="hold-count">'+fmt(TEXT.logbook.holdCount, {n: items.length, max: HOLD_MAX})+'</span><span class="purse" aria-label="Purse: '+coins+' coins">'+COIN_SVG+coins+'</span></div>'
       + '<div class="hold-slots">'+Array.from({length: Math.max(HOLD_MAX, items.length)}, (_,k)=> slot(k)).join('')+'</div>'
+      + (cargoSel ? '<button type="button" class="throw" data-throw="1">'+TEXT.logbook.throwAway+'</button>' : '')
       + (gifts.length ? '<div class="hold-goods">'+gifts.map(g=> '<span title="'+g.name+'" role="img" aria-label="'+g.name+'">'+itemIcon(g.icon)+'</span>').join('')+'</div>' : '');
   }
   // the spare sail, in a slot of its own among the others: a tap on it rigs
   // it, and the sail she carried goes into the hold in its place
   // a bottle aboard: a slot you tap to read its message (unread ones carry a dot)
-  function bottleSlotHTML(i){
+  function bottleSlotHTML(i, sel){
     const b = bottleHold[i];
-    return '<button type="button" class="slot bottle'+(b.read?'':' unread')+'" data-bottle="'+i+'" title="'+TEXT.bottles.hint+'" aria-label="'+TEXT.bottles.hint+'">'+itemIcon('Message in a bottle')+'</button>';
+    return '<button type="button" class="slot bottle'+(b.read?'':' unread')+(sel||'')+'" data-bottle="'+i+'" title="'+TEXT.bottles.hint+'" aria-label="'+TEXT.bottles.hint+'">'+itemIcon('Message in a bottle')+'</button>';
   }
   const elLetter = document.getElementById('letter');
   function readBottle(i){
@@ -5002,15 +5013,44 @@
     Sfx.thunk(0.3); buzz([20,40,20]);
     renderList();
   }
+  // throwing things overboard: a tap on a fish, a dish or a bottle in the Cargo
+  // picks it (a tap again lets it go), and "Throw overboard" under the slots
+  // drops it into the sea: room in the hold again (the spare sail stays)
+  function selIs(it){
+    if(!cargoSel) return false;
+    if(cargoSel.kind === 'bottle') return it.bottle === cargoSel.key;
+    return it.kind === cargoSel.kind && it.key === cargoSel.key;
+  }
+  function pickCargo(kind, key){
+    cargoSel = cargoSel && cargoSel.kind === kind && cargoSel.key === key ? null : {kind, key};
+    buzz(8); renderList();
+  }
+  function throwOverboard(){
+    const s = cargoSel; if(!s) return;
+    let name = '';
+    if(s.kind === 'fish' && counts[s.key] > 0){ counts[s.key]--; name = FISH_NAME[s.key].one; }
+    else if(s.kind === 'dish' && dishHold[s.key] > 0){ dishHold[s.key]--; name = (ALL_DISHES.find(d=> d.icon === s.key) || {}).name || ''; }
+    else if(s.kind === 'bottle' && bottleHold[s.key]){ bottleHold.splice(s.key, 1); name = TEXT.bottles.name; }
+    else { cargoSel = null; renderList(); return; }
+    cargoSel = null;
+    popups.push({x:boat.x, y:boat.y-24, text:fmt(TEXT.popups.overboard, {item: name}), life:1.6, max:1.6});
+    Sfx.splash(); buzz([10,30,20]);
+    renderList();
+  }
   elListBody.addEventListener('click', e=>{
+    const th = e.target.closest('[data-throw]');
+    if(th && playing){ e.stopPropagation(); Sfx.init(); throwOverboard(); return; }
+    const itm = e.target.closest('[data-item]');
+    if(itm && playing){ e.stopPropagation(); const [k, key] = itm.dataset.item.split('|'); pickCargo(k, key); return; }
     const bt = e.target.closest('[data-bottle]');
-    if(bt && playing){ e.stopPropagation(); Sfx.init(); readBottle(+bt.dataset.bottle); return; }
+    if(bt && playing){ e.stopPropagation(); Sfx.init(); const i = +bt.dataset.bottle;
+      cargoSel = {kind:'bottle', key:i}; readBottle(i); renderList(); return; }   // read it, and it's picked (to throw away)
     const b = e.target.closest('[data-swap]');
     if(!b || !playing) return;
     e.stopPropagation(); Sfx.init(); swapSail();
   });
   let listKey = '';
-  const holdKey = ()=> [dayNo, coins, boat.rig, bottleHold.map(b=> b.read ? 'r' : 'u').join(''), ...FISH_KEYS.map(k=>counts[k]), ...ALL_DISHES.map(d=> dishHold[d.icon]||0), ...VILLAGES.map(v=> v.giftGot?'g':''),
+  const holdKey = ()=> [dayNo, coins, boat.rig, cargoSel ? cargoSel.kind + cargoSel.key : '', bottleHold.map(b=> b.read ? 'r' : 'u').join(''), ...FISH_KEYS.map(k=>counts[k]), ...ALL_DISHES.map(d=> dishHold[d.icon]||0), ...VILLAGES.map(v=> v.giftGot?'g':''),
                         order ? order.items.map(it=> it.got).join(',') + order.closed : ''].join('|');
   // while the list is open, keep the hold up to date (a catch, a repair)
   function refreshList(){
