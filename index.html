@@ -44,9 +44,9 @@
   const OAR_WINDOW = 0.13;           // how far from the mark a press still counts as on time (share of a turn, either side)
   const OAR_WARN = 0.2;              // the button swells this share of a turn before the pointer reaches the mark (time to react)
   const OAR_LOCK_SPEED = 16;         // px/s: once the sail alone drives her faster than this the oars are shipped and the oar button is disabled (back below 0.8 × this)
-  const OAR_HIT_VOL = 1;             // loudness of the soft tock that answers a press on time (× OAR_CUE_VOL; 0 = silent)
-  const OAR_BED_VOL = 1;            // loudness of the steady churn of water under the oars while rowing (a little fuller on each pull; 0 = silent)
-  const OAR_CUE_VOL = 1;            // loudness of the knock that sounds as the oar button goes ink (the moment to press; 0 = silent)
+  const OAR_HIT_VOL = 1;             // loudness of the blade's hard catch (a short splash and thump) that answers a press on time (× OAR_CUE_VOL; 0 = silent)
+  const OAR_BED_VOL = 1;            // loudness of the oars' wash while rowing (a soft swirl of water that swells with each pull; 0 = silent)
+  const OAR_CUE_VOL = 1;            // loudness of the oar's clunk in its wooden thole as the oar button goes ink (the moment to press; 0 = silent)
   const OAR_SPIN_FADE = 0.05;        // a slow steady drain of the rowing's power (a share of it per second)…
   const OAR_SKIP = 0.65;             // …and the power kept when the pointer passes the mark without a press (she slows; a few skipped and she stops)
   const OAR_RATE = 0.624;             // turns of the oar button a second: one steady beat, whatever the power (calm: time to look at the sea too; was 0.52)
@@ -228,6 +228,10 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Oars: the soft swirl of water under the strokes is back (it swells with each pull)',
+      'Oars: the press cue is now a dry wooden clunk of the oar in its thole, and a stroke on time a short hard splash (no more drop-like blips)',
+    ]},
+    {build: '2026-10-06 13:14', items: [
       'Oars: no more "gloop": each stroke is now a short, dry swish of the blade through the water',
     ]},
     {build: '2026-10-06 12:45', items: [
@@ -237,11 +241,8 @@
       'Oars: a soft wash of water in the background while rowing, swelling with each pull, and a few drips as the blades come out',
       'Oars: a stroke on time plays its fuller, stronger sound again (it had gone silent)',
     ]},
-    {build: '2026-10-06 12:23', items: [
-      'Logbook, wind card: a little boat in the middle shows her heading (instead of the needle)',
-    ]},
   ];
-  const BUILD = '2026-10-06 13:14';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-06 13:19';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -2758,7 +2759,7 @@
       sea  = [ {...layer(brown,'lowpass',380,0.5,-0.55,0),   ph:0,   per:7},
                {...layer(brown,'lowpass',380,0.5, 0.55,3.1), ph:0.5, per:8.5} ];
       rush = layer(brown,'lowpass',320,0.5,0,2.2);   // deep, soft water along the hull
-      rowL = layer(brown,'lowpass',420,0.6,0,4.1);   // the oars' wash: a steady, low churn of water, a little fuller on each pull (see rowBed())
+      rowL = layer(pink,'bandpass',480,0.9,0,4.1);   // the oars' wash: a soft swirl of water that swells with each pull (see rowBed())
       // rain on the sea: a broad, soft wash under the patter (see rain()), between a hiss and a murmur
       rainL = layer(pink,'bandpass',1800,0.35,0,1.3);
       rainBus = ac.createGain(); rainBus.gain.value = 1; rainBus.connect(ambBus);
@@ -3214,42 +3215,46 @@
     // the oarlock's knock as the oar button goes ink: the moment to press, so it can be rowed by ear (k: loudness)
     // the answer to a press on time: a soft, short, woody tock a fifth above the cue (a sine, quickly damped, and a
     // dull click), quieter than the cue, so it sets it off rather than competing with it
-    // rowing, under everything: the blades pushing through the water, a steady low churn that never stops while
-    // the oars are out, only a little fuller as they pull (the first half of each turn of the oar button) and a
-    // touch brighter as she picks up way (level 0..1: 0 silent; ph: the stroke's phase 0..1; sf: her speed 0..1)
+    // rowing, under everything (the sound of a real rowing boat: the blades' wash): a soft swirl of water that
+    // swells as the blades pull through (the first half of each turn of the oar button) and falls away on the
+    // recovery, a little brighter as she picks up way (level 0..1: 0 silent; ph: the stroke's phase 0..1; sf: her speed 0..1)
     function rowBed(level, ph, sf){
       if(!rowL || ac.state!=='running') return;
-      const t = ac.currentTime, pull = Math.max(0, Math.sin(2*Math.PI*ph));
-      rowL.g.gain.setTargetAtTime(level*(0.3 + 0.15*pull), t, 0.18);
-      rowL.f.frequency.setTargetAtTime(380 + 120*pull + 200*sf, t, 0.2);
+      const t = ac.currentTime, pull = Math.pow(Math.max(0, Math.sin(2*Math.PI*ph)), 1.5);
+      rowL.g.gain.setTargetAtTime(level*(0.06 + 0.34*pull), t, 0.06);
+      rowL.f.frequency.setTargetAtTime(330 + 380*pull + 320*sf, t, 0.08);
     }
+    // a press on time: the blade catching the water hard, a short dense splash with a soft thump under it (all noise,
+    // nothing pitched: tones rising or falling here sounded like drops of water)
     function oarHit(k){
       if(!ac || ac.state!=='running' || !(k > 0)) return;
       const t0 = ac.currentTime;
-      const o = ac.createOscillator(); o.type='sine';
-      o.frequency.setValueAtTime(840, t0); o.frequency.exponentialRampToValueAtTime(700, t0+0.04);
-      const og = ac.createGain();
-      og.gain.setValueAtTime(0.0001, t0); og.gain.exponentialRampToValueAtTime(0.045*k, t0+0.003); og.gain.exponentialRampToValueAtTime(0.0001, t0+0.055);
-      o.connect(og); og.connect(master); o.start(t0); o.stop(t0+0.07);
       const src = ac.createBufferSource(); src.buffer = noise;
-      const bp = ac.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=1100; bp.Q.value=3;
+      const bp = ac.createBiquadFilter(); bp.type='bandpass'; bp.Q.value=0.7;
+      bp.frequency.setValueAtTime(1400, t0); bp.frequency.exponentialRampToValueAtTime(600, t0+0.14);
       const g = ac.createGain();
-      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.03*k, t0+0.002); g.gain.exponentialRampToValueAtTime(0.0001, t0+0.025);
-      src.connect(bp); bp.connect(g); g.connect(master); src.start(t0, Math.random()*0.5, 0.04);
+      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.06*k, t0+0.008); g.gain.exponentialRampToValueAtTime(0.0001, t0+0.16);
+      src.connect(bp); bp.connect(g); g.connect(master); src.start(t0, Math.random()*0.5, 0.2);
+      const th = ac.createBufferSource(); th.buffer = noise;
+      const lp = ac.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=260;
+      const tg = ac.createGain();
+      tg.gain.setValueAtTime(0.0001, t0); tg.gain.exponentialRampToValueAtTime(0.09*k, t0+0.006); tg.gain.exponentialRampToValueAtTime(0.0001, t0+0.09);
+      th.connect(lp); lp.connect(tg); tg.connect(master); th.start(t0, Math.random()*0.5, 0.12);
     }
-    function oarCue(k, pitch){                     // pitch: 1 = the cue; 2 = an octave up, the answer to a stroke on time
+    // the cue (the button goes ink: press now): the oar knocking in its wooden thole, a dry clunk, low and short
+    function oarCue(k){
       if(!ac || ac.state!=='running' || !(k > 0)) return;
-      const t0 = ac.currentTime, f = pitch || 1;
-      const o = ac.createOscillator(); o.type='triangle';
-      o.frequency.setValueAtTime(560*f, t0); o.frequency.exponentialRampToValueAtTime(420*f, t0+0.06);
-      const og = ac.createGain();
-      og.gain.setValueAtTime(0.0001, t0); og.gain.exponentialRampToValueAtTime(0.07*k, t0+0.004); og.gain.exponentialRampToValueAtTime(0.0001, t0+0.09);
-      o.connect(og); og.connect(master); o.start(t0); o.stop(t0+0.1);
+      const t0 = ac.currentTime;
       const src = ac.createBufferSource(); src.buffer = noise;
-      const bp = ac.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=1600*f; bp.Q.value=2.5;
+      const bp = ac.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=520; bp.Q.value=4;   // hollow wood
       const g = ac.createGain();
-      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.05*k, t0+0.002); g.gain.exponentialRampToValueAtTime(0.0001, t0+0.035);
-      src.connect(bp); bp.connect(g); g.connect(master); src.start(t0, Math.random()*0.5, 0.05);
+      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.16*k, t0+0.003); g.gain.exponentialRampToValueAtTime(0.0001, t0+0.06);
+      src.connect(bp); bp.connect(g); g.connect(master); src.start(t0, Math.random()*0.5, 0.08);
+      const hp = ac.createBufferSource(); hp.buffer = noise;
+      const bp2 = ac.createBiquadFilter(); bp2.type='bandpass'; bp2.frequency.value=2200; bp2.Q.value=2;   // the dry click of the contact
+      const g2 = ac.createGain();
+      g2.gain.setValueAtTime(0.0001, t0); g2.gain.exponentialRampToValueAtTime(0.035*k, t0+0.002); g2.gain.exponentialRampToValueAtTime(0.0001, t0+0.02);
+      hp.connect(bp2); bp2.connect(g2); g2.connect(master); hp.start(t0, Math.random()*0.5, 0.03);
     }
     // hull hit: a dull thud and a short, strained creak of wood
     function crash(k){                 // k: 0..1 how hard
@@ -5196,7 +5201,7 @@
       oarSpin = Math.min(1, oarSpin + OAR_GOOD*(1 - 0.5*oarSpin));
       oarHitT = 0.18; oarKick = OAR_KICK; boat.speed += OAR_KICK*0.5; buzz([14,25,30]);   // a jolt forward at once, then the glide
       Sfx.oar(0.5 + 0.5*oarSpin, true);                            // a powerful stroke
-      Sfx.oarHit(OAR_CUE_VOL*OAR_HIT_VOL);                         // and a soft woody tock answering the cue: on time!
+      Sfx.oarHit(OAR_CUE_VOL*OAR_HIT_VOL);                         // and the blade catching the water hard: on time!
     } else {
       oarSpin = Math.min(1, oarSpin + OAR_MISS);
       buzz(8); Sfx.oar(0.35 + 0.3*oarSpin);                  // an ordinary stroke (not wrong, just less)

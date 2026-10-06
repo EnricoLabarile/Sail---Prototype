@@ -339,12 +339,11 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   0.624 turns a second (20% quicker than the old 0.52) whatever the power (`oarCycle`, `oarRate`; calm, so there's time to look at the sea too), easing
   in as she starts rowing and winding down to a halt when she stops (`OAR_RATE_EASE`). Each time it comes back up to the mark is the moment to press: the disc **swells** as it nears (`OAR_WARN` =
   0.2 of a turn, class `ready`) and **goes ink for the whole window** to press (class `now`, pressed or not: a cue to
-  catch from the corner of the eye), and at that same instant a short wooden **knock** of the oarlock sounds
-  (`Sfx.oarCue`, loudness `OAR_CUE_VOL` in Tuning), so it can be rowed by ear: hear the knock, press. A press **on time** (within `OAR_WINDOW` = 0.13 of a turn either side) adds
+  catch from the corner of the eye), and at that same instant a dry wooden **clunk** of the oar in its thole sounds
+  (`Sfx.oarCue`: noise only, a band at 520 Hz and a click at 2200 Hz, no pitch that moves; loudness `OAR_CUE_VOL` in Tuning), so it can be rowed by ear: hear the clunk, press. A press **on time** (within `OAR_WINDOW` = 0.13 of a turn either side) adds
   `OAR_GOOD` (0.22, less near full), a little pop (class `hit`), a **kick** of extra way (`oarKick` = `OAR_KICK` 20 px/s, half of it added to her speed at once, a
-  jolt, the rest carried by the oars and fading at `OAR_KICK_FADE` 1.3 a second: a long glide), a **soft woody tock** answering the cue (`Sfx.oarHit`: a damped sine a fifth
-  above the cue, 840→700 Hz, and a dull click, quieter than the cue so it sets it off; loudness × `OAR_HIT_VOL`; an
-  octave-up triangle was tried and sounded like a whistle), a firm buzz and a **powerful stroke** sound
+  jolt, the rest carried by the oars and fading at `OAR_KICK_FADE` 1.3 a second: a long glide), a **hard catch** of the blade (`Sfx.oarHit`: a short splash of noise 1400→600 Hz and a dull
+  thump low-passed at 260 Hz; loudness × `OAR_HIT_VOL`; the pitched tocks and blips before it sounded like drops), a firm buzz and a **powerful stroke** sound
   (`Sfx.oar(k, true)`: a fuller, brighter swish); **too early or too late** only `OAR_MISS` (0.04), a light
   buzz and an **ordinary stroke** (softer, never a "wrong" sound); one press a turn counts (`oarPressedTurn`). A mark
   passed with no press keeps only `OAR_SKIP` (0.65) of the power (`oarSkipped`; no sound); below 0.06 she stops; plus
@@ -355,8 +354,9 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   3.5); wherever she points, even head to wind; it counts only when it's more than the sail gives (`targetSpeed` =
   max(sail, `rowV`)); at anchor or moored the power is 0. `Sfx.oar`: no gloop (the falling sine was dropped as too liquid): a short, dry
   swish of band-passed noise sweeping down (1100→550 Hz; 1500→700 and a little louder for a powerful stroke). **Under the strokes** a steady, low churn of water while the oars are out
-  (`Sfx.rowBed`, brown noise low-passed ~400 Hz on the ambience bus, `rowL`): constant, only a little fuller on each
-  pull (the first half of the turn) and a touch brighter as she picks up way (drips as the blades came out were tried
+  (`Sfx.rowBed`, on the ambience bus, `rowL`): **pink** noise band-passed ~480 Hz (Q 0.9), the 'pad' that sounds like water rushing past the blades;
+  quiet on the recovery and swelling on each pull (the first half of the turn), brighter as she picks up way (a brown
+  low-passed churn was tried in its place and lost the water; drips as the blades came out were tried
   and dropped: they sounded like a bird); loudness `OAR_BED_VOL` in Tuning, × the oars out (`boat.oarK`) × (0.4 + 0.6 × power). Enter/Space on the button press it too. On the boat the oars come out while
   there's power, the blades sweep with the cycle (`oarPh`: forward at the catch, aft at the finish) with a splash
   ring mid-pull (rowing, the stroke never flips as the helm crosses the middle). The stroke never jumps or freezes: when
