@@ -349,7 +349,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   well; the round button below is back.)
   **Paddle wheels, not oars** (pedalò style; in `drawBoat`, every boat): two upright wheels, one a side amidships
   (axle across her at the gunwale, `R` 7, eight flat paddles drawn as quads through `P`, only what's above the water,
-  both rims and the hub), turned by the pedalling: the angle is `oarCycle` × 2π (one turn a stroke of the oar button);
+  both rims and the hub), turned by the pedalling (`oarRate` × 2π: one turn a stroke of the oar button) or, under sail, freewheeling with the water going by (her speed / R × 0.9), whichever is quicker (`B.wheelA`);
   while pedalling a little foam churns astern of each wheel. The oars are no longer drawn; the rowing logic, sounds and
   the button are unchanged (their names still say 'oar').
   **Oars: rowed by hand, in rhythm** (like grinding berries in Pokémon Emerald; `MANUAL_OARS` in Tuning; false brings

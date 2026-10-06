@@ -246,6 +246,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Paddle wheels: they also turn under sail, dragged round by the water as she moves (faster the faster she goes)',
+    ]},
+    {build: '2026-10-06 19:37', items: [
       'Oars: the round button is back (the handles on the sides are gone)',
       'The boat is a pedalò now: no oars, two paddle wheels, one a side, that turn as you pedal (one turn a stroke of the button) and churn a little foam astern',
     ]},
@@ -255,11 +258,8 @@
     {build: '2026-10-06 18:22', items: [
       'First screen: a new "Dangers" section with the sharks\' and whirlpools\' knobs (SHARK_*, WHIRL_FOLLOW*); Apply reloads the game with the changed values',
     ]},
-    {build: '2026-10-06 18:16', items: [
-      'Sharks (rare): out at sea, away from home waters, a dark shape with its fin cutting the water may come after you; if it reaches the boat it bites the hull (-8) and makes off',
-    ]},
   ];
-  const BUILD = '2026-10-06 19:37';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-06 19:42';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -8769,7 +8769,12 @@
     // eight paddles round it, half under the water; turned by the pedalling (one turn a stroke of the oar button),
     // churning a little foam where the paddles come out astern
     {
-      const turnA = g ? 0 : oarCycle*Math.PI*2, R = 7, zc = 1, cx = -1, half = 2.3;
+      const R = 7, zc = 1, cx = -1, half = 2.3;
+      // the wheels turn with the pedals (one turn a stroke) or, when she moves under sail, freewheel, dragged round by the
+      // water going by (as fast as her way past the paddles); whichever is quicker
+      const wnow = performance.now(), wdt = Math.min(0.05, (wnow - (B.wheelLast || wnow))/1000); B.wheelLast = wnow;
+      B.wheelA = (B.wheelA || 0) + Math.max(g ? 0 : oarRate*Math.PI*2, Math.max(0, B.speed || 0)/R*0.9)*wdt;
+      const turnA = B.wheelA;
       const pedal = !g && (oarSpin > 0.01 || B.oarK > 0.05);
       ctx.setTransform(base); ctx.lineJoin = 'round';
       for(const sd of [-1, 1]){
