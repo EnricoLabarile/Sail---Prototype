@@ -345,6 +345,15 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   rotated to her heading) with a dotted line on from her bow to a dot where her heading meets the curve; under it "Square sail: 47%" (that share, `speedFactor` at her angle off the wind) and the breeze
   (`windStrength`). It follows her heading live while the book is open on it (`windCardKey`, refreshed in
   `refreshList`, only when the rounded angle, the sail or the breeze changes).
+  **Oar handles** (after Enrico's sketch; `OAR_HANDLES` in Tuning, false = the round button below): two oar handles,
+  `#oar-handles` / `#oar-hl` / `#oar-hr` (an SVG each: a paper loom outlined in ink and a grip with bands, the right
+  one mirrored), coming in from the screen's sides above the logbook and the sail badge, angled up toward the middle.
+  Same timing logic as the button (`pressOar`), but the input is a **drag down**: a finger on either handle, dragged
+  `OAR_DRAG` (16) CSS px down, is a pull (one per touch); the handle follows the finger a little and springs back. They
+  go round a little loop with the stroke (`updateOarCtl`: at the top at the mark, down and in through the pull, up and
+  out on the recovery; still at the top when not rowing); the button's classes move to them: `ready` (grips' outline
+  thicker), `now` (grips inked, the clunk), `hit`, `locked` (faded, dashed, untouchable); hidden moored or at market.
+  Enter/Space on a focused handle pulls too.
   **Oars: rowed by hand, in rhythm** (like grinding berries in Pokémon Emerald; `MANUAL_OARS` in Tuning; false brings
   back the old automatic oars below): a round **oar button** on the right (`#oar-ctl`, above the fair-wind medallion;
   hidden when moored or at the market): a paper disc with a pointer (a triangle on a dashed ring) that turns once a

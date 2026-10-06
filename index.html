@@ -38,6 +38,8 @@
   const ROW_DELAY = 0.6;             // seconds a condition must hold before switching (no flicker)
   const ROW_SPEED = 9;               // px/s on the oars (the old automatic oars)
   const MANUAL_OARS = true;          // the oars are rowed by hand: press the oar button (right) in rhythm, as its pointer comes round to the mark (false = the old automatic oars)
+  const OAR_HANDLES = true;          // the oars' handles on the screen's sides (Enrico's sketch): drag one down in time to pull; false = the old round oar button
+  const OAR_DRAG = 16;               // CSS px a handle must be dragged down to count as a pull
   const OAR_START = 0.2;             // power the first press gives (0..1): she starts rowing, slowly
   const OAR_GOOD = 0.0;             // power a press right on time adds (the pointer at the mark)…
   const OAR_MISS = 0.04;             // …and a press too early or too late (a little)
@@ -246,6 +248,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Oars, after your sketch: two oar handles on the sides of the screen instead of the round button; they go round a little loop with each stroke, and when they reach the top (grips inked, the clunk) drag one down to pull',
+    ]},
+    {build: '2026-10-06 18:22', items: [
       'First screen: a new "Dangers" section with the sharks\' and whirlpools\' knobs (SHARK_*, WHIRL_FOLLOW*); Apply reloads the game with the changed values',
     ]},
     {build: '2026-10-06 18:16', items: [
@@ -255,11 +260,8 @@
       'Whirlpools look like flowing water: curved foam streaks that swell and thin, and pale arms winding in (no more straight dashes)',
       'Whirlpools creep after you, slowly, while you are within twice their size; once one has caught and spun you, it dies away',
     ]},
-    {build: '2026-10-06 18:00', items: [
-      'The boat in 3D: she rolls and pitches for real (the mast leans, her side shows where she dips, the sail sways): with the swell, heeling to leeward with the sail full (most with the wind on the beam), leaning out of turns, the bow lifting as she gathers way; seen a little from the south, so the mast and sail rise up the screen like the trees',
-    ]},
   ];
-  const BUILD = '2026-10-06 18:22';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-06 19:05';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -377,6 +379,7 @@
     oars: {
       label: 'Oars: press to row, then press again each time the pointer comes round to the mark',
       locked: 'Oars shipped: the sail drives her fast enough',
+      handle: 'Oar: drag it down to pull, each time it comes round to the top',
     },
     // home's storehouse: drag goods between the hold and the store (what's left here waits at home)
     store: {
@@ -674,6 +677,21 @@
   #oar-ctl.now .oar-disc svg{color:var(--paper) !important;}
   #oar-ctl.hit .oar-disc{transform:scale(1.22);}                    /* pressed right on time: a little pop */
   body.at-market #oar-ctl{display:none;}
+  /* the oars' handles (OAR_HANDLES): one on each side, coming in from the edge and angled up toward the middle; they go round
+     a little loop with each stroke, and at the top of it (the time to pull) the grips go ink */
+  .oar-h{position:fixed; bottom:calc(196px + env(safe-area-inset-bottom,0px)); width:132px; height:84px; z-index:5; touch-action:none; cursor:grab; color:var(--ink);}
+  .oar-h svg{width:100%; height:100%; overflow:visible; display:block;}
+  #oar-hl{left:-14px;} #oar-hr{right:-14px;} #oar-hr svg{transform:scaleX(-1);}
+  .oar-h .loom{fill:var(--paper); stroke:var(--ink); stroke-width:2;}
+  .oar-h .grip{fill:var(--paper); stroke:var(--ink); stroke-width:2; transition:fill .08s;}
+  .oar-h .band{stroke:var(--ink); stroke-width:2;}
+  #oar-handles.ready .grip{stroke-width:2.8;}
+  #oar-handles.now .grip{fill:var(--ink);}
+  #oar-handles.now .band{stroke:var(--paper);}
+  #oar-handles.hit .oar-h svg{filter:drop-shadow(0 0 0 var(--ink));}
+  #oar-handles.locked .oar-h{opacity:.35; pointer-events:none;}
+  #oar-handles.locked .loom, #oar-handles.locked .grip{stroke-dasharray:3 3;}
+  #oar-handles.hidden, body.at-market #oar-handles{display:none;}
   #oar-ctl.locked{pointer-events:none; cursor:default;}            /* the sail drives her fast: the oars are shipped */
   #oar-ctl.locked .oar-disc{opacity:.35; border-style:dashed; transform:none;}
   #oar-ctl.locked .oar-mark{opacity:.35;}
@@ -1184,6 +1202,16 @@
   </div>
   <!-- the oar handle, right side: slide it down to pull the oars (rowing by hand) -->
   <button id="sail-btn" type="button" class="hidden"></button>
+  <div id="oar-handles" class="hidden">
+    <div class="oar-h" id="oar-hl" role="button" tabindex="0"><svg viewBox="0 0 132 84" aria-hidden="true"><g transform="translate(2 80) rotate(-30)">
+      <rect class="loom" x="-20" y="-4" width="112" height="8" rx="2"/>
+      <rect class="grip" x="90" y="-6.5" width="46" height="13" rx="6"/>
+      <path class="band" d="M98 -6 L102 6 M106 -6 L110 6 M114 -6 L118 6 M122 -6 L126 6"/></g></svg></div>
+    <div class="oar-h" id="oar-hr" role="button" tabindex="0"><svg viewBox="0 0 132 84" aria-hidden="true"><g transform="translate(2 80) rotate(-30)">
+      <rect class="loom" x="-20" y="-4" width="112" height="8" rx="2"/>
+      <rect class="grip" x="90" y="-6.5" width="46" height="13" rx="6"/>
+      <path class="band" d="M98 -6 L102 6 M106 -6 L110 6 M114 -6 L118 6 M122 -6 L126 6"/></g></svg></div>
+  </div>
   <div id="oar-ctl" class="hidden" role="button" tabindex="0">
     <div class="oar-mark"></div>
     <div class="oar-disc"><svg viewBox="-28 -28 56 56" aria-hidden="true"><g class="oar-rot">
@@ -5369,14 +5397,32 @@
     }
   }
   elOar.addEventListener('pointerdown', ev=>{ ev.preventDefault(); pressOar(); });
+  // the handles (OAR_HANDLES): put a finger on either and drag it down; past OAR_DRAG px it's a pull (timed like a press).
+  // The handle follows the finger a little while it's held, and springs back when let go
+  const elOH = document.getElementById('oar-handles'), elOHs = [...elOH.querySelectorAll('.oar-h')];
+  let ohDrag = null, ohKey = '';
+  for(const h of elOHs){
+    h.setAttribute('aria-label', TEXT.oars.handle);
+    h.addEventListener('pointerdown', ev=>{ ev.preventDefault(); Sfx.init(); ohDrag = {id: ev.pointerId, y0: ev.clientY, dy: 0, fired: false, h}; try{ h.setPointerCapture(ev.pointerId); }catch(e){} });
+    h.addEventListener('pointermove', ev=>{
+      const d = ohDrag; if(!d || ev.pointerId !== d.id) return;
+      d.dy = Math.max(0, ev.clientY - d.y0);
+      if(!d.fired && d.dy >= OAR_DRAG){ d.fired = true; pressOar(); }
+    });
+    const up = ev=>{ if(ohDrag && ev.pointerId === ohDrag.id) ohDrag = null; };
+    h.addEventListener('pointerup', up); h.addEventListener('pointercancel', up);
+    h.addEventListener('keydown', ev=>{ if((ev.key === 'Enter' || ev.key === ' ') && !ev.repeat){ ev.preventDefault(); ev.stopPropagation(); pressOar(); } });
+  }
   elOar.addEventListener('keydown', ev=>{ if((ev.key === 'Enter' || ev.key === ' ') && !ev.repeat){ ev.preventDefault(); ev.stopPropagation(); pressOar(); } });
   function updateOarCtl(dt){
     const show = MANUAL_OARS && playing && !moor && !marketV;
-    if(show !== !elOar.classList.contains('hidden')) elOar.classList.toggle('hidden', !show);
+    const showB = show && !OAR_HANDLES, showH = show && OAR_HANDLES;
+    if(showB !== !elOar.classList.contains('hidden')) elOar.classList.toggle('hidden', !showB);
+    if(showH !== !elOH.classList.contains('hidden')) elOH.classList.toggle('hidden', !showH);
     // the sail drives her fast: no rowing (the oars come in, the button is greyed and can't be pressed); back a little below
     const lockNow = (boat.sailV || 0) > (oarLocked ? 0.8 : 1)*OAR_LOCK_SPEED;
     if(lockNow !== oarLocked){
-      oarLocked = lockNow; elOar.classList.toggle('locked', oarLocked); elOar.setAttribute('aria-disabled', oarLocked);
+      oarLocked = lockNow; elOar.classList.toggle('locked', oarLocked); elOH.classList.toggle('locked', oarLocked); elOar.setAttribute('aria-disabled', oarLocked);
       elOar.setAttribute('aria-label', oarLocked ? TEXT.oars.locked : TEXT.oars.label); elOar.title = oarLocked ? TEXT.oars.locked : '';
     }
     if(anchored || moor || boat.whirl || oarLocked) oarSpin = 0;
@@ -5397,10 +5443,23 @@
     }
     const ready = rowingNow && ph > 1 - OAR_WARN && ph < 1 - OAR_WINDOW;          // about to come round: it swells
     const now = rowingNow && (ph >= 1 - OAR_WINDOW || ph <= OAR_WINDOW) && oarCycle > 0.5;   // the time to press: the disc goes ink (pressed or not)
-    if(ready !== elOar.classList.contains('ready')) elOar.classList.toggle('ready', ready);
-    if(now !== elOar.classList.contains('now')){ elOar.classList.toggle('now', now); if(now) Sfx.oarCue(OAR_CUE_VOL); }   // the knock and the ink together
+    const el = OAR_HANDLES ? elOH : elOar;
+    if(ready !== el.classList.contains('ready')) el.classList.toggle('ready', ready);
+    if(now !== el.classList.contains('now')){ el.classList.toggle('now', now); if(now) Sfx.oarCue(OAR_CUE_VOL); }   // the knock and the ink together
     oarHitT = Math.max(0, oarHitT - dt);
-    if((oarHitT > 0) !== elOar.classList.contains('hit')) elOar.classList.toggle('hit', oarHitT > 0);
+    if((oarHitT > 0) !== el.classList.contains('hit')) el.classList.toggle('hit', oarHitT > 0);
+    if(showH){
+      // the handles go round a little loop with the stroke: at the top at the mark (the time to pull), down and in
+      // through the pull, back up and out on the recovery; still at the top when she isn't rowing. A finger on one
+      // drags it down a little more
+      const out = rowingNow || boat.oarK > 0.05 ? 1 : 0, a = ph*Math.PI*2;
+      const lx = -Math.sin(a)*7*out, ly = (1 - Math.cos(a))*0.5*24*out, hold = ohDrag ? Math.min(26, ohDrag.dy) : 0;
+      const key = Math.round(lx) + '|' + Math.round(ly + hold) + '|' + (ohDrag ? elOHs.indexOf(ohDrag.h) : -1);
+      if(key !== ohKey){ ohKey = key;
+        elOHs.forEach((h, i)=>{ const sd = i ? -1 : 1, extra = ohDrag && ohDrag.h === h ? hold : 0;
+          h.style.transform = 'translate(' + Math.round(lx*sd) + 'px,' + Math.round(ly + extra) + 'px)'; });
+      }
+    }
     const deg = Math.round(ph*3600)/10;
     if(deg !== oarShown){ oarShown = deg; elOarRot.setAttribute('transform', 'rotate(' + deg + ')'); }
   }
