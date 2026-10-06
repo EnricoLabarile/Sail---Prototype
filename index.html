@@ -45,7 +45,7 @@
   const OAR_WARN = 0.2;              // the button swells this share of a turn before the pointer reaches the mark (time to react)
   const OAR_LOCK_SPEED = 16;         // px/s: once the sail alone drives her faster than this the oars are shipped and the oar button is disabled (back below 0.8 × this)
   const OAR_HIT_VOL = 1;             // loudness of the soft tock that answers a press on time (× OAR_CUE_VOL; 0 = silent)
-  const OAR_BED_VOL = 1;            // loudness of the steady churn of water under the oars while rowing (a little fuller on each pull; 0 = silent)
+  const OAR_BED_VOL = 2;            // loudness of the steady churn of water under the oars while rowing (a little fuller on each pull; 0 = silent)
   const OAR_CUE_VOL = 1;            // loudness of the knock that sounds as the oar button goes ink (the moment to press; 0 = silent)
   const OAR_SPIN_FADE = 0.05;        // a slow steady drain of the rowing's power (a share of it per second)…
   const OAR_SKIP = 0.65;             // …and the power kept when the pointer passes the mark without a press (she slows; a few skipped and she stops)
