@@ -348,11 +348,13 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   (Oar handles on the screen's sides, dragged down in time, were tried after a sketch and dropped: they didn't work
   well; the round button below is back.)
   **The spring and the crank** (`SPRING_PADDLES` in Tuning, on; false = the old rhythmic oar button below): the
-  paddle wheels run off a wound spring (`spring` 0..1). The crank (`#crank`, right side where the oar button was, 92 px:
-  a paper disc, an arm with a handle that follows the finger round, a dashed track and a thick ring round it that fills
-  with the charge; inked when full): a finger on it turned **clockwise** winds the spring (`windSpring`:
-  `SPRING_TURNS` 3 full turns fill it; turning back does nothing, a ratchet; a click, `Sfx.oarCue` at half, and a buzz
-  every quarter turn; `Sfx.oarHit` and a buzz when it's full; Enter/Space a quarter turn). While it holds a charge
+  paddle wheels run off a wound spring (`spring` 0..1). The crank (`#crank`, 132 px, at the top right of the wheel: a toothed gear
+  (16 teeth, a dotted pattern fill `#crank-dots`) turning with the arm, a hatched plate with three rivets, an arm with a
+  big knob that follows the finger round, a dashed track and a thick ring round it that fills with the charge; the
+  plate inked when full): a finger on it turned **clockwise** winds the spring (`windSpring`:
+  `SPRING_TURNS` 3 full turns fill it; turning back does nothing, a ratchet; the gears tick, `Sfx.ratchet` (a metallic
+  tick and a dull grind of noise, loudness `CRANK_VOL`), once a tooth, with a heavier, lower step and a buzz every
+  quarter turn; `Sfx.oarHit` and a buzz when it's full; Enter/Space a quarter turn). While it holds a charge
   and she isn't at anchor, moored or in a whirlpool, and the sail alone gives her less than `SPRING_SPEED` (14 px/s),
   the wheels drive her on their own: `oarSpin` eases to 1, `boat.rowV` = `SPRING_SPEED` × `oarSpin` (a steady push, no
   surges or kicks), and the spring runs down over `SPRING_TIME` (30 s) of driving; otherwise it rests. `updateSpring`
