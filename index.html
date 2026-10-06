@@ -39,13 +39,13 @@
   const ROW_SPEED = 9;               // px/s on the oars (the old automatic oars)
   const MANUAL_OARS = true;          // the oars are rowed by hand: press the oar button (right) in rhythm, as its pointer comes round to the mark (false = the old automatic oars)
   const OAR_START = 0.2;             // power the first press gives (0..1): she starts rowing, slowly
-  const OAR_GOOD = 0.22;             // power a press right on time adds (the pointer at the mark)…
+  const OAR_GOOD = 0.0;             // power a press right on time adds (the pointer at the mark)…
   const OAR_MISS = 0.04;             // …and a press too early or too late (a little)
   const OAR_WINDOW = 0.13;           // how far from the mark a press still counts as on time (share of a turn, either side)
   const OAR_WARN = 0.2;              // the button swells this share of a turn before the pointer reaches the mark (time to react)
   const OAR_LOCK_SPEED = 16;         // px/s: once the sail alone drives her faster than this the oars are shipped and the oar button is disabled (back below 0.8 × this)
   const OAR_HIT_VOL = 1;             // loudness of the soft tock that answers a press on time (× OAR_CUE_VOL; 0 = silent)
-  const OAR_BED_VOL = 2;            // loudness of the steady churn of water under the oars while rowing (a little fuller on each pull; 0 = silent)
+  const OAR_BED_VOL = 1;            // loudness of the steady churn of water under the oars while rowing (a little fuller on each pull; 0 = silent)
   const OAR_CUE_VOL = 1;            // loudness of the knock that sounds as the oar button goes ink (the moment to press; 0 = silent)
   const OAR_SPIN_FADE = 0.05;        // a slow steady drain of the rowing's power (a share of it per second)…
   const OAR_SKIP = 0.65;             // …and the power kept when the pointer passes the mark without a press (she slows; a few skipped and she stops)
