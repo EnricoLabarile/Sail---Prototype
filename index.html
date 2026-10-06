@@ -251,6 +251,10 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Weighing anchor: the chain sounds an octave lower',
+      'Crank: as it winds, the gears now rattle with the anchor chain\'s old sound, a link each tooth (the old ticks are gone)',
+    ]},
+    {build: '2026-10-06 20:55', items: [
       'Crank: much bigger (easier to turn in circles), a bit higher up, at the top right of the wheel, drawn as a toothed gear with a dotted rim, a hatched plate and rivets',
       'Crank: the gears tick as you wind (a tick each tooth, a heavier step every quarter turn), so you feel it charging',
     ]},
@@ -260,11 +264,8 @@
     {build: '2026-10-06 19:54', items: [
       'Square sail: your new speed curve is the default (90° 0.55, 110° 0.97, 130° 1.12, 150° 1.13, 170° 1.04, 180° 1.03)',
     ]},
-    {build: '2026-10-06 19:42', items: [
-      'Paddle wheels: they also turn under sail, dragged round by the water as she moves (faster the faster she goes)',
-    ]},
   ];
-  const BUILD = '2026-10-06 20:55';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-06 21:01';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -3429,21 +3430,21 @@
       th.connect(lp); lp.connect(tg); tg.connect(master); th.start(t0, Math.random()*0.5, 0.12);
     }
     // the cue (the button goes ink: press now): the oar knocking in its wooden thole, a dry clunk, low and short
-    // the crank's ratchet: a short metallic tick of a gear tooth going past the pawl (heavy: the louder, lower step of
-    // a quarter turn, with a knock of the spring taking up)
+    // one link of chain clinking: a bright band of noise and a short metallic ping (pitch: 1 = as the anchor chain first
+    // sounded; the anchor now uses it an octave down, 0.5, and the crank's gears at 1)
+    function chainLink(at, pitch, k){
+      const src = ac.createBufferSource(); src.buffer = noise;
+      const bp = ac.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value = (1900 + Math.random()*900)*pitch; bp.Q.value = 2.5;
+      const g = ac.createGain(); g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(0.07*k, at+0.002); g.gain.exponentialRampToValueAtTime(0.0001, at+0.035);
+      src.connect(bp); bp.connect(g); g.connect(master); src.start(at, Math.random()*0.8, 0.04);
+      const o = ac.createOscillator(); o.type='triangle'; o.frequency.value = (900 + Math.random()*400)*pitch;
+      const og = ac.createGain(); og.gain.setValueAtTime(0.0001, at); og.gain.exponentialRampToValueAtTime(0.025*k, at+0.002); og.gain.exponentialRampToValueAtTime(0.0001, at+0.03);
+      o.connect(og); og.connect(master); o.start(at); o.stop(at+0.04);
+    }
+    // the crank's gears: a link of the old anchor chain's rattle each tooth (heavy: a little louder, every quarter turn)
     function ratchet(k, heavy){
       if(!ac || ac.state!=='running' || !(k > 0)) return;
-      const t0 = ac.currentTime;
-      const s1 = ac.createBufferSource(); s1.buffer = noise;
-      const b1 = ac.createBiquadFilter(); b1.type='bandpass'; b1.frequency.value = (heavy ? 2300 : 3400)*(0.92 + Math.random()*0.16); b1.Q.value = 7;
-      const g1 = ac.createGain();
-      g1.gain.setValueAtTime(0.0001, t0); g1.gain.exponentialRampToValueAtTime((heavy ? 0.12 : 0.06)*k, t0+0.002); g1.gain.exponentialRampToValueAtTime(0.0001, t0+(heavy ? 0.045 : 0.022));
-      s1.connect(b1); b1.connect(g1); g1.connect(master); s1.start(t0, Math.random()*0.5, 0.06);
-      const s2 = ac.createBufferSource(); s2.buffer = noise;
-      const b2 = ac.createBiquadFilter(); b2.type='bandpass'; b2.frequency.value = heavy ? 260 : 420; b2.Q.value = 3;   // the body of the gear: a dull grind
-      const g2 = ac.createGain();
-      g2.gain.setValueAtTime(0.0001, t0); g2.gain.exponentialRampToValueAtTime((heavy ? 0.16 : 0.05)*k, t0+0.004); g2.gain.exponentialRampToValueAtTime(0.0001, t0+(heavy ? 0.09 : 0.04));
-      s2.connect(b2); b2.connect(g2); g2.connect(master); s2.start(t0, Math.random()*0.5, 0.12);
+      chainLink(ac.currentTime + 0.005, 1, k*(heavy ? 1.4 : 1));
     }
     function oarCue(k){
       if(!ac || ac.state!=='running' || !(k > 0)) return;
@@ -3752,16 +3753,7 @@
         // weighing anchor: the chain rattling in, link by link, bright and
         // quick, finishing within the WEIGH_TIME the boat waits
         const n = 12;
-        for(let k=0;k<n;k++){
-          const at = t0 + k*0.066 + Math.random()*0.012;
-          const src = ac.createBufferSource(); src.buffer = noise;
-          const bp = ac.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value = 1900 + Math.random()*900; bp.Q.value = 2.5;
-          const g = ac.createGain(); g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(0.07, at+0.002); g.gain.exponentialRampToValueAtTime(0.0001, at+0.035);
-          src.connect(bp); bp.connect(g); g.connect(master); src.start(at, Math.random()*0.8, 0.04);
-          const o = ac.createOscillator(); o.type='triangle'; o.frequency.value = 900 + Math.random()*400;
-          const og = ac.createGain(); og.gain.setValueAtTime(0.0001, at); og.gain.exponentialRampToValueAtTime(0.025, at+0.002); og.gain.exponentialRampToValueAtTime(0.0001, at+0.03);
-          o.connect(og); og.connect(master); o.start(at); o.stop(at+0.04);
-        }
+        for(let k=0;k<n;k++) chainLink(t0 + k*0.066 + Math.random()*0.012, 0.5, 1);   // an octave lower than it was (the old pitch is the crank's)
         // the last link clunks home
         const end = t0 + n*0.066;
         const o = ac.createOscillator(); o.frequency.setValueAtTime(260, end); o.frequency.exponentialRampToValueAtTime(150, end+0.06);
