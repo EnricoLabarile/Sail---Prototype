@@ -354,7 +354,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   plate inked when full): a finger on it turned **clockwise** winds the spring (`windSpring`:
   `SPRING_TURNS` 3 full turns fill it; turning back does nothing, a ratchet; the gears rattle, `Sfx.ratchet` (one `chainLink`
   at the anchor chain's original pitch, loudness `CRANK_VOL`; the anchor chain itself now plays an octave lower), once a tooth, with a heavier, lower step and a buzz every
-  quarter turn; `Sfx.oarHit` and a buzz when it's full; Enter/Space a quarter turn). While it holds a charge
+  quarter turn; `Sfx.oarHit` and a buzz when it's full, and then the crank **locks** (`crankLocked`, class `locked`: arm and gear faded, no input, no sound) until the spring has run right down to 0, a cooldown; Enter/Space a quarter turn). While it holds a charge
   and she isn't at anchor, moored or in a whirlpool, and the sail alone gives her less than `SPRING_SPEED` (14 px/s),
   the wheels drive her on their own: `oarSpin` eases to 1, `boat.rowV` = `SPRING_SPEED` × `oarSpin` (a steady push, no
   surges or kicks), and the spring runs down over `SPRING_TIME` (30 s) of driving; otherwise it rests. `updateSpring`

@@ -251,6 +251,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Crank: once the spring is wound full it locks (greyed, no more turning, no rattle) until the charge has run right down, then it can be wound again',
+    ]},
+    {build: '2026-10-06 21:01', items: [
       'Weighing anchor: the chain sounds an octave lower',
       'Crank: as it winds, the gears now rattle with the anchor chain\'s old sound, a link each tooth (the old ticks are gone)',
     ]},
@@ -261,11 +264,8 @@
     {build: '2026-10-06 20:12', items: [
       'Paddle wheels on a spring: no more pressing in rhythm. Turn the crank on the right round clockwise (three turns fill it, the ring shows the charge); the wheels then drive the boat on their own until the spring runs down (about 30 s of driving), resting while the sail is faster',
     ]},
-    {build: '2026-10-06 19:54', items: [
-      'Square sail: your new speed curve is the default (90° 0.55, 110° 0.97, 130° 1.12, 150° 1.13, 170° 1.04, 180° 1.03)',
-    ]},
   ];
-  const BUILD = '2026-10-06 21:01';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-06 21:09';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -677,6 +677,7 @@
   #crank .hub{fill:var(--ink);}
   #crank .hint{fill:none; stroke:var(--ink); stroke-width:1.2; opacity:.45;}
   #crank.full .plate{fill:var(--ink);} #crank.full .hatch{opacity:0;} #crank.full .arm{stroke:var(--paper);} #crank.full .hub{fill:var(--paper);}
+  #crank.locked{cursor:default;} #crank.locked .rot, #crank.locked .hint{opacity:.45;}   /* wound full: locked until the spring has run down */
   #crank.hidden, body.at-market #crank{display:none;}
   /* the sail badge, under the oar button: a tap sets or furls the sail, a long press stows it in the hold */
   #sail-btn{position:fixed; right:16px; bottom:calc(104px + env(safe-area-inset-bottom,0px)); width:56px; height:56px; z-index:5; padding:0;
@@ -4728,7 +4729,7 @@
     boonWindT = 0; boonFish = 0; for(const r of RUINS) r.readyAt = 0;
     rollers.length = 0; rollerT = 6; boat.surfT = 0;
     windAngle = rand(0, Math.PI*2); shiftDur = 0; windTimer = rand(28,36); guideWind = false;
-    explored.fill(0); fogVer++; resetBottles(); resetStore(); resetShark(); spring = 0;
+    explored.fill(0); fogVer++; resetBottles(); resetStore(); resetShark(); spring = 0; crankLocked = false; document.getElementById('crank').classList.remove('locked');
     wake.length = 0; bowSpray.length = 0; popups.length = 0;
     voyageTime = 0; hurtFlash = 0; shake = 0;
     gameover.classList.add('hidden');
@@ -5415,11 +5416,11 @@
   // does nothing, a ratchet); a click every quarter turn. While it holds some charge the paddle wheels drive her on their
   // own (SPRING_SPEED), and it runs down over SPRING_TIME s of driving; it rests while the sail drives her faster, at anchor or moored
   const elCrank = document.getElementById('crank'), elCrankRot = elCrank.querySelector('.rot'), elCrankCharge = elCrank.querySelector('.charge');
-  let spring = 0, crankA = 0, crankDrag = null, crankTick = 0, crankStep = 0, crankKey = '';
+  let spring = 0, crankA = 0, crankDrag = null, crankTick = 0, crankStep = 0, crankKey = '', crankLocked = false;   // (locked: wound full, it won't turn again until the spring has run right down)
   elCrank.setAttribute('aria-label', TEXT.oars.crank); elCrank.title = TEXT.oars.crank;
   const crankAngle = ev=>{ const r = elCrank.getBoundingClientRect(); return Math.atan2(ev.clientY - (r.top + r.height/2), ev.clientX - (r.left + r.width/2)); };
   const windSpring = da=>{                                   // da: radians turned clockwise
-    if(da <= 0) return;
+    if(da <= 0 || crankLocked) return;
     const was = spring;
     spring = Math.min(1, spring + da/(Math.PI*2*SPRING_TURNS));
     crankTick += da; crankStep += da;
@@ -5428,9 +5429,9 @@
       if(crankStep >= Math.PI/2){ crankStep -= Math.PI/2; Sfx.ratchet(CRANK_VOL, true); buzz(spring < 1 ? 12 : 4); }
       else Sfx.ratchet(CRANK_VOL*(spring < 1 ? 1 : 0.5), false);
     }
-    if(was < 1 && spring >= 1){ Sfx.oarHit(OAR_CUE_VOL); buzz([20, 30, 40]); }   // wound right up
+    if(was < 1 && spring >= 1){ Sfx.oarHit(OAR_CUE_VOL); buzz([20, 30, 40]); crankLocked = true; crankDrag = null; elCrank.classList.add('locked'); }   // wound right up: the crank locks (a cooldown)
   };
-  elCrank.addEventListener('pointerdown', ev=>{ ev.preventDefault(); Sfx.init(); crankDrag = {id: ev.pointerId, a: crankAngle(ev)}; crankA = crankDrag.a + Math.PI/2; try{ elCrank.setPointerCapture(ev.pointerId); }catch(e){} });
+  elCrank.addEventListener('pointerdown', ev=>{ ev.preventDefault(); Sfx.init(); if(crankLocked) return; crankDrag = {id: ev.pointerId, a: crankAngle(ev)}; crankA = crankDrag.a + Math.PI/2; try{ elCrank.setPointerCapture(ev.pointerId); }catch(e){} });
   elCrank.addEventListener('pointermove', ev=>{
     const d = crankDrag; if(!d || ev.pointerId !== d.id) return;
     const a = crankAngle(ev), da = norm(a - d.a); d.a = a;
@@ -5438,7 +5439,7 @@
   });
   const crankUp = ev=>{ if(crankDrag && ev.pointerId === crankDrag.id) crankDrag = null; };
   elCrank.addEventListener('pointerup', crankUp); elCrank.addEventListener('pointercancel', crankUp);
-  elCrank.addEventListener('keydown', ev=>{ if(ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); ev.stopPropagation(); crankA += Math.PI/2; windSpring(Math.PI/2); } });
+  elCrank.addEventListener('keydown', ev=>{ if(ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); ev.stopPropagation(); if(crankLocked) return; crankA += Math.PI/2; windSpring(Math.PI/2); } });
   function updateSpring(dt){
     const show = MANUAL_OARS && playing && !moor && !marketV;
     if(show !== !elCrank.classList.contains('hidden')) elCrank.classList.toggle('hidden', !show);
@@ -5447,6 +5448,7 @@
     oarSpin += ((can ? 1 : 0) - oarSpin)*Math.min(1, dt*2.5);                 // the wheels take up and let go smoothly
     if(oarSpin < 0.005) oarSpin = 0;
     if(can) spring = Math.max(0, spring - dt/SPRING_TIME);
+    if(crankLocked && spring <= 0){ crankLocked = false; elCrank.classList.remove('locked'); buzz(8); }   // run down: the crank is free again
     oarKick = 0;
     oarRate += ((oarSpin > 0.01 ? OAR_RATE*1.4 : 0) - oarRate)*Math.min(1, dt*OAR_RATE_EASE);   // the wheels' pace (and the churn's)
     oarCycle += dt*oarRate;
