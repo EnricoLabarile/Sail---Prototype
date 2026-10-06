@@ -252,6 +252,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Crank: fixed, once the spring has run down the crank unlocks and can be wound again (it used to stay locked for good)',
+    ]},
+    {build: '2026-10-06 21:31', items: [
       'Paddle wheels: a low splash for each paddle going into the water, in time with the wheels (instead of the steady swirl)',
       'Weighing anchor: the chain is louder again, with a low rumble of it running in',
       'When the spring runs down and the wheels stop: a slack clunk of the gear',
@@ -262,12 +265,8 @@
     {build: '2026-10-06 21:09', items: [
       'Crank: once the spring is wound full it locks (greyed, no more turning, no rattle) until the charge has run right down, then it can be wound again',
     ]},
-    {build: '2026-10-06 21:01', items: [
-      'Weighing anchor: the chain sounds an octave lower',
-      'Crank: as it winds, the gears now rattle with the anchor chain\'s old sound, a link each tooth (the old ticks are gone)',
-    ]},
   ];
-  const BUILD = '2026-10-06 21:31';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-06 21:42';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -5474,7 +5473,7 @@
     const show = MANUAL_OARS && playing && !moor && !marketV;
     if(show !== !elCrank.classList.contains('hidden')) elCrank.classList.toggle('hidden', !show);
     if(!elOar.classList.contains('hidden')) elOar.classList.add('hidden');
-    const can = spring > 0.001 && !(anchored || moor || boat.whirl) && (boat.sailV || 0) < SPRING_SPEED;
+    const can = spring > 0 && !(anchored || moor || boat.whirl) && (boat.sailV || 0) < SPRING_SPEED;   // (> 0: it once stopped at 0.001 and the crank stayed locked for good)
     oarSpin += ((can ? 1 : 0) - oarSpin)*Math.min(1, dt*2.5);                 // the wheels take up and let go smoothly
     if(oarSpin < 0.005) oarSpin = 0;
     const was = spring;
