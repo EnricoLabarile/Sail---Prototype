@@ -195,7 +195,7 @@
   // sail has its own way to sail. The square sail: the open sea, the wind from astern (and SQUARE_RUN_BONUS on top);
   // almost dead on the wind, weak on the beam. The lateen: the wind on the beam (its best is faster than the square's
   // best on the beam by far) and it can point up toward the wind; poor running free
-  const SAIL_POLAR_SQUARE = [[0,0],[20,0],[35,0.02],[50,0.05],[70,0.12],[90,0.25],[110,0.45],[130,0.72],[150,0.92],[170,1.0],[180,1.0]];
+  const SAIL_POLAR_SQUARE = [[0,0],[20,0],[35,0.02],[50,0.05],[70,0.12],[90,0.55],[110,0.97],[130,1.12],[150,1.13],[170,1.04],[180,1.03]];
   const SAIL_POLAR_LATEEN = [[0,0.02],[20,0.22],[35,0.60],[50,0.90],[70,1.06],[90,1.10],[110,1.02],[130,0.88],[150,0.72],[170,0.60],[180,0.55]];
   // (the curves, SQUARE_RUN_BONUS and the RIG_ values below can also be set live on the first screen, section 'Sails')
   const SQUARE_RUN_BONUS = 0.25;     // running downwind (from DOWNWIND_DEG to dead astern) the square sail gains up to this much more (the lateen none)
@@ -246,6 +246,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Square sail: your new speed curve is the default (90° 0.55, 110° 0.97, 130° 1.12, 150° 1.13, 170° 1.04, 180° 1.03)',
+    ]},
+    {build: '2026-10-06 19:42', items: [
       'Paddle wheels: they also turn under sail, dragged round by the water as she moves (faster the faster she goes)',
     ]},
     {build: '2026-10-06 19:37', items: [
@@ -255,11 +258,8 @@
     {build: '2026-10-06 19:05', items: [
       'Oars, after your sketch: two oar handles on the sides of the screen instead of the round button; they go round a little loop with each stroke, and when they reach the top (grips inked, the clunk) drag one down to pull',
     ]},
-    {build: '2026-10-06 18:22', items: [
-      'First screen: a new "Dangers" section with the sharks\' and whirlpools\' knobs (SHARK_*, WHIRL_FOLLOW*); Apply reloads the game with the changed values',
-    ]},
   ];
-  const BUILD = '2026-10-06 19:42';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-06 19:54';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in

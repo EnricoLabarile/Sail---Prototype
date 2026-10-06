@@ -313,8 +313,8 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   new sail bent on furled and spreading) and the one she carried (if any) goes into the hold in its place. Each sail has its own speed curve, in Tuning
   (`SAIL_POLAR_SQUARE`, `SAIL_POLAR_LATEEN`: [degrees off the wind, share of top speed]; `POLARS` picks by `boat.rig`):
   made **starker than real life** so each sail forces its own way of sailing: the **square** one is for the open sea
-  with the wind astern (1.0 from 170°, plus `SQUARE_RUN_BONUS` 0.25 running downwind: `downwindBonus` is the square
-  sail's only, up to 1.25×) and nearly dead on and across the wind (50° 0.05, beam 0.25, 110° 0.45); the **lateen**
+  with the wind aft of the beam (Enrico's curve: 90° 0.55, 110° 0.97, 130° 1.12, 150° 1.13, 170° 1.04, 180° 1.03, plus `SQUARE_RUN_BONUS` 0.25 running downwind: `downwindBonus` is the square
+  sail's only) and nearly dead on the wind (35° 0.02, 50° 0.05, 70° 0.12); the **lateen**
   is for the wind on the beam (50° 0.90, 70° 1.06, beam 1.10, 110° 1.02) and can point up (35° 0.60, 20° 0.22); a
   rounder curve aft of the beam, falling off gently to 0.55 dead downwind (130° 0.88, 150° 0.72, 170° 0.60): pick the sail by the course to the next port. The wind card
   draws the curves with the square's run bonus (radius 40, room for 1.25×).
