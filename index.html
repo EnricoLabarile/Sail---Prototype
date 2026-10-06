@@ -215,6 +215,12 @@
   const LATEEN_SWING = 0.9;          // how quickly the lateen yard swings across when she changes tack (3 = as quick as the sail trims; lower = heavier)
   const SAIL_STOW_HOLD = 1.1;        // seconds holding the sail badge to unbend the sail and stow it in the hold
   const SAIL_SHAKE_AFTER = 0.2;      // a press longer than this is a hold (the badge shakes); shorter is a tap (set or furl)
+  const SAIL_FLOW = {square: 0.5, lateen: 1};   // lines of air flowing round the set sail (0 = none): smooth on both sides with the wind on the beam (lift), torn and eddying behind it with the wind astern
+  const SAIL_FLOW_ALPHA = 1;         // how dark those flow lines are drawn
+  const WIND_STREAK_RATE = 2;        // wind streaks across the sea: how many more than the old ones (1 = as before)
+  const WIND_STREAK_WIDTH = 1.8;     // their line width (was 1.2)
+  const WIND_STREAK_ALPHA = 0.85;    // how dark they are (was 0.65)
+  const WIND_STREAK_LEN = 1.5;       // their length × (1 = 40–70 px as before)
   const SAIL_TONE = 0.72;            // the sail's cloth when drawing well (1 = paper white, 0 = ink); slack or reefed it's a little darker
   const SPARE_SAIL = true;           // both sails ride in the hold (a slot each, the one not rigged); a tap on one in the logbook rigs it
   const START_RIG = null;            // the sail rigged at the start: null = none, she sets out on the oars ('square' or 'lateen' = that one)
@@ -229,6 +235,10 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Wind streaks on the sea: more of them, longer and darker, and they follow the gusts where you are',
+      'Lines of air now flow round the set sail (most with the lateen): with the wind on the beam they slip smoothly past both sides, quicker round the bellied side, which is what pulls her along (lift); with the wind from astern they tear off into eddies behind the sail',
+    ]},
+    {build: '2026-10-06 14:09', items: [
       'Lateen sail: drawn smaller, 60% of its old size',
     ]},
     {build: '2026-10-06 13:19', items: [
@@ -238,11 +248,8 @@
     {build: '2026-10-06 13:14', items: [
       'Oars: no more "gloop": each stroke is now a short, dry swish of the blade through the water',
     ]},
-    {build: '2026-10-06 12:45', items: [
-      'Oars: the rowing background is now a steady, low churn of water (no more chirping drips)',
-    ]},
   ];
-  const BUILD = '2026-10-06 14:09';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-06 14:53';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -5609,7 +5616,7 @@
   let streakT = 1;
   function makeStreakPath(){
     // a wavy line along +x that ends in a tightening curl (in local units)
-    const pts = [[0,0]], L = rand(40, 70), amp = rand(1.5,3), fr = rand(0.05,0.08), ph = rand(0,6.3);
+    const pts = [[0,0]], L = rand(40, 70)*WIND_STREAK_LEN, amp = rand(1.5,3), fr = rand(0.05,0.08), ph = rand(0,6.3);
     for(let u=3; u<=L; u+=3) pts.push([u, Math.sin(u*fr+ph)*amp*(0.4+0.6*u/L)]);
     const [ex,ey] = pts[pts.length-1], dirUp = Math.random()<0.5 ? -1 : 1;
     let r = rand(4,6.5), a = -dirUp*Math.PI/2;
@@ -5621,13 +5628,13 @@
   function updateStreaks(dt){
     streakT -= dt;
     if(streakT <= 0){
-      streakT = rand(1.2, 2.8) / (0.5 + windStrength);
-      const dw = windAngle + Math.PI;
+      streakT = rand(1.2, 2.8) / (0.5 + windStrength*boat.windMul) / WIND_STREAK_RATE;   // (more in a gust)
+      const dw = windAngle + boat.windOff + Math.PI;                      // the wind where she is (it veers among the islands)
       const a = rand(0,Math.PI*2), d = rand(40, 260);
       streaks.push({x: boat.x + Math.cos(a)*d, y: boat.y + Math.sin(a)*d, ang: dw + rand(-0.15,0.15),
                     drift: rand(12, 22), age: 0, life: rand(1.8, 2.6), path: makeStreakPath(), wig: rand(0,6.3)});
     }
-    const dw = windAngle + Math.PI;
+    const dw = windAngle + boat.windOff + Math.PI;
     for(let k=streaks.length-1;k>=0;k--){
       const s = streaks[k];
       s.age += dt; s.x += Math.cos(dw)*s.drift*dt; s.y += Math.sin(dw)*s.drift*dt;   // barely drifting
@@ -5635,14 +5642,14 @@
     }
   }
   function drawStreaks(){
-    ctx.strokeStyle = INKC; ctx.lineCap = 'round'; ctx.lineWidth = 1.2;
+    ctx.strokeStyle = INKC; ctx.lineCap = 'round'; ctx.lineWidth = WIND_STREAK_WIDTH;
     for(const s of streaks){
       if(!inView(s.x, s.y, 140)) continue;
       const p = s.age/s.life, P = s.path;
       // the line draws itself out (head advancing), then the tail catches up
       const head = P.len * Math.min(1, p/0.55), tail = P.len * Math.max(0, (p-0.45)/0.55);
       const ca = Math.cos(s.ang), sa = Math.sin(s.ang);
-      ctx.globalAlpha = 0.65 * Math.min(1, p*9, (1-p)*9);        // quick fade in and out
+      ctx.globalAlpha = WIND_STREAK_ALPHA * Math.min(1, p*9, (1-p)*9);        // quick fade in and out
       ctx.beginPath();
       let started = false;
       for(let k=0;k<P.pts.length;k++){
@@ -8585,6 +8592,11 @@
     ctx.beginPath(); skSeg(ax,ay,bx,by,1.5); ctx.stroke();
     ctx.fillStyle=INKC;
     ctx.beginPath(); ctx.arc(mx,my,2.6,0,Math.PI*2); ctx.fill();
+    if(!g){                                               // the air round the sail: it leads from the end nearer the wind
+      const wa = windAngle + B.windOff + Math.PI - B.angle, ab = (ax-bx)*Math.cos(wa) + (ay-by)*Math.sin(wa);
+      if(ab < 0) drawSailFlow(B, ax, ay, ux, uy, 2*H, nx, ny, belly*k*0.75);
+      else drawSailFlow(B, bx, by, -ux, -uy, 2*H, nx, ny, belly*k*0.75);
+    }
     ctx.restore();
     ctx.restore();
   }
@@ -8634,6 +8646,58 @@
     ctx.beginPath(); skSeg(tx,ty,px,py,1.5); ctx.stroke();
     ctx.fillStyle=INKC;
     ctx.beginPath(); ctx.arc(mx,my,2.4,0,Math.PI*2); ctx.fill();
+    if(B === boat){                                       // the air round the sail, from the tack aft along the yard, the belly to leeward
+      let nx = -ey, ny = ex; if(ny*lee < 0){ nx = -nx; ny = -ny; }
+      drawSailFlow(B, tx, ty, ex, ey, LA + LF, nx, ny, belly);
+    }
+  }
+
+  // the air flowing round the set sail (boat frame), to show how a sail drives her: with the wind on the beam it
+  // splits at the leading edge (L, the chord running along d for C px) and flows smoothly along both sides, quicker
+  // and closer round the bellied lee side (n): the lower pressure there pulls the sail, and her with it, toward its
+  // belly (lift). With the wind from astern the flow tears off the lee side in eddies: the sail is only pushed (drag)
+  function drawSailFlow(B, Lx, Ly, dx, dy, C, nx, ny, belly){
+    const clamp = (x, a, b)=> Math.max(a, Math.min(b, x));
+    const k = Math.max(0.7, C/25);
+    const relDeg = Math.abs(norm(B.angle - windAngle - B.windOff))*180/Math.PI;
+    const vis = (SAIL_FLOW[B.rig] || 0)*(1 - B.furl)*(B.sailFurled ? 0 : 1)*Math.min(1, 0.25 + B.sailPower*1.2);
+    if(vis < 0.03) return;
+    const att = B.rig === 'lateen' ? clamp((150 - relDeg)/40, 0, 1) : clamp((115 - relDeg)/35, 0, 1);   // attached flow (lift) or torn (drag)
+    const wa = windAngle + B.windOff + Math.PI - B.angle, wbx = Math.cos(wa), wby = Math.sin(wa);
+    const wu = wbx*dx + wby*dy, wv = wbx*nx + wby*ny;
+    const tanA = clamp(wv/Math.max(0.2, wu), 0, 0.45);       // the wind's slant onto the chord (kept gentle, so the lines read as one flow)
+    const ws = 0.4 + 0.6*Math.min(1.3, windStrength*B.windMul);
+    ctx.strokeStyle = INKC; ctx.lineCap = 'butt'; ctx.lineWidth = 1.3;
+    for(const v0 of [4, 10, 17, 26, -5, -12, -20, -29]){
+      const lee = v0 > 0, v = v0*k, follow = Math.exp(-Math.abs(v)/(14*k)), squeeze = lee ? 0.45 : -0.2;
+      const ys = [];
+      for(let s = -1.3; s <= 2.61; s += 0.1){
+        const bump = s > 0 && s < 1 ? 4*s*(1 - s) : 0;
+        const yA = s < 0 ? v + s*C*tanA : s <= 1 ? v*(1 - squeeze*bump) + belly*bump*follow : v - (s - 1)*C*0.12;
+        let y = yA;
+        if(lee && att < 1){                                 // torn: the lee lines go straight on and churn into eddies
+          const tw = s > 0.2 ? (s - 0.2)*3.5*k*Math.sin(s*9 + t*6 + v0) : 0;
+          y = att*yA + (1 - att)*(v + Math.max(s, 0)*C*Math.min(tanA, 0.6) + (s < 0 ? s*C*tanA : 0) + tw);
+        }
+        ys.push([s, y]);
+      }
+      for(let r = 0; r < 2; r++) for(let i = 1; i < ys.length - 1; i++) ys[i][1] = (ys[i-1][1] + 2*ys[i][1] + ys[i+1][1])/4;   // smoothed
+      const pts = ys.map(([s, y])=> [Lx + dx*s*C + nx*y, Ly + dy*s*C + ny*y, s]);
+      const fast = lee ? 1.6*att + 0.5*(1 - att) : 0.8;      // quicker round the lee side
+      ctx.setLineDash(lee && att < 0.5 ? [2, 3] : [7, 4]);
+      const base = -t*34*k*ws*fast;
+      const a0 = SAIL_FLOW_ALPHA*vis*(lee ? 1 : 0.75)*Math.exp(-Math.abs(v)/(70*k));
+      let cum = 0;
+      for(let i = 0; i < pts.length - 1; i += 3){
+        const s = pts[i][2], fade = Math.min(1, (s + 1.3)/0.7, (2.6 - s)/0.7);
+        ctx.globalAlpha = Math.max(0, a0*fade);
+        ctx.lineDashOffset = base + cum;
+        ctx.beginPath(); ctx.moveTo(pts[i][0], pts[i][1]);
+        for(let j = i + 1; j <= Math.min(i + 3, pts.length - 1); j++){ ctx.lineTo(pts[j][0], pts[j][1]); cum += Math.hypot(pts[j][0] - pts[j-1][0], pts[j][1] - pts[j-1][1]); }
+        ctx.stroke();
+      }
+    }
+    ctx.setLineDash([]); ctx.lineDashOffset = 0; ctx.globalAlpha = 1;
   }
 
   function draw(){

@@ -322,7 +322,14 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   the islands both drop (gusts, lulls, lee) and the square most. The lateen is drawn by
   `drawLateenSail` (`LATEEN_SIZE` 0.6 in Tuning, on top of `SAIL_SIZE`): a long slanted yard on a short mast near the bow, the triangle of cloth trailing aft, eased out
   to leeward about half the wind's angle off the bow (`boat.boomSigned`), bellied to leeward, a sheet to the stern
-  quarter; it furls along the yard at anchor. Changing tack, the heavy yard swings across slowly (`LATEEN_SWING` in
+  quarter; it furls along the yard at anchor.
+  **Air flowing round the sail** (`drawSailFlow`, the player's boat only, called from each sail's drawing in the boat
+  frame; `SAIL_FLOW` {square 0.5, lateen 1}, `SAIL_FLOW_ALPHA` in Tuning): eight dashed streamlines (four each side),
+  in a frame along the sail's chord (lateen: from the tack along the yard; square: from the yard's end nearer the
+  wind), moving with the wind. With the wind on the beam (lateen up to ~110–150° off, square up to ~80–115°) the flow
+  is attached: the lines split at the leading edge and slip along both sides, the lee (bellied) ones squeezed closer
+  and dashing ~2× faster than the windward ones (low pressure on the convex side: lift); further aft the lee lines
+  tear off into short wobbling dashes (eddies: only drag). Meant to teach that the lateen works with the wind across it. Changing tack, the heavy yard swings across slowly (`LATEEN_SWING` in
   Tuning, 0.9 against the usual trim rate of 3; `boat.swingAcross` until it's settled on the new side). A new voyage
   starts with `START_RIG` again.
   **Wind card** (the logbook's right page, first spread; `windHTML`, texts in `TEXT.sails`): a polar diagram in ink,
@@ -437,7 +444,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   astern, up to `SURF_WAVE_SIDE` (45 px) off to either side (so catching it takes a touch of the helm), already at her
   pace + `ROLLER_CATCH`, living 5.5–6.5 s; one at a time. `rollerPace` then does the rest (it hurries only while she's
   in line with its crest).
-- **Atmosphere:** macchia (tree-spurge domes + Mediterranean pines; the pines come in `PINE_MODELS` = 4 shapes made each game, each maybe mirrored), clouds with parallax and shadows (`CLOUD_MODELS` = 4 shapes, made each game, still: they only drift), gulls, wind streaks,
+- **Atmosphere:** macchia (tree-spurge domes + Mediterranean pines; the pines come in `PINE_MODELS` = 4 shapes made each game, each maybe mirrored), clouds with parallax and shadows (`CLOUD_MODELS` = 4 shapes, made each game, still: they only drift), gulls, wind streaks (`updateStreaks` / `drawStreaks`: following the wind where she is, gusts included, `boat.windOff`, and more often in a gust; `WIND_STREAK_RATE` 2, `_WIDTH` 1.8, `_ALPHA` 0.85, `_LEN` 1.5 in Tuning),
   traders (motor boats on A* lanes: `TRADERS_HOME` = 2 on the four home-to-village lanes, two of them picked at random,
   and `TRADERS_VILLAGES` = 4 between neighbouring villages, one a lane; they don't avoid the player, a collision just shoves them aside
   with no damage, then they drift back to their lane; they hail with a speech bubble), fog of war (buoys and a
