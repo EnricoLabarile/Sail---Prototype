@@ -354,11 +354,10 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   coast: × (1 − `OAR_SURGE` + `OAR_SURGE`·π·max(0, sin 2π·phase)), `OAR_SURGE` = 0.5; the oars bite quickly (rate
   3.5); wherever she points, even head to wind; it counts only when it's more than the sail gives (`targetSpeed` =
   max(sail, `rowV`)); at anchor or moored the power is 0. `Sfx.oar`: a sine falling 150→70 Hz (210→85 for a powerful
-  stroke) and a low-passed swirl of noise. **Under the strokes** a soft background wash while the oars are out
-  (`Sfx.rowBed`, a band of pink noise on the ambience bus, `rowL`): it swells with each pull (the first half of the
-  turn, the same `oarCycle` phase as the surge) and dies on the recovery, a little brighter as she picks up way; as the
-  pointer passes half a turn the blades leave the water with two or three faint drips (`Sfx.oarDrip`); loudness
-  `OAR_BED_VOL` in Tuning, × the oars out (`boat.oarK`) × (0.4 + 0.6 × power). Enter/Space on the button press it too. On the boat the oars come out while
+  stroke) and a low-passed swirl of noise. **Under the strokes** a steady, low churn of water while the oars are out
+  (`Sfx.rowBed`, brown noise low-passed ~400 Hz on the ambience bus, `rowL`): constant, only a little fuller on each
+  pull (the first half of the turn) and a touch brighter as she picks up way (drips as the blades came out were tried
+  and dropped: they sounded like a bird); loudness `OAR_BED_VOL` in Tuning, × the oars out (`boat.oarK`) × (0.4 + 0.6 × power). Enter/Space on the button press it too. On the boat the oars come out while
   there's power, the blades sweep with the cycle (`oarPh`: forward at the catch, aft at the finish) with a splash
   ring mid-pull (rowing, the stroke never flips as the helm crosses the middle). The stroke never jumps or freezes: when
   she stops rowing the beat winds down to a halt as the oars come in, and a press while they're
