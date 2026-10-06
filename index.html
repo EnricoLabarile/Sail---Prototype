@@ -53,6 +53,33 @@
   const OAR_HIT_VOL = 1;             // loudness of the blade's hard catch (a short splash and thump) that answers a press on time (× OAR_CUE_VOL; 0 = silent)
   const OAR_BED_VOL = 1;            // loudness of the oars' wash while rowing (a soft swirl of water that swells with each pull; 0 = silent)
   const OAR_CUE_VOL = 1;            // loudness of the oar's clunk in its wooden thole as the oar button goes ink (the moment to press; 0 = silent)
+  // loudness of each kind of sound (1 = as made, 0 = silent, up to 2), on top of the knobs above; also the
+  // sliders of the first screen's Audio section (kept on the phone; the line under them can be pasted here)
+  const SOUND_VOL = {
+    master: 1,     // everything
+    sea: 1,        // the swell, and the water along the hull
+    rain: 1,       // a shower on the sea: the wash and the patter
+    cicadas: 1,    // the afternoon chorus near the islands' shores
+    night: 1,      // crickets and the howls at night
+    gulls: 1,      // the gulls' cries
+    town: 1,       // the villages: chatter, hammers, bells, dogs…
+    engine: 1,     // the traders' motor boats
+    whirl: 1,      // the whirlpools' drone, and being flung
+    waves: 1,      // the big waves breaking, hitting her, and surfing
+    crash: 1,      // knocks on rocks and shores, and the shark's bite
+    wheel: 1,      // the wheel's rub as it turns
+    clicks: 1,     // the wheel's spokes and the little wooden knocks of the controls
+    anchor: 1,     // the anchor chain, down and up
+    crank: 1,      // the crank's gears as it winds
+    paddles: 1,    // the paddle wheels in the water, and the spring running down
+    oars: 1,       // the oars' strokes, cue, catch and wash
+    nets: 1,       // the nets: splash going over, haul coming in
+    bell: 1,       // the bell (a purchase, a gift, a power)
+    buoy: 1,       // a buoy knocked as she brushes past
+    crate: 1,      // the storehouse's door and crate
+    coins: 1,      // the purse's jingle at the market
+    book: 1,       // the logbook opening, closing and its pages turning
+  };
   const OAR_SPIN_FADE = 0.05;        // a slow steady drain of the rowing's power (a share of it per second)…
   const OAR_SKIP = 0.65;             // …and the power kept when the pointer passes the mark without a press (she slows; a few skipped and she stops)
   const OAR_RATE = 0.624;             // turns of the oar button a second: one steady beat, whatever the power (calm: time to look at the sea too; was 0.52)
@@ -252,6 +279,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'First screen: a new Audio section, a loudness slider for every kind of sound (sea, rain, cicadas, oars, anchor, crank, logbook…); a sample plays when you let go of a slider, and the values stay on the phone',
+    ]},
+    {build: '2026-10-06 23:11', items: [
       'Home storehouse: sails in the hold can be left there and taken aboard again, like any other cargo (they can\'t be sold at the markets)',
     ]},
     {build: '2026-10-06 21:42', items: [
@@ -262,11 +292,8 @@
       'Weighing anchor: the chain is louder again, with a low rumble of it running in',
       'When the spring runs down and the wheels stop: a slack clunk of the gear',
     ]},
-    {build: '2026-10-06 21:23', items: [
-      'Crank: one full turn now winds the spring right up; let go before the turn is complete and the winding slips back (nothing charged, nothing locked): just start again',
-    ]},
   ];
-  const BUILD = '2026-10-06 23:11';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-06 23:31';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -294,6 +321,13 @@
       sailsCurve: 'Speed by angle off the wind',      // above the eleven sliders of a sail's curve
       sailsMore: 'Handling',                        // above the other sliders of a sail
       sailsReset: 'Reset this sail',
+      audioTitle: 'Audio',                          // the folding section with a loudness slider per kind of sound
+      audioHint:  'Drag a slider to set how loud each kind of sound is (a sample plays when you let go). The values hold on this phone; the line below can be pasted into Tuning.',
+      audioReset: 'Reset all sounds',
+      audio: {master: 'All sounds', sea: 'Sea and hull', rain: 'Rain', cicadas: 'Cicadas', night: 'Night', gulls: 'Gulls', town: 'Villages',
+              engine: 'Motor boats', whirl: 'Whirlpools', waves: 'Big waves', crash: 'Knocks and bites', wheel: 'Wheel rub', clicks: 'Clicks',
+              anchor: 'Anchor', crank: 'Crank', paddles: 'Paddle wheels', oars: 'Oars', nets: 'Nets', bell: 'Bell', buoy: 'Buoys',
+              crate: 'Storehouse', coins: 'Coins', book: 'Logbook'},
       sailsParams: {turn: 'Turning', accel: 'Pick-up', retrim: 'Retrim', leeway: 'Leeway', surf: 'Surfing', waveHit: 'Wave damage', broach: 'Broaching', runBonus: 'Run bonus'},
     },
     intro: {                                        // (not shown for now: the first screen is the world generator)
@@ -1053,6 +1087,13 @@
   #wg-sails .sl-name{margin:0; text-align:center; font:bold 14px/1.3 Georgia, serif;}
   #wg-sails svg{display:block; width:176px; height:176px; margin:0 auto;}
   #wg-sails .sl-sub{margin:6px 0 3px; font:italic 12px/1.3 Georgia, serif;}
+  #wg-audio .sl-hint{margin:0 0 8px; font:italic 12px/1.35 Georgia, serif;}
+  #wg-audio .sl-row{display:grid; grid-template-columns:8em 1fr 2.8em; align-items:center; gap:6px; font:11.5px/1.3 ui-monospace, monospace;}
+  #wg-audio .sl-row input{width:100%; margin:3px 0; accent-color:var(--ink);}
+  #wg-audio .sl-row span{text-align:right;}
+  #wg-audio .sl-row.changed label, #wg-audio .sl-row.changed span{font-weight:bold;}
+  #wg-audio .sl-code{margin:6px 0 4px; padding:4px; font:10px/1.35 ui-monospace, monospace; word-break:break-all; user-select:all; -webkit-user-select:all; border:1px dotted var(--ink);}
+  #intro #wg-audio .sl-reset{display:block; margin:4px auto 0; padding:5px 12px; font-size:13px; background:var(--paper); color:var(--ink);}
   #wg-sails .sl-row{display:grid; grid-template-columns:8em 1fr 2.8em; align-items:center; gap:6px; font:11.5px/1.3 ui-monospace, monospace;}
   #wg-sails .sl-row input{width:100%; margin:3px 0; accent-color:var(--ink);}
   #wg-sails .sl-row span{text-align:right;}
@@ -1180,6 +1221,7 @@
     <details class="wg-sec" id="wg-sec-settings"><summary id="wg-sum-settings"></summary>
     <div class="wg-setting"><label for="wg-haptics" id="wg-haptics-label"></label><input id="wg-haptics" type="range" min="0" max="1" step="0.05"><span id="wg-haptics-val"></span></div></details>
     <details class="wg-sec" id="wg-sec-sails"><summary id="wg-sum-sails"></summary><div id="wg-sails"></div></details>
+    <details class="wg-sec" id="wg-sec-audio"><summary id="wg-sum-audio"></summary><div id="wg-audio"></div></details>
     <details class="wg-sec" id="wg-sec-dangers"><summary id="wg-sum-dangers"></summary>
     <div id="wg-dknobs"></div>
     <div class="wg-row"><button id="wg-dapply" type="button"></button></div></details>
@@ -2906,13 +2948,36 @@
   const AMB_LEVEL = 0.1;           // master level of the whole ambience (keep it discreet)
   const Sfx = (function(){
     let ac=null, master=null, wheelBus=null, noise=null, rub=null;
+    // a gain per kind of sound (SOUND_VOL), between its sounds and the bus they play on: while a
+    // sound is made, routed() points the buses at its kind's gains, so every node it connects goes through them
+    const vol = {}, chans = {};
+    function chan(name, bus){
+      const m = chans[name] || (chans[name] = new Map());
+      let g = m.get(bus);
+      if(!g){ g = ac.createGain(); g.gain.value = vol[name] ?? 1; g.connect(bus); m.set(bus, g); }
+      return g;
+    }
+    function routed(name, fn){
+      if(!ac || !name) return fn();
+      const M = master, A = ambBus, W = wheelBus, R = rainBus;
+      master = chan(name, M); if(A) ambBus = chan(name, A); if(W) wheelBus = chan(name, W); if(R) rainBus = chan(name, R);
+      try{ return fn(); } finally { master = M; ambBus = A; wheelBus = W; rainBus = R; }
+    }
+    let curKind = null;                                      // (the kind being made, for a sound finished later)
+    const later = (fn, ms)=>{ const k = curKind; setTimeout(()=> routed(k, fn), ms); };
+    function setVol(name, v){
+      vol[name] = v;
+      if(!ac) return;
+      if(name === 'master') master.gain.setTargetAtTime(0.9*v, ac.currentTime, 0.05);
+      else if(chans[name]) for(const g of chans[name].values()) g.gain.setTargetAtTime(v, ac.currentTime, 0.05);
+    }
     let ambBus=null, sea=null, rush=null, rowL=null, rainL=null, rainBus=null, rainNext=0, rainGustT=0, rainGust=1, cicadaOut=null, cicadaSingers=[], droneNodes=null, engineNodes=null;
     function init(){
       if(ac){ if(ac.state==='suspended') ac.resume(); return; }
       const AC = window.AudioContext || window.webkitAudioContext;
       if(!AC) return;
       ac = new AC();
-      master = ac.createGain(); master.gain.value = 0.9;
+      master = ac.createGain(); master.gain.value = 0.9*(vol.master ?? 1);
       master.connect(ac.destination);
       wheelBus = ac.createGain(); wheelBus.gain.value = 0.6;    // whole wheel group
       wheelBus.connect(master);
@@ -2925,7 +2990,7 @@
       const src = ac.createBufferSource(); src.buffer = noise; src.loop = true;
       const lp = ac.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=420; lp.Q.value=0.7;
       const out = ac.createGain(); out.gain.value=0;
-      src.connect(lp); lp.connect(out); out.connect(wheelBus);
+      src.connect(lp); lp.connect(out); out.connect(chan('wheel', wheelBus));
       src.start();
       rub = {lp, out};
 
@@ -2946,12 +3011,12 @@
         src.start(0, offset);
         return {f, g};
       };
-      sea  = [ {...layer(brown,'lowpass',380,0.5,-0.55,0),   ph:0,   per:7},
-               {...layer(brown,'lowpass',380,0.5, 0.55,3.1), ph:0.5, per:8.5} ];
-      rush = layer(brown,'lowpass',320,0.5,0,2.2);   // deep, soft water along the hull
-      rowL = layer(pink,'bandpass',480,0.9,0,4.1);   // the oars' wash: a soft swirl of water that swells with each pull (see rowBed())
+      sea  = routed('sea', ()=> [ {...layer(brown,'lowpass',380,0.5,-0.55,0),   ph:0,   per:7},
+               {...layer(brown,'lowpass',380,0.5, 0.55,3.1), ph:0.5, per:8.5} ]);
+      rush = routed('sea', ()=> layer(brown,'lowpass',320,0.5,0,2.2));   // deep, soft water along the hull
+      rowL = routed('oars', ()=> layer(pink,'bandpass',480,0.9,0,4.1));   // the oars' wash: a soft swirl of water that swells with each pull (see rowBed())
       // rain on the sea: a broad, soft wash under the patter (see rain()), between a hiss and a murmur
-      rainL = layer(pink,'bandpass',1800,0.35,0,1.3);
+      rainL = routed('rain', ()=> layer(pink,'bandpass',1800,0.35,0,1.3));
       rainBus = ac.createGain(); rainBus.gain.value = 1; rainBus.connect(ambBus);
       // cicadas: a small chorus of singers modelled on the two common
       // Mediterranean species. Each is a band of noise around 4–5 kHz with
@@ -2962,7 +3027,7 @@
       {
         const out = ac.createGain(); out.gain.value = 0;
         const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 6500; lp.Q.value = 0.5;   // no shrill top
-        out.connect(lp); lp.connect(ambBus);
+        out.connect(lp); lp.connect(chan('cicadas', ambBus));
         const singer = (kind)=>{
           const orni = kind === 'orni';
           const src = ac.createBufferSource(); src.buffer = pink; src.loop = true;
@@ -3002,7 +3067,7 @@
         const out = ac.createGain(); out.gain.value = 0;
         o1.connect(og); o2.connect(og); og.connect(lp);
         nz.connect(nlp); nlp.connect(ng); ng.connect(lp);
-        lp.connect(out); out.connect(master);
+        lp.connect(out); out.connect(chan('whirl', master));
         o1.start(); o2.start(); lfo.start(); nz.start(0, 1.1);
         droneNodes = {out, lp, o1, o2};
       }
@@ -3022,7 +3087,7 @@
         const out = ac.createGain(); out.gain.value = 0;
         const pan = ac.createStereoPanner ? ac.createStereoPanner() : null;
         o.connect(lp); nz.connect(nlp); nlp.connect(ng); ng.connect(lp); lp.connect(chop); chop.connect(out);
-        if(pan){ out.connect(pan); pan.connect(master); } else out.connect(master);
+        if(pan){ out.connect(pan); pan.connect(chan('engine', master)); } else out.connect(chan('engine', master));
         o.start(); fire.start(); lope.start(); nz.start(0, 0.7);
         engineNodes = {out, pan, o, fire};
       }
@@ -3293,7 +3358,7 @@
       strike(t+0.42, 0.13);
     }
     // repair at the pier: a firmer knock, like a mallet on a plank
-    function hammer(){ tick(1, 0.85); setTimeout(()=>tick(0.6, 0.8), 110); }
+    function hammer(){ tick(1, 0.85); later(()=>tick(0.6, 0.8), 110); }
     // caught in a whirlpool: a gurgling swirl of water sweeping up and down
     function whirl(){
       if(!ac || ac.state!=='running') return;
@@ -3727,7 +3792,7 @@
       g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.09, t0+0.03); g.gain.exponentialRampToValueAtTime(0.0001, t0+0.24);
       cr.connect(bp); bp.connect(am); am.connect(g); g.connect(master);
       cr.start(t0); cr.stop(t0+0.26); lfo.start(t0); lfo.stop(t0+0.26);
-      setTimeout(()=> thunk(0.9), 230);
+      later(()=> thunk(0.9), 230);
     }
     function coins(){
       if(!ac || ac.state!=='running') return;
@@ -3792,7 +3857,15 @@
     }
 
 
-    return {init, oar, ratchet, paddle, springOff, oarCue, oarHit, rowBed, crate, tick, thunk, wheel, ambient, rain, cicadas, book, pageTurn, pickup, hammer, bell, whirl, type, splash, drone, gull, crash, waveBreak, waveHit, surf, townEvent, chatter, cricket, howl, anchor, buoy, coins, engine};
+    // each sound's kind (for SOUND_VOL); the ones played every frame set gains made in init(), routed there
+    const KIND = {oar: 'oars', oarCue: 'oars', oarHit: 'oars', rowBed: 'oars', ratchet: 'crank', paddle: 'paddles', springOff: 'paddles',
+                  crate: 'crate', tick: 'clicks', thunk: 'clicks', type: 'clicks', hammer: 'clicks', book: 'book', pageTurn: 'book',
+                  pickup: 'nets', splash: 'nets', bell: 'bell', whirl: 'whirl', drone: 'whirl', gull: 'gulls', crash: 'crash',
+                  waveBreak: 'waves', waveHit: 'waves', surf: 'waves', townEvent: 'town', chatter: 'town', cricket: 'night', howl: 'night',
+                  anchor: 'anchor', buoy: 'buoy', coins: 'coins', rain: 'rain', cicadas: 'cicadas', ambient: 'sea', wheel: 'wheel', engine: 'engine'};
+    const kinded = (name, fn)=> (...a)=>{ const k = curKind; curKind = KIND[name]; try{ return routed(KIND[name], ()=> fn(...a)); } finally { curKind = k; } };
+    for(const [k, v] of Object.entries(SOUND_VOL)) vol[k] = v;
+    return {init, setVol, ...Object.fromEntries(Object.entries({oar, ratchet, paddle, springOff, oarCue, oarHit, rowBed, crate, tick, thunk, wheel, ambient, rain, cicadas, book, pageTurn, pickup, hammer, bell, whirl, type, splash, drone, gull, crash, waveBreak, waveHit, surf, townEvent, chatter, cricket, howl, anchor, buoy, coins, engine}).map(([n, f])=> [n, kinded(n, f)]))};
   })();
 
   // ---------- Ship's wheel ----------
@@ -4424,7 +4497,7 @@
   function curlScroll(){
     if(intro.classList.contains('hidden')) return;
     const H = scrollBody.clientHeight, st = scrollBody.scrollTop;
-    for(const el of scrollBody.querySelectorAll(':scope > *:not(details), #wg-knobs > *, #wg-dknobs > *, #wg-changes > *, #wg-changes li, #wg-sails > *:not(.sl-sail), .sl-sail > *, .wg-sec > *:not(#wg-knobs):not(#wg-dknobs):not(#wg-changes):not(#wg-sails)')){
+    for(const el of scrollBody.querySelectorAll(':scope > *:not(details), #wg-knobs > *, #wg-dknobs > *, #wg-changes > *, #wg-changes li, #wg-sails > *:not(.sl-sail), .sl-sail > *, #wg-audio > *, .wg-sec > *:not(#wg-knobs):not(#wg-dknobs):not(#wg-changes):not(#wg-sails):not(#wg-audio)')){
       let y = 0; for(let e = el; e && e !== scrollBody; e = e.offsetParent) y += e.offsetTop;   // (a transformed row is its children's offsetParent)
       const top = y - st, bot = H - (top + el.offsetHeight);
       const t = Math.max(0, Math.min(1, (CURL_BAND - Math.min(top, bot))/CURL_BAND));
@@ -4673,6 +4746,41 @@
     box.addEventListener('input', redrawAll);
     redrawAll();
   }
+  // the Audio section of the first screen: a loudness slider per kind of sound (SOUND_VOL), live,
+  // kept on this phone (dropped once the defaults in Tuning change), a sample when a slider is let go
+  function audioEditor(T){
+    const box = document.getElementById('wg-audio');
+    document.getElementById('wg-sum-audio').textContent = T.audioTitle;
+    const DEF = {...SOUND_VOL}, defKey = JSON.stringify(DEF);
+    const save = ()=>{ try{ localStorage.setItem('vv.audio', JSON.stringify({def: defKey, v: SOUND_VOL})); }catch(e){} };
+    try{ const st = JSON.parse(localStorage.getItem('vv.audio') || 'null'); if(st && st.def === defKey) for(const k in DEF) if(typeof st.v[k] === 'number') SOUND_VOL[k] = st.v[k]; }catch(e){}
+    for(const k in SOUND_VOL) Sfx.setVol(k, SOUND_VOL[k]);
+    const SAMPLE = {master: ()=> Sfx.bell(), night: ()=> Sfx.howl(0.03, 0), gulls: ()=> Sfx.gull(0, 0.09), town: ()=> Sfx.townEvent('hammer', 0.6, 0),
+                    whirl: ()=> Sfx.whirl(), waves: ()=> Sfx.waveBreak(0.8, 0), crash: ()=> Sfx.crash(0.6), clicks: ()=> Sfx.thunk(0.5),
+                    anchor: ()=> Sfx.anchor(true), crank: ()=> Sfx.ratchet(CRANK_VOL, true), paddles: ()=> Sfx.paddle(PADDLE_VOL),
+                    oars: ()=> Sfx.oarHit(OAR_CUE_VOL), nets: ()=> Sfx.pickup(), bell: ()=> Sfx.bell(), buoy: ()=> Sfx.buoy(),
+                    crate: ()=> Sfx.crate(), coins: ()=> Sfx.coins(), book: ()=> Sfx.pageTurn()};
+    const n2 = x=> (+(+x).toFixed(2)).toFixed(2);
+    box.innerHTML = '<p class="sl-hint">' + T.audioHint + '</p>';
+    const code = document.createElement('p'); code.className = 'sl-code';
+    const showCode = ()=>{ code.textContent = 'const SOUND_VOL = {' + Object.keys(SOUND_VOL).map(k=> k + ': ' + +(+SOUND_VOL[k]).toFixed(2)).join(', ') + '};'; };
+    const shows = [];
+    for(const k in SOUND_VOL){
+      const row = document.createElement('div'); row.className = 'sl-row';
+      const id = 'au-' + k, lab = document.createElement('label'), inp = document.createElement('input'), val = document.createElement('span');
+      lab.htmlFor = id; lab.textContent = T.audio[k] || k; lab.title = k;
+      inp.id = id; inp.type = 'range'; inp.min = 0; inp.max = 2; inp.step = 0.05;
+      const show = ()=>{ inp.value = SOUND_VOL[k]; val.textContent = n2(SOUND_VOL[k]); row.classList.toggle('changed', Math.abs(SOUND_VOL[k] - DEF[k]) > 1e-6); };
+      inp.addEventListener('input', ()=>{ SOUND_VOL[k] = +inp.value; Sfx.setVol(k, SOUND_VOL[k]); show(); showCode(); save(); });
+      inp.addEventListener('change', ()=>{ Sfx.init(); if(SAMPLE[k]) setTimeout(SAMPLE[k], 60); });   // (after the first touch the sound wakes up)
+      show(); shows.push(show);
+      row.append(lab, inp, val); box.appendChild(row);
+    }
+    box.appendChild(code); showCode();
+    const rb = document.createElement('button'); rb.type = 'button'; rb.className = 'sl-reset'; rb.textContent = T.audioReset;
+    rb.addEventListener('click', ()=>{ for(const k in DEF){ SOUND_VOL[k] = DEF[k]; Sfx.setVol(k, DEF[k]); } shows.forEach(f=> f()); showCode(); save(); buzz([20]); });
+    box.appendChild(rb);
+  }
   (function worldGen(){
     const K = {ISLAND_SCALE, ISLAND_COUNT, CLUSTER_SHARE, SPIRAL, SPIRAL_ARMS, OPEN_ISLANDS, ISLAND_BIG, ISLAND_L, ISLAND_C, ISLAND_ATOLL,
                OPEN_ROCK_TRIES, TRADERS_HOME, TRADERS_VILLAGES, ROLLER_RATE, CLOUD_COUNT};
@@ -4697,6 +4805,7 @@
     hs.addEventListener('input', ()=>{ setHaptics(+hs.value); hv.textContent = (+hs.value).toFixed(2); });
     hs.addEventListener('change', ()=> buzz([30, 60, 30]));
     sailEditor(T);
+    audioEditor(T);
     const gen = document.getElementById('wg-gen'), reset = document.getElementById('wg-reset');
     gen.textContent = T.generate; reset.textContent = T.reset;
     // the dangers: the sharks' and whirlpools' knobs, the same kind of fields in their own section
