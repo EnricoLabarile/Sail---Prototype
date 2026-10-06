@@ -48,7 +48,7 @@
   const OAR_CUE_VOL = 1;            // loudness of the knock that sounds as the oar button goes ink (the moment to press; 0 = silent)
   const OAR_SPIN_FADE = 0.05;        // a slow steady drain of the rowing's power (a share of it per second)…
   const OAR_SKIP = 0.65;             // …and the power kept when the pointer passes the mark without a press (she slows; a few skipped and she stops)
-  const OAR_RATE = 0.52;              // turns of the oar button a second: one steady beat, whatever the power (calm: time to look at the sea too)
+  const OAR_RATE = 0.624;             // turns of the oar button a second: one steady beat, whatever the power (calm: time to look at the sea too; was 0.52)
   const OAR_RATE_EASE = 2;           // how quickly the button gets up to that beat when she starts rowing, and winds down to a halt when she stops
   const OAR_KICK = 20;               // px/s of extra way a stroke pulled right on time gives her (a visible surge; half of it at once)…
   const OAR_KICK_FADE = 1.3;         // …fading away at this rate a second (lower = she glides on longer)
@@ -227,6 +227,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Oars: the oar button turns 20% quicker (a slightly faster rowing beat)',
+    ]},
+    {build: '2026-10-05 21:27', items: [
       'First screen: a new folding section, Sails: each sail\'s speed curve, drawn live, with a slider per angle and for its handling; the values hold in the game and on this phone (Reset this sail brings back the Tuning ones)',
     ]},
     {build: '2026-10-05 21:05', items: [
@@ -235,11 +238,8 @@
     {build: '2026-10-05 20:53', items: [
       'First screen: folding sections (tap a heading to open or shut it); What\'s new starts folded',
     ]},
-    {build: '2026-10-05 20:44', items: [
-      'Lateen: a rounder curve, falling off gently aft of the beam to 55% dead downwind (was 22%)',
-    ]},
   ];
-  const BUILD = '2026-10-05 21:27';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-06 08:24';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in

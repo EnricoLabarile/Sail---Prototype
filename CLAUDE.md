@@ -336,7 +336,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   hidden when moored or at the market): a paper disc with a pointer (a triangle on a dashed ring) that turns once a
   stroke, under a **fixed mark** (an ink triangle above it). The first press sets her rowing slowly (power `oarSpin` =
   `OAR_START` 0.2, an ordinary stroke sound) and the pointer sets off from the mark; it goes round at one **steady beat**, `OAR_RATE`
-  0.52 turns a second whatever the power (`oarCycle`, `oarRate`; calm, so there's time to look at the sea too), easing
+  0.624 turns a second (20% quicker than the old 0.52) whatever the power (`oarCycle`, `oarRate`; calm, so there's time to look at the sea too), easing
   in as she starts rowing and winding down to a halt when she stops (`OAR_RATE_EASE`). Each time it comes back up to the mark is the moment to press: the disc **swells** as it nears (`OAR_WARN` =
   0.2 of a turn, class `ready`) and **goes ink for the whole window** to press (class `now`, pressed or not: a cue to
   catch from the corner of the eye), and at that same instant a short wooden **knock** of the oarlock sounds
