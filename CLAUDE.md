@@ -248,7 +248,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   `knob('NAME', value)`: a value in the address wins. Under the build time the card has **folding sections**
   (`<details class="wg-sec">`, a tap on the heading opens or shuts it, a little triangle turns): "What's new"
   (`#wg-sec-changes`, the list of changes, `TEXT.worldGen.changesTitle`), "Settings" (the Vibration slider,
-  `TEXT.worldGen.settings`), "Sails" (below) and "World" (the preview, the knobs and Generate / Defaults; `TEXT.worldGen.title`), **all
+  `TEXT.worldGen.settings`), "Sails" (below), "Dangers" (`#wg-sec-dangers`, `TEXT.worldGen.dangersTitle`: fields like the World's for the sharks' and whirlpools' knobs, `SHARK_ON` 1/0, `SHARK_CHANCE`, `SHARK_COOLDOWN`, `SHARK_SPEED`, `SHARK_DAMAGE`, `SHARK_GIVE_UP`, `WHIRL_FOLLOW`, `WHIRL_FOLLOW_SPEED`, all `knob(...)` in Tuning; its Apply, like Generate, reloads with the changed fields of both sections in the address) and "World" (the preview, the knobs and Generate / Defaults; `TEXT.worldGen.title`), **all
   shut at first**;
   **Sails** (`#wg-sec-sails`, `sailEditor`, texts `TEXT.worldGen.sails*`, between Settings and World): per sail its
   polar (`polarPath`, the same drawing as the wind card; the other sail dashed) redrawn live, a slider per angle of its

@@ -70,14 +70,14 @@
   const WHIRL_PULL = 22;             // px/s pull at the edge of the core…
   const WHIRL_CURVE = 4;             // …rising exponentially from ~0 at the rim
   const WHIRL_FADE = 3;              // seconds for a whirlpool to open up / die down
-  const SHARK_ON = true;             // sharks: now and then one finds her at sea, follows her, bites the hull and makes off
-  const SHARK_CHANCE = 0.25;         // the chance of an encounter in each minute she spends at sea, out of home waters (rare)
-  const SHARK_COOLDOWN = 90;         // seconds at least between one encounter and the next
-  const SHARK_SPEED = 38;            // how fast it swims after her (px/s; under a good sail she can outrun it)
-  const SHARK_DAMAGE = 8;            // hull damage from a bite
-  const SHARK_GIVE_UP = 30;          // seconds it follows before giving up, if it never reaches her
-  const WHIRL_FOLLOW = 2;            // a whirlpool creeps after her while she's within this many times its radius…
-  const WHIRL_FOLLOW_SPEED = 7;      // …at this many px/s (slow; it never leaves open water); once it has caught and spun her it dies down
+  const SHARK_ON = knob('SHARK_ON', 1);   // 1 = on, 0 = off. Sharks: now and then one finds her at sea, follows her, bites the hull and makes off
+  const SHARK_CHANCE = knob('SHARK_CHANCE', 0.25); // the chance of an encounter in each minute she spends at sea, out of home waters (rare)
+  const SHARK_COOLDOWN = knob('SHARK_COOLDOWN', 90); // seconds at least between one encounter and the next
+  const SHARK_SPEED = knob('SHARK_SPEED', 38); // how fast it swims after her (px/s; under a good sail she can outrun it)
+  const SHARK_DAMAGE = knob('SHARK_DAMAGE', 8); // hull damage from a bite
+  const SHARK_GIVE_UP = knob('SHARK_GIVE_UP', 30); // seconds it follows before giving up, if it never reaches her
+  const WHIRL_FOLLOW = knob('WHIRL_FOLLOW', 2); // a whirlpool creeps after her while she's within this many times its radius…
+  const WHIRL_FOLLOW_SPEED = knob('WHIRL_FOLLOW_SPEED', 7); // …at this many px/s (slow; it never leaves open water); once it has caught and spun her it dies down
   const WHIRL_FLING = 200;            // px/s² of extra speed while she runs round a whirlpool's outer ring with its swirl (a slingshot)…
   const WHIRL_FLING_MAX = 200;        // …up to this much above her normal speed (it fades once she's out)
   const WHIRL_FLING_COS = 0.8;       // how well her heading must follow the swirl to be flung (cos of ~37°)
@@ -246,6 +246,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'First screen: a new "Dangers" section with the sharks\' and whirlpools\' knobs (SHARK_*, WHIRL_FOLLOW*); Apply reloads the game with the changed values',
+    ]},
+    {build: '2026-10-06 18:16', items: [
       'Sharks (rare): out at sea, away from home waters, a dark shape with its fin cutting the water may come after you; if it reaches the boat it bites the hull (-8) and makes off',
     ]},
     {build: '2026-10-06 18:13', items: [
@@ -255,11 +258,8 @@
     {build: '2026-10-06 18:00', items: [
       'The boat in 3D: she rolls and pitches for real (the mast leans, her side shows where she dips, the sail sways): with the swell, heeling to leeward with the sail full (most with the wind on the beam), leaning out of turns, the bow lifting as she gathers way; seen a little from the south, so the mast and sail rise up the screen like the trees',
     ]},
-    {build: '2026-10-06 17:55', items: [
-      'Wind on the sail: removed',
-    ]},
   ];
-  const BUILD = '2026-10-06 18:16';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-06 18:22';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -281,6 +281,8 @@
       build:    'Build {time}',                       // top right of the first screen: when this version was made
       // the sail editor (a folding section of the first screen): each sail's speed curve and handling, live
       sailsTitle: 'Sails',
+      dangersTitle: 'Dangers',                      // the folding section with the sharks' and whirlpools' knobs
+      dangersApply: 'Apply',                        // its button: reloads the game with the changed values
       sailsHint: 'Drag a slider: the curve follows. The values hold in the game and on this phone; the line under each sail can be pasted into Tuning.',
       sailsCurve: 'Speed by angle off the wind',      // above the eleven sliders of a sail's curve
       sailsMore: 'Handling',                        // above the other sliders of a sail
@@ -1043,10 +1045,10 @@
   #wg-changes ol.past{opacity:.75;}
   #wg-map{margin-top:4px;}
   #wg-map{display:block; width:200px; height:200px; margin:0 auto 10px; border:2px solid var(--ink); image-rendering:pixelated;}
-  #wg-knobs{display:grid; grid-template-columns:1fr 74px; gap:3px 8px; font:11.5px/1.3 ui-monospace, monospace;}
-  #wg-knobs label{align-self:center; overflow:hidden; text-overflow:ellipsis;}
-  #wg-knobs input{width:100%; box-sizing:border-box; font:inherit; padding:2px 4px; background:var(--paper); color:var(--ink); border:1.5px solid var(--ink); border-radius:2px;}
-  #wg-knobs input.changed{background:var(--ink); color:var(--paper);}
+  #wg-knobs, #wg-dknobs{display:grid; grid-template-columns:1fr 74px; gap:3px 8px; font:11.5px/1.3 ui-monospace, monospace;}
+  #wg-knobs label, #wg-dknobs label{align-self:center; overflow:hidden; text-overflow:ellipsis;}
+  #wg-knobs input, #wg-dknobs input{width:100%; box-sizing:border-box; font:inherit; padding:2px 4px; background:var(--paper); color:var(--ink); border:1.5px solid var(--ink); border-radius:2px;}
+  #wg-knobs input.changed, #wg-dknobs input.changed{background:var(--ink); color:var(--paper);}
   #wg-build{margin:0 0 4px; font:11px/1.2 ui-monospace, monospace; opacity:0.65;}
   .wg-row{display:flex; gap:10px; justify-content:center;}
   #intro .wg-row button{padding:7px 16px; font-size:14px; background:var(--paper); color:var(--ink);}
@@ -1152,6 +1154,9 @@
     <details class="wg-sec" id="wg-sec-settings"><summary id="wg-sum-settings"></summary>
     <div class="wg-setting"><label for="wg-haptics" id="wg-haptics-label"></label><input id="wg-haptics" type="range" min="0" max="1" step="0.05"><span id="wg-haptics-val"></span></div></details>
     <details class="wg-sec" id="wg-sec-sails"><summary id="wg-sum-sails"></summary><div id="wg-sails"></div></details>
+    <details class="wg-sec" id="wg-sec-dangers"><summary id="wg-sum-dangers"></summary>
+    <div id="wg-dknobs"></div>
+    <div class="wg-row"><button id="wg-dapply" type="button"></button></div></details>
     <details class="wg-sec" id="wg-sec-world"><summary id="wg-title"></summary>
     <canvas id="wg-map" aria-label="Preview of the world"></canvas>
     <div id="wg-knobs"></div>
@@ -4350,7 +4355,7 @@
   function curlScroll(){
     if(intro.classList.contains('hidden')) return;
     const H = scrollBody.clientHeight, st = scrollBody.scrollTop;
-    for(const el of scrollBody.querySelectorAll(':scope > *:not(details), #wg-knobs > *, #wg-changes > *, #wg-changes li, #wg-sails > *:not(.sl-sail), .sl-sail > *, .wg-sec > *:not(#wg-knobs):not(#wg-changes):not(#wg-sails)')){
+    for(const el of scrollBody.querySelectorAll(':scope > *:not(details), #wg-knobs > *, #wg-dknobs > *, #wg-changes > *, #wg-changes li, #wg-sails > *:not(.sl-sail), .sl-sail > *, .wg-sec > *:not(#wg-knobs):not(#wg-dknobs):not(#wg-changes):not(#wg-sails)')){
       let y = 0; for(let e = el; e && e !== scrollBody; e = e.offsetParent) y += e.offsetTop;   // (a transformed row is its children's offsetParent)
       const top = y - st, bot = H - (top + el.offsetHeight);
       const t = Math.max(0, Math.min(1, (CURL_BAND - Math.min(top, bot))/CURL_BAND));
@@ -4625,18 +4630,24 @@
     sailEditor(T);
     const gen = document.getElementById('wg-gen'), reset = document.getElementById('wg-reset');
     gen.textContent = T.generate; reset.textContent = T.reset;
-    for(const [k, v] of Object.entries(K)){
+    // the dangers: the sharks' and whirlpools' knobs, the same kind of fields in their own section
+    const DK = {SHARK_ON, SHARK_CHANCE, SHARK_COOLDOWN, SHARK_SPEED, SHARK_DAMAGE, SHARK_GIVE_UP, WHIRL_FOLLOW, WHIRL_FOLLOW_SPEED};
+    const dbox = document.getElementById('wg-dknobs'), dapply = document.getElementById('wg-dapply');
+    document.getElementById('wg-sum-dangers').textContent = T.dangersTitle; dapply.textContent = T.dangersApply;
+    const fields = (K, box)=>{ for(const [k, v] of Object.entries(K)){
       const id = 'wg-' + k, lab = document.createElement('label'), inp = document.createElement('input');
       lab.htmlFor = id; lab.textContent = k; lab.title = k;
       inp.id = id; inp.type = 'number'; inp.step = 'any'; inp.value = +(+v).toFixed(3); inp.dataset.k = k;
       inp.addEventListener('input', ()=> inp.classList.toggle('changed', inp.value !== '' && +inp.value !== +(+v).toFixed(3)));
       box.append(lab, inp);
-    }
-    gen.addEventListener('click', ()=>{
-      const q = new URLSearchParams(location.search);       // what was set before stays, plus what changed now
-      for(const inp of box.querySelectorAll('input.changed')) q.set(inp.dataset.k, inp.value);   // (untouched knobs keep their own rule, e.g. ISLAND_COUNT follows ISLAND_SCALE)
+    } };
+    fields(K, box); fields(DK, dbox);
+    const regen = ()=>{
+      const q = new URLSearchParams(location.search);       // what was set before stays, plus what changed now (in either section)
+      for(const inp of document.querySelectorAll('#wg-knobs input.changed, #wg-dknobs input.changed')) q.set(inp.dataset.k, inp.value);   // (untouched knobs keep their own rule, e.g. ISLAND_COUNT follows ISLAND_SCALE)
       location.search = q.toString();
-    });
+    };
+    gen.addEventListener('click', regen); dapply.addEventListener('click', regen);
     reset.addEventListener('click', ()=>{ location.search = ''; });
     // the preview (painted once the whole script has run: it needs the dither)
     setTimeout(()=>{
