@@ -228,6 +228,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Oars: no more "gloop": each stroke is now a short, dry swish of the blade through the water',
+    ]},
+    {build: '2026-10-06 12:45', items: [
       'Oars: the rowing background is now a steady, low churn of water (no more chirping drips)',
     ]},
     {build: '2026-10-06 12:28', items: [
@@ -237,12 +240,8 @@
     {build: '2026-10-06 12:23', items: [
       'Logbook, wind card: a little boat in the middle shows her heading (instead of the needle)',
     ]},
-    {build: '2026-10-06 08:53', items: [
-      'Fix: the wheel no longer vanishes at the start (it was wiped when the screen changed size, e.g. the address bar hiding)',
-      'Fix: no blue square round the oar button when it is pressed',
-    ]},
   ];
-  const BUILD = '2026-10-06 12:45';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-06 13:14';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -3199,22 +3198,18 @@
       src.connect(bp); bp.connect(g); g.connect(master);
       src.start(t0, Math.random()*0.3, 0.65);
     }
-    // an oar biting the water: a low, round gloop and a muffled swirl of water (k: 0..1 how hard)
-    function oar(k, strong){         // strong: a stroke pulled right on time (a fuller, brighter, more powerful gloop)
+    // an oar stroke: no gloop, just the blade's dry swish through the water, a short soft brush of noise
+    // (k: 0..1 how hard; strong: a stroke pulled right on time, a little fuller and brighter)
+    function oar(k, strong){
       if(!ac || ac.state!=='running') return;
-      const t0 = ac.currentTime, vol = (0.6 + 0.4*(k===undefined ? 1 : k))*(strong ? 1.5 : 1);
-      const o = ac.createOscillator(); o.type='sine';
-      o.frequency.setValueAtTime((strong ? 210 : 150) + Math.random()*30, t0); o.frequency.exponentialRampToValueAtTime(strong ? 85 : 70, t0+(strong ? 0.26 : 0.2));
-      const og = ac.createGain();
-      og.gain.setValueAtTime(0.0001, t0); og.gain.exponentialRampToValueAtTime(0.09*vol, t0+0.02); og.gain.exponentialRampToValueAtTime(0.0001, t0+0.24);
-      o.connect(og); og.connect(master); o.start(t0); o.stop(t0+0.26);
+      const t0 = ac.currentTime, vol = (0.6 + 0.4*(k===undefined ? 1 : k))*(strong ? 1.4 : 1), len = strong ? 0.3 : 0.24;
       const src = ac.createBufferSource(); src.buffer = noise;
-      const lp = ac.createBiquadFilter(); lp.type='lowpass'; lp.Q.value=1.4;
-      lp.frequency.setValueAtTime(strong ? 1300 : 700, t0); lp.frequency.exponentialRampToValueAtTime(180, t0+0.45);
+      const bp = ac.createBiquadFilter(); bp.type='bandpass'; bp.Q.value=0.6;
+      bp.frequency.setValueAtTime(strong ? 1500 : 1100, t0); bp.frequency.exponentialRampToValueAtTime(strong ? 700 : 550, t0+len);
       const g = ac.createGain();
-      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.08*vol, t0+0.06); g.gain.exponentialRampToValueAtTime(0.0001, t0+0.5);
-      src.connect(lp); lp.connect(g); g.connect(master);
-      src.start(t0, Math.random()*0.4, 0.55);
+      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.05*vol, t0+0.04); g.gain.exponentialRampToValueAtTime(0.0001, t0+len);
+      src.connect(bp); bp.connect(g); g.connect(master);
+      src.start(t0, Math.random()*0.5, len + 0.05);
     }
     // the oarlock's knock as the oar button goes ink: the moment to press, so it can be rowed by ear (k: loudness)
     // the answer to a press on time: a soft, short, woody tock a fifth above the cue (a sine, quickly damped, and a
