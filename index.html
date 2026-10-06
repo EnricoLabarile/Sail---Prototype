@@ -219,6 +219,10 @@
   const WIND_STREAK_WIDTH = 1.8;     // their line width (was 1.2)
   const WIND_STREAK_ALPHA = 0.85;    // how dark they are (was 0.65)
   const WIND_STREAK_LEN = 1.5;       // their length × (1 = 40–70 px as before)
+  const BOAT_TILT = 0.45;            // the boat in 3D: how much the view looks at her from the south (0 = straight down; height then shows only through her roll and pitch)
+  const BOAT_HEEL = 0.3;             // how far she heels to leeward with the sail full of wind (radians at full drive, the wind on the beam)
+  const BOAT_SEA_MOTION = 1;         // how much the swell rolls and pitches her (1 = as tuned)
+  const MAST_H = 26;                 // the square sail's mast height (the yard just under its top); the lateen's yard climbs to about this
   const SAIL_TONE = 0.72;            // the sail's cloth when drawing well (1 = paper white, 0 = ink); slack or reefed it's a little darker
   const SPARE_SAIL = true;           // both sails ride in the hold (a slot each, the one not rigged); a tap on one in the logbook rigs it
   const START_RIG = null;            // the sail rigged at the start: null = none, she sets out on the oars ('square' or 'lateen' = that one)
@@ -234,6 +238,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The boat in 3D: she rolls and pitches for real (the mast leans, her side shows where she dips, the sail sways): with the swell, heeling to leeward with the sail full (most with the wind on the beam), leaning out of turns, the bow lifting as she gathers way; seen a little from the south, so the mast and sail rise up the screen like the trees',
+    ]},
+    {build: '2026-10-06 17:55', items: [
       'Wind on the sail: removed',
     ]},
     {build: '2026-10-06 17:50', items: [
@@ -242,11 +249,8 @@
     {build: '2026-10-06 17:38', items: [
       'Wind on the sail, after your sketch: while the sail draws well, short curly wind lines run along both faces of the cloth, from the luff aft, and curl off past the leech (the air flowing past both sides: the lift)',
     ]},
-    {build: '2026-10-06 15:37', items: [
-      'Air on the sail: removed (the wind streaks on the sea stay as they are)',
-    ]},
   ];
-  const BUILD = '2026-10-06 17:55';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-06 18:00';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -8507,14 +8511,44 @@
     // and after a knock (B.rock), gentle when she lies still
     const sea = 0.6 + 0.4*windStrength + (B.rock||0);
     const heave = (Math.sin(t*1.25) + 0.5*Math.sin(t*2.05+1.3))*sea;          // up and down
-    const roll  = (Math.sin(t*1.6+0.4)*0.05 + Math.sin(t*2.7)*0.025)*sea;       // side to side
-    const pitch = (Math.sin(t*1.1+2.1) + 0.4*Math.sin(t*2.3))*0.018*sea;       // bow up, bow down
+    // she is a little 3D model: roll (about her keel, + lifts the starboard side) and pitch (+ lifts the bow) are
+    // damped springs, pulled toward the swell's motion, a heel to leeward with the sail drawing (most with the wind
+    // on the beam), a lean out of a turn, the bow lifting as she gathers way and dipping as she slows; knocks
+    // (B.rock) shake her
+    {
+      const now = performance.now(), mdt = Math.min(0.05, (now - (B.motLast || now))/1000); B.motLast = now;
+      const sm = sea*BOAT_SEA_MOTION;
+      const rollWave = (Math.sin(t*1.6+0.4)*0.07 + Math.sin(t*2.7)*0.035)*sm;
+      const pitchWave = (Math.sin(t*1.1+2.1) + 0.4*Math.sin(t*2.3))*0.03*sm;
+      const rel = norm(B.angle - windAngle - (B.windOff||0)), lee = (B.boomSigned||0) >= 0 ? 1 : -1;
+      const drive = B.rig ? (B.sailPower||0)*(B.sailAmount === undefined ? 1 : B.sailAmount)*(1 - (B.furl||0)) : 0;
+      const heel = -lee*BOAT_HEEL*drive*Math.abs(Math.sin(rel))*(B.rig === 'lateen' ? 1 : 0.8);
+      const turn = mdt > 0 ? norm(B.angle - (B.angPrev === undefined ? B.angle : B.angPrev))/mdt : 0; B.angPrev = B.angle;
+      const acc = mdt > 0 ? ((B.speed||0) - (B.spdPrev === undefined ? (B.speed||0) : B.spdPrev))/mdt : 0; B.spdPrev = B.speed||0;
+      const rollT = rollWave + heel - turn*(B.speed||0)*0.006;               // she leans out of the turn
+      const pitchT = pitchWave + Math.max(-0.08, Math.min(0.08, acc*0.006)) - (B.surfT > 0 ? 0.05 : 0);
+      B.roll = B.roll || 0; B.rollV = B.rollV || 0; B.pitch = B.pitch || 0; B.pitchV = B.pitchV || 0;
+      if(B.rock > 0.05){ B.rollV += (Math.random() - 0.5)*B.rock*0.9*mdt*20; B.pitchV += (Math.random() - 0.5)*B.rock*0.5*mdt*20; }
+      B.rollV += (16*(rollT - B.roll) - 3.2*B.rollV)*mdt; B.roll += B.rollV*mdt;
+      B.pitchV += (22*(pitchT - B.pitch) - 4.5*B.pitchV)*mdt; B.pitch += B.pitchV*mdt;
+      B.roll = Math.max(-0.6, Math.min(0.6, B.roll)); B.pitch = Math.max(-0.3, Math.min(0.3, B.pitch));
+    }
+    const roll = B.roll, pitch = B.pitch;
     ctx.save();
     ctx.translate(B.x, B.y - heave*0.6);
     ctx.rotate(B.angle);
     ctx.save();
-    ctx.scale(1 + pitch, 1 - Math.abs(roll)*0.9);          // pitching lengthens, rolling narrows her from above
-    ctx.transform(1, 0, roll*0.6, 1, 0, 0);               // a slight lean to the rolling side
+    // the projection: a point (x, y, z) of the boat (bow at +x, starboard +y, up +z) rolled, pitched, then seen
+    // from above with the view tilted toward the south (BOAT_TILT: height shows as a shift up the screen, like the trees)
+    const base = ctx.getTransform();
+    const cf = Math.cos(roll), sf = Math.sin(roll), ct = Math.cos(pitch), st = Math.sin(pitch);
+    const vx = -Math.sin(B.angle)*BOAT_TILT, vy = -Math.cos(B.angle)*BOAT_TILT;   // the screen's 'up', in her frame
+    const MX = [ct + vx*st, -sf*st + vx*sf*ct, -cf*st + vx*cf*ct];                // x on screen from (x, y, z)
+    const MY = [vy*st, cf + vy*sf*ct, -sf + vy*cf*ct];                            // y on screen from (x, y, z)
+    const P = (x, y, z)=> [MX[0]*x + MX[1]*y + MX[2]*z, MY[0]*x + MY[1]*y + MY[2]*z];
+    const L = z=>{ ctx.setTransform(base); ctx.transform(MX[0], MY[0], MX[1], MY[1], MX[2]*z, MY[2]*z); };   // draw on the plane at height z
+    const FB = 3;                                          // freeboard: the gunwale's height above the water
+    L(0);
     // hull outline (boat frame, bow at +x)
     const hullPath=(s)=>{
       ctx.beginPath();
@@ -8557,8 +8591,12 @@
       ctx.fill(); ctx.stroke();
       ctx.restore();
     }
-    // hull: paper; blinks to ink when hit
+    // hull: her sides first (a few slices from the waterline up, so the topside shows where she leans or the
+    // view looks at her), then the deck at the gunwale, paper; it blinks to ink when hit
     const blink = !g && hurtFlash>0 && Math.floor(hurtFlash*20)%2===0;
+    for(const z of [0, FB*0.35, FB*0.7]){ L(z); ctx.fillStyle = V(0.3); hullPath(0.9 + 0.1*z/FB); ctx.fill(); }
+    L(0); ctx.strokeStyle = INKC; ctx.lineWidth = 1; hullPath(0.9); ctx.stroke();
+    L(FB);
     ctx.fillStyle = blink ? INKC : PAPERC;
     hullPath(1); ctx.fill();
     // gunwale line and two thwarts, then the ink outline
@@ -8599,9 +8637,10 @@
       const tx = -15+Math.cos(rud*0.75)*7, ty = Math.sin(rud*0.75)*7;           // the tiller's end
       const mx = -11.2, my = 3.4 + rud*0.6;
       ctx.fillStyle = INKC; ctx.strokeStyle = INKC;
-      ctx.lineWidth = 1.5*LWK; ctx.beginPath(); ctx.moveTo(mx+0.4, my-1.8); ctx.lineTo(tx, ty); ctx.stroke();   // the arm on the tiller
-      ctx.beginPath(); ctx.ellipse(mx, my, 2.3, 3.4, 0, 0, Math.PI*2); ctx.fill();                              // shoulders
-      ctx.beginPath(); ctx.arc(mx+0.7, my, 1.9, 0, Math.PI*2); ctx.fill();                                      // head
+      L(FB + 2); ctx.lineWidth = 1.5*LWK; ctx.beginPath(); ctx.moveTo(mx+0.4, my-1.8); ctx.lineTo(tx, ty); ctx.stroke();   // the arm on the tiller
+      L(FB + 3); ctx.beginPath(); ctx.ellipse(mx, my, 2.3, 3.4, 0, 0, Math.PI*2); ctx.fill();                   // shoulders
+      L(FB + 5); ctx.beginPath(); ctx.arc(mx+0.7, my, 1.9, 0, Math.PI*2); ctx.fill();                           // head
+      L(FB);
     }
     // oars: slide out from the gunwales; when turning, they row in
     // opposite senses on the two sides, which is what spins the boat
@@ -8639,9 +8678,12 @@
       const want = g ? (g.moored ? 1 : 0) : (anchored && weighT <= 0) || boat.sailFurled ? 1 : 0;
       B.furl = (B.furl === undefined ? want : B.furl) + (want - (B.furl||0))*Math.min(1, fdt*(want ? 2.2 : 3.5));
     }
-    if(B.rig === 'lateen'){ drawLateenSail(B); ctx.restore(); ctx.restore(); return; }
+    const mast = (mx, top)=>{ const [x0, y0] = P(mx, 0, FB), [x1, y1] = P(mx, 0, top); ctx.setTransform(base);
+      ctx.strokeStyle = INKC; ctx.lineCap = 'round'; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+      ctx.fillStyle = INKC; ctx.beginPath(); ctx.arc(x0, y0, 1.8, 0, Math.PI*2); ctx.fill(); };
+    if(B.rig === 'lateen'){ drawLateenSail(B, P, L, base, FB, mast); ctx.restore(); ctx.restore(); return; }
     if(B.rig === null){                                   // no sail rigged: just the bare mast
-      ctx.fillStyle=INKC; ctx.beginPath(); ctx.arc(2,0,2.4,0,Math.PI*2); ctx.fill();
+      mast(2, MAST_H*0.85);
       ctx.restore(); ctx.restore(); return;
     }
     // --- square sail on a yard, pivoting at the mast (centre) ---
@@ -8667,17 +8709,24 @@
     const sailPath=()=>{ ctx.beginPath(); ctx.moveTo(ax,ay); ctx.bezierCurveTo(c1x,c1y,c2x,c2y,bx,by); };
     // cloth: a dotted tan (SAIL_TONE) when drawing well, darker when slack or reefed
     const tone = SAIL_TONE - 0.14*(1-p) - 0.1*(1-B.sailAmount) - 0.08*furl;
+    // in 3D: the cloth hangs from the yard (zY, near the masthead) down to its foot (zF), a curtain drawn as a few
+    // slices of its curve; furled, the foot is drawn up to the yard
+    const zY = MAST_H - 2, zF = zY - (zY - FB - 5)*(1 - 0.85*furl);
+    mast(mx, MAST_H);
     ctx.fillStyle = V(tone);
-    sailPath(); ctx.closePath(); ctx.fill();
-    // one centre seam, then the ink edge of the cloth
+    for(let i = 0; i <= 3; i++){ L(zF + (zY - zF)*i/3); sailPath(); ctx.closePath(); ctx.fill(); }
+    L(zF); ctx.strokeStyle = INKC; ctx.lineWidth = 0.9; sailPath(); ctx.stroke();       // the foot
+    { const a0 = P(ax, ay, zF), a1 = P(ax, ay, zY), b0 = P(bx, by, zF), b1 = P(bx, by, zY);   // the two leeches
+      ctx.setTransform(base); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(...a0); ctx.lineTo(...a1); ctx.moveTo(...b0); ctx.lineTo(...b1); ctx.stroke(); }
+    // one centre seam, then the ink edge of the cloth at the yard
+    L(zY);
     ctx.strokeStyle=INKC; ctx.lineWidth=1;
     ctx.beginPath(); ctx.moveTo(mx,my); ctx.lineTo(mx+nx*belly*k*0.72, my+ny*belly*k*0.72); ctx.stroke();
     ctx.lineWidth=1.6; sailPath(); ctx.stroke();
-    // yard and mast
+    // the yard, and the masthead above it
     ctx.lineWidth=2.4; ctx.lineCap='round';
     ctx.beginPath(); skSeg(ax,ay,bx,by,1.5); ctx.stroke();
-    ctx.fillStyle=INKC;
-    ctx.beginPath(); ctx.arc(mx,my,2.6,0,Math.PI*2); ctx.fill();
+    { const [hx, hy] = P(mx, 0, MAST_H); ctx.setTransform(base); ctx.fillStyle=INKC; ctx.beginPath(); ctx.arc(hx, hy, 1.6, 0, Math.PI*2); ctx.fill(); }
     ctx.restore();
     ctx.restore();
   }
@@ -8686,7 +8735,7 @@
   // short mast near the bow; the triangle of cloth trails aft from it and is
   // eased out to leeward (B.boomSigned: the yard's angle off the centreline,
   // its sign the lee side; it swings across the middle when she tacks or gybes)
-  function drawLateenSail(B){
+  function drawLateenSail(B, P, L, base, FB, mast){
     const sa = B.boomSigned, lee = sa >= 0 ? 1 : -1, sabs = Math.abs(sa);
     const mx = 6, my = 0;                                   // the mast
     const LA = 22*SAIL_SIZE*LATEEN_SIZE, LF = 9*SAIL_SIZE*LATEEN_SIZE;              // yard aft and forward of the mast
@@ -8702,6 +8751,8 @@
     const belly = (1.5 + p*7)*reef*SAIL_SIZE*LATEEN_SIZE;
     const luff = p < 0.25 ? (1 - p/0.25) : 0;
     const ripple = Math.sin(t*22)*2.2*luff*open;           // (a furled sail doesn't flap)
+    // in 3D: the yard climbs from the tack, low by the bow, to the peak high aft; it hangs from the masthead
+    const zT = FB + 3, zP = MAST_H, zMh = zT + (zP - zT)*LF/(LF + LA), zC = FB + 4 + (zMh - FB - 4)*furl;
     // the cloth bellies out to leeward, off the leech and the foot
     const bulge = (x0,y0,x1,y1,amt)=>{
       let nx = -(y1-y0), ny = x1-x0; const L = Math.hypot(nx,ny) || 1; nx/=L; ny/=L;
@@ -8710,24 +8761,29 @@
     };
     const [l1x,l1y] = bulge(px,py,cx,cy, belly*0.8 + ripple);
     const [f1x,f1y] = bulge(cx,cy,tx,ty, belly*1.3 - ripple);
-    const sailPath=()=>{ ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(px,py);
-      ctx.quadraticCurveTo(l1x,l1y,cx,cy); ctx.quadraticCurveTo(f1x,f1y,tx,ty); };
+    const T = P(tx, ty, zT), Pk = P(px, py, zP), C = P(cx, cy, zC), L1 = P(l1x, l1y, (zP + zC)/2), F1 = P(f1x, f1y, (zT + zC)/2), M = P(mx, my, zMh);
+    mast(mx, zMh);
+    ctx.setTransform(base);
+    const sailPath=()=>{ ctx.beginPath(); ctx.moveTo(...T); ctx.lineTo(...Pk);
+      ctx.quadraticCurveTo(...L1, ...C); ctx.quadraticCurveTo(...F1, ...T); };
     const tone = SAIL_TONE - 0.14*(1-p) - 0.1*(1-B.sailAmount) - 0.08*furl;
     ctx.fillStyle = V(tone);
     sailPath(); ctx.closePath(); ctx.fill();
-    // one seam from the mast down to the clew, then the ink edge of the cloth
+    // one seam from the masthead down to the clew, then the ink edge of the cloth
     ctx.strokeStyle=INKC; ctx.lineWidth=1;
-    ctx.beginPath(); ctx.moveTo(mx,my); ctx.quadraticCurveTo((mx+cx)/2 + (l1x-(px+cx)/2)*0.5, (my+cy)/2 + (l1y-(py+cy)/2)*0.5, cx, cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(...M); ctx.quadraticCurveTo((M[0]+C[0])/2 + (L1[0]-(Pk[0]+C[0])/2)*0.5, (M[1]+C[1])/2 + (L1[1]-(Pk[1]+C[1])/2)*0.5, ...C); ctx.stroke();
     ctx.lineWidth=1.4; sailPath(); ctx.stroke();
     // the sheet, from the clew to the stern quarter
+    const Q = P(-13, lee*6, FB);
     ctx.lineWidth=0.8; ctx.globalAlpha=0.8;
-    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(-13, lee*6); ctx.stroke(); ctx.globalAlpha=1;
-    // yard and mast
+    ctx.beginPath(); ctx.moveTo(...C); ctx.lineTo(...Q); ctx.stroke(); ctx.globalAlpha=1;
+    // the yard
     ctx.lineWidth=2.2; ctx.lineCap='round';
-    ctx.beginPath(); skSeg(tx,ty,px,py,1.5); ctx.stroke();
+    ctx.beginPath(); skSeg(T[0],T[1],Pk[0],Pk[1],1.5); ctx.stroke();
     ctx.fillStyle=INKC;
-    ctx.beginPath(); ctx.arc(mx,my,2.4,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(M[0],M[1],1.6,0,Math.PI*2); ctx.fill();
   }
+
 
 
   function draw(){
