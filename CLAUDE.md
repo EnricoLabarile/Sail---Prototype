@@ -11,7 +11,7 @@
 - **Push after every commit** to GitHub (`origin` = https://github.com/EnricoLabarile/Sail---Prototype, branch `master`;
   public repo). Enrico reads and edits files there from the browser: if he says he changed something on GitHub, `git pull`
   first. The game is also served by GitHub Pages at https://enricolabarile.github.io/Sail---Prototype/ (from `master`,
-  root; `.nojekyll` keeps it served as is), updated by each push, besides the claude.ai artifact link for the phone.
+  root; `.nojekyll` keeps it served as is), updated by each push. **Don't republish the claude.ai artifact** (it costs Enrico tokens): just commit and push; GitHub Pages is the way he plays it, unless he asks for the artifact.
 - **Tuning and Texts sit at the very top of `index.html`**, in their own `<script>` in `<head>` (right after
   `<title>`): first the Tuning block, then `CHANGES` / `BUILD`, then the Texts (and `fmt`). Their top-level `const`s are
   shared with the game script further down (which starts with `applyTexts`). **Keep them there**: new knobs and texts
