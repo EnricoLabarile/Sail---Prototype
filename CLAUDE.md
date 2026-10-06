@@ -81,7 +81,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   painted once into a sprite (plus a darker rain version and its shadow) and shared by all the clouds. Profiling tip: a 2D canvas draws lazily, so time a section only after forcing it
   (`getImageData(0,0,1,1)`), or its cost shows up in the upload. Aim: 60 fps on the phone. The wheel and compass are only redrawn
   (and re-dithered) when something on them changes (`wheelKey`, `cmpKey`, `sailKey`; a shut compass lid is a still
-  picture); hidden HUD elements are not updated every frame; the hull meter is written only when it changes.
+  picture; a window resize clears the wheel's canvas, so it also clears `wheelKey` to force a redraw); hidden HUD elements are not updated every frame; the hull meter is written only when it changes.
   day/night palette (`UI_TINT` = 0.5, `uiPalette`): the dithered widgets and the HTML panels (`--paper` / `--ink`) follow the light.
 - **World:** `WORLD_SIZE` = 5040 px square torus (wraps on all sides; was 7200, area halved). Distances in Tuning scale with it (× `WORLD_K`) and counts with its area (× `WK2`), so the sea keeps the same density: change one number to resize the world. Home at the centre. Use `wdx/wdy/wdist/wrapX/wrapY` for any distance.
   Regions: `archipelago(x,y)` (new each game, tiles the torus) is a field of six crossing waves (`SEA_WAVES`, `seaField`)

@@ -227,6 +227,10 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Fix: the wheel no longer vanishes at the start (it was wiped when the screen changed size, e.g. the address bar hiding)',
+      'Fix: no blue square round the oar button when it is pressed',
+    ]},
+    {build: '2026-10-06 08:24', items: [
       'Oars: the oar button turns 20% quicker (a slightly faster rowing beat)',
     ]},
     {build: '2026-10-05 21:27', items: [
@@ -235,11 +239,8 @@
     {build: '2026-10-05 21:05', items: [
       'First screen: all three sections (What\'s new, Settings, World) start folded',
     ]},
-    {build: '2026-10-05 20:53', items: [
-      'First screen: folding sections (tap a heading to open or shut it); What\'s new starts folded',
-    ]},
   ];
-  const BUILD = '2026-10-06 08:24';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-06 08:53';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -707,6 +708,8 @@
      (dithered) face, a light ring and an inked rim */
   button, canvas{ -webkit-tap-highlight-color: transparent; }
   button:focus:not(:focus-visible){ outline:none; }
+  [role="button"]{ -webkit-tap-highlight-color: transparent; }          /* (no blue square on a tap: the oar button is a div) */
+  [role="button"]:focus:not(:focus-visible){ outline:none; }
   .helm-btn{
     position:fixed;
     overflow:visible;
@@ -3580,7 +3583,7 @@
     wctx.imageSmoothingEnabled = false;
   }
   sizeWheel();
-  window.addEventListener('resize', sizeWheel);
+  window.addEventListener('resize', ()=>{ sizeWheel(); wheelKey = ''; });   // resizing clears the canvas: draw it again
 
   let wheelPointer = null, wheelLast = 0;
   const HUB_R = 21;                        // hub radius (unscaled); how long to hold it: HUB_HOLD (Tuning)
@@ -4084,7 +4087,7 @@
     sailCv.width = SW*k; sailCv.height = SH*k; sbctx.imageSmoothingEnabled = false;
   }
   sizeSail();
-  window.addEventListener('resize', sizeSail);
+  window.addEventListener('resize', ()=>{ sizeSail(); sailKey = ''; });
   function switchSail(){
     cycleSail(); Sfx.thunk(0.55); buzz([28,40,14]); sailFlash = 1;
     if(tut === 'rope') tutNext('anchor');                                   // tutorial: now weigh anchor
