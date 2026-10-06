@@ -323,13 +323,14 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   `drawLateenSail` (`LATEEN_SIZE` 0.6 in Tuning, on top of `SAIL_SIZE`): a long slanted yard on a short mast near the bow, the triangle of cloth trailing aft, eased out
   to leeward about half the wind's angle off the bow (`boat.boomSigned`), bellied to leeward, a sheet to the stern
   quarter; it furls along the yard at anchor.
-  **Air flowing round the sail** (`drawSailFlow`, the player's boat only, called from each sail's drawing in the boat
-  frame; `SAIL_FLOW` {square 0.5, lateen 1}, `SAIL_FLOW_ALPHA` in Tuning): eight dashed streamlines (four each side),
-  in a frame along the sail's chord (lateen: from the tack along the yard; square: from the yard's end nearer the
-  wind), moving with the wind. With the wind on the beam (lateen up to ~110–150° off, square up to ~80–115°) the flow
-  is attached: the lines split at the leading edge and slip along both sides, the lee (bellied) ones squeezed closer
-  and dashing ~2× faster than the windward ones (low pressure on the convex side: lift); further aft the lee lines
-  tear off into short wobbling dashes (eddies: only drag). Meant to teach that the lateen works with the wind across it. Changing tack, the heavy yard swings across slowly (`LATEEN_SWING` in
+  **Air on the sail** (`drawSailFlow`, the player's boat only, called from each sail's drawing in the boat frame;
+  Tuning: `SAIL_FLOW` {square 0.6, lateen 1}, `SAIL_FLOW_FROM` 0.75, `SAIL_FLOW_RATE` 5 a second, `SAIL_FLOW_ALPHA`):
+  drawn like the wind streaks, not as fixed lines (fixed dashed streamlines were tried: too stiff and artificial).
+  Only when the sail draws near its best (its share of top speed at this heading over its best on any heading,
+  `sailBest`, above `SAIL_FLOW_FROM`), now and then a squiggly line (`flowGusts`) comes in from ahead of the luff
+  along the sail's chord (lateen: from the tack along the yard; square: from the yard's end nearer the wind), mostly
+  on the bellied lee side (70%), squeezed toward the cloth, out past the leech, ending in a curl; it draws itself
+  out, the tail catches up, it fades (1.1–1.7 s). The nearer the best, the more of them and the darker. Changing tack, the heavy yard swings across slowly (`LATEEN_SWING` in
   Tuning, 0.9 against the usual trim rate of 3; `boat.swingAcross` until it's settled on the new side). A new voyage
   starts with `START_RIG` again.
   **Wind card** (the logbook's right page, first spread; `windHTML`, texts in `TEXT.sails`): a polar diagram in ink,

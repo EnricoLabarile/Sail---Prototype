@@ -215,8 +215,10 @@
   const LATEEN_SWING = 0.9;          // how quickly the lateen yard swings across when she changes tack (3 = as quick as the sail trims; lower = heavier)
   const SAIL_STOW_HOLD = 1.1;        // seconds holding the sail badge to unbend the sail and stow it in the hold
   const SAIL_SHAKE_AFTER = 0.2;      // a press longer than this is a hold (the badge shakes); shorter is a tap (set or furl)
-  const SAIL_FLOW = {square: 0.5, lateen: 1};   // lines of air flowing round the set sail (0 = none): smooth on both sides with the wind on the beam (lift), torn and eddying behind it with the wind astern
-  const SAIL_FLOW_ALPHA = 1;         // how dark those flow lines are drawn
+  const SAIL_FLOW = {square: 0.6, lateen: 1};   // squiggles of wind along the set sail when it draws near its best (0 = none), like gusts: in, a curl, gone
+  const SAIL_FLOW_FROM = 0.75;       // they start once the sail gives this share of its best (on any heading); the nearer the best, the more
+  const SAIL_FLOW_RATE = 5;          // how many a second at the sail's very best
+  const SAIL_FLOW_ALPHA = 0.9;       // how dark they are drawn
   const WIND_STREAK_RATE = 2;        // wind streaks across the sea: how many more than the old ones (1 = as before)
   const WIND_STREAK_WIDTH = 1.8;     // their line width (was 1.2)
   const WIND_STREAK_ALPHA = 0.85;    // how dark they are (was 0.65)
@@ -235,6 +237,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Air on the sail: no more fixed lines; when the sail draws near its best, squiggles of wind now come and go along it, curl off astern and fade, like gusts (more the nearer the best)',
+    ]},
+    {build: '2026-10-06 14:53', items: [
       'Wind streaks on the sea: more of them, longer and darker, and they follow the gusts where you are',
       'Lines of air now flow round the set sail (most with the lateen): with the wind on the beam they slip smoothly past both sides, quicker round the bellied side, which is what pulls her along (lift); with the wind from astern they tear off into eddies behind the sail',
     ]},
@@ -245,11 +250,8 @@
       'Oars: the soft swirl of water under the strokes is back (it swells with each pull)',
       'Oars: the press cue is now a dry wooden clunk of the oar in its thole, and a stroke on time a short hard splash (no more drop-like blips)',
     ]},
-    {build: '2026-10-06 13:14', items: [
-      'Oars: no more "gloop": each stroke is now a short, dry swish of the blade through the water',
-    ]},
   ];
-  const BUILD = '2026-10-06 14:53';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-06 15:05';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -8652,52 +8654,52 @@
     }
   }
 
-  // the air flowing round the set sail (boat frame), to show how a sail drives her: with the wind on the beam it
-  // splits at the leading edge (L, the chord running along d for C px) and flows smoothly along both sides, quicker
-  // and closer round the bellied lee side (n): the lower pressure there pulls the sail, and her with it, toward its
-  // belly (lift). With the wind from astern the flow tears off the lee side in eddies: the sail is only pushed (drag)
+  // the air flowing round the set sail (boat frame), drawn like the wind streaks on the sea: now and then, when the
+  // sail draws near its best (SAIL_FLOW_FROM of its best on any heading), a squiggly line comes in along the sail's
+  // silhouette (its chord from the leading edge L, along d for C px, the belly to leeward n), mostly round the bellied
+  // lee side, draws itself out, curls off astern and fades, like a gust. The nearer the best, the more of them
+  const flowGusts = [];
+  let flowLast = 0;
+  const bestOf = {};                                     // each sail's best share of top speed, on any heading
+  const sailBest = rig=>{ const key = rig+'|'+squareRunBonus+'|'+POLARS[rig].map(q=> q[1]).join(','); if(bestOf.key !== key){ let m = 0.01; for(let a = 0; a <= 180; a += 2) m = Math.max(m, speedFactor(a, rig)*downwindBonus(a, rig)); bestOf.key = key; bestOf.v = m; } return bestOf.v; };
   function drawSailFlow(B, Lx, Ly, dx, dy, C, nx, ny, belly){
-    const clamp = (x, a, b)=> Math.max(a, Math.min(b, x));
-    const k = Math.max(0.7, C/25);
+    const now = performance.now(), fdt = Math.min(0.05, (now - (flowLast || now))/1000); flowLast = now;
     const relDeg = Math.abs(norm(B.angle - windAngle - B.windOff))*180/Math.PI;
-    const vis = (SAIL_FLOW[B.rig] || 0)*(1 - B.furl)*(B.sailFurled ? 0 : 1)*Math.min(1, 0.25 + B.sailPower*1.2);
-    if(vis < 0.03) return;
-    const att = B.rig === 'lateen' ? clamp((150 - relDeg)/40, 0, 1) : clamp((115 - relDeg)/35, 0, 1);   // attached flow (lift) or torn (drag)
-    const wa = windAngle + B.windOff + Math.PI - B.angle, wbx = Math.cos(wa), wby = Math.sin(wa);
-    const wu = wbx*dx + wby*dy, wv = wbx*nx + wby*ny;
-    const tanA = clamp(wv/Math.max(0.2, wu), 0, 0.45);       // the wind's slant onto the chord (kept gentle, so the lines read as one flow)
-    const ws = 0.4 + 0.6*Math.min(1.3, windStrength*B.windMul);
-    ctx.strokeStyle = INKC; ctx.lineCap = 'butt'; ctx.lineWidth = 1.3;
-    for(const v0 of [4, 10, 17, 26, -5, -12, -20, -29]){
-      const lee = v0 > 0, v = v0*k, follow = Math.exp(-Math.abs(v)/(14*k)), squeeze = lee ? 0.45 : -0.2;
-      const ys = [];
-      for(let s = -1.3; s <= 2.61; s += 0.1){
-        const bump = s > 0 && s < 1 ? 4*s*(1 - s) : 0;
-        const yA = s < 0 ? v + s*C*tanA : s <= 1 ? v*(1 - squeeze*bump) + belly*bump*follow : v - (s - 1)*C*0.12;
-        let y = yA;
-        if(lee && att < 1){                                 // torn: the lee lines go straight on and churn into eddies
-          const tw = s > 0.2 ? (s - 0.2)*3.5*k*Math.sin(s*9 + t*6 + v0) : 0;
-          y = att*yA + (1 - att)*(v + Math.max(s, 0)*C*Math.min(tanA, 0.6) + (s < 0 ? s*C*tanA : 0) + tw);
-        }
-        ys.push([s, y]);
+    const eff = speedFactor(relDeg, B.rig)*downwindBonus(relDeg, B.rig)/sailBest(B.rig);       // how near its best the sail draws
+    const near = Math.max(0, Math.min(1, (eff - SAIL_FLOW_FROM)/(1 - SAIL_FLOW_FROM)));
+    const feed = (SAIL_FLOW[B.rig] || 0)*(1 - B.furl)*(B.sailFurled ? 0 : 1)*Math.min(1, B.sailPower*1.5)*near;
+    if(feed > 0.02 && Math.random() < SAIL_FLOW_RATE*feed*feed*fdt){
+      // a line in the sail's own frame: x along the chord, y to leeward; in from ahead of the luff, along the cloth, out past the leech, then a curl
+      const lee = Math.random() < 0.7, v = (lee ? rand(4, 13) : -rand(4, 11))*Math.max(0.8, C/25);
+      const pts = [], amp = rand(0.6, 1.4), fr = rand(0.25, 0.4), ph = rand(0, 6.3);
+      for(let u = -1; u <= 1.8; u += 0.08){
+        const bump = u > 0 && u < 1 ? 4*u*(1 - u) : 0;
+        const y = v*(1 - (lee ? 0.4 : -0.15)*bump) + belly*bump*Math.exp(-Math.abs(v)/12) + Math.sin(u*C*fr + ph)*amp;
+        pts.push([u*C, y]);
       }
-      for(let r = 0; r < 2; r++) for(let i = 1; i < ys.length - 1; i++) ys[i][1] = (ys[i-1][1] + 2*ys[i][1] + ys[i+1][1])/4;   // smoothed
-      const pts = ys.map(([s, y])=> [Lx + dx*s*C + nx*y, Ly + dy*s*C + ny*y, s]);
-      const fast = lee ? 1.6*att + 0.5*(1 - att) : 0.8;      // quicker round the lee side
-      ctx.setLineDash(lee && att < 0.5 ? [2, 3] : [7, 4]);
-      const base = -t*34*k*ws*fast;
-      const a0 = SAIL_FLOW_ALPHA*vis*(lee ? 1 : 0.75)*Math.exp(-Math.abs(v)/(70*k));
-      let cum = 0;
-      for(let i = 0; i < pts.length - 1; i += 3){
-        const s = pts[i][2], fade = Math.min(1, (s + 1.3)/0.7, (2.6 - s)/0.7);
-        ctx.globalAlpha = Math.max(0, a0*fade);
-        ctx.lineDashOffset = base + cum;
-        ctx.beginPath(); ctx.moveTo(pts[i][0], pts[i][1]);
-        for(let j = i + 1; j <= Math.min(i + 3, pts.length - 1); j++){ ctx.lineTo(pts[j][0], pts[j][1]); cum += Math.hypot(pts[j][0] - pts[j-1][0], pts[j][1] - pts[j-1][1]); }
-        ctx.stroke();
-      }
+      const [ex, ey] = pts[pts.length-1], up = lee ? 1 : -1;      // the curl rolls away from the sail
+      let r = rand(2.5, 4), a = -up*Math.PI/2; const cx = ex, cy = ey + up*r;
+      for(let q = 0; q < 12; q++){ a += up*0.42; r *= 0.93; pts.push([cx + Math.cos(a)*r, cy + Math.sin(a)*r]); }
+      const cum = [0]; for(let q = 1; q < pts.length; q++) cum.push(cum[q-1] + Math.hypot(pts[q][0]-pts[q-1][0], pts[q][1]-pts[q-1][1]));
+      flowGusts.push({pts, cum, len: cum[cum.length-1], age: 0, life: rand(1.1, 1.7), wig: rand(0, 6.3), strength: 0.6 + 0.4*near});
     }
-    ctx.setLineDash([]); ctx.lineDashOffset = 0; ctx.globalAlpha = 1;
+    ctx.strokeStyle = INKC; ctx.lineCap = 'round'; ctx.lineWidth = 1.2;
+    for(let q = flowGusts.length - 1; q >= 0; q--){
+      const f = flowGusts[q]; f.age += fdt;
+      if(f.age >= f.life || B.rig === null){ flowGusts.splice(q, 1); continue; }
+      const p = f.age/f.life;
+      const head = f.len*Math.min(1, p/0.55), tail = f.len*Math.max(0, (p - 0.45)/0.55);   // it draws itself out, then the tail catches up
+      ctx.globalAlpha = SAIL_FLOW_ALPHA*f.strength*(1 - B.furl)*Math.min(1, p*8, (1 - p)*8);
+      ctx.beginPath(); let started = false;
+      for(let k = 0; k < f.pts.length; k++){
+        if(f.cum[k] < tail || f.cum[k] > head) continue;
+        const lx = f.pts[k][0], ly = f.pts[k][1] + Math.sin(f.age*4 + k*0.5 + f.wig)*0.5;   // a slight ripple along it
+        const x = Lx + dx*lx + nx*ly, y = Ly + dy*lx + ny*ly;
+        if(started) ctx.lineTo(x, y); else { ctx.moveTo(x, y); started = true; }
+      }
+      if(started) ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
   }
 
   function draw(){
