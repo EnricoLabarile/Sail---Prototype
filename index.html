@@ -45,6 +45,7 @@
   const OAR_WARN = 0.2;              // the button swells this share of a turn before the pointer reaches the mark (time to react)
   const OAR_LOCK_SPEED = 16;         // px/s: once the sail alone drives her faster than this the oars are shipped and the oar button is disabled (back below 0.8 × this)
   const OAR_HIT_VOL = 1;             // loudness of the soft tock that answers a press on time (× OAR_CUE_VOL; 0 = silent)
+  const OAR_BED_VOL = 1;            // loudness of the soft wash of the oars under each stroke while rowing (it swells with the pull, a drip as the blades come out; 0 = silent)
   const OAR_CUE_VOL = 1;            // loudness of the knock that sounds as the oar button goes ink (the moment to press; 0 = silent)
   const OAR_SPIN_FADE = 0.05;        // a slow steady drain of the rowing's power (a share of it per second)…
   const OAR_SKIP = 0.65;             // …and the power kept when the pointer passes the mark without a press (she slows; a few skipped and she stops)
@@ -227,6 +228,10 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Oars: a soft wash of water in the background while rowing, swelling with each pull, and a few drips as the blades come out',
+      'Oars: a stroke on time plays its fuller, stronger sound again (it had gone silent)',
+    ]},
+    {build: '2026-10-06 12:23', items: [
       'Logbook, wind card: a little boat in the middle shows her heading (instead of the needle)',
     ]},
     {build: '2026-10-06 08:53', items: [
@@ -236,11 +241,8 @@
     {build: '2026-10-06 08:24', items: [
       'Oars: the oar button turns 20% quicker (a slightly faster rowing beat)',
     ]},
-    {build: '2026-10-05 21:27', items: [
-      'First screen: a new folding section, Sails: each sail\'s speed curve, drawn live, with a slider per angle and for its handling; the values hold in the game and on this phone (Reset this sail brings back the Tuning ones)',
-    ]},
   ];
-  const BUILD = '2026-10-06 12:23';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-06 12:28';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -2714,7 +2716,7 @@
   const AMB_LEVEL = 0.1;           // master level of the whole ambience (keep it discreet)
   const Sfx = (function(){
     let ac=null, master=null, wheelBus=null, noise=null, rub=null;
-    let ambBus=null, sea=null, rush=null, rainL=null, rainBus=null, rainNext=0, rainGustT=0, rainGust=1, cicadaOut=null, cicadaSingers=[], droneNodes=null, engineNodes=null;
+    let ambBus=null, sea=null, rush=null, rowL=null, rainL=null, rainBus=null, rainNext=0, rainGustT=0, rainGust=1, cicadaOut=null, cicadaSingers=[], droneNodes=null, engineNodes=null;
     function init(){
       if(ac){ if(ac.state==='suspended') ac.resume(); return; }
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -2757,6 +2759,7 @@
       sea  = [ {...layer(brown,'lowpass',380,0.5,-0.55,0),   ph:0,   per:7},
                {...layer(brown,'lowpass',380,0.5, 0.55,3.1), ph:0.5, per:8.5} ];
       rush = layer(brown,'lowpass',320,0.5,0,2.2);   // deep, soft water along the hull
+      rowL = layer(pink,'bandpass',480,0.9,0,4.1);   // the oars' wash: swells with each pull (see rowBed())
       // rain on the sea: a broad, soft wash under the patter (see rain()), between a hiss and a murmur
       rainL = layer(pink,'bandpass',1800,0.35,0,1.3);
       rainBus = ac.createGain(); rainBus.gain.value = 1; rainBus.connect(ambBus);
@@ -3216,6 +3219,28 @@
     // the oarlock's knock as the oar button goes ink: the moment to press, so it can be rowed by ear (k: loudness)
     // the answer to a press on time: a soft, short, woody tock a fifth above the cue (a sine, quickly damped, and a
     // dull click), quieter than the cue, so it sets it off rather than competing with it
+    // rowing, under everything: the blades' wash, a soft swirl of water that swells as they pull through (the first
+    // half of each turn of the oar button) and dies away on the recovery, brighter as she picks up way
+    // (level 0..1: 0 silent; ph: the stroke's phase 0..1; sf: her speed 0..1)
+    function rowBed(level, ph, sf){
+      if(!rowL || ac.state!=='running') return;
+      const t = ac.currentTime, pull = Math.pow(Math.max(0, Math.sin(2*Math.PI*ph)), 1.5);
+      rowL.g.gain.setTargetAtTime(level*(0.06 + 0.34*pull), t, 0.06);
+      rowL.f.frequency.setTargetAtTime(330 + 380*pull + 320*sf, t, 0.08);
+    }
+    // the blades leaving the water at the end of the pull: two or three faint drips
+    function oarDrip(k){
+      if(!ac || ac.state!=='running' || !(k > 0.01)) return;
+      const n = 2 + (Math.random() < 0.5 ? 1 : 0);
+      for(let i = 0; i < n; i++){
+        const t0 = ac.currentTime + 0.03 + i*(0.06 + Math.random()*0.07), f = 900 + Math.random()*700;
+        const o = ac.createOscillator(); o.type = 'sine';
+        o.frequency.setValueAtTime(f, t0); o.frequency.exponentialRampToValueAtTime(f*1.6, t0+0.04);   // a drop: a little rising blip
+        const g = ac.createGain();
+        g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.012*k*(1 - i*0.25), t0+0.004); g.gain.exponentialRampToValueAtTime(0.0001, t0+0.05);
+        o.connect(g); g.connect(master); o.start(t0); o.stop(t0+0.06);
+      }
+    }
     function oarHit(k){
       if(!ac || ac.state!=='running' || !(k > 0)) return;
       const t0 = ac.currentTime;
@@ -3556,7 +3581,7 @@
     }
 
 
-    return {init, oar, oarCue, oarHit, crate, tick, thunk, wheel, ambient, rain, cicadas, book, pageTurn, pickup, hammer, bell, whirl, type, splash, drone, gull, crash, waveBreak, waveHit, surf, townEvent, chatter, cricket, howl, anchor, buoy, coins, engine};
+    return {init, oar, oarCue, oarHit, rowBed, oarDrip, crate, tick, thunk, wheel, ambient, rain, cicadas, book, pageTurn, pickup, hammer, bell, whirl, type, splash, drone, gull, crash, waveBreak, waveHit, surf, townEvent, chatter, cricket, howl, anchor, buoy, coins, engine};
   })();
 
   // ---------- Ship's wheel ----------
@@ -4360,7 +4385,7 @@
   function sink(){
     playing = false;
     boat.speed = 0;
-    Sfx.wheel(0); Sfx.drone(0);
+    Sfx.wheel(0); Sfx.drone(0); Sfx.rowBed(0, 0, 0);
     closeDialog();
     elGoTitle.textContent = TEXT.sunk.title;
     const min = Math.floor(voyageTime/60), sec = Math.floor(voyageTime%60);
@@ -5170,7 +5195,7 @@
   // (OAR_SPIN_FADE) and she stops. Her way is OAR_MAX × power, in surges,
   // plus a kick for each stroke on time (OAR_KICK, fading).
   const elOar = document.getElementById('oar-ctl'), elOarRot = elOar.querySelector('.oar-rot');
-  let oarLocked = false, oarSpin = 0, oarCycle = 0, oarRate = 0, oarKick = 0, oarShown = -1, oarPressedTurn = -1, oarHitT = 0, oarSkipped = 0;
+  let oarLastPh = 0, oarLocked = false, oarSpin = 0, oarCycle = 0, oarRate = 0, oarKick = 0, oarShown = -1, oarPressedTurn = -1, oarHitT = 0, oarSkipped = 0;
   elOar.setAttribute('aria-label', TEXT.oars.label);
   function pressOar(){
     Sfx.init();
@@ -5187,7 +5212,8 @@
     const off = Math.abs(oarCycle - turn);                   // how far from the mark, in turns
     if(off <= OAR_WINDOW){
       oarSpin = Math.min(1, oarSpin + OAR_GOOD*(1 - 0.5*oarSpin));
-      oarHitT = 0.18; oarKick = OAR_KICK; boat.speed += OAR_KICK*0.5; buzz([14,25,30]);   // a jolt forward at once, then the glide Sfx.oar(0.5 + 0.5*oarSpin, true);   // a powerful stroke
+      oarHitT = 0.18; oarKick = OAR_KICK; boat.speed += OAR_KICK*0.5; buzz([14,25,30]);   // a jolt forward at once, then the glide
+      Sfx.oar(0.5 + 0.5*oarSpin, true);                            // a powerful stroke
       Sfx.oarHit(OAR_CUE_VOL*OAR_HIT_VOL);                         // and a soft woody tock answering the cue: on time!
     } else {
       oarSpin = Math.min(1, oarSpin + OAR_MISS);
@@ -5217,6 +5243,12 @@
     if(oarSpin > 0.01 || boat.oarK > 0.05) oarCycle += dt*oarRate;
     oarKick = oarSpin > 0.01 ? oarKick*Math.exp(-OAR_KICK_FADE*dt) : 0;
     const ph = oarCycle % 1, rowingNow = oarSpin > 0.01;
+    {   // the oars' wash in the background, in step with the stroke (fading in and out with the oars themselves)
+      const lvl = OAR_BED_VOL*boat.oarK*(0.4 + 0.6*oarSpin);
+      Sfx.rowBed(playing ? lvl : 0, ph, Math.min(1, boat.speed/MAX_SPEED));
+      if(playing && oarLastPh < 0.5 && ph >= 0.5) Sfx.oarDrip(lvl);   // the blades come out of the water
+      oarLastPh = ph;
+    }
     const ready = rowingNow && ph > 1 - OAR_WARN && ph < 1 - OAR_WINDOW;          // about to come round: it swells
     const now = rowingNow && (ph >= 1 - OAR_WINDOW || ph <= OAR_WINDOW) && oarCycle > 0.5;   // the time to press: the disc goes ink (pressed or not)
     if(ready !== elOar.classList.contains('ready')) elOar.classList.toggle('ready', ready);
