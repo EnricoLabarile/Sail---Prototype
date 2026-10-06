@@ -38,6 +38,10 @@
   const ROW_DELAY = 0.6;             // seconds a condition must hold before switching (no flicker)
   const ROW_SPEED = 9;               // px/s on the oars (the old automatic oars)
   const MANUAL_OARS = true;          // the oars are rowed by hand: press the oar button (right) in rhythm, as its pointer comes round to the mark (false = the old automatic oars)
+  const SPRING_PADDLES = true;       // the paddle wheels run off a wound spring: turn the crank (clockwise) to charge it, then they drive her on their own until it runs down; false = the old rhythmic oar button
+  const SPRING_TURNS = 3;            // full turns of the crank that wind the spring right up
+  const SPRING_TIME = 30;            // seconds the wheels can drive her on a full spring (it only runs down while they're driving)
+  const SPRING_SPEED = 14;           // px/s the wheels give her (the spring rests while the sail drives her faster than this)
   const OAR_START = 0.2;             // power the first press gives (0..1): she starts rowing, slowly
   const OAR_GOOD = 0.0;             // power a press right on time adds (the pointer at the mark)…
   const OAR_MISS = 0.04;             // …and a press too early or too late (a little)
@@ -246,6 +250,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Paddle wheels on a spring: no more pressing in rhythm. Turn the crank on the right round clockwise (three turns fill it, the ring shows the charge); the wheels then drive the boat on their own until the spring runs down (about 30 s of driving), resting while the sail is faster',
+    ]},
+    {build: '2026-10-06 19:54', items: [
       'Square sail: your new speed curve is the default (90° 0.55, 110° 0.97, 130° 1.12, 150° 1.13, 170° 1.04, 180° 1.03)',
     ]},
     {build: '2026-10-06 19:42', items: [
@@ -255,11 +262,8 @@
       'Oars: the round button is back (the handles on the sides are gone)',
       'The boat is a pedalò now: no oars, two paddle wheels, one a side, that turn as you pedal (one turn a stroke of the button) and churn a little foam astern',
     ]},
-    {build: '2026-10-06 19:05', items: [
-      'Oars, after your sketch: two oar handles on the sides of the screen instead of the round button; they go round a little loop with each stroke, and when they reach the top (grips inked, the clunk) drag one down to pull',
-    ]},
   ];
-  const BUILD = '2026-10-06 19:54';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-06 20:12';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -377,6 +381,7 @@
     oars: {
       label: 'Oars: press to row, then press again each time the pointer comes round to the mark',
       locked: 'Oars shipped: the sail drives her fast enough',
+      crank: 'The spring: turn the crank round clockwise to wind it; the paddle wheels then drive her until it runs down',
     },
     // home's storehouse: drag goods between the hold and the store (what's left here waits at home)
     store: {
@@ -654,6 +659,19 @@
   }
   /* the oar button: a disc with a pointer that turns with the strokes, under a fixed mark; press as the pointer comes round to it */
   #oar-ctl{position:fixed; right:12px; bottom:calc(178px + env(safe-area-inset-bottom,0px)); width:64px; height:74px; z-index:5; touch-action:none; cursor:pointer;}
+  /* the crank (SPRING_PADDLES): a paper disc with an arm and a handle that follows the finger round; the ring round it
+     fills as the spring is wound, and empties as the wheels use it */
+  #crank{position:fixed; right:8px; bottom:calc(172px + env(safe-area-inset-bottom,0px)); width:92px; height:92px; z-index:5; touch-action:none; cursor:grab; color:var(--ink);}
+  #crank svg{width:100%; height:100%; display:block; overflow:visible;}
+  #crank .disc{fill:var(--paper); stroke:var(--ink); stroke-width:2;}
+  #crank .track{fill:none; stroke:var(--ink); stroke-width:1; stroke-dasharray:2 3; opacity:.6;}
+  #crank .charge{fill:none; stroke:var(--ink); stroke-width:6; stroke-linecap:butt; transform:rotate(-90deg); transition:stroke-dasharray .1s;}
+  #crank .arm{stroke:var(--ink); stroke-width:4; stroke-linecap:round;}
+  #crank .knob{fill:var(--paper); stroke:var(--ink); stroke-width:2.2;}
+  #crank .hub{fill:var(--ink);}
+  #crank .hint{fill:none; stroke:var(--ink); stroke-width:1.2; opacity:.45;}
+  #crank.full .disc{fill:var(--ink);} #crank.full .arm{stroke:var(--paper);} #crank.full .hub{fill:var(--paper);}
+  #crank.hidden, body.at-market #crank{display:none;}
   /* the sail badge, under the oar button: a tap sets or furls the sail, a long press stows it in the hold */
   #sail-btn{position:fixed; right:16px; bottom:calc(104px + env(safe-area-inset-bottom,0px)); width:56px; height:56px; z-index:5; padding:0;
     border-radius:50%; background:var(--paper); color:var(--ink); border:2px solid var(--ink); box-shadow:2px 3px 0 var(--ink); cursor:pointer;
@@ -1184,6 +1202,10 @@
   </div>
   <!-- the oar handle, right side: slide it down to pull the oars (rowing by hand) -->
   <button id="sail-btn" type="button" class="hidden"></button>
+  <div id="crank" class="hidden" role="button" tabindex="0"><svg viewBox="-46 -46 92 92" aria-hidden="true">
+    <circle class="track" r="40"/><circle class="charge" r="40" stroke-dasharray="0 252"/>
+    <circle class="disc" r="31"/><path class="hint" d="M-19 -15 A24 24 0 0 1 15 -19 M11 -23 L15 -19 L10 -16"/>
+    <g class="rot"><line class="arm" x1="0" y1="0" x2="0" y2="-22"/><circle class="knob" cy="-22" r="7"/></g><circle class="hub" r="4"/></svg></div>
   <div id="oar-ctl" class="hidden" role="button" tabindex="0">
     <div class="oar-mark"></div>
     <div class="oar-disc"><svg viewBox="-28 -28 56 56" aria-hidden="true"><g class="oar-rot">
@@ -4688,7 +4710,7 @@
     boonWindT = 0; boonFish = 0; for(const r of RUINS) r.readyAt = 0;
     rollers.length = 0; rollerT = 6; boat.surfT = 0;
     windAngle = rand(0, Math.PI*2); shiftDur = 0; windTimer = rand(28,36); guideWind = false;
-    explored.fill(0); fogVer++; resetBottles(); resetStore(); resetShark();
+    explored.fill(0); fogVer++; resetBottles(); resetStore(); resetShark(); spring = 0;
     wake.length = 0; bowSpray.length = 0; popups.length = 0;
     voyageTime = 0; hurtFlash = 0; shake = 0;
     gameover.classList.add('hidden');
@@ -5370,7 +5392,54 @@
   }
   elOar.addEventListener('pointerdown', ev=>{ ev.preventDefault(); pressOar(); });
   elOar.addEventListener('keydown', ev=>{ if((ev.key === 'Enter' || ev.key === ' ') && !ev.repeat){ ev.preventDefault(); ev.stopPropagation(); pressOar(); } });
+  // ---- the spring (SPRING_PADDLES): wind the crank, the wheels do the rest ----
+  // A finger on the crank and turned round clockwise winds the spring (SPRING_TURNS full turns to fill it; turning back
+  // does nothing, a ratchet); a click every quarter turn. While it holds some charge the paddle wheels drive her on their
+  // own (SPRING_SPEED), and it runs down over SPRING_TIME s of driving; it rests while the sail drives her faster, at anchor or moored
+  const elCrank = document.getElementById('crank'), elCrankRot = elCrank.querySelector('.rot'), elCrankCharge = elCrank.querySelector('.charge');
+  let spring = 0, crankA = 0, crankDrag = null, crankTick = 0, crankKey = '';
+  elCrank.setAttribute('aria-label', TEXT.oars.crank); elCrank.title = TEXT.oars.crank;
+  const crankAngle = ev=>{ const r = elCrank.getBoundingClientRect(); return Math.atan2(ev.clientY - (r.top + r.height/2), ev.clientX - (r.left + r.width/2)); };
+  const windSpring = da=>{                                   // da: radians turned clockwise
+    if(da <= 0) return;
+    const was = spring;
+    spring = Math.min(1, spring + da/(Math.PI*2*SPRING_TURNS));
+    crankTick += da;
+    if(crankTick >= Math.PI/2){ crankTick -= Math.PI/2; if(spring < 1){ Sfx.oarCue(OAR_CUE_VOL*0.5); buzz(6); } }   // the ratchet clicks
+    if(was < 1 && spring >= 1){ Sfx.oarHit(OAR_CUE_VOL); buzz([20, 30, 40]); }   // wound right up
+  };
+  elCrank.addEventListener('pointerdown', ev=>{ ev.preventDefault(); Sfx.init(); crankDrag = {id: ev.pointerId, a: crankAngle(ev)}; crankA = crankDrag.a + Math.PI/2; try{ elCrank.setPointerCapture(ev.pointerId); }catch(e){} });
+  elCrank.addEventListener('pointermove', ev=>{
+    const d = crankDrag; if(!d || ev.pointerId !== d.id) return;
+    const a = crankAngle(ev), da = norm(a - d.a); d.a = a;
+    if(Math.abs(da) < 1.5){ if(da > 0) crankA += da; windSpring(da); }   // (the arm only goes round forward: a ratchet)
+  });
+  const crankUp = ev=>{ if(crankDrag && ev.pointerId === crankDrag.id) crankDrag = null; };
+  elCrank.addEventListener('pointerup', crankUp); elCrank.addEventListener('pointercancel', crankUp);
+  elCrank.addEventListener('keydown', ev=>{ if(ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); ev.stopPropagation(); crankA += Math.PI/2; windSpring(Math.PI/2); } });
+  function updateSpring(dt){
+    const show = MANUAL_OARS && playing && !moor && !marketV;
+    if(show !== !elCrank.classList.contains('hidden')) elCrank.classList.toggle('hidden', !show);
+    if(!elOar.classList.contains('hidden')) elOar.classList.add('hidden');
+    const can = spring > 0.001 && !(anchored || moor || boat.whirl) && (boat.sailV || 0) < SPRING_SPEED;
+    oarSpin += ((can ? 1 : 0) - oarSpin)*Math.min(1, dt*2.5);                 // the wheels take up and let go smoothly
+    if(oarSpin < 0.005) oarSpin = 0;
+    if(can) spring = Math.max(0, spring - dt/SPRING_TIME);
+    oarKick = 0;
+    oarRate += ((oarSpin > 0.01 ? OAR_RATE*1.4 : 0) - oarRate)*Math.min(1, dt*OAR_RATE_EASE);   // the wheels' pace (and the churn's)
+    oarCycle += dt*oarRate;
+    { const lvl = OAR_BED_VOL*boat.oarK*(0.4 + 0.6*oarSpin); Sfx.rowBed(playing ? lvl : 0, oarCycle % 1, Math.min(1, boat.speed/MAX_SPEED)); }
+    if(!show) return;
+    const key = Math.round(crankA*40) + '|' + Math.round(spring*200);
+    if(key !== crankKey){
+      crankKey = key;
+      elCrankRot.setAttribute('transform', 'rotate(' + (crankA*180/Math.PI).toFixed(1) + ')');
+      const L = 2*Math.PI*40; elCrankCharge.setAttribute('stroke-dasharray', (spring*L).toFixed(1) + ' ' + L.toFixed(1));
+      elCrank.classList.toggle('full', spring >= 1);
+    }
+  }
   function updateOarCtl(dt){
+    if(SPRING_PADDLES) return updateSpring(dt);
     const show = MANUAL_OARS && playing && !moor && !marketV;
     if(show !== !elOar.classList.contains('hidden')) elOar.classList.toggle('hidden', !show);
     // the sail drives her fast: no rowing (the oars come in, the button is greyed and can't be pressed); back a little below
@@ -6595,7 +6664,7 @@
     // the oars push in surges: the pull (blades sweeping aft, the first half of each cycle) drives her on, the
     // recovery lets her coast; on average OAR_MAX × power
     const oarSurge = 1 - OAR_SURGE + OAR_SURGE*Math.PI*Math.max(0, Math.sin(2*Math.PI*(oarCycle % 1)));
-    boat.rowV = MANUAL_OARS && !(anchored || moor || boat.whirl) ? OAR_MAX*oarSpin*oarSurge + oarKick : 0;   // + the kick of a stroke on time
+    boat.rowV = MANUAL_OARS && !(anchored || moor || boat.whirl) ? (SPRING_PADDLES ? SPRING_SPEED*oarSpin : OAR_MAX*oarSpin*oarSurge + oarKick) : 0;   // + the kick of a stroke on time (the spring's wheels: a steady push)
     if(boat.rowV > targetSpeed) targetSpeed = boat.rowV;
     boat.sailPower += (windSf-boat.sailPower)*Math.min(1,dt*3);
 

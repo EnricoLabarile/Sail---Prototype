@@ -347,6 +347,17 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   `refreshList`, only when the rounded angle, the sail or the breeze changes).
   (Oar handles on the screen's sides, dragged down in time, were tried after a sketch and dropped: they didn't work
   well; the round button below is back.)
+  **The spring and the crank** (`SPRING_PADDLES` in Tuning, on; false = the old rhythmic oar button below): the
+  paddle wheels run off a wound spring (`spring` 0..1). The crank (`#crank`, right side where the oar button was, 92 px:
+  a paper disc, an arm with a handle that follows the finger round, a dashed track and a thick ring round it that fills
+  with the charge; inked when full): a finger on it turned **clockwise** winds the spring (`windSpring`:
+  `SPRING_TURNS` 3 full turns fill it; turning back does nothing, a ratchet; a click, `Sfx.oarCue` at half, and a buzz
+  every quarter turn; `Sfx.oarHit` and a buzz when it's full; Enter/Space a quarter turn). While it holds a charge
+  and she isn't at anchor, moored or in a whirlpool, and the sail alone gives her less than `SPRING_SPEED` (14 px/s),
+  the wheels drive her on their own: `oarSpin` eases to 1, `boat.rowV` = `SPRING_SPEED` × `oarSpin` (a steady push, no
+  surges or kicks), and the spring runs down over `SPRING_TIME` (30 s) of driving; otherwise it rests. `updateSpring`
+  (called by `updateOarCtl`) also turns the wheels (`oarRate`, 1.4 × `OAR_RATE`) and keeps the water's churn
+  (`Sfx.rowBed`). A new voyage starts with it empty.
   **Paddle wheels, not oars** (pedalò style; in `drawBoat`, every boat): two upright wheels, one a side amidships
   (axle across her at the gunwale, `R` 7, eight flat paddles drawn as quads through `P`, only what's above the water,
   both rims and the hub), turned by the pedalling (`oarRate` × 2π: one turn a stroke of the oar button) or, under sail, freewheeling with the water going by (her speed / R × 0.9), whichever is quicker (`B.wheelA`);
