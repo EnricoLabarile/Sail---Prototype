@@ -217,8 +217,9 @@
   const SAIL_SHAKE_AFTER = 0.2;      // a press longer than this is a hold (the badge shakes); shorter is a tap (set or furl)
   const SAIL_FLOW = {square: 0.6, lateen: 1};   // squiggles of wind along the set sail when it draws near its best (0 = none), like gusts: in, a curl, gone
   const SAIL_FLOW_FROM = 0.75;       // they start once the sail gives this share of its best (on any heading); the nearer the best, the more
-  const SAIL_FLOW_RATE = 5;          // how many a second at the sail's very best
-  const SAIL_FLOW_ALPHA = 0.9;       // how dark they are drawn
+  const SAIL_FLOW_RATE = 1.4;        // how many a second at the sail's very best (at most SAIL_FLOW_MAX at once)
+  const SAIL_FLOW_MAX = 2;           // most of them on the sail at once
+  const SAIL_FLOW_ALPHA = 0.45;      // how dark they are drawn (a hint, not to hide the sail)
   const WIND_STREAK_RATE = 2;        // wind streaks across the sea: how many more than the old ones (1 = as before)
   const WIND_STREAK_WIDTH = 1.8;     // their line width (was 1.2)
   const WIND_STREAK_ALPHA = 0.85;    // how dark they are (was 0.65)
@@ -237,6 +238,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Air on the sail: far fewer and fainter squiggles (at most two at once), drawn off the cloth so the sail reads; they fade in, drift along the sail and fade out, like the wind streaks on the sea',
+    ]},
+    {build: '2026-10-06 15:05', items: [
       'Air on the sail: no more fixed lines; when the sail draws near its best, squiggles of wind now come and go along it, curl off astern and fade, like gusts (more the nearer the best)',
     ]},
     {build: '2026-10-06 14:53', items: [
@@ -246,12 +250,8 @@
     {build: '2026-10-06 14:09', items: [
       'Lateen sail: drawn smaller, 60% of its old size',
     ]},
-    {build: '2026-10-06 13:19', items: [
-      'Oars: the soft swirl of water under the strokes is back (it swells with each pull)',
-      'Oars: the press cue is now a dry wooden clunk of the oar in its thole, and a stroke on time a short hard splash (no more drop-like blips)',
-    ]},
   ];
-  const BUILD = '2026-10-06 15:05';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-06 15:11';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -8668,11 +8668,11 @@
     const eff = speedFactor(relDeg, B.rig)*downwindBonus(relDeg, B.rig)/sailBest(B.rig);       // how near its best the sail draws
     const near = Math.max(0, Math.min(1, (eff - SAIL_FLOW_FROM)/(1 - SAIL_FLOW_FROM)));
     const feed = (SAIL_FLOW[B.rig] || 0)*(1 - B.furl)*(B.sailFurled ? 0 : 1)*Math.min(1, B.sailPower*1.5)*near;
-    if(feed > 0.02 && Math.random() < SAIL_FLOW_RATE*feed*feed*fdt){
+    if(feed > 0.02 && flowGusts.length < SAIL_FLOW_MAX && Math.random() < SAIL_FLOW_RATE*feed*fdt){
       // a line in the sail's own frame: x along the chord, y to leeward; in from ahead of the luff, along the cloth, out past the leech, then a curl
-      const lee = Math.random() < 0.7, v = (lee ? rand(4, 13) : -rand(4, 11))*Math.max(0.8, C/25);
+      const lee = Math.random() < 0.7, v = (lee ? rand(7, 16) : -rand(6, 13))*Math.max(0.8, C/25);   // (off the cloth, so the sail still reads)
       const pts = [], amp = rand(0.6, 1.4), fr = rand(0.25, 0.4), ph = rand(0, 6.3);
-      for(let u = -1; u <= 1.8; u += 0.08){
+      for(let u = -0.8; u <= 1.5; u += 0.08){
         const bump = u > 0 && u < 1 ? 4*u*(1 - u) : 0;
         const y = v*(1 - (lee ? 0.4 : -0.15)*bump) + belly*bump*Math.exp(-Math.abs(v)/12) + Math.sin(u*C*fr + ph)*amp;
         pts.push([u*C, y]);
@@ -8681,19 +8681,20 @@
       let r = rand(2.5, 4), a = -up*Math.PI/2; const cx = ex, cy = ey + up*r;
       for(let q = 0; q < 12; q++){ a += up*0.42; r *= 0.93; pts.push([cx + Math.cos(a)*r, cy + Math.sin(a)*r]); }
       const cum = [0]; for(let q = 1; q < pts.length; q++) cum.push(cum[q-1] + Math.hypot(pts[q][0]-pts[q-1][0], pts[q][1]-pts[q-1][1]));
-      flowGusts.push({pts, cum, len: cum[cum.length-1], age: 0, life: rand(1.1, 1.7), wig: rand(0, 6.3), strength: 0.6 + 0.4*near});
+      flowGusts.push({pts, cum, len: cum[cum.length-1], age: 0, life: rand(1.8, 2.6), wig: rand(0, 6.3), strength: 0.6 + 0.4*near, drift: rand(10, 18)});
     }
-    ctx.strokeStyle = INKC; ctx.lineCap = 'round'; ctx.lineWidth = 1.2;
+    ctx.strokeStyle = INKC; ctx.lineCap = 'round'; ctx.lineWidth = 1;
     for(let q = flowGusts.length - 1; q >= 0; q--){
       const f = flowGusts[q]; f.age += fdt;
       if(f.age >= f.life || B.rig === null){ flowGusts.splice(q, 1); continue; }
       const p = f.age/f.life;
       const head = f.len*Math.min(1, p/0.55), tail = f.len*Math.max(0, (p - 0.45)/0.55);   // it draws itself out, then the tail catches up
-      ctx.globalAlpha = SAIL_FLOW_ALPHA*f.strength*(1 - B.furl)*Math.min(1, p*8, (1 - p)*8);
+      const fade = Math.sin(Math.PI*p), pan = f.drift*f.age;        // like the streaks on the sea: it fades in, pans downwind along the sail, fades out
+      ctx.globalAlpha = SAIL_FLOW_ALPHA*f.strength*(1 - B.furl)*fade*fade;
       ctx.beginPath(); let started = false;
       for(let k = 0; k < f.pts.length; k++){
         if(f.cum[k] < tail || f.cum[k] > head) continue;
-        const lx = f.pts[k][0], ly = f.pts[k][1] + Math.sin(f.age*4 + k*0.5 + f.wig)*0.5;   // a slight ripple along it
+        const lx = f.pts[k][0] + pan, ly = f.pts[k][1] + Math.sin(f.age*3 + k*0.4 + f.wig)*0.5;   // a slight ripple along it
         const x = Lx + dx*lx + nx*ly, y = Ly + dy*lx + ny*ly;
         if(started) ctx.lineTo(x, y); else { ctx.moveTo(x, y); started = true; }
       }

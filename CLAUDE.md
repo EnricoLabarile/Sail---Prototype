@@ -324,13 +324,15 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   to leeward about half the wind's angle off the bow (`boat.boomSigned`), bellied to leeward, a sheet to the stern
   quarter; it furls along the yard at anchor.
   **Air on the sail** (`drawSailFlow`, the player's boat only, called from each sail's drawing in the boat frame;
-  Tuning: `SAIL_FLOW` {square 0.6, lateen 1}, `SAIL_FLOW_FROM` 0.75, `SAIL_FLOW_RATE` 5 a second, `SAIL_FLOW_ALPHA`):
+  Tuning: `SAIL_FLOW` {square 0.6, lateen 1}, `SAIL_FLOW_FROM` 0.75, `SAIL_FLOW_RATE` 1.4 a second, at most `SAIL_FLOW_MAX` 2 at once, `SAIL_FLOW_ALPHA` 0.45, faint: a hint, never hiding the sail):
   drawn like the wind streaks, not as fixed lines (fixed dashed streamlines were tried: too stiff and artificial).
   Only when the sail draws near its best (its share of top speed at this heading over its best on any heading,
   `sailBest`, above `SAIL_FLOW_FROM`), now and then a squiggly line (`flowGusts`) comes in from ahead of the luff
   along the sail's chord (lateen: from the tack along the yard; square: from the yard's end nearer the wind), mostly
-  on the bellied lee side (70%), squeezed toward the cloth, out past the leech, ending in a curl; it draws itself
-  out, the tail catches up, it fades (1.1–1.7 s). The nearer the best, the more of them and the darker. Changing tack, the heavy yard swings across slowly (`LATEEN_SWING` in
+  on the bellied lee side (70%), kept off the cloth, out past the leech, ending in a curl; like the streaks on the
+  sea it fades in (sin² of its life), pans downwind along the sail (10–18 px/s) and fades out (1.8–2.6 s), drawing
+  itself out as the tail catches up. The nearer the best, the more often and the darker (a first version had up to
+  5 a second, darker, close to the cloth: too many, the sail was hard to read). Changing tack, the heavy yard swings across slowly (`LATEEN_SWING` in
   Tuning, 0.9 against the usual trim rate of 3; `boat.swingAcross` until it's settled on the new side). A new voyage
   starts with `START_RIG` again.
   **Wind card** (the logbook's right page, first spread; `windHTML`, texts in `TEXT.sails`): a polar diagram in ink,
