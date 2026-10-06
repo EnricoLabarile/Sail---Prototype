@@ -228,7 +228,8 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   `resetStore`): the same table (`openStore` → `openMarket(STORE)`, a `store` branch in `stockTable`, `drawTable` and
   the deal): the hold on the left, the store on the right, every fish, dish and bottle a unit, no prices; drag or tap
   them across, "Done" (the only button) moves them (popups "n stored" / "n taken aboard"); taking aboard more than the
-  hold's free slots is refused ("No room in the hold"). Goods left at home are meant to count toward the end goal.
+  hold's free slots is refused ("No room in the hold"). Sails not rigged sit on the table too (`homeStore.sails`; one left at home
+  is not aboard: `sailsInHold` skips it, so it takes no slot); the village markets never show them, so they can't be sold. Goods left at home are meant to count toward the end goal.
 - **Compass** (95 px, `CMP_PX`, top centre of the screen (the open logbook covers it); in its tutorial step the bubble hangs under it; hidden in the tutorial
   until its own tutorial step): points home, a dot per village filled once a dish is bought there; drawn like the
   wheel (greys into a low-res canvas, then dithered): brass bezel with rivets, shaded card, wind rose, glass glare.
