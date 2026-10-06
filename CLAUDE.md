@@ -451,6 +451,15 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   astern, up to `SURF_WAVE_SIDE` (45 px) off to either side (so catching it takes a touch of the helm), already at her
   pace + `ROLLER_CATCH`, living 5.5–6.5 s; one at a time. `rollerPace` then does the rest (it hurries only while she's
   in line with its crest).
+- **Sharks** (section "Sharks"; Tuning `SHARK_ON`, `SHARK_CHANCE` 0.25 an encounter per minute at sea out of home
+  waters, `SHARK_COOLDOWN` 90 s between encounters, `SHARK_SPEED` 38 px/s, `SHARK_DAMAGE` 8, `SHARK_GIVE_UP` 30 s;
+  texts `TEXT.popups.sharkSeen` / `sharkBite`): one at a time (`shark`, `updateShark`, `drawShark`, cleared by
+  `resetShark` on a new voyage). It comes in from 330 px off, out of sight, aiming a little ahead of her and weaving in
+  long S-curves, a bit quicker once close; a popup "a fin!" when it comes within 230 px; at the hull it bites (damage,
+  flash, shake, rock, buzz, `Sfx.crash`) and makes off at ~1.9× speed, gone once 420 px away. It gives up (makes off
+  without biting) after `SHARK_GIVE_UP` s, or when she's back in home waters or moored; it swerves off land. Drawn
+  under the water as a dark torpedo with pectoral fins and a beating tail (faster when it flees), the dorsal fin in
+  ink above the surface with a pale rim and a curl of foam at its front.
 - **Atmosphere:** macchia (tree-spurge domes + trees: **olive trees** after Enrico's sketch, `TREE_KIND` 'olive' in Tuning ('pine' brings back the old stone pines, `makePine` / `drawStonePine`); `makeOlive` / `drawOlive`: a short, thick, twisted paper trunk outlined in ink with bark marks, flaring onto a little mound with roots and pebbles, forking into 3–4 outlined branches in a V, a wide flattish crown lifted above the fork: a solid ink mass (a dot per spray) edged with sprays of narrow pointed leaves fanned outward (spiky at the rim, drooping underneath), a few pale veins, a paper halo; a low branch or two with its own spray; `PINE_MODELS` = 4 tree shapes made each game, each maybe mirrored, stored in `isl.umbrellas`), clouds with parallax and shadows (`CLOUD_MODELS` = 4 shapes, made each game, still: they only drift), gulls, wind streaks (`updateStreaks` / `drawStreaks`: following the wind where she is, gusts included, `boat.windOff`, and more often in a gust; `WIND_STREAK_RATE` 2, `_WIDTH` 1.8, `_ALPHA` 0.85, `_LEN` 1.5 in Tuning),
   traders (motor boats on A* lanes: `TRADERS_HOME` = 2 on the four home-to-village lanes, two of them picked at random,
   and `TRADERS_VILLAGES` = 4 between neighbouring villages, one a lane; they don't avoid the player, a collision just shoves them aside
