@@ -323,15 +323,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   `drawLateenSail` (`LATEEN_SIZE` 0.6 in Tuning, on top of `SAIL_SIZE`): a long slanted yard on a short mast near the bow, the triangle of cloth trailing aft, eased out
   to leeward about half the wind's angle off the bow (`boat.boomSigned`), bellied to leeward, a sheet to the stern
   quarter; it furls along the yard at anchor.
-  **Wind on the sail** (after Enrico's sketch; `drawSailFlow`, the player's boat only, called from each sail's drawing
-  in the boat frame; Tuning: `SAIL_FLOW` {square 0.6, lateen 1}, `SAIL_FLOW_FROM` 0.5, `SAIL_FLOW_RATE` 2.5 a second,
-  at most `SAIL_FLOW_MAX` 4, `SAIL_FLOW_ALPHA`, `SAIL_FLOW_WIDTH`): while the sail draws well (its share of top speed
-  at this heading over its best on any heading, `sailBest`, above `SAIL_FLOW_FROM`), short curly lines (`flowGusts`)
-  run along both faces of the cloth (60% on the bellied lee side), 5–11 px off it and following its belly, along the
-  chord (lateen: from the tack along the yard; square: from the yard's end nearer the wind), from ahead of the luff
-  aft past the leech, where each ends in a curl rolling away from the sail; drawn like the streaks on the sea: it
-  draws itself out (the tail catching up), drifts aft and fades quickly in and out (1.2–1.7 s). Earlier tries, all
-  dropped: fixed dashed streamlines (stiff), long faint squiggles off the cloth (didn't read). Changing tack, the heavy yard swings across slowly (`LATEEN_SWING` in
+  (Wind lines on the sail were tried several ways, fixed streamlines, faint squiggles, short curls along both faces after a sketch, and dropped: they didn't work.) Changing tack, the heavy yard swings across slowly (`LATEEN_SWING` in
   Tuning, 0.9 against the usual trim rate of 3; `boat.swingAcross` until it's settled on the new side). A new voyage
   starts with `START_RIG` again.
   **Wind card** (the logbook's right page, first spread; `windHTML`, texts in `TEXT.sails`): a polar diagram in ink,
