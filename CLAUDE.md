@@ -327,8 +327,8 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   starts with `START_RIG` again.
   **Wind card** (the logbook's right page, first spread; `windHTML`, texts in `TEXT.sails`): a polar diagram in ink,
   the wind blowing down from the top (an arrow): the filled curve is the share of top speed the sail she carries gives
-  on each heading (its `SAIL_POLAR_*`; none with no sail rigged: "No sail: the oars"), a dashed curve for each sail in the hold, a needle for her heading now with a dot where it
-  meets the curve; under it "Square sail: 47%" (that share, `speedFactor` at her angle off the wind) and the breeze
+  on each heading (its `SAIL_POLAR_*`; none with no sail rigged: "No sail: the oars"), a dashed curve for each sail in the hold, a little boat in the middle (paper hull, two thwarts, mast;
+  rotated to her heading) with a dotted line on from her bow to a dot where her heading meets the curve; under it "Square sail: 47%" (that share, `speedFactor` at her angle off the wind) and the breeze
   (`windStrength`). It follows her heading live while the book is open on it (`windCardKey`, refreshed in
   `refreshList`, only when the rounded angle, the sail or the breeze changes).
   **Oars: rowed by hand, in rhythm** (like grinding berries in Pokémon Emerald; `MANUAL_OARS` in Tuning; false brings
