@@ -41,6 +41,7 @@
   const SPRING_PADDLES = true;       // the paddle wheels run off a wound spring: turn the crank (clockwise) to charge it, then they drive her on their own until it runs down; false = the old rhythmic oar button
   const SPRING_TURNS = 1;            // full turns of the crank, in one go, that wind the spring right up (let go before and the winding is lost: start again)
   const SPRING_TIME = 30;            // seconds the wheels can drive her on a full spring (it only runs down while they're driving)
+  const PADDLE_VOL = 1;              // loudness of the paddles slapping into the water as the spring drives the wheels (one low splash a paddle; 0 = silent)
   const CRANK_VOL = 1;               // loudness of the crank's gears as it winds (a tick a tooth, a heavier step each quarter turn; 0 = silent)
   const SPRING_SPEED = 14;           // px/s the wheels give her (the spring rests while the sail drives her faster than this)
   const OAR_START = 0.2;             // power the first press gives (0..1): she starts rowing, slowly
@@ -251,6 +252,11 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Paddle wheels: a low splash for each paddle going into the water, in time with the wheels (instead of the steady swirl)',
+      'Weighing anchor: the chain is louder again, with a low rumble of it running in',
+      'When the spring runs down and the wheels stop: a slack clunk of the gear',
+    ]},
+    {build: '2026-10-06 21:23', items: [
       'Crank: one full turn now winds the spring right up; let go before the turn is complete and the winding slips back (nothing charged, nothing locked): just start again',
     ]},
     {build: '2026-10-06 21:09', items: [
@@ -260,12 +266,8 @@
       'Weighing anchor: the chain sounds an octave lower',
       'Crank: as it winds, the gears now rattle with the anchor chain\'s old sound, a link each tooth (the old ticks are gone)',
     ]},
-    {build: '2026-10-06 20:55', items: [
-      'Crank: much bigger (easier to turn in circles), a bit higher up, at the top right of the wheel, drawn as a toothed gear with a dotted rim, a hatched plate and rivets',
-      'Crank: the gears tick as you wind (a tick each tooth, a heavier step every quarter turn), so you feel it charging',
-    ]},
   ];
-  const BUILD = '2026-10-06 21:23';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-06 21:31';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -3442,6 +3444,27 @@
       const og = ac.createGain(); og.gain.setValueAtTime(0.0001, at); og.gain.exponentialRampToValueAtTime(0.025*k, at+0.002); og.gain.exponentialRampToValueAtTime(0.0001, at+0.03);
       o.connect(og); og.connect(master); o.start(at); o.stop(at+0.04);
     }
+    // a paddle of the wheels slapping into the water: a low, short splash and a soft thud (all low: no bright spray)
+    function paddle(k){
+      if(!ac || ac.state!=='running' || !(k > 0)) return;
+      const t0 = ac.currentTime;
+      const s1 = ac.createBufferSource(); s1.buffer = noise;
+      const lp = ac.createBiquadFilter(); lp.type='lowpass'; lp.frequency.setValueAtTime(520*(0.9 + Math.random()*0.2), t0); lp.frequency.exponentialRampToValueAtTime(180, t0+0.14);
+      const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.13*k, t0+0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0+0.16);
+      s1.connect(lp); lp.connect(g); g.connect(master); s1.start(t0, Math.random()*0.5, 0.18);
+      const o = ac.createOscillator(); o.type='sine'; o.frequency.setValueAtTime(105, t0); o.frequency.exponentialRampToValueAtTime(62, t0+0.09);
+      const og = ac.createGain(); og.gain.setValueAtTime(0.0001, t0); og.gain.exponentialRampToValueAtTime(0.07*k, t0+0.006); og.gain.exponentialRampToValueAtTime(0.0001, t0+0.1);
+      o.connect(og); og.connect(master); o.start(t0); o.stop(t0+0.11);
+    }
+    // the spring run down: the wheels let go, a slack clunk of the gear and a short, falling whirr of the last turns
+    function springOff(k){
+      if(!ac || ac.state!=='running' || !(k > 0)) return;
+      const t0 = ac.currentTime;
+      for(let i = 0; i < 4; i++) chainLink(t0 + i*0.07*(1 + i*0.35), 0.75 - i*0.08, k*(1 - i*0.2));   // the last links of the gear, slowing
+      const o = ac.createOscillator(); o.type='triangle'; o.frequency.setValueAtTime(140, t0 + 0.42); o.frequency.exponentialRampToValueAtTime(70, t0+0.55);
+      const og = ac.createGain(); og.gain.setValueAtTime(0.0001, t0+0.42); og.gain.exponentialRampToValueAtTime(0.09*k, t0+0.425); og.gain.exponentialRampToValueAtTime(0.0001, t0+0.6);
+      o.connect(og); og.connect(master); o.start(t0+0.42); o.stop(t0+0.62);
+    }
     // the crank's gears: a link of the old anchor chain's rattle each tooth (heavy: a little louder, every quarter turn)
     function ratchet(k, heavy){
       if(!ac || ac.state!=='running' || !(k > 0)) return;
@@ -3754,7 +3777,13 @@
         // weighing anchor: the chain rattling in, link by link, bright and
         // quick, finishing within the WEIGH_TIME the boat waits
         const n = 12;
-        for(let k=0;k<n;k++) chainLink(t0 + k*0.066 + Math.random()*0.012, 0.5, 1);   // an octave lower than it was (the old pitch is the crank's)
+        for(let k=0;k<n;k++) chainLink(t0 + k*0.066 + Math.random()*0.012, 0.5, 2.4);   // an octave lower than it was (the old pitch is the crank's), and louder: low it got lost
+        { // under the links, the chain running in through the hawse: a low rumble for the whole haul
+          const sr = ac.createBufferSource(); sr.buffer = noise;
+          const lp = ac.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value = 380;
+          const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.12, t0+0.08); g.gain.setValueAtTime(0.12, t0+n*0.066-0.1); g.gain.exponentialRampToValueAtTime(0.0001, t0+n*0.066+0.05);
+          sr.connect(lp); lp.connect(g); g.connect(master); sr.start(t0, Math.random()*0.5, n*0.066+0.1);
+        }
         // the last link clunks home
         const end = t0 + n*0.066;
         const o = ac.createOscillator(); o.frequency.setValueAtTime(260, end); o.frequency.exponentialRampToValueAtTime(150, end+0.06);
@@ -3764,7 +3793,7 @@
     }
 
 
-    return {init, oar, ratchet, oarCue, oarHit, rowBed, crate, tick, thunk, wheel, ambient, rain, cicadas, book, pageTurn, pickup, hammer, bell, whirl, type, splash, drone, gull, crash, waveBreak, waveHit, surf, townEvent, chatter, cricket, howl, anchor, buoy, coins, engine};
+    return {init, oar, ratchet, paddle, springOff, oarCue, oarHit, rowBed, crate, tick, thunk, wheel, ambient, rain, cicadas, book, pageTurn, pickup, hammer, bell, whirl, type, splash, drone, gull, crash, waveBreak, waveHit, surf, townEvent, chatter, cricket, howl, anchor, buoy, coins, engine};
   })();
 
   // ---------- Ship's wheel ----------
@@ -5448,12 +5477,14 @@
     const can = spring > 0.001 && !(anchored || moor || boat.whirl) && (boat.sailV || 0) < SPRING_SPEED;
     oarSpin += ((can ? 1 : 0) - oarSpin)*Math.min(1, dt*2.5);                 // the wheels take up and let go smoothly
     if(oarSpin < 0.005) oarSpin = 0;
+    const was = spring;
     if(can) spring = Math.max(0, spring - dt/SPRING_TIME);
+    if(was > 0 && spring <= 0) Sfx.springOff(PADDLE_VOL);    // run down: the wheels let go
     if(crankLocked && spring <= 0){ crankLocked = false; elCrank.classList.remove('locked'); buzz(8); }   // run down: the crank is free again
     oarKick = 0;
     oarRate += ((oarSpin > 0.01 ? OAR_RATE*1.4 : 0) - oarRate)*Math.min(1, dt*OAR_RATE_EASE);   // the wheels' pace (and the churn's)
     oarCycle += dt*oarRate;
-    { const lvl = OAR_BED_VOL*boat.oarK*(0.4 + 0.6*oarSpin); Sfx.rowBed(playing ? lvl : 0, oarCycle % 1, Math.min(1, boat.speed/MAX_SPEED)); }
+    Sfx.rowBed(0, 0, 0);                                     // (the wheels make their own sound: a splash a paddle, in drawBoat)
     if(!show) return;
     const key = Math.round(crankA*40) + '|' + Math.round(spring*200) + '|' + Math.round(windProg*200);
     if(key !== crankKey){
@@ -8869,6 +8900,8 @@
       const wnow = performance.now(), wdt = Math.min(0.05, (wnow - (B.wheelLast || wnow))/1000); B.wheelLast = wnow;
       B.wheelA = (B.wheelA || 0) + Math.max(g ? 0 : oarRate*Math.PI*2, Math.max(0, B.speed || 0)/R*0.9)*wdt;
       const turnA = B.wheelA;
+      // a paddle slapping into the water each time one comes round (eight a turn), while the spring drives the wheels
+      { const idx = Math.floor(turnA/(Math.PI/4)); if(!g && SPRING_PADDLES && idx !== B.padIdx && oarSpin > 0.05) Sfx.paddle(PADDLE_VOL*oarSpin); B.padIdx = idx; }
       const pedal = !g && (oarSpin > 0.01 || B.oarK > 0.05);
       ctx.setTransform(base); ctx.lineJoin = 'round';
       for(const sd of [-1, 1]){

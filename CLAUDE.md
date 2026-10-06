@@ -278,7 +278,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   logbook bottom left (compass at the top centre), wheel bottom centre; nothing bottom right (the sail is automatic).
   Hub of the wheel = anchor only:
   No rudder gauge above the wheel (removed): the wheel's turn and the rudder on the boat show the helm.
-  **long press 0.32 s = anchor** (`HUB_HOLD`, was 0.5). At anchor the wheel fades out and only the hub (dark) remains. The hub is always drawn big (`hubScale` = 2, the
+  **long press 0.32 s = anchor** (weighing it: `Sfx.anchor(false)`, the chain's links an octave lower than at first and louder, ×2.4, over a low rumble of chain running in) (`HUB_HOLD`, was 0.5). At anchor the wheel fades out and only the hub (dark) remains. The hub is always drawn big (`hubScale` = 2, the
   size it once grew to only at anchor); while sailing its grip is just the hub (`HUB_SAIL_R`), so the spokes still steer. The hub is
   drawn like the compass, in greys then dithered: a light brass bezel (lit top left) with four rivets round a shaded
   face with a glint; sailing, a light face with an ink anchor; at anchor, a dark face, one light rim and a paper anchor (same size both ways). Over a fish bank (not fishing, not
@@ -358,8 +358,10 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   and she isn't at anchor, moored or in a whirlpool, and the sail alone gives her less than `SPRING_SPEED` (14 px/s),
   the wheels drive her on their own: `oarSpin` eases to 1, `boat.rowV` = `SPRING_SPEED` × `oarSpin` (a steady push, no
   surges or kicks), and the spring runs down over `SPRING_TIME` (30 s) of driving; otherwise it rests. `updateSpring`
-  (called by `updateOarCtl`) also turns the wheels (`oarRate`, 1.4 × `OAR_RATE`) and keeps the water's churn
-  (`Sfx.rowBed`). A new voyage starts with it empty.
+  (called by `updateOarCtl`) also turns the wheels (`oarRate`, 1.4 × `OAR_RATE`); the steady churn (`Sfx.rowBed`) is
+  silent in this mode: instead `drawBoat` plays `Sfx.paddle` (a low lowpassed splash and a 105→62 Hz thud, loudness
+  `PADDLE_VOL` × `oarSpin`) each time a paddle comes round (eight a turn of `B.wheelA`), so the sound follows the wheels;
+  when the spring runs down `Sfx.springOff` (the gear's last links slowing, a slack clunk). A new voyage starts with it empty.
   **Paddle wheels, not oars** (pedalò style; in `drawBoat`, every boat): two upright wheels, one a side amidships
   (axle across her at the gunwale, `R` 7, eight flat paddles drawn as quads through `P`, only what's above the water,
   both rims and the hub), turned by the pedalling (`oarRate` × 2π: one turn a stroke of the oar button) or, under sail, freewheeling with the water going by (her speed / R × 0.9), whichever is quicker (`B.wheelA`);
