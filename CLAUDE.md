@@ -320,7 +320,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   surfing push and length × `RIG_SURF` (1.35 / 0.7, `boat.surfK`), damage × `RIG_WAVE_HIT` (0.6 / 1.4), the slew round
   × `RIG_BROACH` (0.6 / 2.2). Measured (sail-only target): open sea, square at 150° ~51 px/s, lateen at 70° ~55; among
   the islands both drop (gusts, lulls, lee) and the square most. The lateen is drawn by
-  `drawLateenSail`: a long slanted yard on a short mast near the bow, the triangle of cloth trailing aft, eased out
+  `drawLateenSail` (`LATEEN_SIZE` 0.6 in Tuning, on top of `SAIL_SIZE`): a long slanted yard on a short mast near the bow, the triangle of cloth trailing aft, eased out
   to leeward about half the wind's angle off the bow (`boat.boomSigned`), bellied to leeward, a sheet to the stern
   quarter; it furls along the yard at anchor. Changing tack, the heavy yard swings across slowly (`LATEEN_SWING` in
   Tuning, 0.9 against the usual trim rate of 3; `boat.swingAcross` until it's settled on the new side). A new voyage

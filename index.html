@@ -182,6 +182,7 @@
   const CLOUD_MODELS = 4;            // cloud shapes, shared by all the clouds in the sky (world)
   const MAP_RES = 280;               // the sea chart in the logbook: its pixels a side (fewer = coarser)
   const SAIL_SIZE = 1.15;             // size of the boat's sail (1 = the old one: a yard 30 px wide)
+  const LATEEN_SIZE = 0.6;            // the lateen sail's size, on top of SAIL_SIZE (1 = as it was drawn before)
   // the two sails' speed curves: [degrees off the wind, share of top speed], made starker than real life so each
   // sail has its own way to sail. The square sail: the open sea, the wind from astern (and SQUARE_RUN_BONUS on top);
   // almost dead on the wind, weak on the beam. The lateen: the wind on the beam (its best is faster than the square's
@@ -228,6 +229,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Lateen sail: drawn smaller, 60% of its old size',
+    ]},
+    {build: '2026-10-06 13:19', items: [
       'Oars: the soft swirl of water under the strokes is back (it swells with each pull)',
       'Oars: the press cue is now a dry wooden clunk of the oar in its thole, and a stroke on time a short hard splash (no more drop-like blips)',
     ]},
@@ -237,12 +241,8 @@
     {build: '2026-10-06 12:45', items: [
       'Oars: the rowing background is now a steady, low churn of water (no more chirping drips)',
     ]},
-    {build: '2026-10-06 12:28', items: [
-      'Oars: a soft wash of water in the background while rowing, swelling with each pull, and a few drips as the blades come out',
-      'Oars: a stroke on time plays its fuller, stronger sound again (it had gone silent)',
-    ]},
   ];
-  const BUILD = '2026-10-06 13:19';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-06 14:09';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -8596,7 +8596,7 @@
   function drawLateenSail(B){
     const sa = B.boomSigned, lee = sa >= 0 ? 1 : -1, sabs = Math.abs(sa);
     const mx = 6, my = 0;                                   // the mast
-    const LA = 22*SAIL_SIZE, LF = 9*SAIL_SIZE;              // yard aft and forward of the mast
+    const LA = 22*SAIL_SIZE*LATEEN_SIZE, LF = 9*SAIL_SIZE*LATEEN_SIZE;              // yard aft and forward of the mast
     const ex = -Math.cos(sabs), ey = lee*Math.sin(sabs);    // along the yard, toward its peak
     const tx = mx - ex*LF, ty = my - ey*LF;                 // tack: the yard's low forward end
     const px = mx + ex*LA, py = my + ey*LA;                 // peak: its high aft end
@@ -8606,7 +8606,7 @@
     // clew: the sheeted corner, a little further out than the yard; furled, it's drawn up to the yard
     const ca = sabs + 0.5, CL = 0.62*LA*(1 - 0.75*furl);
     const cx = mx - Math.cos(ca)*CL, cy = my + lee*Math.sin(ca)*CL;
-    const belly = (1.5 + p*7)*reef*SAIL_SIZE;
+    const belly = (1.5 + p*7)*reef*SAIL_SIZE*LATEEN_SIZE;
     const luff = p < 0.25 ? (1 - p/0.25) : 0;
     const ripple = Math.sin(t*22)*2.2*luff*open;           // (a furled sail doesn't flap)
     // the cloth bellies out to leeward, off the leech and the foot
