@@ -70,6 +70,8 @@
   const WHIRL_PULL = 22;             // px/s pull at the edge of the core…
   const WHIRL_CURVE = 4;             // …rising exponentially from ~0 at the rim
   const WHIRL_FADE = 3;              // seconds for a whirlpool to open up / die down
+  const WHIRL_FOLLOW = 2;            // a whirlpool creeps after her while she's within this many times its radius…
+  const WHIRL_FOLLOW_SPEED = 7;      // …at this many px/s (slow; it never leaves open water); once it has caught and spun her it dies down
   const WHIRL_FLING = 200;            // px/s² of extra speed while she runs round a whirlpool's outer ring with its swirl (a slingshot)…
   const WHIRL_FLING_MAX = 200;        // …up to this much above her normal speed (it fades once she's out)
   const WHIRL_FLING_COS = 0.8;       // how well her heading must follow the swirl to be flung (cos of ~37°)
@@ -238,6 +240,10 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Whirlpools look like flowing water: curved foam streaks that swell and thin, and pale arms winding in (no more straight dashes)',
+      'Whirlpools creep after you, slowly, while you are within twice their size; once one has caught and spun you, it dies away',
+    ]},
+    {build: '2026-10-06 18:00', items: [
       'The boat in 3D: she rolls and pitches for real (the mast leans, her side shows where she dips, the sail sways): with the swell, heeling to leeward with the sail full (most with the wind on the beam), leaning out of turns, the bow lifting as she gathers way; seen a little from the south, so the mast and sail rise up the screen like the trees',
     ]},
     {build: '2026-10-06 17:55', items: [
@@ -246,11 +252,8 @@
     {build: '2026-10-06 17:50', items: [
       'Trees: the islands now grow olive trees after your sketch (a twisted trunk on a little mound, a V of branches, a wide dark crown of pointed leaves) instead of the stone pines',
     ]},
-    {build: '2026-10-06 17:38', items: [
-      'Wind on the sail, after your sketch: while the sail draws well, short curly wind lines run along both faces of the cloth, from the luff aft, and curl off past the leech (the air flowing past both sides: the lift)',
-    ]},
   ];
-  const BUILD = '2026-10-06 18:00';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-06 18:13';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -2306,6 +2309,15 @@
     // slow wandering: a heading that drifts; turn away from land, rocks, piers
     for(const w of whirlpools){
       if(w.s<=0 || w.hd===undefined) continue;
+      // she's near (within WHIRL_FOLLOW × its radius): it creeps after her, slowly, as long as the water lets it
+      const fd = wdist(boat.x, boat.y, w.x, w.y);
+      if(playing && w.phase !== 'out' && fd < w.r*WHIRL_FOLLOW && !boat.whirl){
+        const to = Math.atan2(wdy(boat.y, w.y), wdx(boat.x, w.x));
+        w.hd += norm(to - w.hd)*Math.min(1, dt*1.5);
+        const nx = wrapX(w.x + Math.cos(w.hd)*WHIRL_FOLLOW_SPEED*dt), ny = wrapY(w.y + Math.sin(w.hd)*WHIRL_FOLLOW_SPEED*dt);
+        if(whirlWaterOK(nx, ny, w.core)){ w.x = nx; w.y = ny; }
+        continue;
+      }
       w.hd += rand(-0.6,0.6)*dt;
       // check the water a few seconds ahead, twice a second (staggered)
       w.chk = (w.chk===undefined ? Math.random()*0.5 : w.chk) - dt;
@@ -6631,7 +6643,7 @@
         if(d < w.core && w.s > 0.7){
           boat.whirl = { w, t:0, dur: 2.0, a0: Math.atan2(dy,dx), d0: Math.max(d, 8),
                          h0: boat.angle, out: rand(-Math.PI, Math.PI) };
-          w.armed = false;
+          w.armed = false; w.phase = 'out';               // it has had her: once she's flung out, it dies down
           boat.speed = 0; boat.kx = boat.ky = 0;
           boat.health = Math.max(0, boat.health - WHIRL_DAMAGE);
           hurtFlash = 0.35; shake = 0.15; showHealth(); Sfx.crash(0.6);
@@ -8210,11 +8222,11 @@
     ctx.restore();
   }
 
-  // whirlpool: soft dithered halo and funnel, and many short foam streaks
-  // that are sucked inward along a logarithmic spiral, turning faster as
-  // they near the eye (like real water, angular speed grows toward the
-  // centre). The core edge is a broken, wobbling foam ring.
-  const WP_PARTS = 38, WP_LIFE = 3.6;           // streaks per whirlpool, seconds rim → eye
+  // whirlpool: soft dithered halo and funnel, a few broad pale arms of water winding in, and many curved foam
+  // streaks sucked inward along a logarithmic spiral, turning faster as they near the eye (like real water, angular
+  // speed grows toward the centre); every line is a smooth curve that swells and thins, wobbling a little as it
+  // goes, so it reads as flowing water. The core edge is a broken, wobbling foam ring.
+  const WP_PARTS = 34, WP_LIFE = 3.6, WP_ARMS = 3;   // streaks per whirlpool, seconds rim → eye, pale arms
   function drawWhirlpool(w){
     // (its two gradients are made once, round 0,0, and drawn moved to where it wanders)
     if(!w.grads){
@@ -8235,28 +8247,42 @@
 
     if(!w.parts){
       w.parts=[];
-      for(let k=0;k<WP_PARTS;k++) w.parts.push({ph:Math.random(), a0:Math.random()*Math.PI*2, len:0.05+Math.random()*0.05});
+      for(let k=0;k<WP_PARTS;k++) w.parts.push({ph:Math.random(), a0:Math.random()*Math.PI*2, len:0.1+Math.random()*0.12, wob:Math.random()*6.3});
     }
     const R0 = w.r*0.9, EYE = 3;
-    const C = 1.1;                                 // spiral tightness
-    const pos = (p, a0)=>{                         // p: 0 at rim → 1 at eye
-      const r = EYE + (R0-EYE)*Math.pow(1-p, 1.25);
+    const C = 1.6;                                 // spiral tightness (tighter: the streaks curve more)
+    const pos = (p, a0, wob)=>{                    // p: 0 at rim → 1 at eye
+      const r = (EYE + (R0-EYE)*Math.pow(1-p, 1.25))*(1 + (wob === undefined ? 0 : Math.sin(p*9 + wob + t*1.3)*0.035));
       const th = a0 + w.rot*0.35 + w.dir*C*Math.log(R0/r);
       return [w.x+Math.cos(th)*r, w.y+Math.sin(th)*r];
     };
-    ctx.strokeStyle=INKC; ctx.lineCap='round';
+    const curve = (p0, p1, a0, wob, n)=>{          // a smooth curve through n points of the spiral
+      const pts = []; for(let s=0;s<=n;s++) pts.push(pos(p0 + (p1-p0)*s/n, a0, wob));
+      ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+      for(let s=1;s<pts.length-1;s++){ const mx=(pts[s][0]+pts[s+1][0])/2, my=(pts[s][1]+pts[s+1][1])/2; ctx.quadraticCurveTo(pts[s][0], pts[s][1], mx, my); }
+      ctx.lineTo(pts[pts.length-1][0], pts[pts.length-1][1]);
+    };
+    ctx.lineCap='round';
+    // broad pale arms of water, winding in with the swirl
+    ctx.strokeStyle = V(0.72);
+    for(let k=0;k<WP_ARMS;k++){
+      const a0 = k*Math.PI*2/WP_ARMS + t*0.25*w.dir;
+      ctx.globalAlpha = w.s*0.55; ctx.lineWidth = 4;
+      curve(0.05, 0.9, a0, k*2.1, 22); ctx.stroke();
+    }
+    // the foam: curved streaks drawn in segments that swell toward the middle and thin at both ends
+    ctx.strokeStyle=INKC;
     for(const q of w.parts){
       const p = (t/WP_LIFE + q.ph) % 1;
       const head = p, tail = Math.max(0, p - q.len*(0.6+p));
       const fadeIn = Math.min(1, p/0.18), fadeOut = Math.min(1, (1-p)/0.1);
-      ctx.globalAlpha = w.s * (0.25 + 0.75*p) * fadeIn * fadeOut;
-      ctx.lineWidth = 0.9 + p*0.9;
-      ctx.beginPath();
-      for(let s=0;s<=4;s++){
-        const [x,y] = pos(tail + (head-tail)*s/4, q.a0);
-        if(s===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      const a = w.s * (0.25 + 0.75*p) * fadeIn * fadeOut;
+      for(let s=0;s<3;s++){
+        const u0 = tail + (head-tail)*s/3, u1 = tail + (head-tail)*(s+1)/3;
+        ctx.globalAlpha = a*(s === 1 ? 1 : 0.7);
+        ctx.lineWidth = (0.7 + p*0.9)*(s === 1 ? 1.35 : 0.8);
+        curve(u0, u1, q.a0, q.wob, 4); ctx.stroke();
       }
-      ctx.stroke();
     }
     ctx.globalAlpha=w.s;
     // broken foam ring at the core's edge, gently wobbling and turning

@@ -428,7 +428,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   least `ROCK_GAP` 64 px of water between them, about twice the boat's length, so she never gets stuck in a slot:
   `tooTight`, `shoreTight` in `tryRock` / `tryStack`; stacks stand `ROCK_GAP` + 20–60 px off the cliffs; this left ~555
   rocks instead of ~760 and no tight pairs instead of ~930. **Sizes** vary: `rockSize`, a share `ROCK_BIG` 0.4 drawn
-  bigger, up to `ROCK_BIG_MAX` 2.2 ×), whirlpools (appear/disappear/wander; from day 1, `WHIRL_FROM_DAY` = 1; **slingshot**:
+  bigger, up to `ROCK_BIG_MAX` 2.2 ×), whirlpools (appear/disappear/wander; from day 1, `WHIRL_FROM_DAY` = 1; **they creep after her** while she's within `WHIRL_FOLLOW` (2) × their radius, at `WHIRL_FOLLOW_SPEED` (7 px/s), never out of open water (`whirlWaterOK`); **once one catches her** in its core it's set to fade out (`phase` 'out', held until she's flung); drawn as flowing water (`drawWhirlpool`): `WP_ARMS` broad pale arms winding in and curved foam streaks along a tighter spiral (C 1.6), each a smooth curve in three segments swelling in the middle, wobbling a little; **slingshot**:
   running round a whirlpool's outer ring with its swirl, heading within ~37° of the way it turns (`WHIRL_FLING_COS`),
   she gains speed, `WHIRL_FLING` px/s² × how well she follows it × how deep in she is (0.35 at the rim → 1 at the core),
   up to `WHIRL_FLING_MAX` above her normal speed, fading once she's out; once a pass a whoosh, a buzz and a "flung!"
