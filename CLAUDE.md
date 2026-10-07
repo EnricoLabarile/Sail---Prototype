@@ -356,10 +356,10 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   `SPRING_TURNS` 1 full turn in one go fills it (`windProg`, shown on the ring while winding; it only counts once complete: let go before and the arm springs back anticlockwise like an alarm clock's key (`crankBack`, at `CRANK_BACK_SPEED` 12 rad/s, quicker the more it was wound, a light ratchet tick a tooth and a heavier clack when home), the ring emptying with it; grabbing it on the way catches it where it is; nothing charged or locked; Enter/Space winds a whole turn at once); turning back does nothing, a ratchet; the gears rattle, `Sfx.ratchet` (one `chainLink`
   at the anchor chain's original pitch, loudness `CRANK_VOL`; the anchor chain itself now plays an octave lower), once a tooth, with a heavier, lower step and a buzz every
   quarter turn; `Sfx.oarHit` and a buzz when it's full, and then the crank **locks** (`crankLocked`, class `locked`: arm and gear faded, no input, no sound) until the spring has run right down to 0, a cooldown). While it holds a charge
-  and she isn't at anchor, moored or in a whirlpool, and the sail alone gives her less than `SPRING_SPEED` (14 px/s),
+  and she isn't at anchor, moored or in a whirlpool, and the sail alone gives her less than `SPRING_SPEED` (19.6 px/s; was 14),
   the wheels drive her on their own: `oarSpin` eases to 1, `boat.rowV` = `SPRING_SPEED` × `oarSpin` (a steady push, no
-  surges or kicks), and the spring runs down over `SPRING_TIME` (30 s) of driving; otherwise it rests. `updateSpring`
-  (called by `updateOarCtl`) also turns the wheels (`oarRate`, 1.4 × `OAR_RATE`); the steady churn (`Sfx.rowBed`) is
+  surges or kicks), and the spring runs down over `SPRING_TIME` (15 s; was 30) of driving; otherwise it rests. `updateSpring`
+  (called by `updateOarCtl`) also turns the wheels (`oarRate`, 1.4 × `OAR_RATE` × `SPRING_SPEED`/14); the steady churn (`Sfx.rowBed`) is
   silent in this mode: instead `drawBoat` plays `Sfx.paddle` (a low lowpassed splash and a 105→62 Hz thud, loudness
   `PADDLE_VOL` 1.8 × `oarSpin`) each time a paddle comes round (eight a turn of `B.wheelA`), so the sound follows the wheels; freewheeling under sail (no spring drive, her speed > 3 px/s) the same splash plays quieter and lower (`PADDLE_FREE_VOL` 0.22 × `PADDLE_VOL` × min(1, speed/25), `PADDLE_FREE_PITCH` 0.7, Tuning);
   when the spring runs down `Sfx.springOff` (the gear's last links slowing, a slack clunk). A new voyage starts with it empty.
