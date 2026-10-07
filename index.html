@@ -285,6 +285,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Crank: the steady grind under the clicks is now low and gritty, a gear grinding (no more high, chainsaw-like buzz)',
+    ]},
+    {build: '2026-10-07 20:58', items: [
       'The faraglioni (the tall rock columns off the islands\' cliffs) are gone',
     ]},
     {build: '2026-10-07 20:33', items: [
@@ -293,11 +296,8 @@
     {build: '2026-10-07 19:41', items: [
       'The square sail is rigged from the start (the lateen waits in the hold)',
     ]},
-    {build: '2026-10-07 18:41', items: [
-      'Crank: the first click comes right away (it waited a whole tooth before), and under the clicks the gears now grind for as long as you turn it, louder and rougher the faster you go',
-    ]},
   ];
-  const BUILD = '2026-10-07 20:58';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-07 21:07';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -2978,18 +2978,23 @@
       src.connect(lp); lp.connect(out); out.connect(chan('wheel', wheelBus));
       src.start();
       rub = {lp, out};
-      // the crank's gears grinding while it's turned by hand: band-passed noise roughened by a fast square flutter
-      // (the teeth), silent until grind() opens it
+      // the crank's gears grinding while it's turned by hand: low noise (no hiss: everything over ~400 Hz cut),
+      // swelling softly as each tooth passes (a triangle at the teeth's rate, not a buzz) and wobbling slowly like
+      // an uneven gear; silent until grind() opens it. (A square flutter at 30–100 Hz over brighter noise was tried
+      // first: it sounded like a chainsaw.)
       {
         const src = ac.createBufferSource(); src.buffer = noise; src.loop = true;
-        const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 380; bp.Q.value = 1.3;
-        const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1400;
-        const grain = ac.createGain(); grain.gain.value = 0.55;
-        const lfo = ac.createOscillator(); lfo.type = 'square'; lfo.frequency.value = 40;
-        const la = ac.createGain(); la.gain.value = 0.45; lfo.connect(la); la.connect(grain.gain);
+        const lp1 = ac.createBiquadFilter(); lp1.type = 'lowpass'; lp1.frequency.value = 420; lp1.Q.value = 0.5;
+        const lp2 = ac.createBiquadFilter(); lp2.type = 'lowpass'; lp2.frequency.value = 420; lp2.Q.value = 0.5;
+        const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 170; bp.Q.value = 0.9;
+        const grain = ac.createGain(); grain.gain.value = 0.6;
+        const lfo = ac.createOscillator(); lfo.type = 'triangle'; lfo.frequency.value = 8;   // the teeth going by
+        const la = ac.createGain(); la.gain.value = 0.4; lfo.connect(la); la.connect(grain.gain);
+        const wob = ac.createOscillator(); wob.frequency.value = 2.7;                          // the gear running a little uneven
+        const wa = ac.createGain(); wa.gain.value = 22; wob.connect(wa); wa.connect(bp.frequency);
         const out = ac.createGain(); out.gain.value = 0;
-        src.connect(bp); bp.connect(lp); lp.connect(grain); grain.connect(out); out.connect(chan('crank', master));
-        src.start(0, 2.3); lfo.start();
+        src.connect(lp1); lp1.connect(lp2); lp2.connect(bp); bp.connect(grain); grain.connect(out); out.connect(chan('crank', master));
+        src.start(0, 2.3); lfo.start(); wob.start();
         grindNodes = {bp, lfo, out};
       }
 
@@ -3298,9 +3303,9 @@
     function grind(level, tense){
       if(!grindNodes || ac.state!=='running') return;
       const t = ac.currentTime, on = level > 0.02;
-      grindNodes.out.gain.setTargetAtTime(on ? CRANK_GRIND*0.16*Math.min(1, 0.35 + level) : 0, t, on ? 0.012 : 0.05);
-      grindNodes.bp.frequency.setTargetAtTime((300 + 260*level)*tense, t, 0.04);
-      grindNodes.lfo.frequency.setTargetAtTime(28 + 70*level, t, 0.04);
+      grindNodes.out.gain.setTargetAtTime(on ? CRANK_GRIND*0.3*Math.min(1, 0.35 + level) : 0, t, on ? 0.012 : 0.05);
+      grindNodes.bp.frequency.setTargetAtTime((140 + 110*level)*tense, t, 0.04);
+      grindNodes.lfo.frequency.setTargetAtTime(5 + 13*level, t, 0.04);           // ~the sixteen teeth a turn passing
     }
     function wheel(angVel){
       if(!rub || ac.state!=='running') return;
