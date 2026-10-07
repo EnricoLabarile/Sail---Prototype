@@ -295,6 +295,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Storms: the screen flashes only when the bolt or its cloud is in view (a storm out of sight is only heard)',
+    ]},
+    {build: '2026-10-07 22:43', items: [
       'Storm clouds: some rain clouds are darker and throw lightning. A dashed ring flickers on the water where a bolt will strike; if the boat is inside it when the bolt falls she is hit (-15 hull). Flash and thunder',
       'First screen, Dangers: knobs for the storms (STORM_ON, STORM_SHARE, STORM_WARN, STORM_AIM, STORM_HIT_R, STORM_DAMAGE); Audio: a Thunder slider',
     ]},
@@ -304,12 +307,8 @@
     {build: '2026-10-07 22:05', items: [
       'The boat is now a gozzo: beamy and pointed at both ends, white sides with a dark band along the top, a little deck at the bow and one at the stern, the tall stem post over the bow and a short one aft carrying the rudder',
     ]},
-    {build: '2026-10-07 21:15', items: [
-      'The ship\'s wheel sounds twice as loud (the spokes\' knocks, the thump at full lock, the rub as it turns)',
-      'The paddle wheels\' splashes are twice as loud, both driven by the spring and freewheeling under sail',
-    ]},
   ];
-  const BUILD = '2026-10-07 22:43';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-07 23:27';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -8578,7 +8577,10 @@
         if(b.t <= 0 && !b.struck){
           b.struck = true;
           const x = sx + b.ou, y = sy + b.ov, d = Math.hypot(x - boat.x, y - boat.y);
-          flashT = Math.max(flashT, 0.3*Math.max(0, 1 - d/900));
+          // the flash only when the bolt or its cloud is on screen (a storm out of sight is only heard)
+          { const hw = GW*PX/2 + 30, hh = GH*PX/2 + 30, [ccx, ccy, csx, csy] = cloudAndShadow(c, camFx, camFy);
+            const seen = (px, py, m)=> Math.abs(wdx(px, camFx)) < hw + m && Math.abs(wdy(py, camFy)) < hh + m;
+            if(seen(csx + b.ou, csy + b.ov, 0) || seen(ccx, ccy, c.cw*0.4)) flashT = Math.max(flashT, 0.3); }
           const near = Math.max(0, 1 - d/350), vol = Math.max(0, 1 - d/1100);
           setTimeout(()=> Sfx.thunder(vol, near), Math.min(1600, d*1.4));   // the thunder comes after the flash, later the further off
           if(d < STORM_HIT_R && !moor){

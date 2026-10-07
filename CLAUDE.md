@@ -481,7 +481,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   it drifts with it), aimed right at her (± 8 px) with `STORM_AIM` if she's under it; for `STORM_WARN` a dashed ring
   (paper in ink) flickers there, tightening; then the bolt (`drawStorms`, after `drawRain`: a jagged paper line in ink
   from under the cloud to the spot, two forks, a splash ring, ~0.5 s), a flash over the screen (`flashT`, paper over
-  everything) and `Sfx.thunder(vol, near)` (a crack of high-passed noise when close, then a low rumble in uneven swells
+  everything; only when the bolt's spot or its cloud is in view, else the storm is only heard) and `Sfx.thunder(vol, near)` (a crack of high-passed noise when close, then a low rumble in uneven swells
   over ~3 s; kind `thunder` in `SOUND_VOL`, Audio slider "Thunder"), delayed by the distance (d × 1.4 ms, at most
   1.6 s). Within `STORM_HIT_R` of the bolt (not moored) she's hit: damage, flash, shake, rock, buzz, `Sfx.crash`, popup.
 - **Sharks** (section "Sharks"; Tuning `SHARK_ON`, `SHARK_CHANCE` 0.25 an encounter per minute at sea out of home
