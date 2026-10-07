@@ -45,6 +45,8 @@
   const PADDLE_FREE_VOL = 0.22;      // …and when they only freewheel under sail (dragged round by the water): the same splash, this much quieter (× PADDLE_VOL)…
   const PADDLE_FREE_PITCH = 0.7;     // …and this much lower in pitch (1 = as when driven)
   const CRANK_BACK_SPEED = 12;       // let go of the crank before a full turn and it springs back anticlockwise, like an alarm clock's key: turns a second (radians, quicker the more it was wound)
+  const CRANK_WEIGHT = 1;            // weight under the crank's clicks while you wind it: a low thud and a dull knock a tooth (0 = just the click, as when it springs back)
+  const CRANK_TICK_GAP = 0.022;      // s: the crank's clicks come at least this far apart, an even run however the finger jumps
   const CRANK_VOL = 1;               // loudness of the crank's gears as it winds (a tick a tooth, a heavier step each quarter turn; 0 = silent)
   const SPRING_SPEED = 19.6;         // px/s the wheels give her (the spring rests while the sail drives her faster than this; was 14, +40%)
   const OAR_START = 0.2;             // power the first press gives (0..1): she starts rowing, slowly
@@ -282,6 +284,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Crank: winding it by hand sounds heavier and more even: each tooth has a low knock of the gear under its click (rising as the spring tightens), and the clicks come in a steady run however the finger moves',
+    ]},
+    {build: '2026-10-07 18:04', items: [
       'Spring paddles: a full crank now drives the boat for half as long (15 s) but 40% faster, the wheels turning quicker too',
     ]},
     {build: '2026-10-07 17:46', items: [
@@ -292,11 +297,8 @@
       'Paddle wheels: louder while the spring drives the boat (freewheeling under sail stays as it was)',
       'Market coins: quieter, quicker and snappier, an octave lower',
     ]},
-    {build: '2026-10-06 23:37', items: [
-      'Paddle wheels: freewheeling under sail they now splash too, quieter and lower than when the spring drives them',
-    ]},
   ];
-  const BUILD = '2026-10-07 18:04';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-07 18:37';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -3533,9 +3535,27 @@
       o.connect(og); og.connect(master); o.start(t0+0.42); o.stop(t0+0.62);
     }
     // the crank's gears: a link of the old anchor chain's rattle each tooth (heavy: a little louder, every quarter turn)
-    function ratchet(k, heavy){
+    // a tooth of the crank's ratchet. The clicks queue up at least CRANK_TICK_GAP apart, so a finger's uneven jumps
+    // (several teeth in one move) come out as a quick, even run, like the spring unwinding, not one lumped click.
+    // body: the hand winding it (1..~1.4, rising as the spring tightens) adds the gear's weight under the click: a low
+    // thud and a dull knock, deeper and fuller on the quarter-turn step
+    let ratchetT = 0;
+    function ratchet(k, heavy, body){
       if(!ac || ac.state!=='running' || !(k > 0)) return;
-      chainLink(ac.currentTime + 0.005, 1, k*(heavy ? 1.4 : 1));
+      const now = ac.currentTime, at = Math.max(now + 0.005, ratchetT);
+      if(at > now + 0.15) return;                            // (too far behind the finger: let it go)
+      ratchetT = at + CRANK_TICK_GAP;
+      chainLink(at, 1, k*(heavy ? 1.4 : 1));
+      if(!body) return;
+      const kk = k*CRANK_WEIGHT*(heavy ? 1.6 : 1);
+      const o = ac.createOscillator(); o.type = 'sine';
+      o.frequency.setValueAtTime((heavy ? 120 : 165)*body, at); o.frequency.exponentialRampToValueAtTime((heavy ? 70 : 100)*body, at + 0.06);
+      const og = ac.createGain(); og.gain.setValueAtTime(0.0001, at); og.gain.exponentialRampToValueAtTime(0.11*kk, at + 0.004); og.gain.exponentialRampToValueAtTime(0.0001, at + (heavy ? 0.12 : 0.07));
+      o.connect(og); og.connect(master); o.start(at); o.stop(at + 0.14);
+      const n = ac.createBufferSource(); n.buffer = noise;
+      const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = (heavy ? 520 : 700)*body;
+      const ng = ac.createGain(); ng.gain.setValueAtTime(0.0001, at); ng.gain.exponentialRampToValueAtTime(0.09*kk, at + 0.002); ng.gain.exponentialRampToValueAtTime(0.0001, at + 0.035);
+      n.connect(lp); lp.connect(ng); ng.connect(master); n.start(at, Math.random()*0.8, 0.05);
     }
     function oarCue(k){
       if(!ac || ac.state!=='running' || !(k > 0)) return;
@@ -5568,8 +5588,9 @@
     crankTick += da; crankStep += da;
     const TOOTH = Math.PI*2/16;                              // the gear's sixteen teeth: a tick each, a heavier step every quarter turn
     while(crankTick >= TOOTH){ crankTick -= TOOTH;
-      if(crankStep >= Math.PI/2){ crankStep -= Math.PI/2; Sfx.ratchet(CRANK_VOL, true); buzz(spring < 1 ? 12 : 4); }
-      else Sfx.ratchet(CRANK_VOL*(spring < 1 ? 1 : 0.5), false);
+      const tense = 1 + 0.4*windProg;                        // the spring tightening: the gear's knock rises a little
+      if(crankStep >= Math.PI/2){ crankStep -= Math.PI/2; Sfx.ratchet(CRANK_VOL, true, tense); buzz(spring < 1 ? 12 : 4); }
+      else Sfx.ratchet(CRANK_VOL*(spring < 1 ? 1 : 0.5), false, tense);
     }
     if(was < 1 && spring >= 1){ Sfx.oarHit(OAR_CUE_VOL); buzz([20, 30, 40]); crankLocked = true; crankDrag = null; elCrank.classList.add('locked'); }   // wound right up: the crank locks (a cooldown)
   };
