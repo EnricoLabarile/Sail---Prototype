@@ -283,7 +283,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   drawn like the compass, in greys then dithered: a light brass bezel (lit top left) with four rivets round a shaded
   face with a glint; sailing, a light face with an ink anchor; at anchor, a dark face, one light rim and a paper anchor (same size both ways). Over a fish bank (not fishing, not
   at anchor) the anchor on the hub turns into a little fish (ink silhouette, paper eye) to point at its use there.
-  **The boat in 3D** (`drawBoat`): she is a small 3D model projected each frame: a point (x, y, z) of hers (bow +x,
+  **The boat is a gozzo** (`hullPath`: beamy, pointed at both ends, no transom; white sides with a dark band along the top, the open hull inside a shade darker with a little planked deck at the bow and one at the stern, two thwarts, the tall stem post, the 'capone', rising over the bow and a short stern post carrying the rudder and tiller). **The boat in 3D** (`drawBoat`): she is a small 3D model projected each frame: a point (x, y, z) of hers (bow +x,
   starboard +y, up +z) is rolled (`B.roll`, + lifts starboard) and pitched (`B.pitch`, + lifts the bow), then seen from
   above with the view tilted toward the south (`BOAT_TILT` 0.45 in Tuning: height shows as a shift up the screen, like
   the trees); `P(x,y,z)` projects a point, `L(z)` sets the canvas to draw flat on the plane at height z. The hull is a

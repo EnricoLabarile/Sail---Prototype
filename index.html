@@ -287,6 +287,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The boat is now a gozzo: beamy and pointed at both ends, white sides with a dark band along the top, a little deck at the bow and one at the stern, the tall stem post over the bow and a short one aft carrying the rudder',
+    ]},
+    {build: '2026-10-07 21:15', items: [
       'The ship\'s wheel sounds twice as loud (the spokes\' knocks, the thump at full lock, the rub as it turns)',
       'The paddle wheels\' splashes are twice as loud, both driven by the spring and freewheeling under sail',
     ]},
@@ -296,11 +299,8 @@
     {build: '2026-10-07 21:07', items: [
       'Crank: the steady grind under the clicks is now low and gritty, a gear grinding (no more high, chainsaw-like buzz)',
     ]},
-    {build: '2026-10-07 20:58', items: [
-      'The faraglioni (the tall rock columns off the islands\' cliffs) are gone',
-    ]},
   ];
-  const BUILD = '2026-10-07 21:15';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-07 22:05';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -8937,15 +8937,14 @@
     const L = z=>{ ctx.setTransform(base); ctx.transform(MX[0], MY[0], MX[1], MY[1], MX[2]*z, MY[2]*z); };   // draw on the plane at height z
     const FB = 3;                                          // freeboard: the gunwale's height above the water
     L(0);
-    // hull outline (boat frame, bow at +x)
+    // hull outline (boat frame, bow at +x): a gozzo, beamy and pointed at both ends (no transom)
     const hullPath=(s)=>{
       ctx.beginPath();
       ctx.moveTo(21*s,0);
-      ctx.quadraticCurveTo(11*s,-10.5*s,-7*s,-9.5*s);
-      ctx.lineTo(-16*s,-6.5*s);
-      ctx.lineTo(-16*s,6.5*s);
-      ctx.lineTo(-7*s,9.5*s);
-      ctx.quadraticCurveTo(11*s,10.5*s,21*s,0);
+      ctx.bezierCurveTo(16*s,-7.5*s, 8*s,-10.2*s, 0,-10.2*s);
+      ctx.bezierCurveTo(-8*s,-10.2*s, -15*s,-7.2*s, -19*s,0);
+      ctx.bezierCurveTo(-15*s,7.2*s, -8*s,10.2*s, 0,10.2*s);
+      ctx.bezierCurveTo(8*s,10.2*s, 16*s,7.5*s, 21*s,0);
       ctx.closePath();
     };
     // shadow on the water: further off when a swell lifts her
@@ -8969,11 +8968,11 @@
         ctx.globalAlpha = 1; ctx.fillStyle = PAPERC; ctx.fill(P);
       }
     }
-    // rudder: a blade hung off the transom, turned by the wheel
+    // rudder: a blade hung off the stern post, turned by the wheel
     const rud = g ? 0 : wheelAngle/WHEEL_MAX;
     {
       const ra = Math.PI - rud*0.75;                     // points astern, swings with the helm
-      ctx.save(); ctx.translate(-15.5, 0); ctx.rotate(ra);
+      ctx.save(); ctx.translate(-18.5, 0); ctx.rotate(ra);
       ctx.fillStyle = PAPERC; ctx.strokeStyle = INKC; ctx.lineWidth = 1.1*LWK;
       ctx.beginPath(); ctx.moveTo(0,-1.2); ctx.lineTo(8,-2.2); ctx.quadraticCurveTo(10,0,8,2.2); ctx.lineTo(0,1.2); ctx.closePath();
       ctx.fill(); ctx.stroke();
@@ -8982,16 +8981,28 @@
     // hull: her sides first (a few slices from the waterline up, so the topside shows where she leans or the
     // view looks at her), then the deck at the gunwale, paper; it blinks to ink when hit
     const blink = !g && hurtFlash>0 && Math.floor(hurtFlash*20)%2===0;
-    for(const z of [0, FB*0.35, FB*0.7]){ L(z); ctx.fillStyle = V(0.3); hullPath(0.9 + 0.1*z/FB); ctx.fill(); }
+    // (a gozzo's sides: white, with a dark band of colour along the top)
+    for(const z of [0, FB*0.35, FB*0.7]){ L(z); ctx.fillStyle = z > FB*0.5 ? V(0.25) : V(0.8); hullPath(0.9 + 0.1*z/FB); ctx.fill(); }
     L(0); ctx.strokeStyle = INKC; ctx.lineWidth = 1; hullPath(0.9); ctx.stroke();
     L(FB);
     ctx.fillStyle = blink ? INKC : PAPERC;
     hullPath(1); ctx.fill();
+    // the open hull inside the gunwale, a shade darker, with a little deck forward and one aft (planked, paper)
+    if(!blink){
+      ctx.fillStyle = V(0.9); hullPath(0.8); ctx.fill();
+      ctx.save(); hullPath(0.8); ctx.clip();
+      ctx.fillStyle = PAPERC; ctx.fillRect(12.5, -12, 12, 24); ctx.fillRect(-24, -12, 11.5, 24);
+      ctx.strokeStyle = INKC; ctx.lineWidth = 0.6; ctx.globalAlpha = 0.6; ctx.beginPath();
+      for(const yy of [-3, 0, 3]){ ctx.moveTo(12.5, yy); ctx.lineTo(21, yy*0.4); ctx.moveTo(-12.5, yy); ctx.lineTo(-19, yy*0.4); }
+      ctx.stroke(); ctx.globalAlpha = 1;
+      ctx.lineWidth = 1.1; ctx.beginPath(); ctx.moveTo(12.5, -10); ctx.lineTo(12.5, 10); ctx.moveTo(-12.5, -10); ctx.lineTo(-12.5, 10); ctx.stroke();   // the decks' edges
+      ctx.restore();
+    }
     // gunwale line and two thwarts, then the ink outline
     ctx.strokeStyle = blink ? PAPERC : INKC;
-    ctx.lineWidth=1; hullPath(0.74); ctx.stroke();
+    ctx.lineWidth=1; hullPath(0.8); ctx.stroke();
     ctx.lineWidth=1.3;
-    ctx.beginPath(); skSeg(9,-6.2,9,6.2,0.6); skSeg(-7,-6.4,-7,6.4,0.6); ctx.stroke();
+    ctx.beginPath(); skSeg(9,-7.4,9,7.4,0.6); skSeg(-7,-7.8,-7,7.8,0.6); ctx.stroke();
     ctx.strokeStyle=INKC; ctx.lineWidth=1.8; hullPath(1); ctx.stroke();
     // fenders: two a side, hung over the gunwale on short lines (fore and aft
     // of the oars), swinging a touch with the roll
@@ -9010,6 +9021,14 @@
       }
     }
 
+    // the gozzo's tall stem post (the 'capone') rising over the bow, and a short stern post
+    {
+      ctx.setTransform(base); ctx.lineCap = 'round'; ctx.strokeStyle = INKC;
+      const [a0, a1] = P(20.4, 0, FB), [b0, b1] = P(22.6, 0, FB + 7), [c0, c1] = P(-18.4, 0, FB), [d0, d1] = P(-19.6, 0, FB + 3.5);
+      ctx.lineWidth = 2.6; ctx.beginPath(); ctx.moveTo(a0, a1); ctx.lineTo(b0, b1); ctx.moveTo(c0, c1); ctx.lineTo(d0, d1); ctx.stroke();
+      ctx.fillStyle = INKC; ctx.beginPath(); ctx.arc(b0, b1, 1.6, 0, Math.PI*2); ctx.fill();
+      L(FB);
+    }
     if(!g && anchored){                                // anchor rode running down from the bow
       ctx.strokeStyle = INKC; ctx.lineWidth = 1*LWK; ctx.setLineDash([2,1.5]);
       ctx.beginPath(); ctx.moveTo(19,0); ctx.quadraticCurveTo(26, 2+Math.sin(t*1.5)*1.5, 31, 0); ctx.stroke();
@@ -9018,11 +9037,11 @@
     }
     // tiller inside the stern: swings opposite to the rudder blade
     ctx.strokeStyle = INKC; ctx.lineWidth = 1.6*LWK; ctx.lineCap='round';
-    ctx.beginPath(); ctx.moveTo(-15,0); ctx.lineTo(-15+Math.cos(rud*0.75)*7, Math.sin(rud*0.75)*7); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-17.5,0); ctx.lineTo(-17.5+Math.cos(rud*0.75)*7, Math.sin(rud*0.75)*7); ctx.stroke();
     // the helmsman: a black figure seen from above, sitting aft beside the tiller with a hand on it,
     // leaning a touch into the turn
     {
-      const tx = -15+Math.cos(rud*0.75)*7, ty = Math.sin(rud*0.75)*7;           // the tiller's end
+      const tx = -17.5+Math.cos(rud*0.75)*7, ty = Math.sin(rud*0.75)*7;         // the tiller's end
       const mx = -11.2, my = 3.4 + rud*0.6;
       ctx.fillStyle = INKC; ctx.strokeStyle = INKC;
       L(FB + 2); ctx.lineWidth = 1.5*LWK; ctx.beginPath(); ctx.moveTo(mx+0.4, my-1.8); ctx.lineTo(tx, ty); ctx.stroke();   // the arm on the tiller
