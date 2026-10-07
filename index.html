@@ -46,7 +46,7 @@
   const PADDLE_FREE_PITCH = 0.7;     // …and this much lower in pitch (1 = as when driven)
   const CRANK_BACK_SPEED = 12;       // let go of the crank before a full turn and it springs back anticlockwise, like an alarm clock's key: turns a second (radians, quicker the more it was wound)
   const CRANK_WEIGHT = 1;            // weight under the crank's clicks while you wind it: a low thud and a dull knock a tooth (0 = just the click, as when it springs back)
-  const CRANK_GRIND = 1;             // loudness of the gears grinding under the clicks while you turn the crank (follows how fast; 0 = silent)
+  const CRANK_GRIND = 0.5;           // loudness of the gears grinding under the clicks while you turn the crank (follows how fast; 0 = silent; was 1)
   const CRANK_TICK_GAP = 0.022;      // s: the crank's clicks come at least this far apart, an even run however the finger jumps
   const CRANK_VOL = 1;               // loudness of the crank's gears as it winds (a tick a tooth, a heavier step each quarter turn; 0 = silent)
   const SPRING_SPEED = 19.6;         // px/s the wheels give her (the spring rests while the sail drives her faster than this; was 14, +40%)
@@ -285,6 +285,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Crank: the steady grind of the gears while you turn it is half as loud',
+    ]},
+    {build: '2026-10-07 19:41', items: [
       'The square sail is rigged from the start (the lateen waits in the hold)',
     ]},
     {build: '2026-10-07 18:41', items: [
@@ -293,11 +296,8 @@
     {build: '2026-10-07 18:37', items: [
       'Crank: winding it by hand sounds heavier and more even: each tooth has a low knock of the gear under its click (rising as the spring tightens), and the clicks come in a steady run however the finger moves',
     ]},
-    {build: '2026-10-07 18:04', items: [
-      'Spring paddles: a full crank now drives the boat for half as long (15 s) but 40% faster, the wheels turning quicker too',
-    ]},
   ];
-  const BUILD = '2026-10-07 19:41';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-07 20:33';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
