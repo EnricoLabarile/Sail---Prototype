@@ -44,6 +44,7 @@
   const PADDLE_VOL = 1.8;            // loudness of the paddles slapping into the water as the spring drives the wheels (one low splash a paddle; 0 = silent; was 1)
   const PADDLE_FREE_VOL = 0.22;      // …and when they only freewheel under sail (dragged round by the water): the same splash, this much quieter (× PADDLE_VOL)…
   const PADDLE_FREE_PITCH = 0.7;     // …and this much lower in pitch (1 = as when driven)
+  const CRANK_BACK_SPEED = 12;       // let go of the crank before a full turn and it springs back anticlockwise, like an alarm clock's key: turns a second (radians, quicker the more it was wound)
   const CRANK_VOL = 1;               // loudness of the crank's gears as it winds (a tick a tooth, a heavier step each quarter turn; 0 = silent)
   const SPRING_SPEED = 14;           // px/s the wheels give her (the spring rests while the sail drives her faster than this)
   const OAR_START = 0.2;             // power the first press gives (0..1): she starts rowing, slowly
@@ -281,6 +282,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Crank: let go before the full turn and it springs back anticlockwise, ticking, like an alarm clock\'s key (grab it again on the way to carry on)',
+    ]},
+    {build: '2026-10-07 08:39', items: [
       'Big waves are quieter (half as loud)',
       'Paddle wheels: louder while the spring drives the boat (freewheeling under sail stays as it was)',
       'Market coins: quieter, quicker and snappier, an octave lower',
@@ -291,11 +295,8 @@
     {build: '2026-10-06 23:31', items: [
       'First screen: a new Audio section, a loudness slider for every kind of sound (sea, rain, cicadas, oars, anchor, crank, logbook…); a sample plays when you let go of a slider, and the values stay on the phone',
     ]},
-    {build: '2026-10-06 23:11', items: [
-      'Home storehouse: sails in the hold can be left there and taken aboard again, like any other cargo (they can\'t be sold at the markets)',
-    ]},
   ];
-  const BUILD = '2026-10-07 08:39';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-07 17:46';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -4868,7 +4869,7 @@
     boonWindT = 0; boonFish = 0; for(const r of RUINS) r.readyAt = 0;
     rollers.length = 0; rollerT = 6; boat.surfT = 0;
     windAngle = rand(0, Math.PI*2); shiftDur = 0; windTimer = rand(28,36); guideWind = false;
-    explored.fill(0); fogVer++; resetBottles(); resetStore(); resetShark(); spring = 0; windProg = 0; crankLocked = false; document.getElementById('crank').classList.remove('locked');
+    explored.fill(0); fogVer++; resetBottles(); resetStore(); resetShark(); spring = 0; windProg = 0; crankBack = 0; crankLocked = false; document.getElementById('crank').classList.remove('locked');
     wake.length = 0; bowSpray.length = 0; popups.length = 0;
     voyageTime = 0; hurtFlash = 0; shake = 0;
     gameover.classList.add('hidden');
@@ -5555,7 +5556,8 @@
   // does nothing, a ratchet); a click every quarter turn. While it holds some charge the paddle wheels drive her on their
   // own (SPRING_SPEED), and it runs down over SPRING_TIME s of driving; it rests while the sail drives her faster, at anchor or moored
   const elCrank = document.getElementById('crank'), elCrankRot = elCrank.querySelector('.rot'), elCrankCharge = elCrank.querySelector('.charge');
-  let spring = 0, windProg = 0, crankA = 0, crankDrag = null, crankTick = 0, crankStep = 0, crankKey = '', crankLocked = false;   // (locked: wound full, it won't turn again until the spring has run right down)
+  let spring = 0, windProg = 0, crankA = 0, crankDrag = null, crankTick = 0, crankStep = 0, crankKey = '', crankLocked = false, crankBack = 0;   // (crankBack: radians still to unwind as it springs back)
+  // (locked: wound full, it won't turn again until the spring has run right down)
   elCrank.setAttribute('aria-label', TEXT.oars.crank); elCrank.title = TEXT.oars.crank;
   const crankAngle = ev=>{ const r = elCrank.getBoundingClientRect(); return Math.atan2(ev.clientY - (r.top + r.height/2), ev.clientX - (r.left + r.width/2)); };
   const windSpring = da=>{                                   // da: radians turned clockwise
@@ -5571,13 +5573,13 @@
     }
     if(was < 1 && spring >= 1){ Sfx.oarHit(OAR_CUE_VOL); buzz([20, 30, 40]); crankLocked = true; crankDrag = null; elCrank.classList.add('locked'); }   // wound right up: the crank locks (a cooldown)
   };
-  elCrank.addEventListener('pointerdown', ev=>{ ev.preventDefault(); Sfx.init(); if(crankLocked) return; crankDrag = {id: ev.pointerId, a: crankAngle(ev)}; crankA = crankDrag.a + Math.PI/2; try{ elCrank.setPointerCapture(ev.pointerId); }catch(e){} });
+  elCrank.addEventListener('pointerdown', ev=>{ ev.preventDefault(); Sfx.init(); if(crankLocked) return; crankBack = 0; crankDrag = {id: ev.pointerId, a: crankAngle(ev)}; crankA = crankDrag.a + Math.PI/2; try{ elCrank.setPointerCapture(ev.pointerId); }catch(e){} });
   elCrank.addEventListener('pointermove', ev=>{
     const d = crankDrag; if(!d || ev.pointerId !== d.id) return;
     const a = crankAngle(ev), da = norm(a - d.a); d.a = a;
     if(Math.abs(da) < 1.5){ if(da > 0) crankA += da; windSpring(da); }   // (the arm only goes round forward: a ratchet)
   });
-  const crankUp = ev=>{ if(crankDrag && ev.pointerId === crankDrag.id){ crankDrag = null; if(windProg > 0){ windProg = 0; crankTick = crankStep = 0; buzz(6); } } };   // let go before a full turn: the winding slips back, start again
+  const crankUp = ev=>{ if(crankDrag && ev.pointerId === crankDrag.id){ crankDrag = null; if(windProg > 0){ crankBack = windProg*Math.PI*2*SPRING_TURNS; crankTick = crankStep = 0; buzz(6); } } };   // let go before a full turn: it springs back anticlockwise (catch it again to go on), start again
   elCrank.addEventListener('pointerup', crankUp); elCrank.addEventListener('pointercancel', crankUp);
   elCrank.addEventListener('keydown', ev=>{ if(ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); ev.stopPropagation(); if(crankLocked) return; crankA += Math.PI*2; windSpring(Math.PI*2*SPRING_TURNS); } });   // (keys: a whole winding at once)
   function updateSpring(dt){
@@ -5591,6 +5593,14 @@
     if(can) spring = Math.max(0, spring - dt/SPRING_TIME);
     if(was > 0 && spring <= 0) Sfx.springOff(PADDLE_VOL);    // run down: the wheels let go
     if(crankLocked && spring <= 0){ crankLocked = false; elCrank.classList.remove('locked'); buzz(8); }   // run down: the crank is free again
+    if(crankBack > 0){                                       // springing back: quick at first, easing as it comes home, a light tick a tooth
+      const step = Math.min(crankBack, dt*CRANK_BACK_SPEED*(0.35 + crankBack/(Math.PI*2)));
+      crankA -= step; crankBack -= step; windProg = crankBack/(Math.PI*2*SPRING_TURNS);
+      crankTick += step;
+      const TOOTH = Math.PI*2/16;
+      while(crankTick >= TOOTH){ crankTick -= TOOTH; Sfx.ratchet(CRANK_VOL*0.45, false); }
+      if(crankBack <= 1e-4){ crankBack = 0; windProg = 0; crankTick = 0; Sfx.ratchet(CRANK_VOL, true); buzz(10); }   // home: a heavier clack
+    }
     oarKick = 0;
     oarRate += ((oarSpin > 0.01 ? OAR_RATE*1.4 : 0) - oarRate)*Math.min(1, dt*OAR_RATE_EASE);   // the wheels' pace (and the churn's)
     oarCycle += dt*oarRate;
