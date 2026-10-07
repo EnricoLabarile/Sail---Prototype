@@ -154,9 +154,10 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   die down harmlessly); a ring of 22 buoys (`HOME_BUOYS`) marks the edge, with toasts "Leaving home waters" / "Back in home waters".
   Inside them, a calm **lagoon** (`LAGOON_R` ≈ 455 px round home): no islands and no rocks, room to learn the controls.
 - **Wind:** random from the start (the old guiding wind toward Nordania, `guideWind`, is off), then the normal shifting winds.
-  **Fair wind** (a power, the medallion button bottom right, `#btn-power`, drawn like the logbook icon in
-  `drawLogbookIcon`: a dark brass medallion with a gust; pale and dotted once spent; wiggles while it blows):
-  **locked until the Temple of Eolus gives it** (`powerOwned`; until then the button isn't there at all: class `locked`, hidden and disabled);
+  **Fair wind** (a power, an **item in the Cargo**, with the gifts: it takes no slot; `powerHTML`, icon `ITEM_ICONS['Fair wind']`,
+  a medallion with a gust; a tap calls it, `usePower`; dashed and pale with the seconds left while it recharges, the
+  seconds left and a wiggle while it blows; texts `TEXT.eolus.item/blowing/recharging`; the medallion button `#btn-power` is gone):
+  **not there until the Temple of Eolus gives it** (`powerOwned`; the logbook shimmers when it's given);
   `POWER_USES` (1) uses; a spent use comes back `POWER_RECHARGE` (60 s) after it was used (`powerT`, `rechargePower`,
   counted from the moment it's used, so also while it blows; no more refill at the piers); each makes the wind blow
   from astern whichever way she steers for `POWER_WIND_T` (30 s) (the same spell as the ruins' friendly wind:
@@ -275,14 +276,22 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
 - **Controls:** wheel (drag in a circle; half a turn = full lock; its sounds, the spokes' knocks, the thump at full lock and the rub, × `WHEEL_VOL` 2 in Tuning). Inside the rim a dark backing (a radial grey 70→44, dithered to a deep dotted texture) fills the gaps between the spokes, so the light wood reads clearly; the wood
   is a mid grey (`WOOD`, `WOOD_SH`, `WOOD_RIM` in drawWheel) so it stands out from the pale sea.
   Layout (no panel behind the controls: a wooden dashboard was tried and dropped, it hid too much sea): compass over
-  logbook bottom left (compass at the top centre), wheel bottom centre; nothing bottom right (the sail is automatic).
-  Hub of the wheel = anchor only:
+  logbook bottom left (compass at the top centre), wheel bottom centre; on the right the sail badge over the anchor button (bottom right).
   No rudder gauge above the wheel (removed): the wheel's turn and the rudder on the boat show the helm.
-  **long press 0.32 s = anchor** (weighing it: `Sfx.anchor(false)`, the chain's links an octave lower than at first and louder, ×2.4, over a low rumble of chain running in) (`HUB_HOLD`, was 0.5). At anchor the wheel fades out and only the hub (dark) remains. The hub is always drawn big (`hubScale` = 2, the
-  size it once grew to only at anchor); while sailing its grip is just the hub (`HUB_SAIL_R`), so the spokes still steer. The hub is
-  drawn like the compass, in greys then dithered: a light brass bezel (lit top left) with four rivets round a shaded
-  face with a glint; sailing, a light face with an ink anchor; at anchor, a dark face, one light rim and a paper anchor (same size both ways). Over a fish bank (not fishing, not
-  at anchor) the anchor on the hub turns into a little fish (ink silhouette, paper eye) to point at its use there.
+  **Anchor button** (`#anchor-btn`, round, on the right under the sail badge; `anchorUI`, every frame, written only when
+  its state changes): a **tap** drops or weighs the anchor (weighing it: `Sfx.anchor(false)`, the chain's links an octave lower than at first and louder, ×2.4, over a low rumble of chain running in);
+  inked at anchor, shaking while the chain comes in; over a fish bank (not fishing, not at anchor) its anchor turns into a fish
+  with a dashed ring (`bankHint`). The wheel no longer goes away at anchor.
+  **Hub of the wheel = wheel/crank switch**: held `HUB_HOLD` (0.32 s; a ring fills) it swaps the wheel for the crank
+  and back (`crankMode`, `setCrankMode`, body class `crank-mode`). The wheel **comes apart** (`wheelVis` eases to 0: the
+  spokes fly outward turning, the rim breaks into eight pieces that scatter, all fading; the reverse puts it back) and the
+  crank **assembles** in its place (CSS class `away`: the whole crank turned and shrunk, its rings scaled out, its gear
+  in, all faded). In crank mode the wheel's canvas lets touches through to the crank, which handles a press on its centre
+  as the hub (`onCrankHub`); the hub (drawn on the wheel's canvas over the crank's centre) stays; the helm eases back
+  amidships. The hub is always drawn big (`hubScale` = 2); in wheel mode its grip is just the hub (`HUB_SAIL_R`), so the
+  spokes still steer. It's drawn like the compass, in greys then dithered: a light brass bezel (lit top left) with four
+  rivets round a light shaded face with a glint, and on it what a hold turns it into: a little crank (a cog, the arm out
+  to the upper right, the knob) on the wheel, a little ship's wheel on the crank.
   **The boat is a gozzo** (`hullPath`: beamy, pointed at both ends, no transom; white sides with a dark band along the top, the open hull inside a shade darker with a little planked deck at the bow and one at the stern, two thwarts, the tall stem post, the 'capone', rising over the bow and a short stern post carrying the rudder and tiller). **The boat in 3D** (`drawBoat`): she is a small 3D model projected each frame: a point (x, y, z) of hers (bow +x,
   starboard +y, up +z) is rolled (`B.roll`, + lifts starboard) and pitched (`B.pitch`, + lifts the bow), then seen from
   above with the view tilted toward the south (`BOAT_TILT` 0.45 in Tuning: height shows as a shift up the screen, like
@@ -348,7 +357,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   (Oar handles on the screen's sides, dragged down in time, were tried after a sketch and dropped: they didn't work
   well; the round button below is back.)
   **The spring and the crank** (`SPRING_PADDLES` in Tuning, on; false = the old rhythmic oar button below): the
-  paddle wheels run off a wound spring (`spring` 0..1). The crank (`#crank`, 132 px, at the top right of the wheel: a toothed gear
+  paddle wheels run off a wound spring (`spring` 0..1). The crank (`#crank`, 220 px, in the wheel's place in crank mode, centred on the hub: a toothed gear
   (16 teeth, a dotted pattern fill `#crank-dots`) turning with the arm, a hatched plate with three rivets, an arm with a
   big knob that turns by as much as the finger turns round the centre (it doesn't jump to where the finger lands; `crankA`, 0 = pointing up, reset to 0 when wound full and when it has sprung back), a dashed track and a thick ring round it that fills with the charge; the
   plate inked when full): a finger on it turned **clockwise** winds the spring (`windSpring`:

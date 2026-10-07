@@ -231,7 +231,7 @@
   const TUT_PAUSE = 1500;            // ms between one step and the next
   const TUT_COMPASS_T = 4500;        // ms the compass step lasts (no input needed)
   const TUT_DROP_WAIT = 3000, TUT_DROP_T = 3000;   // after the wheel: wait, then the optional drop-anchor tip for a while (ms)
-  const HUB_HOLD = 320;              // ms to hold the hub to drop or weigh anchor (was 500)
+  const HUB_HOLD = 320;              // ms to hold the hub of the wheel (or of the crank) to swap the wheel and the crank
 
   // -- Look --
   const UI_TINT = 0.7;               // how much the interface takes on the day/night colours (0 = never, 1 = like the world)
@@ -295,6 +295,11 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Anchor: its own round button on the right, under the sail badge (a tap drops or weighs it; inked at anchor; a fish over a fish bank)',
+      'Wheel and crank: hold the centre of the wheel for a moment and the wheel comes apart, the crank taking its place (wind it there); hold its centre again to bring the wheel back. While on the crank the helm stays amidships',
+      'Fair wind: no more medallion button; once Eolus gives it, it is an item in the Cargo (with the gifts): tap it to call the wind; while it recharges it shows the seconds left',
+    ]},
+    {build: '2026-10-07 23:38', items: [
       'Crank: the arm no longer jumps to where the finger lands; it rests pointing up, turns only as far as the finger turns, and points up again when fully wound or when it has sprung back',
     ]},
     {build: '2026-10-07 23:27', items: [
@@ -304,11 +309,8 @@
       'Storm clouds: some rain clouds are darker and throw lightning. A dashed ring flickers on the water where a bolt will strike; if the boat is inside it when the bolt falls she is hit (-15 hull). Flash and thunder',
       'First screen, Dangers: knobs for the storms (STORM_ON, STORM_SHARE, STORM_WARN, STORM_AIM, STORM_HIT_R, STORM_DAMAGE); Audio: a Thunder slider',
     ]},
-    {build: '2026-10-07 22:12', items: [
-      'Paddle wheels under sail: they now make the same splash as when the spring drives them, at half the volume',
-    ]},
   ];
-  const BUILD = '2026-10-07 23:38';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-08 00:00';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -434,7 +436,10 @@
     oars: {
       label: 'Oars: press to row, then press again each time the pointer comes round to the mark',
       locked: 'Oars shipped: the sail drives her fast enough',
-      crank: 'The spring: turn the crank round clockwise to wind it; the paddle wheels then drive her until it runs down',
+      crank: 'The spring: turn the crank round clockwise to wind it; the paddle wheels then drive her until it runs down. Hold the centre to bring the wheel back',
+      helm:  'Helm: drag round to steer. Hold the centre to swap the wheel for the crank',
+      anchorDrop:  'Drop anchor',
+      anchorWeigh: 'Weigh anchor',
     },
     // home's storehouse: drag goods between the hold and the store (what's left here waits at home)
     store: {
@@ -507,12 +512,15 @@
     },
     // at a pier, under the dialog
     pier: {
-      weighHint: 'Hold the centre of the wheel to weigh anchor.',
+      weighHint: 'Tap the anchor button to weigh anchor.',
     },
     // the Temple of Eolus, in the north: the god of the winds gives the fair wind
     eolus: {
       name:    'Temple of Eolus',
-      gift:    'A warm breath stirs among the columns. Eolus lends you his wind: call it, and for a while it will blow at your back.',
+      gift:    'A warm breath stirs among the columns. Eolus lends you his wind: you\'ll find it in your cargo. Tap it, and for a while it will blow at your back.',
+      item:       'Fair wind: tap to call it',
+      blowing:    'Fair wind: blowing, {s} s left',
+      recharging: 'Fair wind: back in {s} s',
       again:   'The columns hum softly in the breeze. Eolus is watching over your sails.',
     },
     ruins: {
@@ -714,7 +722,11 @@
   #oar-ctl{position:fixed; right:12px; bottom:calc(178px + env(safe-area-inset-bottom,0px)); width:64px; height:74px; z-index:5; touch-action:none; cursor:pointer;}
   /* the crank (SPRING_PADDLES): a paper disc with an arm and a handle that follows the finger round; the ring round it
      fills as the spring is wound, and empties as the wheels use it */
-  #crank{position:fixed; right:6px; bottom:calc(196px + env(safe-area-inset-bottom,0px)); width:132px; height:132px; z-index:5; touch-action:none; cursor:grab; color:var(--ink);}
+  #crank{position:fixed; left:calc(50% - 110px); bottom:calc(7px + env(safe-area-inset-bottom,0px)); width:220px; height:220px; z-index:5; touch-action:none; cursor:grab; color:var(--ink);
+    transition:opacity .4s, transform .45s cubic-bezier(.3,1.4,.5,1);}   /* in the wheel's place, centred on its hub (the hub, drawn on the wheel's canvas, sits over it) */
+  #crank .asm-in, #crank .asm-out{transition:transform .45s cubic-bezier(.3,1.4,.5,1), opacity .35s; transform-box:view-box; transform-origin:center;}
+  #crank.away{opacity:0; transform:rotate(-70deg) scale(.7); pointer-events:none;}   /* the wheel's turn: the crank comes apart, parts flying off */
+  #crank.away .asm-out{transform:scale(1.45); opacity:0;} #crank.away .asm-in{transform:scale(.4) rotate(90deg);}
   #crank svg{width:100%; height:100%; display:block; overflow:visible;}
   #crank .disc{fill:var(--paper); stroke:var(--ink); stroke-width:2;}
   #crank .gear{fill:url(#crank-dots); stroke:var(--ink); stroke-width:1.6; stroke-linejoin:round;}
@@ -730,6 +742,7 @@
   #crank.full .plate{fill:var(--ink);} #crank.full .hatch{opacity:0;} #crank.full .arm{stroke:var(--paper);} #crank.full .hub{fill:var(--paper);}
   #crank.locked{cursor:default;} #crank.locked .rot, #crank.locked .hint{opacity:.45;}   /* wound full: locked until the spring has run down */
   #crank.hidden, body.at-market #crank{display:none;}
+  body.crank-mode #wheel{pointer-events:none;}           /* the crank takes the touches; its hub (on the wheel's canvas) is handled by the crank */
   /* the sail badge, under the oar button: a tap sets or furls the sail, a long press stows it in the hold */
   #sail-btn{position:fixed; right:16px; bottom:calc(104px + env(safe-area-inset-bottom,0px)); width:56px; height:56px; z-index:5; padding:0;
     border-radius:50%; background:var(--paper); color:var(--ink); border:2px solid var(--ink); box-shadow:2px 3px 0 var(--ink); cursor:pointer;
@@ -740,6 +753,18 @@
   #sail-btn.shaking{animation:sailShake .09s linear infinite;}       /* held: about to be stowed */
   @keyframes sailShake{0%{translate:0 0} 25%{translate:-2px 1px} 50%{translate:1px -1px} 75%{translate:2px 1px} 100%{translate:0 0}}
   body.at-market #sail-btn{display:none;}
+  /* the anchor button, under the sail badge: a tap drops or weighs the anchor; inked at anchor; over a fish bank it shows a fish */
+  #anchor-btn{position:fixed; right:16px; bottom:calc(34px + env(safe-area-inset-bottom,0px)); width:56px; height:56px; z-index:5; padding:0;
+    border-radius:50%; background:var(--paper); color:var(--ink); border:2px solid var(--ink); box-shadow:2px 3px 0 var(--ink); cursor:pointer;
+    display:flex; align-items:center; justify-content:center; touch-action:manipulation;}
+  #anchor-btn svg{width:34px; height:34px;} #anchor-btn .ico-fish{display:none;}
+  #anchor-btn.bank .ico-anchor{display:none;} #anchor-btn.bank .ico-fish{display:block;}
+  #anchor-btn.bank{outline:2px dashed var(--ink); outline-offset:3px; animation:anchorBank 1.2s ease-in-out infinite;}
+  @keyframes anchorBank{50%{outline-offset:6px;}}
+  #anchor-btn.down{background:var(--ink); color:var(--paper);}      /* at anchor: inked */
+  #anchor-btn.weighing{animation:sailShake .09s linear infinite;}   /* the chain coming in */
+  #anchor-btn:active{transform:translate(1px,1px); box-shadow:1px 1px 0 var(--ink);}
+  #anchor-btn.hidden, body.at-market #anchor-btn{display:none;}
   #oar-ctl .oar-mark{position:absolute; left:50%; top:0; width:0; height:0; margin-left:-6px; border-left:6px solid transparent; border-right:6px solid transparent;
     border-top:9px solid var(--ink); filter:drop-shadow(0 0 1.5px var(--paper));}   /* the fixed mark: the moment to press */
   #oar-ctl .oar-disc{position:absolute; left:4px; top:12px; width:56px; height:56px; border-radius:50%; background:var(--paper); border:2px solid var(--ink);
@@ -851,17 +876,6 @@
   #btn-list.open .log-pages{opacity:1; transform:none;}
   #btn-list{left:9px; right:auto; bottom:calc(10px + env(safe-area-inset-bottom,0px));}   /* bottom left; the compass sits above it */
   body.at-market #btn-list{display:none;}
-  /* the fair-wind power: an icon drawn like the logbook's, bottom right; dimmed once the day's uses are spent */
-  #btn-power{width:80px; height:80px; background:none; border:none; box-shadow:none; border-radius:0; left:auto; right:9px;
-    bottom:calc(10px + env(safe-area-inset-bottom,0px));}
-  #btn-power:active{box-shadow:none;}
-  #btn-power canvas{position:absolute; left:2px; top:2px; width:76px; height:76px; image-rendering:pixelated; transition:opacity .3s;
-    filter:drop-shadow(1.5px 0 0 var(--paper)) drop-shadow(-1.5px 0 0 var(--paper)) drop-shadow(0 1.5px 0 var(--paper)) drop-shadow(0 -1.5px 0 var(--paper)) drop-shadow(3px 4px 0 rgba(0,0,0,.3));}
-  #btn-power .pw-spent{opacity:0;}
-  #btn-power.locked{visibility:hidden; pointer-events:none;}   /* not there at all until Eolus gives the fair wind */
-  #btn-power.spent .pw-ready{opacity:0;} #btn-power.spent .pw-spent{opacity:1;}
-  #btn-power.blowing canvas{animation:logWiggle 1.2s ease-in-out infinite;}
-  body.at-market #btn-power{display:none;}
   /* at the barter table the sail badge and the compass (with its fish counters) step aside */
   body.at-market #sail, body.at-market #compass, body.at-market #wood, body.at-market #wheel{display:none;}
   /* the shopping list: slides down from the top of the screen */
@@ -1000,6 +1014,11 @@
   #shoplist .slot.fish svg{width:30px; height:16px;}
   #shoplist .hold-goods{display:flex; flex-wrap:wrap; gap:4px; padding-top:6px; border-top:1.5px dashed var(--ink);}
   #shoplist .hold-goods svg{width:26px; height:26px; display:block;}
+  #shoplist .power{padding:1px 4px 1px 1px; background:none; color:var(--ink); border:1.5px solid var(--ink); border-radius:14px; cursor:pointer;
+    display:flex; align-items:center; gap:2px; font:inherit; font-size:11px; box-shadow:1px 2px 0 var(--ink);}   /* Eolus' fair wind: tap to call it */
+  #shoplist .power:active{transform:translate(1px,1px); box-shadow:none;}
+  #shoplist .power.spent{border-style:dashed; box-shadow:none; opacity:.6; cursor:default;}   /* recharging: the seconds left */
+  #shoplist .power.blowing svg{animation:logWiggle 1.2s ease-in-out infinite;}
   #shoplist .spare-sail{padding:0; background:none; color:var(--ink); cursor:pointer;}   /* the spare sail: a slot you can tap */
   #shoplist .spare-sail:active{transform:translate(1px,1px);}
   #wheel{
@@ -1188,9 +1207,6 @@
     <svg viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="6.2" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.4"/><circle cx="9" cy="9" r="3.6" fill="none" stroke="var(--ink)" stroke-width="0.9"/><path d="M1.2 3 V7.5 M0.4 3 V5.5 M2 3 V5.5 M1.2 7.5 V15.5 M16.8 3 Q15.4 6 16.8 9 V15.5" fill="none" stroke="var(--ink)" stroke-width="1.1" stroke-linecap="round"/></svg>
     <div class="mood-track"><div class="mood-fill" id="mood-fill"></div></div>
   </div>
-  <button id="btn-power" class="helm-btn" type="button" aria-label="Fair wind: the wind blows from astern for a while">
-    <canvas class="pw-ready" aria-hidden="true"></canvas><canvas class="pw-spent" aria-hidden="true"></canvas>
-  </button>
   <button id="btn-list" class="helm-btn" type="button" aria-label="Logbook" aria-expanded="false" aria-controls="shoplist">
     <!-- the logbook: a leather-bound book; tapping it swings the cover open on its spine and shows the written pages -->
     <span class="logbook" aria-hidden="true">
@@ -1268,15 +1284,18 @@
   </div>
   <!-- the oar handle, right side: slide it down to pull the oars (rowing by hand) -->
   <button id="sail-btn" type="button" class="hidden"></button>
-  <div id="crank" class="hidden" role="button" tabindex="0"><svg viewBox="-46 -46 92 92" aria-hidden="true">
+  <button id="anchor-btn" type="button" class="hidden"><svg class="ico-anchor" viewBox="-12 -12 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+    <circle cy="-7.5" r="2"/><path d="M0 -5.5 V8.5 M-4.8 -2.4 H4.8 M-7 2.6 Q-5.4 8.5 0 8.5 Q5.4 8.5 7 2.6"/></svg>
+    <svg class="ico-fish" viewBox="-12 -12 24 24" aria-hidden="true" fill="currentColor"><path d="M-9 0 Q-2 -7.7 5.5 0 Q-2 7.7 -9 0 Z M4 0 L10.5 -5.3 L9 0 L10.5 5.3 Z"/><circle cx="-4.8" cy="-1.2" r="1.4" fill="var(--paper)"/></svg></button>
+  <div id="crank" class="hidden away" role="button" tabindex="0"><svg viewBox="-46 -46 92 92" aria-hidden="true">
     <defs><pattern id="crank-dots" width="3" height="3" patternUnits="userSpaceOnUse"><rect width="3" height="3" fill="var(--paper)"/><circle cx="1" cy="1" r=".75" fill="var(--ink)"/></pattern>
       <pattern id="crank-hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4" stroke="var(--ink)" stroke-width=".8" opacity=".55"/></pattern></defs>
-    <circle class="track" r="42"/><circle class="charge" r="42" stroke-dasharray="0 264"/>
-    <g class="rot"><path class="gear" d="M30.5 0.0 L33.8 3.3 L33.3 6.6 L29.2 8.9 L28.2 11.7 L30.0 16.0 L28.3 18.9 L23.6 19.3 L21.6 21.6 L21.6 26.3 L18.9 28.3 L14.4 26.9 L11.7 28.2 L9.9 32.5 L6.6 33.3 L3.0 30.4 L0.0 30.5 L-3.3 33.8 L-6.6 33.3 L-8.9 29.2 L-11.7 28.2 L-16.0 30.0 L-18.9 28.3 L-19.3 23.6 L-21.6 21.6 L-26.3 21.6 L-28.3 18.9 L-26.9 14.4 L-28.2 11.7 L-32.5 9.9 L-33.3 6.6 L-30.4 3.0 L-30.5 0.0 L-33.8 -3.3 L-33.3 -6.6 L-29.2 -8.9 L-28.2 -11.7 L-30.0 -16.0 L-28.3 -18.9 L-23.6 -19.3 L-21.6 -21.6 L-21.6 -26.3 L-18.9 -28.3 L-14.4 -26.9 L-11.7 -28.2 L-9.9 -32.5 L-6.6 -33.3 L-3.0 -30.4 L-0.0 -30.5 L3.3 -33.8 L6.6 -33.3 L8.9 -29.2 L11.7 -28.2 L16.0 -30.0 L18.9 -28.3 L19.3 -23.6 L21.6 -21.6 L26.3 -21.6 L28.3 -18.9 L26.9 -14.4 L28.2 -11.7 L32.5 -9.9 L33.3 -6.6 L30.4 -3.0 Z"/>
+    <g class="asm-out"><circle class="track" r="42"/><circle class="charge" r="42" stroke-dasharray="0 264"/></g>
+    <g class="asm-in"><g class="rot"><path class="gear" d="M30.5 0.0 L33.8 3.3 L33.3 6.6 L29.2 8.9 L28.2 11.7 L30.0 16.0 L28.3 18.9 L23.6 19.3 L21.6 21.6 L21.6 26.3 L18.9 28.3 L14.4 26.9 L11.7 28.2 L9.9 32.5 L6.6 33.3 L3.0 30.4 L0.0 30.5 L-3.3 33.8 L-6.6 33.3 L-8.9 29.2 L-11.7 28.2 L-16.0 30.0 L-18.9 28.3 L-19.3 23.6 L-21.6 21.6 L-26.3 21.6 L-28.3 18.9 L-26.9 14.4 L-28.2 11.7 L-32.5 9.9 L-33.3 6.6 L-30.4 3.0 L-30.5 0.0 L-33.8 -3.3 L-33.3 -6.6 L-29.2 -8.9 L-28.2 -11.7 L-30.0 -16.0 L-28.3 -18.9 L-23.6 -19.3 L-21.6 -21.6 L-21.6 -26.3 L-18.9 -28.3 L-14.4 -26.9 L-11.7 -28.2 L-9.9 -32.5 L-6.6 -33.3 L-3.0 -30.4 L-0.0 -30.5 L3.3 -33.8 L6.6 -33.3 L8.9 -29.2 L11.7 -28.2 L16.0 -30.0 L18.9 -28.3 L19.3 -23.6 L21.6 -21.6 L26.3 -21.6 L28.3 -18.9 L26.9 -14.4 L28.2 -11.7 L32.5 -9.9 L33.3 -6.6 L30.4 -3.0 Z"/>
       <circle class="plate" r="24"/><circle class="hatch" r="23"/>
       <circle class="rivet" cx="0" cy="16" r="1.6"/><circle class="rivet" cx="13.9" cy="-8" r="1.6"/><circle class="rivet" cx="-13.9" cy="-8" r="1.6"/>
-      <line class="arm" x1="0" y1="0" x2="0" y2="-26"/><circle class="knob" cy="-26" r="8.5"/><circle class="rivet" cy="-26" r="2.4"/></g>
-    <circle class="hub" r="4.5"/><path class="hint" d="M-30 -33 A44 44 0 0 1 30 -33 M25 -37 L30 -33 L24 -30"/></svg></div>
+      <line class="arm" x1="0" y1="0" x2="0" y2="-26"/><circle class="knob" cy="-26" r="8.5"/><circle class="rivet" cy="-26" r="2.4"/></g></g>
+    <path class="hint" d="M-30 -33 A44 44 0 0 1 30 -33 M25 -37 L30 -33 L24 -30"/></svg></div>
   <div id="oar-ctl" class="hidden" role="button" tabindex="0">
     <div class="oar-mark"></div>
     <div class="oar-disc"><svg viewBox="-28 -28 56 56" aria-hidden="true"><g class="oar-rot">
@@ -3960,16 +3979,16 @@
   const HUB_R = 21;                        // hub radius (unscaled); how long to hold it: HUB_HOLD (Tuning)
   const HUB_SAIL_R = 16.5;                  // the hub's grip while sailing (it's drawn big now: keep the wheel around it to steer)
   let hubHold = null, hubShake = 0, bankHint = false, wheelVis = 1, hubScale = 2;
-  const stowed = ()=> anchored && weighT <= 0;             // at anchor the wheel itself is locked
+  // the hub is the mode switch: held HUB_HOLD, the wheel comes apart and the crank takes its place (and back)
+  let crankMode = false;
   function wheelLocal(ev){
     const r = wheelCv.getBoundingClientRect();
     return [(ev.clientX-r.left)*(WH_W/r.width) - WH_CX, (ev.clientY-r.top)*(WH_H/r.height) - WH_CY];
   }
   wheelCv.addEventListener('pointerdown', ev=>{
     const [x,y] = wheelLocal(ev);
-    const onHub = Math.hypot(x,y) < (stowed() ? HUB_R : HUB_SAIL_R)*WH_S*hubScale;   // sailing: just the hub, so the spokes still steer
+    const onHub = Math.hypot(x,y) < HUB_SAIL_R*WH_S*hubScale;   // just the hub, so the spokes still steer
     if(Math.hypot(x,y) > 84*WH_S) return;      // outside the handles
-    if(stowed() && !onHub) return;             // at anchor only the hub works
     ev.preventDefault();
     wheelPointer = ev.pointerId;
     wheelCv.setPointerCapture(ev.pointerId);
@@ -3984,7 +4003,6 @@
     const [x,y] = wheelLocal(ev);
     const a = Math.atan2(y,x);
     if(hubHold && Math.hypot(x-hubHold.x, y-hubHold.y) > 9) hubHold = null;   // it's a turn of the wheel, not a press
-    if(stowed()) return;                                       // anchored: the wheel doesn't turn
     if(Math.hypot(x,y) < 14*WH_S){ wheelLast = a; return; } // too close to the hub: angle unreliable
     const d = norm(a - wheelLast);
     wheelAngle = Math.max(-WHEEL_MAX, Math.min(WHEEL_MAX, wheelAngle + d));
@@ -4211,17 +4229,22 @@
 
     // at anchor the wheel is put away: it fades out
     // and only the hub stays, to weigh anchor or switch sail
-    wheelVis += ((stowed() ? 0 : 1) - wheelVis) * 0.15;
+    wheelVis += ((crankMode ? 0 : 1) - wheelVis) * 0.1;
+    if(Math.abs(wheelVis - (crankMode ? 0 : 1)) < 0.002) wheelVis = crankMode ? 0 : 1;
     // skip the redraw (and its dither) while nothing on it moves: same angle,
     // same state, no animation running (a hold, a shake, the bank ring, a tutorial hint)
     {
-      const busy = hubHold || hubShake > 0 || bankHint || Math.abs(wheelVis - (stowed() ? 0 : 1)) > 0.002
+      const busy = hubHold || hubShake > 0 || wheelVis !== (crankMode ? 0 : 1)
         || ((tut === 'anchor' || tut === 'drop' || tut === 'wheel') && !tutWait);
-      const key = wheelAngle.toFixed(4) + '|' + wheelVis.toFixed(3) + '|' + anchored + '|' + bankHint + '|' + !!hubHold + '|' + uiPalKey;   // (a let-go hold must clear its ring)
+      const key = wheelAngle.toFixed(4) + '|' + wheelVis.toFixed(3) + '|' + crankMode + '|' + !!hubHold + '|' + uiPalKey;   // (a let-go hold must clear its ring)
       if(!busy && key === wheelKey) return;
       wheelKey = key;
     }
-    c.globalAlpha = wheelVis;
+    // switching to the crank, the wheel comes apart: the spokes fly outward, turning, the rim breaks into
+    // eight pieces that scatter, all fading (and back together, the other way); e: how far apart it is
+    const e = 1 - wheelVis;
+    if(wheelVis > 0){
+    c.globalAlpha = Math.min(1, wheelVis*1.6);
     // wheel: ink woodcut look; every part has an ink outline so it reads over any terrain
     c.save();
     c.translate(WH_CX, WH_CY);
@@ -4232,7 +4255,7 @@
     {
       const bg = c.createRadialGradient(0, 0, 14, 0, 0, 50);
       bg.addColorStop(0, 'rgb(70,70,70)'); bg.addColorStop(1, 'rgb(44,44,44)');   // a touch lighter toward the hub
-      c.fillStyle = bg; c.beginPath(); c.arc(0, 0, 50, 0, Math.PI*2); c.fill();
+      c.fillStyle = bg; c.beginPath(); c.arc(0, 0, 50*(1 - 0.6*e), 0, Math.PI*2); c.fill();
     }
     c.lineCap='round'; c.lineJoin='round';
     // a spoke/handle profile along +x, turned like a lathe piece: symmetric
@@ -4247,6 +4270,7 @@
     const SPOKE  = [[13,3.8],[22,3.2],[27,3],[28.5,4.6],[31,4.6],[32.5,3],[44,2.8],[50,3.2]];
     for(let k=0;k<8;k++){
       c.save(); c.rotate(k*Math.PI/4 - Math.PI/2);
+      if(e) { c.translate(e*(26 + 9*(k%3)), 0); c.rotate(e*(k%2 ? 0.7 : -0.5)); }   // coming apart
       // handle: paper body, ink outline, an ink band at the neck
       c.fillStyle=WOOD; c.strokeStyle=INKW; c.lineWidth=1.6;
       turned(HANDLE); c.fill();
@@ -4268,6 +4292,7 @@
     }
     // rim: two ink edges, a paper band with wood grain, and brass caps with
     // rivets where each spoke passes through
+    const rim = ()=>{
     c.strokeStyle=INKW; c.lineWidth=12; c.beginPath(); c.arc(0,0,55,0,Math.PI*2); c.stroke();
     c.strokeStyle=WOOD_RIM; c.lineWidth=8.6; c.beginPath(); c.arc(0,0,55,0,Math.PI*2); c.stroke();
     c.save(); c.rotate(-wheelAngle);                          // light from top-left: rim darker bottom-right
@@ -4285,6 +4310,14 @@
       c.fillStyle=INKW; c.beginPath(); c.arc(55,0,1.3,0,Math.PI*2); c.fill();
       c.restore();
     }
+    };
+    if(!e) rim();
+    else for(let k=0;k<8;k++){                                 // the rim in eight pieces, each round a spoke, scattering
+      const mid = k*Math.PI/4 - Math.PI/2;
+      c.save(); c.translate(Math.cos(mid)*e*34, Math.sin(mid)*e*34); c.rotate(e*(k%2 ? 0.4 : -0.3));
+      c.beginPath(); c.moveTo(0,0); c.arc(0, 0, 80, mid - Math.PI/8, mid + Math.PI/8); c.closePath(); c.clip();
+      rim(); c.restore();
+    }
     // hub: ink boss, paper ring with bolts, inked cap with a bright axle
     c.fillStyle=INKW; c.beginPath(); c.arc(0,0,15.5,0,Math.PI*2); c.fill();
     c.fillStyle=WOOD_SH; c.beginPath(); c.arc(0,0,13,0,Math.PI*2); c.fill();
@@ -4293,26 +4326,23 @@
     c.fillStyle=PAPW; c.beginPath(); c.arc(0,0,4.8,0,Math.PI*2); c.fill();
     c.strokeStyle=INKW; c.lineWidth=1.2; c.beginPath(); c.arc(0,0,2.4,0,Math.PI*2); c.stroke();
     c.beginPath(); c.moveTo(-2.4,0); c.lineTo(2.4,0); c.stroke();
-    c.restore();    c.globalAlpha = 1;                                     // the hub is always drawn solid
-    // the hub is the anchor button: a half-second press drops or weighs the
-    // anchor (a ring fills while it's held, then a little shake)
+    c.restore();
+    }
+    c.globalAlpha = 1;                                     // the hub is always drawn solid
+    // the hub switches the wheel and the crank: held HUB_HOLD (a ring fills
+    // while it's held), the one comes apart and the other takes its place
     if(hubHold && !hubHold.done && performance.now() - hubHold.t0 >= HUB_HOLD){
       hubHold.done = true; hubShake = 1;
-      setAnchor(!(anchored && weighT <= 0));
+      setCrankMode(!crankMode);
     }
     hubShake = Math.max(0, hubShake - 0.06);
     {
       const jx = hubShake ? Math.sin(performance.now()*0.09)*2.2*hubShake : 0;
-      // the hub is always the big size (the one it used to grow to only at
-      // anchor): with the wheel away it turns dark, a dotted ink knob
+      // the hub is always the big size (it's the crank's hub too, in crank mode)
       hubScale = 2;
-      const inv = wheelVis < 0.5, HI = inv ? PAPW : INKW;
       c.save(); c.translate(WH_CX + jx, WH_CY); c.scale(WH_S*hubScale, WH_S*hubScale);
-      // the knob is shaded in greys (dithered like the rest of the UI): dark at
-      // anchor, a light, slightly shaded face while sailing (a bit bigger then)
       // drawn like the compass: a brass bezel (lit from the top left) with
-      // four rivets, round a shaded face, and a glint of glass; the face is
-      // light while sailing, dark at anchor
+      // four rivets, round a light shaded face, and a glint of glass
       const HR = 15, FR = HR - 3.2;
       const bz = c.createLinearGradient(-HR, -HR, HR, HR);
       bz.addColorStop(0, 'rgb(245,245,245)'); bz.addColorStop(0.5, 'rgb(200,200,200)'); bz.addColorStop(1, 'rgb(140,140,140)');
@@ -4324,42 +4354,37 @@
         c.fillStyle = PAPW; c.fillRect(rx-0.6, ry-0.6, 0.6, 0.6);
       }
       const fg = c.createRadialGradient(-FR*0.35, -FR*0.35, 1, 0, 0, FR);
-      if(inv){ fg.addColorStop(0, 'rgb(100,100,100)'); fg.addColorStop(1, 'rgb(28,28,28)'); }
-      else { fg.addColorStop(0, PAPW); fg.addColorStop(0.6, 'rgb(236,236,236)'); fg.addColorStop(1, 'rgb(182,182,182)'); }
+      fg.addColorStop(0, PAPW); fg.addColorStop(0.6, 'rgb(236,236,236)'); fg.addColorStop(1, 'rgb(182,182,182)');
       c.fillStyle = fg; c.strokeStyle = INKW; c.lineWidth = 1;
       c.beginPath(); c.arc(0,0,FR,0,Math.PI*2); c.fill(); c.stroke();
       c.strokeStyle = PAPW; c.lineWidth = 1.1;                              // a glint on the glass
       c.beginPath(); c.arc(0,0,FR-1.6,Math.PI*1.08,Math.PI*1.38); c.stroke();
-      if(inv){ c.strokeStyle=PAPW; c.lineWidth=1.3; c.beginPath(); c.arc(0,0,HR+1.4,0,Math.PI*2); c.stroke(); }   // one light rim, so the dark knob reads on dark water
       const ring = (r, a0, a1, lw, dash)=>{                // an ink ring with a paper halo, readable anywhere
         c.save(); if(dash) c.setLineDash(dash);
         c.strokeStyle=PAPW; c.lineWidth=lw+2; c.beginPath(); c.arc(0,0,r,a0,a1); c.stroke();
         c.strokeStyle=INKW; c.lineWidth=lw;   c.beginPath(); c.arc(0,0,r,a0,a1); c.stroke();
         c.restore();
       };
-      if(bankHint){ c.save(); c.rotate(performance.now()*0.002); ring(HR + 4, 0, Math.PI*2, 1.6, [3,3]); c.restore(); }   // over a fish bank
       if(hubHold && !hubHold.done){
         const k = Math.min(1, (performance.now()-hubHold.t0)/HUB_HOLD);
         ring(HR + 1.5, -Math.PI/2, -Math.PI/2+k*Math.PI*2, 2.8);
       }
-      c.strokeStyle = HI; c.fillStyle = HI;
-      c.lineCap='round';
-      // an anchor: ink on the light hub while sailing, paper on the dark knob at
-      // anchor. Over a fish bank it turns into a little fish for a while, to
-      // point at what the button is for there (dropping anchor = nets over)
-      c.save(); c.scale(1.2, 1.2);
-      if(bankHint){
-        c.save(); c.translate(-0.8, 0);
-        c.beginPath(); c.moveTo(-7.2, 0); c.quadraticCurveTo(-1.5, -6.4, 4.6, 0); c.quadraticCurveTo(-1.5, 6.4, -7.2, 0); c.fill();   // body
-        c.beginPath(); c.moveTo(3.4, 0); c.lineTo(8.8, -4.4); c.lineTo(7.6, 0); c.lineTo(8.8, 4.4); c.closePath(); c.fill();          // tail
-        c.fillStyle = inv ? INKW : PAPW; c.beginPath(); c.arc(-3.9, -1, 1.15, 0, Math.PI*2); c.fill();                              // eye
-        c.restore();
-      } else {
-        c.lineWidth = inv ? 1.7 : 1.75;
-        c.beginPath(); c.arc(0,-7,1.9,0,Math.PI*2); c.stroke();
-        c.beginPath(); c.moveTo(0,-5); c.lineTo(0,7.5); c.moveTo(-4.5,-2.2); c.lineTo(4.5,-2.2); c.stroke();
-        c.beginPath(); c.moveTo(-6.5,2.5); c.quadraticCurveTo(-5,7.5,0,7.5); c.quadraticCurveTo(5,7.5,6.5,2.5); c.stroke();
+      // on its face, what a hold turns it into: a little crank while it's the wheel, a little wheel while it's the crank
+      const sw = Math.min(1, Math.abs(wheelVis - 0.5)*2);         // (the icon shrinks away and back as they swap)
+      c.strokeStyle = INKW; c.fillStyle = INKW; c.lineCap = 'round';
+      c.save(); c.scale(sw, sw);
+      if(wheelVis >= 0.5){                                         // a crank: a cog, the arm out to the upper right, the knob
+        c.lineWidth = 1.3;
+        c.beginPath(); for(let k=0;k<20;k++){ const a = k*Math.PI/10, r = (k>>1)%2 ? 4.6 : 6; c.lineTo(Math.cos(a)*r - 2, Math.sin(a)*r + 2); } c.closePath(); c.stroke();
+        c.lineWidth = 2.4; c.beginPath(); c.moveTo(-2, 2); c.lineTo(5, -5); c.stroke();
+        c.beginPath(); c.arc(-2, 2, 1.6, 0, Math.PI*2); c.fill();
+        c.fillStyle = PAPW; c.lineWidth = 1.5; c.beginPath(); c.arc(5.5, -5.5, 2.6, 0, Math.PI*2); c.fill(); c.stroke();
+      } else {                                                     // a ship's wheel: rim, eight spokes with their handles
+        c.lineWidth = 1.5; c.beginPath(); c.arc(0, 0, 5, 0, Math.PI*2); c.stroke();
+        c.beginPath(); for(let k=0;k<8;k++){ const a = k*Math.PI/4; c.moveTo(Math.cos(a)*1.4, Math.sin(a)*1.4); c.lineTo(Math.cos(a)*8.6, Math.sin(a)*8.6); } c.stroke();
+        c.beginPath(); c.arc(0, 0, 1.6, 0, Math.PI*2); c.fill();
       }
+      c.restore();
       c.restore();
       c.restore();
     }
@@ -4391,7 +4416,29 @@
   // only when it's aboard does the boat get under way again
   const WEIGH_TIME = 0.9;
   let weighT = 0;
-  function anchorUI(){ renderSailBtn(); }            // the hub of the wheel shows the state
+  // the anchor button (right, under the sail badge): a tap drops or weighs it; inked at anchor, shaking while
+  // the chain comes in; over a fish bank (not at anchor) it shows a fish: dropping anchor there puts the nets over
+  const elAnchorBtn = document.getElementById('anchor-btn');
+  let anchorBtnKey = '';
+  elAnchorBtn.addEventListener('click', ()=>{ elAnchorBtn.blur(); if(!playing) return; setAnchor(!(anchored && weighT <= 0)); });
+  function anchorUI(){
+    const show = playing && !marketV && tutAt('anchor');
+    const key = show + '|' + (anchored && weighT <= 0) + '|' + (weighT > 0) + '|' + bankHint;
+    if(key === anchorBtnKey) return;
+    anchorBtnKey = key;
+    elAnchorBtn.classList.toggle('hidden', !show);
+    elAnchorBtn.classList.toggle('down', anchored && weighT <= 0);
+    elAnchorBtn.classList.toggle('weighing', weighT > 0);
+    elAnchorBtn.classList.toggle('bank', bankHint);
+    const lbl = anchored ? TEXT.oars.anchorWeigh : TEXT.oars.anchorDrop; elAnchorBtn.title = lbl; elAnchorBtn.setAttribute('aria-label', lbl);
+  }
+  // the hub swaps the wheel and the crank (see drawWheel); in crank mode the helm comes back amidships
+  function setCrankMode(on){
+    crankMode = on; hubHold = null; crankDrag = null;
+    document.body.classList.toggle('crank-mode', on);
+    elCrank.classList.toggle('away', !on);
+    Sfx.init(); Sfx.thunk(0.3); buzz([15, 30, 25]);
+  }
   function setAnchor(on, instant){
     if(tut === 'drop') tutSet('done');                                    // tutorial: they found it
     // at the quay with the text still running: the first press just finishes it
@@ -4425,7 +4472,7 @@
   // the sail is switched with the badge (see Sail badge), the anchor with the
   // hub of the wheel; this just keeps the labels in step
   function renderSailBtn(){
-    wheelCv.setAttribute('aria-label', 'Helm: drag round to steer. Centre: hold half a second to ' + (anchored ? 'weigh' : 'drop') + ' anchor.');
+    wheelCv.setAttribute('aria-label', TEXT.oars.helm);
   }
   // a switch: full sail ↔ minimum
   function cycleSail(){
@@ -5487,7 +5534,7 @@
   function startRuin(r){
     if(r.eolus){                                          // the Temple of Eolus: the fair wind, once and for all
       Sfx.bell(); buzz([14,22,14,22,14,22,14,22,14,22,40]);
-      if(!powerOwned){ powerOwned = true; powerLeft = POWER_USES; powerUI(); openDialog(r.name, TEXT.eolus.gift, 5); }
+      if(!powerOwned){ powerOwned = true; powerLeft = POWER_USES; powerUI(); elListBtn.classList.add('news'); openDialog(r.name, TEXT.eolus.gift, 5); }
       else openDialog(r.name, TEXT.eolus.again, 3);
       return;
     }
@@ -5633,18 +5680,25 @@
     }
     if(was < 1 && spring >= 1){ Sfx.oarHit(OAR_CUE_VOL); buzz([20, 30, 40]); crankLocked = true; crankDrag = null; crankA = 0; elCrank.classList.add('locked'); }   // wound right up: the crank locks (a cooldown), the arm resting pointing up again
   };
-  elCrank.addEventListener('pointerdown', ev=>{ ev.preventDefault(); Sfx.init(); if(crankLocked) return; crankBack = 0; crankTick = Math.max(crankTick, Math.PI*2/16 - 0.06); crankDrag = {id: ev.pointerId, a: crankAngle(ev)}; try{ elCrank.setPointerCapture(ev.pointerId); }catch(e){} });
+  const onCrankHub = ev=>{ const r = elCrank.getBoundingClientRect(), w = wheelCv.getBoundingClientRect();
+    return Math.hypot(ev.clientX - (r.left + r.width/2), ev.clientY - (r.top + r.height/2)) < 15*WH_S*hubScale*w.width/WH_W; };   // (the hub drawn on the wheel's canvas, over the crank)
+  let crankHubId = null;
+  elCrank.addEventListener('pointerdown', ev=>{ ev.preventDefault(); Sfx.init();
+    if(onCrankHub(ev)){ crankHubId = ev.pointerId; hubHold = {t0: performance.now(), x: ev.clientX, y: ev.clientY, done:false}; try{ elCrank.setPointerCapture(ev.pointerId); }catch(e){} return; }
+    if(crankLocked) return; crankBack = 0; crankTick = Math.max(crankTick, Math.PI*2/16 - 0.06); crankDrag = {id: ev.pointerId, a: crankAngle(ev)}; try{ elCrank.setPointerCapture(ev.pointerId); }catch(e){} });
   elCrank.addEventListener('pointermove', ev=>{
+    if(ev.pointerId === crankHubId){ if(hubHold && Math.hypot(ev.clientX - hubHold.x, ev.clientY - hubHold.y) > 9) hubHold = null; return; }
     const d = crankDrag; if(!d || ev.pointerId !== d.id) return;
     const a = crankAngle(ev), da = norm(a - d.a); d.a = a;
     if(Math.abs(da) < 1.5){ if(da > 0){ crankA += da; if(!crankLocked) crankMove += da; } windSpring(da); }   // (the arm only goes round forward: a ratchet)
   });
-  const crankUp = ev=>{ if(crankDrag && ev.pointerId === crankDrag.id){ crankDrag = null; if(windProg > 0){ crankBack = windProg*Math.PI*2*SPRING_TURNS; crankTick = crankStep = 0; buzz(6); } } };   // let go before a full turn: it springs back anticlockwise (catch it again to go on), start again
+  const crankUp = ev=>{ if(ev.pointerId === crankHubId){ crankHubId = null; hubHold = null; return; } if(crankDrag && ev.pointerId === crankDrag.id){ crankDrag = null; if(windProg > 0){ crankBack = windProg*Math.PI*2*SPRING_TURNS; crankTick = crankStep = 0; buzz(6); } } };   // let go before a full turn: it springs back anticlockwise (catch it again to go on), start again
   elCrank.addEventListener('pointerup', crankUp); elCrank.addEventListener('pointercancel', crankUp);
   elCrank.addEventListener('keydown', ev=>{ if(ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); ev.stopPropagation(); if(crankLocked) return; crankA += Math.PI*2; windSpring(Math.PI*2*SPRING_TURNS); } });   // (keys: a whole winding at once)
   function updateSpring(dt){
-    const show = MANUAL_OARS && playing && !moor && !marketV;
+    const show = MANUAL_OARS && playing && !marketV;      // (in the wheel's place: shown in crank mode, see setCrankMode)
     if(show !== !elCrank.classList.contains('hidden')) elCrank.classList.toggle('hidden', !show);
+    if(crankMode) wheelAngle *= Math.max(0, 1 - dt*3);      // no hand on the wheel: the helm comes back amidships
     if(!elOar.classList.contains('hidden')) elOar.classList.add('hidden');
     const can = spring > 0 && !(anchored || moor || boat.whirl) && (boat.sailV || 0) < SPRING_SPEED;   // (> 0: it once stopped at 0.001 and the crank stayed locked for good)
     oarSpin += ((can ? 1 : 0) - oarSpin)*Math.min(1, dt*2.5);                 // the wheels take up and let go smoothly
@@ -5816,6 +5870,8 @@
     // the sails, as the spare in the hold: a square sail on its yard, a lateen triangle on its slanted yard
     // a corked bottle with a rolled note inside
     'Message in a bottle': ICO('<path d="M3.5 13.5 Q3.5 10.5 6.5 10.5 H13 Q15 10.5 15.8 12 H19 V15 H15.8 Q15 16.5 13 16.5 H6.5 Q3.5 16.5 3.5 13.5 Z" '+L+'/><rect x="6" y="12" width="6.5" height="3" '+P+' stroke-width="0.9"/><path d="M19 12.3 H21.2 V14.7 H19" '+M+' stroke-width="1.1"/><path d="M6 11.6 H12" '+N+' stroke="var(--paper)" stroke-width="0.8"/>'),
+    // Eolus' fair wind: a medallion with a gust blowing across it
+    'Fair wind': ICO('<circle cx="12" cy="12" r="10" '+M+'/><circle cx="12" cy="12" r="7.6" '+N+' stroke-width="0.8" stroke-dasharray="1.5 1.5"/><path d="M5 9.5 H13.5 A2.2 2.2 0 1 0 11.4 6.8 M5 13 H16 A2.4 2.4 0 1 1 13.7 16 M6.5 16.4 H10.5" '+N+' stroke-width="1.7"/>'),
     'Square sail': ICO('<path d="M4 5 Q12 7.5 20 5 Q21 13 20 19 Q12 16.5 4 19 Q3 13 4 5 Z" '+L+'/><path d="M12 6.5 V17.5" '+N+' stroke-width="0.9"/><path d="M2.5 5 Q12 7.5 21.5 5" '+N+' stroke-width="2"/><path d="M12 3 V21.5" '+N+' stroke-width="1.6"/>'),
     'Lateen sail': ICO('<path d="M4 18 L19 3 Q19.5 12 15.5 20 Q10 17.5 4 18 Z" '+L+'/><path d="M9.5 13 Q14 12.5 16.5 18" '+N+' stroke-width="0.9"/><path d="M2.5 19.5 L21 1.5" '+N+' stroke-width="2"/><path d="M8 9 V22" '+N+' stroke-width="1.6"/>'),
     'Limoncello': ICO('<path d="M3.5 21 V10 L5.5 7 V2 H8.5 V7 L10.5 10 V21 Z" '+L+'/><path d="M12.5 17 Q13.5 12.8 17.5 13 Q22 13 22.5 17 Q21.5 21 17.5 21 Q13.5 21 12.5 17 Z" '+P+'/><path d="M17.5 13 Q19 9 23 8.5 Q22 12.5 17.5 13 Z" '+I+'/><path d="M12.5 17 H11.6 M22.5 17 H23.3" '+N+'/>'),
@@ -6203,7 +6259,7 @@
     return '<div class="hold-head"><h3>'+TEXT.logbook.cargo+'</h3><span class="hold-count">'+fmt(TEXT.logbook.holdCount, {n: items.length, max: HOLD_MAX})+'</span><span class="purse" aria-label="Purse: '+coins+' coins">'+COIN_SVG+coins+'</span></div>'
       + '<div class="hold-slots">'+Array.from({length: Math.max(HOLD_MAX, items.length)}, (_,k)=> slot(k)).join('')+'</div>'
       + (cargoSel ? '<button type="button" class="throw" data-throw="1">'+TEXT.logbook.throwAway+'</button>' : '')
-      + (gifts.length ? '<div class="hold-goods">'+gifts.map(g=> '<span title="'+g.name+'" role="img" aria-label="'+g.name+'">'+itemIcon(g.icon)+'</span>').join('')+'</div>' : '');
+      + (gifts.length || powerOwned ? '<div class="hold-goods">'+powerHTML()+gifts.map(g=> '<span title="'+g.name+'" role="img" aria-label="'+g.name+'">'+itemIcon(g.icon)+'</span>').join('')+'</div>' : '');
   }
   // the spare sail, in a slot of its own among the others: a tap on it rigs
   // it, and the sail she carried goes into the hold in its place
@@ -6270,6 +6326,8 @@
     renderList();
   }
   elListBody.addEventListener('click', e=>{
+    const pw = e.target.closest('[data-power]');
+    if(pw && playing){ e.stopPropagation(); usePower(); return; }
     const th = e.target.closest('[data-throw]');
     if(th && playing){ e.stopPropagation(); Sfx.init(); throwOverboard(); return; }
     const itm = e.target.closest('[data-item]');
@@ -6282,7 +6340,7 @@
     e.stopPropagation(); Sfx.init(); swapSail(b.dataset.swap);
   });
   let listKey = '';
-  const holdKey = ()=> [dayNo, coins, boat.rig, cargoSel ? cargoSel.kind + cargoSel.key : '', bottleHold.map(b=> b.read ? 'r' : 'u').join(''), ...FISH_KEYS.map(k=>counts[k]), ...ALL_DISHES.map(d=> dishHold[d.icon]||0), ...VILLAGES.map(v=> v.giftGot?'g':''),
+  const holdKey = ()=> [dayNo, coins, boat.rig, cargoSel ? cargoSel.kind + cargoSel.key : '', bottleHold.map(b=> b.read ? 'r' : 'u').join(''), ...FISH_KEYS.map(k=>counts[k]), ...ALL_DISHES.map(d=> dishHold[d.icon]||0), ...VILLAGES.map(v=> v.giftGot?'g':''), powerOwned, powerLeft, Math.ceil(boonWindT), powerLeft < POWER_USES ? Math.ceil(powerT) : 0,
                         order ? order.items.map(it=> it.got).join(',') + order.closed : ''].join('|');
   // while the list is open, keep the hold up to date (a catch, a repair)
   function refreshList(){
@@ -6338,26 +6396,6 @@
       c.fillStyle = INKW; c.beginPath(); c.arc(43.5, 24, 0.9, 0, Math.PI*2); c.fill();
       c.strokeStyle = INKW; c.lineWidth = 1.6; cover(); c.stroke();
     });
-    // the fair-wind power: a brass medallion with a gust blowing across it;
-    // spent, the same medallion pale and flat, the gust only dotted
-    const medal = (c, spent)=>{
-      c.fillStyle = g(90); c.beginPath(); c.arc(30, 31, 21, 0, Math.PI*2); c.fill();                     // shadow
-      const lg = c.createLinearGradient(8, 6, 48, 48);
-      lg.addColorStop(0, g(spent ? 225 : 120)); lg.addColorStop(1, g(spent ? 175 : 35));                  // dark, lit top left
-      c.fillStyle = lg; c.beginPath(); c.arc(28, 28, 21, 0, Math.PI*2); c.fill();
-      c.strokeStyle = INKW; c.lineWidth = 1.6; c.stroke();
-      c.strokeStyle = g(spent ? 140 : 215); c.lineWidth = 1.2; c.beginPath(); c.arc(28, 28, 17.5, Math.PI*0.75, Math.PI*1.75); c.stroke();   // lit rim
-      for(let k=0;k<4;k++){ const a = (k+0.5)*Math.PI/2, x = 28+Math.cos(a)*19, y = 28+Math.sin(a)*19;   // rivets
-        c.fillStyle = INKW; c.beginPath(); c.arc(x, y, 1.2, 0, Math.PI*2); c.fill(); }
-      c.strokeStyle = spent ? g(110) : PAPW; c.lineCap = 'round';                                           // the gust: three curling lines
-      if(spent) c.setLineDash([1.5, 2.5]);
-      const gust = (y, len, curl, lw)=>{ c.lineWidth = lw; c.beginPath(); c.moveTo(14, y); c.lineTo(14+len, y);
-        c.arc(14+len, y - curl, curl, Math.PI/2, -Math.PI*0.7, true); c.stroke(); };
-      gust(21, 20, 4, 2.6); gust(29, 25, 3.4, 2.6); gust(37, 16, 3, 2.2);
-      c.setLineDash([]);
-    };
-    paint(elPower.querySelector('.pw-ready'), c=> medal(c, false));
-    paint(elPower.querySelector('.pw-spent'), c=> medal(c, true));
     // open: two pages over the cover, a crease, a few lines of writing
     paint(elListBtn.querySelector('.log-pages'), c=>{
       c.fillStyle = g(90); c.beginPath(); c.roundRect(5, 14, 48, 32, 4); c.fill();                        // shadow
@@ -6402,34 +6440,35 @@
   elListBtn.addEventListener('click', ()=>{ toggleList(); elListBtn.blur(); });
 
   // ---------- Fair wind (a power, POWER_USES of it, given by Eolus) ----------
-  // The button bottom right: for POWER_WIND_T seconds the wind swings round
-  // to blow from astern whichever way she steers (the same spell as the ruins'
-  // friendly wind, boonWindT). It's locked until she docks at the Temple of
-  // Eolus; a spent use comes back after POWER_RECHARGE seconds.
-  const elPower = document.getElementById('btn-power');
+  // An item in the Cargo (with the gifts, it takes no slot): tapped, for
+  // POWER_WIND_T seconds the wind swings round to blow from astern whichever
+  // way she steers (the same spell as the ruins' friendly wind, boonWindT).
+  // It's not there until she docks at the Temple of Eolus; a spent use comes
+  // back POWER_RECHARGE seconds after it was used (the item shows the seconds).
   let powerOwned = !EOLUS_ON, powerLeft = POWER_USES, powerT = 0;   // (powerT: seconds until a spent use comes back)
-  function powerUI(){
-    const locked = !powerOwned;
-    elPower.classList.toggle('spent', locked || powerLeft <= 0);
-    elPower.classList.toggle('locked', locked);
-    elPower.disabled = locked;                           // until Eolus gives it, the button does nothing
-  }
-  // a spent use comes back POWER_RECHARGE seconds later (counted while she sails)
+  function powerUI(){ if(elList.classList.contains('open')) renderList(); }
   function rechargePower(dt){
     if(!powerOwned || powerLeft >= POWER_USES) return;
     powerT -= dt;
     if(powerT <= 0){ powerLeft++; powerUI(); powerT = POWER_RECHARGE; buzz(10); }
   }
-  powerUI();                                             // (locked from the start, until Eolus)
-  elPower.addEventListener('click', ()=>{
-    elPower.blur(); Sfx.init();
+  function usePower(){
+    Sfx.init();
     if(!playing || !powerOwned || powerLeft <= 0 || boonWindT > 0){ buzz(12); return; }
     if(powerLeft === POWER_USES) powerT = POWER_RECHARGE;   // the recharge starts with the first use spent
-    powerLeft--; powerUI();
+    powerLeft--;
     boonWindT = POWER_WIND_T; shiftDur = 0;
     popups.push({x:boat.x, y:boat.y-26, text:TEXT.popups.fairWind, life:1.6, max:1.6});
     Sfx.surf(); buzz([20,40,60]);
-  });
+    powerUI();
+  }
+  function powerHTML(){
+    if(!powerOwned) return '';
+    const spent = powerLeft <= 0, blowing = boonWindT > 0;
+    const lbl = blowing ? fmt(TEXT.eolus.blowing, {s: Math.ceil(boonWindT)}) : spent ? fmt(TEXT.eolus.recharging, {s: Math.ceil(powerT)}) : TEXT.eolus.item;
+    const note = blowing ? Math.ceil(boonWindT) + 's' : spent ? Math.ceil(powerT) + 's' : '';
+    return '<button type="button" class="power'+(spent && !blowing ? ' spent' : '')+(blowing ? ' blowing' : '')+'" data-power="1" title="'+lbl+'" aria-label="'+lbl+'">'+itemIcon('Fair wind')+(note ? '<span>'+note+'</span>' : '')+'</button>';
+  }
 
   // ---------- Sea chart ----------
   // The logbook's second spread: a rough chart of the sea, drawn across both
@@ -7190,7 +7229,7 @@
     if(!moor && !dlg){
       const b = fishing ? (fishing.bank || fishing.bottle) : (bankUnderBoat() || bottleUnderBoat());
       elHint.classList.add('hidden');                   // fishing speaks for itself: nets, fish, splash
-      bankHint = !!b && !fishing && !anchored && !holdFull();   // over a bank: the hub of the wheel glows (not with a full hold)
+      bankHint = !!b && !fishing && !anchored && !holdFull();   // over a bank: the anchor button shows a fish (not with a full hold)
     }
     else elHint.classList.add('hidden');              // at a quay: no hint window
 
@@ -7243,7 +7282,6 @@
       const pct = Math.round(satisfaction*100), show = playing && SATISFACTION_ON;
       if(pct !== moodShown){ moodShown = pct; elMoodFill.style.width = pct+'%'; elMood.setAttribute('aria-valuenow', pct); }
       if(show !== elMood.classList.contains('show')) elMood.classList.toggle('show', show);
-      if((boonWindT > 0) !== elPower.classList.contains('blowing')) elPower.classList.toggle('blowing', boonWindT > 0);
       if(satPulse > 0){ if(!elMood.classList.contains('pulse')) elMood.classList.add('pulse'); satPulse -= dt; if(satPulse <= 0) elMood.classList.remove('pulse'); }
     }
     healthShowT = Math.max(0, healthShowT-dt);
@@ -7252,7 +7290,7 @@
     refreshList();
     updateDockBtn();
     updateOarCtl(dt);
-    updateSailBtn();
+    updateSailBtn(); anchorUI();
   }
 
   // ---------- 1-bit rendering ----------
