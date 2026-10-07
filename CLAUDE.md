@@ -360,7 +360,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   surges or kicks), and the spring runs down over `SPRING_TIME` (15 s; was 30) of driving; otherwise it rests. `updateSpring`
   (called by `updateOarCtl`) also turns the wheels (`oarRate`, 1.4 × `OAR_RATE` × `SPRING_SPEED`/14); the steady churn (`Sfx.rowBed`) is
   silent in this mode: instead `drawBoat` plays `Sfx.paddle` (a low lowpassed splash and a 105→62 Hz thud, loudness
-  `PADDLE_VOL` 3.6 × `oarSpin`) each time a paddle comes round (eight a turn of `B.wheelA`), so the sound follows the wheels; freewheeling under sail (no spring drive, her speed > 3 px/s) the same splash plays quieter and lower (`PADDLE_FREE_VOL` 0.22 × `PADDLE_VOL` × min(1, speed/25), `PADDLE_FREE_PITCH` 0.7, Tuning);
+  `PADDLE_VOL` 3.6 × `oarSpin`) each time a paddle comes round (eight a turn of `B.wheelA`), so the sound follows the wheels; freewheeling under sail (no spring drive, her speed > 3 px/s) the same splash plays at half the volume, same pitch (`PADDLE_FREE_VOL` 0.5 × `PADDLE_VOL`, `PADDLE_FREE_PITCH` 1, Tuning; it was 0.22 × a fade-in with her speed and 0.7 pitch, too faint to hear);
   when the spring runs down `Sfx.springOff` (the gear's last links slowing, a slack clunk). A new voyage starts with it empty.
   **Paddle wheels, not oars** (pedalò style; in `drawBoat`, every boat): two upright wheels, one a side amidships
   (axle across her at the gunwale, `R` 7, eight flat paddles drawn as quads through `P`, only what's above the water,

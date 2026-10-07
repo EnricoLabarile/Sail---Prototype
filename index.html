@@ -42,8 +42,8 @@
   const SPRING_TURNS = 1;            // full turns of the crank, in one go, that wind the spring right up (let go before and the winding is lost: start again)
   const SPRING_TIME = 15;            // seconds the wheels can drive her on a full spring (it only runs down while they're driving; was 30)
   const PADDLE_VOL = 3.6;            // loudness of the paddles slapping into the water as the spring drives the wheels (one low splash a paddle; 0 = silent; was 1.8); freewheeling under sail is × PADDLE_FREE_VOL of it
-  const PADDLE_FREE_VOL = 0.22;      // …and when they only freewheel under sail (dragged round by the water): the same splash, this much quieter (× PADDLE_VOL)…
-  const PADDLE_FREE_PITCH = 0.7;     // …and this much lower in pitch (1 = as when driven)
+  const PADDLE_FREE_VOL = 0.5;       // …and when they only freewheel under sail (dragged round by the water): the same splash at this share of it (× PADDLE_VOL; was 0.22, fading in with her speed)…
+  const PADDLE_FREE_PITCH = 1;       // …and this pitch (1 = the same as when driven; was 0.7)
   const CRANK_BACK_SPEED = 12;       // let go of the crank before a full turn and it springs back anticlockwise, like an alarm clock's key: turns a second (radians, quicker the more it was wound)
   const CRANK_WEIGHT = 1;            // weight under the crank's clicks while you wind it: a low thud and a dull knock a tooth (0 = just the click, as when it springs back)
   const CRANK_GRIND = 0.5;           // loudness of the gears grinding under the clicks while you turn the crank (follows how fast; 0 = silent; was 1)
@@ -287,6 +287,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Paddle wheels under sail: they now make the same splash as when the spring drives them, at half the volume',
+    ]},
+    {build: '2026-10-07 22:05', items: [
       'The boat is now a gozzo: beamy and pointed at both ends, white sides with a dark band along the top, a little deck at the bow and one at the stern, the tall stem post over the bow and a short one aft carrying the rudder',
     ]},
     {build: '2026-10-07 21:15', items: [
@@ -296,11 +299,8 @@
     {build: '2026-10-07 21:09', items: [
       'Crank: the ticks as it springs back on its own are lower, less tinny',
     ]},
-    {build: '2026-10-07 21:07', items: [
-      'Crank: the steady grind under the clicks is now low and gritty, a gear grinding (no more high, chainsaw-like buzz)',
-    ]},
   ];
-  const BUILD = '2026-10-07 22:05';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-07 22:12';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -9064,7 +9064,7 @@
       { const idx = Math.floor(turnA/(Math.PI/4));
         if(!g && SPRING_PADDLES && idx !== B.padIdx){
           if(oarSpin > 0.05) Sfx.paddle(PADDLE_VOL*oarSpin);
-          else if((B.speed || 0) > 3) Sfx.paddle(PADDLE_VOL*PADDLE_FREE_VOL*Math.min(1, B.speed/25), PADDLE_FREE_PITCH);
+          else if((B.speed || 0) > 3) Sfx.paddle(PADDLE_VOL*PADDLE_FREE_VOL, PADDLE_FREE_PITCH);
         }
         B.padIdx = idx; }
       const pedal = !g && (oarSpin > 0.01 || B.oarK > 0.05);
