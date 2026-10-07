@@ -221,7 +221,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   counters) and wheel/anchor are hidden. Buttons: Quit (left) and Trade (right); both close it and leave you moored
   with the anchor back, so you can linger. **Nothing opens by itself on docking**: tied up at a village or at home, a
   round badge bobs beside the quay where it leaves the beach, on the far side from the boat (`#dock-btn`, `updateDockBtn`, placed from the camera each frame; coins at
-  a village, a crate at home; hidden while the table is open); a tap opens the market (with the purse's jingle, `Sfx.coins`), or at home the **storehouse** (a creak of its door
+  a village, a crate at home; hidden while the table is open); a tap opens the market (with the purse's jingle, `Sfx.coins`: 4–6 short coins at 1.3–2.1 kHz, quick and quiet), or at home the **storehouse** (a creak of its door
   and a wooden thump, `Sfx.crate`),
   as many times as you like while moored.
   **Home storehouse** (`homeStore` = {fish, dish, bottles}; texts in `TEXT.store`; cleared on a new voyage by
@@ -361,7 +361,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   surges or kicks), and the spring runs down over `SPRING_TIME` (30 s) of driving; otherwise it rests. `updateSpring`
   (called by `updateOarCtl`) also turns the wheels (`oarRate`, 1.4 × `OAR_RATE`); the steady churn (`Sfx.rowBed`) is
   silent in this mode: instead `drawBoat` plays `Sfx.paddle` (a low lowpassed splash and a 105→62 Hz thud, loudness
-  `PADDLE_VOL` × `oarSpin`) each time a paddle comes round (eight a turn of `B.wheelA`), so the sound follows the wheels; freewheeling under sail (no spring drive, her speed > 3 px/s) the same splash plays quieter and lower (`PADDLE_FREE_VOL` 0.4 × min(1, speed/25), `PADDLE_FREE_PITCH` 0.7, Tuning);
+  `PADDLE_VOL` 1.8 × `oarSpin`) each time a paddle comes round (eight a turn of `B.wheelA`), so the sound follows the wheels; freewheeling under sail (no spring drive, her speed > 3 px/s) the same splash plays quieter and lower (`PADDLE_FREE_VOL` 0.22 × `PADDLE_VOL` × min(1, speed/25), `PADDLE_FREE_PITCH` 0.7, Tuning);
   when the spring runs down `Sfx.springOff` (the gear's last links slowing, a slack clunk). A new voyage starts with it empty.
   **Paddle wheels, not oars** (pedalò style; in `drawBoat`, every boat): two upright wheels, one a side amidships
   (axle across her at the gunwale, `R` 7, eight flat paddles drawn as quads through `P`, only what's above the water,

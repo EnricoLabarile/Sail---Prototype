@@ -41,8 +41,8 @@
   const SPRING_PADDLES = true;       // the paddle wheels run off a wound spring: turn the crank (clockwise) to charge it, then they drive her on their own until it runs down; false = the old rhythmic oar button
   const SPRING_TURNS = 1;            // full turns of the crank, in one go, that wind the spring right up (let go before and the winding is lost: start again)
   const SPRING_TIME = 30;            // seconds the wheels can drive her on a full spring (it only runs down while they're driving)
-  const PADDLE_VOL = 1;              // loudness of the paddles slapping into the water as the spring drives the wheels (one low splash a paddle; 0 = silent)
-  const PADDLE_FREE_VOL = 0.4;       // …and when they only freewheel under sail (dragged round by the water): the same splash, this much quieter…
+  const PADDLE_VOL = 1.8;            // loudness of the paddles slapping into the water as the spring drives the wheels (one low splash a paddle; 0 = silent; was 1)
+  const PADDLE_FREE_VOL = 0.22;      // …and when they only freewheel under sail (dragged round by the water): the same splash, this much quieter (× PADDLE_VOL)…
   const PADDLE_FREE_PITCH = 0.7;     // …and this much lower in pitch (1 = as when driven)
   const CRANK_VOL = 1;               // loudness of the crank's gears as it winds (a tick a tooth, a heavier step each quarter turn; 0 = silent)
   const SPRING_SPEED = 14;           // px/s the wheels give her (the spring rests while the sail drives her faster than this)
@@ -67,7 +67,7 @@
     town: 1,       // the villages: chatter, hammers, bells, dogs…
     engine: 1,     // the traders' motor boats
     whirl: 1,      // the whirlpools' drone, and being flung
-    waves: 1,      // the big waves breaking, hitting her, and surfing
+    waves: 0.5,    // the big waves breaking, hitting her, and surfing (was 1)
     crash: 1,      // knocks on rocks and shores, and the shark's bite
     wheel: 1,      // the wheel's rub as it turns
     clicks: 1,     // the wheel's spokes and the little wooden knocks of the controls
@@ -281,6 +281,11 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Big waves are quieter (half as loud)',
+      'Paddle wheels: louder while the spring drives the boat (freewheeling under sail stays as it was)',
+      'Market coins: quieter, quicker and snappier, an octave lower',
+    ]},
+    {build: '2026-10-06 23:37', items: [
       'Paddle wheels: freewheeling under sail they now splash too, quieter and lower than when the spring drives them',
     ]},
     {build: '2026-10-06 23:31', items: [
@@ -289,11 +294,8 @@
     {build: '2026-10-06 23:11', items: [
       'Home storehouse: sails in the hold can be left there and taken aboard again, like any other cargo (they can\'t be sold at the markets)',
     ]},
-    {build: '2026-10-06 21:42', items: [
-      'Crank: fixed, once the spring has run down the crank unlocks and can be wound again (it used to stay locked for good)',
-    ]},
   ];
-  const BUILD = '2026-10-06 23:37';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-07 08:39';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -3796,17 +3798,17 @@
     }
     function coins(){
       if(!ac || ac.state!=='running') return;
-      const n = 7 + Math.floor(Math.random()*4);
+      const n = 4 + Math.floor(Math.random()*3);                          // a short, snappy spill (was 7–10 coins)
       let at = ac.currentTime + 0.01;
       for(let k=0;k<n;k++){
-        const base = 2600 + Math.random()*1600, vol = 0.05*(k===0 ? 1.3 : 0.6 + Math.random()*0.5);
+        const base = 1300 + Math.random()*800, vol = 0.028*(k===0 ? 1.3 : 0.6 + Math.random()*0.5);   // an octave lower, quieter
         for(const [r,a] of [[1,1],[1.51,0.55],[2.13,0.35],[2.76,0.2]]){        // metallic, inharmonic partials
           const o = ac.createOscillator(); o.type='sine'; o.frequency.value = base*r;
-          const g = ac.createGain(); const len = 0.12 + Math.random()*0.18 - r*0.02;
+          const g = ac.createGain(); const len = 0.06 + Math.random()*0.07 - r*0.01;
           g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(vol*a, at+0.002); g.gain.exponentialRampToValueAtTime(0.0001, at+len);
           o.connect(g); g.connect(master); o.start(at); o.stop(at+len+0.02);
         }
-        at += k < 3 ? 0.03 + Math.random()*0.04 : 0.05 + Math.random()*0.09;   // a spill, then a few settling
+        at += k < 3 ? 0.018 + Math.random()*0.02 : 0.03 + Math.random()*0.04;   // a quick spill, then a couple settling
       }
     }
     // anchor: dropping = a low thud then a splash; weighing = the chain coming in
