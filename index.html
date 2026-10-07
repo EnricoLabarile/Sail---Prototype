@@ -272,7 +272,7 @@
   const MAST_H = 26;                 // the square sail's mast height (the yard just under its top); the lateen's yard climbs to about this
   const SAIL_TONE = 0.72;            // the sail's cloth when drawing well (1 = paper white, 0 = ink); slack or reefed it's a little darker
   const SPARE_SAIL = true;           // both sails ride in the hold (a slot each, the one not rigged); a tap on one in the logbook rigs it
-  const START_RIG = null;            // the sail rigged at the start: null = none, she sets out on the oars ('square' or 'lateen' = that one)
+  const START_RIG = 'square';        // the sail rigged at the start: 'square' or 'lateen' = that one (the other rides in the hold); null = none, she sets out on the oars
   const TREE_KIND = 'olive';         // the islands' trees: 'olive' (Enrico's sketch: a twisted trunk, a wide crown of spiky leaf sprays) or 'pine' (the old stone pines)
   const PINE_MODELS = 4;             // tree shapes, reused (each also mirrored) all over the map (world)
   // draw the scene on the processor (true) or on the graphics card (false): the frame is tiny, and Firefox
@@ -285,6 +285,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The square sail is rigged from the start (the lateen waits in the hold)',
+    ]},
+    {build: '2026-10-07 18:41', items: [
       'Crank: the first click comes right away (it waited a whole tooth before), and under the clicks the gears now grind for as long as you turn it, louder and rougher the faster you go',
     ]},
     {build: '2026-10-07 18:37', items: [
@@ -293,11 +296,8 @@
     {build: '2026-10-07 18:04', items: [
       'Spring paddles: a full crank now drives the boat for half as long (15 s) but 40% faster, the wheels turning quicker too',
     ]},
-    {build: '2026-10-07 17:46', items: [
-      'Crank: let go before the full turn and it springs back anticlockwise, ticking, like an alarm clock\'s key (grab it again on the way to carry on)',
-    ]},
   ];
-  const BUILD = '2026-10-07 18:41';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-07 19:41';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in

@@ -306,9 +306,9 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   The boat's square sail is drawn `SAIL_SIZE` (1.3) times the old size, its cloth a dotted grey `SAIL_TONE` (0.72; 1 =
   paper), darker when slack or reefed. At anchor (and moored) the cloth is drawn gathered up to the yard (`boat.furl`,
   eased; a look only: the sail stays set as far as the physics goes), and it spreads again as the anchor comes up.
-  **Two sails** (`SPARE_SAIL` in Tuning): **she sets out with no sail rigged** (`START_RIG` = null, `boat.rig` null:
-  the wind gives her nothing, `speedFactor` is 0, only the bare mast is drawn; she goes on the oars) and **both sails
-  ride in the hold**: every sail not rigged takes one of the `HOLD_MAX` slots (`sailsInHold`, `spareSlots`, counted in
+  **Two sails** (`SPARE_SAIL` in Tuning): **she sets out with the square sail rigged** (`START_RIG` = 'square'; with
+  null, `boat.rig` null: the wind gives her nothing, `speedFactor` is 0, only the bare mast is drawn; she goes on the
+  oars) and **the other sail rides in the hold**: every sail not rigged takes one of the `HOLD_MAX` slots (`sailsInHold`, `spareSlots`, counted in
   `slotsUsed` and at the market in `mkSlotsAfter`), first in the Cargo grid, a tappable slot with its own icon in
   `ITEM_ICONS` (`spareHTML(rig)`); a tap on one rigs it (`swapSail(rig)`: toast "… rigged", a thunk and a buzz, the
   new sail bent on furled and spreading) and the one she carried (if any) goes into the hold in its place. Each sail has its own speed curve, in Tuning
