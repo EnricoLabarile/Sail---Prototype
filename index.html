@@ -48,6 +48,7 @@
   const CRANK_WEIGHT = 1;            // weight under the crank's clicks while you wind it: a low thud and a dull knock a tooth (0 = just the click, as when it springs back)
   const CRANK_GRIND = 0.5;           // loudness of the gears grinding under the clicks while you turn the crank (follows how fast; 0 = silent; was 1)
   const CRANK_TICK_GAP = 0.022;      // s: the crank's clicks come at least this far apart, an even run however the finger jumps
+  const CRANK_BACK_PITCH = 0.6;      // pitch of the ticks as the crank springs back on its own (1 = the winding's clicks; lower = less tinny)
   const CRANK_VOL = 1;               // loudness of the crank's gears as it winds (a tick a tooth, a heavier step each quarter turn; 0 = silent)
   const SPRING_SPEED = 19.6;         // px/s the wheels give her (the spring rests while the sail drives her faster than this; was 14, +40%)
   const OAR_START = 0.2;             // power the first press gives (0..1): she starts rowing, slowly
@@ -285,6 +286,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Crank: the ticks as it springs back on its own are lower, less tinny',
+    ]},
+    {build: '2026-10-07 21:07', items: [
       'Crank: the steady grind under the clicks is now low and gritty, a gear grinding (no more high, chainsaw-like buzz)',
     ]},
     {build: '2026-10-07 20:58', items: [
@@ -293,11 +297,8 @@
     {build: '2026-10-07 20:33', items: [
       'Crank: the steady grind of the gears while you turn it is half as loud',
     ]},
-    {build: '2026-10-07 19:41', items: [
-      'The square sail is rigged from the start (the lateen waits in the hold)',
-    ]},
   ];
-  const BUILD = '2026-10-07 21:07';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-07 21:09';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -3548,12 +3549,12 @@
     // body: the hand winding it (1..~1.4, rising as the spring tightens) adds the gear's weight under the click: a low
     // thud and a dull knock, deeper and fuller on the quarter-turn step
     let ratchetT = 0;
-    function ratchet(k, heavy, body){
+    function ratchet(k, heavy, body, pitch = 1){
       if(!ac || ac.state!=='running' || !(k > 0)) return;
       const now = ac.currentTime, at = Math.max(now + 0.005, ratchetT);
       if(at > now + 0.15) return;                            // (too far behind the finger: let it go)
       ratchetT = at + CRANK_TICK_GAP;
-      chainLink(at, 1, k*(heavy ? 1.4 : 1));
+      chainLink(at, pitch, k*(heavy ? 1.4 : 1));
       if(!body) return;
       const kk = k*CRANK_WEIGHT*(heavy ? 1.6 : 1);
       const o = ac.createOscillator(); o.type = 'sine';
@@ -5627,8 +5628,8 @@
       crankA -= step; crankBack -= step; windProg = crankBack/(Math.PI*2*SPRING_TURNS);
       crankTick += step;
       const TOOTH = Math.PI*2/16;
-      while(crankTick >= TOOTH){ crankTick -= TOOTH; Sfx.ratchet(CRANK_VOL*0.45, false); }
-      if(crankBack <= 1e-4){ crankBack = 0; windProg = 0; crankTick = 0; Sfx.ratchet(CRANK_VOL, true); buzz(10); }   // home: a heavier clack
+      while(crankTick >= TOOTH){ crankTick -= TOOTH; Sfx.ratchet(CRANK_VOL*0.55, false, 0, CRANK_BACK_PITCH); }
+      if(crankBack <= 1e-4){ crankBack = 0; windProg = 0; crankTick = 0; Sfx.ratchet(CRANK_VOL, true, 0, CRANK_BACK_PITCH); buzz(10); }   // home: a heavier clack
     }
     // the grind follows the hand: how fast it's turning (rad/s, eased quickly), silent when it stops or lets go
     crankSpeed += ((dt > 0 ? crankMove/dt : 0) - crankSpeed)*Math.min(1, dt*18); crankMove = 0;
