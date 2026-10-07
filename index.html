@@ -85,6 +85,7 @@
     bell: 1,       // the bell (a purchase, a gift, a power)
     buoy: 1,       // a buoy knocked as she brushes past
     crate: 1,      // the storehouse's door and crate
+    thunder: 1,    // the thunder of the storm clouds
     coins: 1,      // the purse's jingle at the market
     book: 1,       // the logbook opening, closing and its pages turning
   };
@@ -214,6 +215,13 @@
   const SIGHT = 220;                 // px of fog uncovered round the boat
   const CLOUD_COUNT = knob('CLOUD_COUNT', 12);            // clouds in the sky (world)
   const RAIN_CLOUD_EVERY = 3;        // one cloud in this many carries rain (world)
+  const STORM_ON = knob('STORM_ON', 1);   // 1 = on, 0 = off. Storm clouds: some rain clouds are darker and throw lightning down onto the sea under them
+  const STORM_SHARE = knob('STORM_SHARE', 0.5); // share of the rain clouds that are storms (world)
+  const STORM_EVERY = [6, 14];       // seconds between one bolt and the next from a storm cloud (shortest, longest)
+  const STORM_WARN = knob('STORM_WARN', 1.2); // seconds of warning before a bolt: a ring flickers on the water where it will strike
+  const STORM_AIM = knob('STORM_AIM', 0.4); // chance a bolt aims at her when she's under the storm (else anywhere under it)
+  const STORM_HIT_R = knob('STORM_HIT_R', 26); // px: a bolt striking this close to her hits the boat
+  const STORM_DAMAGE = knob('STORM_DAMAGE', 15); // hull damage from a lightning strike
 
   // -- Ruins' powers --
   const BOON_WIND_T = 60;            // seconds of friendly wind (its text says "a minute")
@@ -287,6 +295,10 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Storm clouds: some rain clouds are darker and throw lightning. A dashed ring flickers on the water where a bolt will strike; if the boat is inside it when the bolt falls she is hit (-15 hull). Flash and thunder',
+      'First screen, Dangers: knobs for the storms (STORM_ON, STORM_SHARE, STORM_WARN, STORM_AIM, STORM_HIT_R, STORM_DAMAGE); Audio: a Thunder slider',
+    ]},
+    {build: '2026-10-07 22:12', items: [
       'Paddle wheels under sail: they now make the same splash as when the spring drives them, at half the volume',
     ]},
     {build: '2026-10-07 22:05', items: [
@@ -296,11 +308,8 @@
       'The ship\'s wheel sounds twice as loud (the spokes\' knocks, the thump at full lock, the rub as it turns)',
       'The paddle wheels\' splashes are twice as loud, both driven by the spring and freewheeling under sail',
     ]},
-    {build: '2026-10-07 21:09', items: [
-      'Crank: the ticks as it springs back on its own are lower, less tinny',
-    ]},
   ];
-  const BUILD = '2026-10-07 22:12';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-07 22:43';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -334,7 +343,7 @@
       audio: {master: 'All sounds', sea: 'Sea and hull', rain: 'Rain', cicadas: 'Cicadas', night: 'Night', gulls: 'Gulls', town: 'Villages',
               engine: 'Motor boats', whirl: 'Whirlpools', waves: 'Big waves', crash: 'Knocks and bites', wheel: 'Wheel rub', clicks: 'Clicks',
               anchor: 'Anchor', crank: 'Crank', paddles: 'Paddle wheels', oars: 'Oars', nets: 'Nets', bell: 'Bell', buoy: 'Buoys',
-              crate: 'Storehouse', coins: 'Coins', book: 'Logbook'},
+              crate: 'Storehouse', coins: 'Coins', book: 'Logbook', thunder: 'Thunder'},
       sailsParams: {turn: 'Turning', accel: 'Pick-up', retrim: 'Retrim', leeway: 'Leeway', surf: 'Surfing', waveHit: 'Wave damage', broach: 'Broaching', runBonus: 'Run bonus'},
     },
     intro: {                                        // (not shown for now: the first screen is the world generator)
@@ -386,6 +395,7 @@
       whirl:    'Whirlpool! -{damage}',
       sharkSeen: 'a fin!',
       sharkBite: 'Shark bite! -{damage}',
+      lightning: 'Struck by lightning! -{damage}',   // a storm cloud's bolt hits the boat
       bought:   '+ {item}',
       coinsIn:  '+{n} coins',
       coinsOut: '{n} coins',
@@ -3583,6 +3593,25 @@
       hp.connect(bp2); bp2.connect(g2); g2.connect(master); hp.start(t0, Math.random()*0.5, 0.03);
     }
     // hull hit: a dull thud and a short, strained creak of wood
+    // thunder: near (0..1) adds the crack of a close strike; then a low rumble rolling on for a few seconds in uneven swells
+    function thunder(k, near){
+      if(!ac || ac.state!=='running' || !(k > 0)) return;
+      const t0 = ac.currentTime + 0.01;
+      if(near > 0){
+        const s = ac.createBufferSource(); s.buffer = noise;
+        const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 700;
+        const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.45*k*near, t0 + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.4);
+        s.connect(hp); hp.connect(g); g.connect(master); s.start(t0, Math.random()*0.5, 0.45);
+      }
+      const s2 = ac.createBufferSource(); s2.buffer = noise; s2.loop = true;
+      const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(420, t0); lp.frequency.exponentialRampToValueAtTime(80, t0 + 3.5);
+      const lp2 = ac.createBiquadFilter(); lp2.type = 'lowpass'; lp2.frequency.value = 260;
+      const g2 = ac.createGain(); g2.gain.setValueAtTime(0.0001, t0); g2.gain.exponentialRampToValueAtTime(0.9*k, t0 + 0.06 + (1 - near)*0.25);
+      let at = t0 + 0.4;
+      for(let i=0;i<4;i++){ g2.gain.setTargetAtTime(0.9*k*rand(0.35, 0.95)*(1 - i*0.18), at, 0.12); at += rand(0.35, 0.7); }
+      g2.gain.setTargetAtTime(0.0001, at, 0.6);
+      s2.connect(lp); lp.connect(lp2); lp2.connect(g2); g2.connect(master); s2.start(t0, Math.random()*0.5); s2.stop(at + 3);
+    }
     function crash(k){                 // k: 0..1 how hard
       if(!ac || ac.state!=='running') return;
       const t0 = ac.currentTime, vol = 0.1 + 0.18*k;
@@ -3896,10 +3925,10 @@
                   crate: 'crate', tick: 'clicks', thunk: 'clicks', type: 'clicks', hammer: 'clicks', book: 'book', pageTurn: 'book',
                   pickup: 'nets', splash: 'nets', bell: 'bell', whirl: 'whirl', drone: 'whirl', gull: 'gulls', crash: 'crash',
                   waveBreak: 'waves', waveHit: 'waves', surf: 'waves', townEvent: 'town', chatter: 'town', cricket: 'night', howl: 'night',
-                  anchor: 'anchor', buoy: 'buoy', coins: 'coins', rain: 'rain', cicadas: 'cicadas', ambient: 'sea', wheel: 'wheel', engine: 'engine', grind: 'crank'};
+                  anchor: 'anchor', buoy: 'buoy', coins: 'coins', rain: 'rain', cicadas: 'cicadas', ambient: 'sea', wheel: 'wheel', engine: 'engine', grind: 'crank', thunder: 'thunder'};
     const kinded = (name, fn)=> (...a)=>{ const k = curKind; curKind = KIND[name]; try{ return routed(KIND[name], ()=> fn(...a)); } finally { curKind = k; } };
     for(const [k, v] of Object.entries(SOUND_VOL)) vol[k] = v;
-    return {init, setVol, ...Object.fromEntries(Object.entries({oar, ratchet, paddle, springOff, oarCue, oarHit, rowBed, crate, tick, thunk, wheel, ambient, rain, cicadas, book, pageTurn, pickup, hammer, bell, whirl, type, splash, drone, gull, crash, waveBreak, waveHit, surf, townEvent, chatter, cricket, howl, anchor, buoy, coins, engine, grind}).map(([n, f])=> [n, kinded(n, f)]))};
+    return {init, setVol, ...Object.fromEntries(Object.entries({oar, ratchet, paddle, springOff, oarCue, oarHit, rowBed, crate, tick, thunk, wheel, ambient, rain, cicadas, book, pageTurn, pickup, hammer, bell, whirl, type, splash, drone, gull, crash, waveBreak, waveHit, surf, townEvent, chatter, cricket, howl, anchor, buoy, coins, engine, grind, thunder}).map(([n, f])=> [n, kinded(n, f)]))};
   })();
 
   // ---------- Ship's wheel ----------
@@ -4793,7 +4822,7 @@
                     whirl: ()=> Sfx.whirl(), waves: ()=> Sfx.waveBreak(0.8, 0), crash: ()=> Sfx.crash(0.6), clicks: ()=> Sfx.thunk(0.5),
                     anchor: ()=> Sfx.anchor(true), crank: ()=> Sfx.ratchet(CRANK_VOL, true), paddles: ()=> Sfx.paddle(PADDLE_VOL),
                     oars: ()=> Sfx.oarHit(OAR_CUE_VOL), nets: ()=> Sfx.pickup(), bell: ()=> Sfx.bell(), buoy: ()=> Sfx.buoy(),
-                    crate: ()=> Sfx.crate(), coins: ()=> Sfx.coins(), book: ()=> Sfx.pageTurn()};
+                    crate: ()=> Sfx.crate(), coins: ()=> Sfx.coins(), book: ()=> Sfx.pageTurn(), thunder: ()=> Sfx.thunder(0.8, 1)};
     const n2 = x=> (+(+x).toFixed(2)).toFixed(2);
     box.innerHTML = '<p class="sl-hint">' + T.audioHint + '</p>';
     const code = document.createElement('p'); code.className = 'sl-code';
@@ -4843,7 +4872,7 @@
     const gen = document.getElementById('wg-gen'), reset = document.getElementById('wg-reset');
     gen.textContent = T.generate; reset.textContent = T.reset;
     // the dangers: the sharks' and whirlpools' knobs, the same kind of fields in their own section
-    const DK = {SHARK_ON, SHARK_CHANCE, SHARK_COOLDOWN, SHARK_SPEED, SHARK_DAMAGE, SHARK_GIVE_UP, WHIRL_FOLLOW, WHIRL_FOLLOW_SPEED};
+    const DK = {SHARK_ON, SHARK_CHANCE, SHARK_COOLDOWN, SHARK_SPEED, SHARK_DAMAGE, SHARK_GIVE_UP, WHIRL_FOLLOW, WHIRL_FOLLOW_SPEED, STORM_ON, STORM_SHARE, STORM_WARN, STORM_AIM, STORM_HIT_R, STORM_DAMAGE};
     const dbox = document.getElementById('wg-dknobs'), dapply = document.getElementById('wg-dapply');
     document.getElementById('wg-sum-dangers').textContent = T.dangersTitle; dapply.textContent = T.dangersApply;
     const fields = (K, box)=>{ for(const [k, v] of Object.entries(K)){
@@ -8371,10 +8400,13 @@
   }
   // about a third of the clouds carry rain: a darker underside, and a
   // shower falling on the sea beneath them
+  // and some of those are storms (STORM_SHARE): darker still, heavier rain, and lightning (see Storms)
+  let rainN = 0;
   clouds.forEach((c,i)=>{
     c.rain = i % RAIN_CLOUD_EVERY === 0;
     if(!c.rain) return;
-    c.drops = Array.from({length: Math.round(c.W*0.3)}, ()=>{ const a = rand(0,6.3), r = Math.sqrt(Math.random()); return {u: Math.cos(a)*r, v: Math.sin(a)*r, ph: Math.random(), len: rand(6,10)}; });
+    c.storm = !!STORM_ON && Math.floor((rainN + 1)*STORM_SHARE) > Math.floor(rainN*STORM_SHARE); rainN++;
+    c.drops = Array.from({length: Math.round(c.W*(c.storm ? 0.45 : 0.3))}, ()=>{ const a = rand(0,6.3), r = Math.sqrt(Math.random()); return {u: Math.cos(a)*r, v: Math.sin(a)*r, ph: Math.random(), len: rand(6,10)}; });
   });
   function puffPath(P, ox, oy, grow, dx, dy, k){
     ctx.beginPath();
@@ -8385,11 +8417,11 @@
   }
   function drawCloudBody(c, P, ox, oy){
     ctx.fillStyle = INKC; puffPath(P, ox, oy, 1.8, 0, 0, 1); ctx.fill();                 // defined inked edge
-    ctx.fillStyle = V(c.rain ? 0.48 : 0.66); puffPath(P, ox, oy, 0, 0, 0, 1); ctx.fill(); // the shaded underside of every billow (heavy with rain: darker)
+    ctx.fillStyle = V(c.storm ? 0.28 : c.rain ? 0.48 : 0.66); puffPath(P, ox, oy, 0, 0, 0, 1); ctx.fill(); // the shaded underside of every billow (heavy with rain: darker; a storm: darkest)
     ctx.save(); puffPath(P, ox, oy, 0, 0, 0, 1); ctx.clip();
-    ctx.fillStyle = V(c.rain ? 0.72 : 0.84); puffPath(P, ox, oy, 0, -c.W*0.02, -c.H*0.07, 0.96); ctx.fill();  // half-lit
-    ctx.fillStyle = V(0.95); puffPath(P, ox, oy, 0, -c.W*0.04, -c.H*0.13, 0.8); ctx.fill();   // lit
-    ctx.fillStyle = PAPERC;  puffPath(P, ox, oy, 0, -c.W*0.055, -c.H*0.18, 0.6); ctx.fill();  // brightest tops
+    ctx.fillStyle = V(c.storm ? 0.5 : c.rain ? 0.72 : 0.84); puffPath(P, ox, oy, 0, -c.W*0.02, -c.H*0.07, 0.96); ctx.fill();  // half-lit
+    ctx.fillStyle = V(c.storm ? 0.74 : 0.95); puffPath(P, ox, oy, 0, -c.W*0.04, -c.H*0.13, 0.8); ctx.fill();   // lit
+    ctx.fillStyle = c.storm ? V(0.86) : PAPERC;  puffPath(P, ox, oy, 0, -c.W*0.055, -c.H*0.18, 0.6); ctx.fill();  // brightest tops
     // inner billow lines: short inked curves under the crowning bumps, the
     // way hand-painted cumulus are drawn
     ctx.strokeStyle = INKC; ctx.lineWidth = 0.9; ctx.globalAlpha = 0.55;
@@ -8405,7 +8437,7 @@
   // the clouds keep their shape, so each cloud shape (and its shadow, and
   // its darker rain version) is painted once into its own little canvas
   function cloudSprite(c, shade){
-    const sh = c.shape, key = shade ? 'sh' : c.rain ? 'spR' : 'sp';
+    const sh = c.shape, key = shade ? 'sh' : c.storm ? 'spS' : c.rain ? 'spR' : 'sp';
     if(!sh[key]){
       const cv = sh[key] = document.createElement('canvas'), saved = ctx;
       cv.width = Math.ceil(c.cw*1.3); cv.height = Math.ceil(c.ch*1.3);
@@ -8418,8 +8450,9 @@
         ctx.save(); ctx.globalCompositeOperation = 'destination-in';
         ctx.translate(cv.width/2, cv.height/2); ctx.scale(1, sy);
         const g = ctx.createRadialGradient(0,0,0,0,0,r);
-        g.addColorStop(0, 'rgba(0,0,0,'+CLOUD_CORE+')'); g.addColorStop(0.35, 'rgba(0,0,0,'+(CLOUD_CORE*0.85)+')');
-        g.addColorStop(1, 'rgba(0,0,0,'+CLOUD_ALPHA+')');
+        const core = c.storm ? 1 : CLOUD_CORE, rim = c.storm ? Math.min(1, CLOUD_ALPHA*1.6) : CLOUD_ALPHA;   // (a storm is denser: it doesn't wash out)
+        g.addColorStop(0, 'rgba(0,0,0,'+core+')'); g.addColorStop(0.35, 'rgba(0,0,0,'+(core*0.9)+')');
+        g.addColorStop(1, 'rgba(0,0,0,'+rim+')');
         ctx.fillStyle = g; ctx.fillRect(-cv.width, -cv.height/sy, cv.width*2, cv.height*2/sy);
         ctx.restore();
       }
@@ -8470,7 +8503,7 @@
     const [rx,ry] = rainFootprint(c), cv = document.createElement('canvas');
     cv.width = Math.ceil(rx*2); cv.height = Math.ceil(ry*2);
     const g2 = sceneCtx(cv), g = g2.createRadialGradient(rx,rx,0,rx,rx,rx);
-    g.addColorStop(0,'rgba(0,0,0,0.12)'); g.addColorStop(0.7,'rgba(0,0,0,0.07)'); g.addColorStop(1,'rgba(0,0,0,0)');
+    const k = c.storm ? 1.8 : 1; g.addColorStop(0,'rgba(0,0,0,'+0.12*k+')'); g.addColorStop(0.7,'rgba(0,0,0,'+0.07*k+')'); g.addColorStop(1,'rgba(0,0,0,0)');
     g2.scale(1, ry/rx); g2.fillStyle = g; g2.beginPath(); g2.arc(rx,rx,rx,0,Math.PI*2); g2.fill();
     return (c.tint = cv);
   }
@@ -8525,6 +8558,82 @@
     return best;
   }
 
+  // ---------- Storms ----------
+  // A storm cloud (c.storm) now and then (STORM_EVERY) throws a bolt down onto the sea under it. First a warning
+  // (STORM_WARN s): a ring flickers on the water where it will strike, often right where she is if she's under the
+  // storm (STORM_AIM); then the bolt, a flash over the screen and thunder, later and softer the further off it falls.
+  // Struck within STORM_HIT_R of the bolt, she takes STORM_DAMAGE. Only storms near her bother (out to ~1100 px).
+  // Where a bolt falls is kept as an offset from the storm's shadow, so it drifts with the cloud.
+  let flashT = 0;
+  function updateStorms(dt){
+    flashT = Math.max(0, flashT - dt);
+    if(!STORM_ON || !playing) return;
+    for(const c of clouds){
+      if(!c.storm) continue;
+      const [, , sx, sy] = cloudAndShadow(c, boat.x, boat.y), [rx, ry] = rainFootprint(c);
+      if(Math.hypot(sx - boat.x, sy - boat.y) > 1100){ c.bolt = null; continue; }
+      const b = c.bolt;
+      if(b){
+        b.t -= dt;
+        if(b.t <= 0 && !b.struck){
+          b.struck = true;
+          const x = sx + b.ou, y = sy + b.ov, d = Math.hypot(x - boat.x, y - boat.y);
+          flashT = Math.max(flashT, 0.3*Math.max(0, 1 - d/900));
+          const near = Math.max(0, 1 - d/350), vol = Math.max(0, 1 - d/1100);
+          setTimeout(()=> Sfx.thunder(vol, near), Math.min(1600, d*1.4));   // the thunder comes after the flash, later the further off
+          if(d < STORM_HIT_R && !moor){
+            boat.health = Math.max(0, boat.health - STORM_DAMAGE);
+            hurtFlash = 0.45; shake = 0.18; showHealth(); Sfx.crash(0.7);
+            boat.rock = Math.min(2.5, (boat.rock||0) + 1.2);
+            buzz([60, 30, 90]);
+            popups.push({x: boat.x, y: boat.y - 26, text: fmt(TEXT.popups.lightning, {damage: STORM_DAMAGE}), life: 1.8, max: 1.8});
+          } else if(near > 0.3) buzz([20]);
+        }
+        if(b.t < -0.5) c.bolt = null;
+        continue;
+      }
+      if(c.boltT === undefined) c.boltT = rand(STORM_EVERY[0]*0.5, STORM_EVERY[1]);
+      c.boltT -= dt;
+      if(c.boltT > 0) continue;
+      c.boltT = rand(STORM_EVERY[0], STORM_EVERY[1]);
+      let ou, ov;
+      if(Math.hypot((boat.x - sx)/rx, (boat.y - sy)/ry) < 1 && Math.random() < STORM_AIM){ ou = boat.x - sx + rand(-8, 8); ov = boat.y - sy + rand(-8, 8); }
+      else { const a = rand(0, Math.PI*2), r = Math.sqrt(Math.random())*0.9; ou = Math.cos(a)*r*rx; ov = Math.sin(a)*r*ry; }
+      c.bolt = {ou, ov, t: STORM_WARN, struck: false, seed: Math.random()*1000};
+    }
+  }
+  // the warning ring, then the bolt (jagged, a paper core in an ink line, a fork or two) and a splash where it lands
+  function drawStorms(camX, camY, w, h){
+    const vcx = camX + w/2, vcy = camY + h/2;
+    for(const c of clouds){
+      const b = c.bolt; if(!b) continue;
+      const [cx, cy, sx, sy] = cloudAndShadow(c, vcx, vcy), x = sx + b.ou, y = sy + b.ov;
+      if(x < camX - 60 || x > camX + w + 60 || y < camY - 60 || y > camY + h + 60) continue;
+      if(b.t > 0){                                                  // the warning: a ring that tightens and flickers faster
+        const q = 1 - b.t/STORM_WARN, on = Math.sin(t*(10 + 30*q)) > -0.2;
+        if(!on) continue;
+        const rr = STORM_HIT_R*(1.4 - 0.4*q);                       // (paper in an ink line: it reads on the dark shower and on the pale sea)
+        ctx.setLineDash([5, 4]); ctx.lineDashOffset = -t*20;
+        for(const [lw, col] of [[3.4, INKC], [1.6, PAPERC]]){ ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath(); ctx.ellipse(x, y, rr, rr*0.7, 0, 0, Math.PI*2); ctx.stroke(); }
+        ctx.setLineDash([]); ctx.lineDashOffset = 0;
+        continue;
+      }
+      const age = -b.t, R = (k)=>{ const v = Math.sin(b.seed + k*12.9898)*43758.5453; return v - Math.floor(v); };
+      const x0 = cx + b.ou*0.35, y0 = cy + b.ov*0.35, n = 9, pts = [];
+      for(let i=0;i<=n;i++){ const u = i/n, j = (i && i < n) ? (R(i) - 0.5)*14 : 0; pts.push([x0 + (x - x0)*u + j, y0 + (y - y0)*u + (R(i + 50) - 0.5)*6*(i && i < n)]); }
+      const fork = (i0, k)=>{ const [px, py] = pts[i0]; return [[px, py], [px + (R(k) - 0.5)*30, py + 10 + R(k + 1)*16], [px + (R(k + 2) - 0.5)*40, py + 24 + R(k + 3)*14]]; };
+      const paths = [pts, fork(3, 200), fork(6, 300)];
+      ctx.globalAlpha = age < 0.25 ? 1 : Math.max(0, 1 - (age - 0.25)/0.25); ctx.lineJoin = 'miter'; ctx.lineCap = 'round';
+      for(const [lw, col] of [[5, INKC], [2.4, PAPERC]]){
+        ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath();
+        for(const pp of paths){ pp.forEach(([px, py], i)=> i ? ctx.lineTo(px, py) : ctx.moveTo(px, py)); }
+        ctx.stroke();
+      }
+      ctx.strokeStyle = INKC; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.ellipse(x, y, 4 + age*60, (4 + age*60)*0.6, 0, 0, Math.PI*2); ctx.stroke();   // the splash
+      ctx.globalAlpha = 1;
+    }
+  }
+
   // ---------- Ambient life: gulls ----------
   // Gulls: a small flock (1–3) crosses the screen every 30–45 s, riding
   // roughly downwind. Ink silhouette with a paper halo so it stays crisp
@@ -8532,6 +8641,7 @@
   const gulls = [];
   let gullTimer = rand(6,10);                 // first flock comes early
   function updateAmbientLife(dt){
+    updateStorms(dt);
     const dw = windAngle+Math.PI;
     cloudOX += Math.cos(dw)*CLOUD_SPEED*windStrength*dt;
     cloudOY += Math.sin(dw)*CLOUD_SPEED*windStrength*dt;
@@ -9273,6 +9383,7 @@
     layer(()=>{ for(const b of buoys) drawBuoy(b); for(const tr of traders) drawTrader(tr); });   // under the fog
     drawCloudShadowsAll(camX, camY, w, h);                   // cloud shadows fall on sea and land
     drawRain(camX, camY, w, h);                              // showers under the rain clouds
+    drawStorms(camX, camY, w, h);                            // lightning: the warning ring and the bolts
     drawFog(camX, camY, w, h);
     layer(()=>{ for(const v of VILLAGES) if(inView(v.isl.vl.light.x, v.isl.vl.light.y, BEAM_LEN)) drawBeam(v.isl.vl.light); });
     drawNet();
@@ -9323,6 +9434,7 @@
       ctx.globalAlpha = 1;
     });
     drawCloudsAbove(camX, camY, w, h);                        // closest to the camera: over everything
+    if(flashT > 0){ ctx.globalAlpha = Math.min(0.7, flashT*2.6); ctx.fillStyle = PAPERC; ctx.fillRect(camX, camY, w, h); ctx.globalAlpha = 1; }   // a lightning flash
     ctx.restore();
 
     nightCamX = camX; nightCamY = camY;

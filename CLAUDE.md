@@ -473,6 +473,17 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   astern, up to `SURF_WAVE_SIDE` (45 px) off to either side (so catching it takes a touch of the helm), already at her
   pace + `ROLLER_CATCH`, living 5.5–6.5 s; one at a time. `rollerPace` then does the rest (it hurries only while she's
   in line with its crest).
+- **Storms** (section "Storms"; Tuning `STORM_ON`, `STORM_SHARE` 0.5 of the rain clouds (world), `STORM_EVERY` [6, 14] s,
+  `STORM_WARN` 1.2 s, `STORM_AIM` 0.4, `STORM_HIT_R` 26 px, `STORM_DAMAGE` 15, all but `STORM_EVERY` also in the first
+  screen's Dangers; text `TEXT.popups.lightning`): a storm cloud (`c.storm`) is darker (its own sprite `spS`, denser:
+  core opacity 1) with heavier rain (1.5× drops, a darker shower). `updateStorms` (from `updateAmbientLife`), only for
+  storms within ~1100 px: every 6–14 s a bolt is chosen under the shower (kept as an offset from the storm's shadow, so
+  it drifts with it), aimed right at her (± 8 px) with `STORM_AIM` if she's under it; for `STORM_WARN` a dashed ring
+  (paper in ink) flickers there, tightening; then the bolt (`drawStorms`, after `drawRain`: a jagged paper line in ink
+  from under the cloud to the spot, two forks, a splash ring, ~0.5 s), a flash over the screen (`flashT`, paper over
+  everything) and `Sfx.thunder(vol, near)` (a crack of high-passed noise when close, then a low rumble in uneven swells
+  over ~3 s; kind `thunder` in `SOUND_VOL`, Audio slider "Thunder"), delayed by the distance (d × 1.4 ms, at most
+  1.6 s). Within `STORM_HIT_R` of the bolt (not moored) she's hit: damage, flash, shake, rock, buzz, `Sfx.crash`, popup.
 - **Sharks** (section "Sharks"; Tuning `SHARK_ON`, `SHARK_CHANCE` 0.25 an encounter per minute at sea out of home
   waters, `SHARK_COOLDOWN` 90 s between encounters, `SHARK_SPEED` 38 px/s, `SHARK_DAMAGE` 8, `SHARK_GIVE_UP` 30 s;
   texts `TEXT.popups.sharkSeen` / `sharkBite`): one at a time (`shark`, `updateShark`, `drawShark`, cleared by
