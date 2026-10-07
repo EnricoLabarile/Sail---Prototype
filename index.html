@@ -295,6 +295,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Crank: the arm no longer jumps to where the finger lands; it rests pointing up, turns only as far as the finger turns, and points up again when fully wound or when it has sprung back',
+    ]},
+    {build: '2026-10-07 23:27', items: [
       'Storms: the screen flashes only when the bolt or its cloud is in view (a storm out of sight is only heard)',
     ]},
     {build: '2026-10-07 22:43', items: [
@@ -304,11 +307,8 @@
     {build: '2026-10-07 22:12', items: [
       'Paddle wheels under sail: they now make the same splash as when the spring drives them, at half the volume',
     ]},
-    {build: '2026-10-07 22:05', items: [
-      'The boat is now a gozzo: beamy and pointed at both ends, white sides with a dark band along the top, a little deck at the bow and one at the stern, the tall stem post over the bow and a short one aft carrying the rudder',
-    ]},
   ];
-  const BUILD = '2026-10-07 23:27';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-07 23:38';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -5631,9 +5631,9 @@
       if(crankStep >= Math.PI/2){ crankStep -= Math.PI/2; Sfx.ratchet(CRANK_VOL, true, tense); buzz(spring < 1 ? 12 : 4); }
       else Sfx.ratchet(CRANK_VOL*(spring < 1 ? 1 : 0.5), false, tense);
     }
-    if(was < 1 && spring >= 1){ Sfx.oarHit(OAR_CUE_VOL); buzz([20, 30, 40]); crankLocked = true; crankDrag = null; elCrank.classList.add('locked'); }   // wound right up: the crank locks (a cooldown)
+    if(was < 1 && spring >= 1){ Sfx.oarHit(OAR_CUE_VOL); buzz([20, 30, 40]); crankLocked = true; crankDrag = null; crankA = 0; elCrank.classList.add('locked'); }   // wound right up: the crank locks (a cooldown), the arm resting pointing up again
   };
-  elCrank.addEventListener('pointerdown', ev=>{ ev.preventDefault(); Sfx.init(); if(crankLocked) return; crankBack = 0; crankTick = Math.max(crankTick, Math.PI*2/16 - 0.06); crankDrag = {id: ev.pointerId, a: crankAngle(ev)}; crankA = crankDrag.a + Math.PI/2; try{ elCrank.setPointerCapture(ev.pointerId); }catch(e){} });
+  elCrank.addEventListener('pointerdown', ev=>{ ev.preventDefault(); Sfx.init(); if(crankLocked) return; crankBack = 0; crankTick = Math.max(crankTick, Math.PI*2/16 - 0.06); crankDrag = {id: ev.pointerId, a: crankAngle(ev)}; try{ elCrank.setPointerCapture(ev.pointerId); }catch(e){} });
   elCrank.addEventListener('pointermove', ev=>{
     const d = crankDrag; if(!d || ev.pointerId !== d.id) return;
     const a = crankAngle(ev), da = norm(a - d.a); d.a = a;
@@ -5659,7 +5659,7 @@
       crankTick += step;
       const TOOTH = Math.PI*2/16;
       while(crankTick >= TOOTH){ crankTick -= TOOTH; Sfx.ratchet(CRANK_VOL*0.55, false, 0, CRANK_BACK_PITCH); }
-      if(crankBack <= 1e-4){ crankBack = 0; windProg = 0; crankTick = 0; Sfx.ratchet(CRANK_VOL, true, 0, CRANK_BACK_PITCH); buzz(10); }   // home: a heavier clack
+      if(crankBack <= 1e-4){ crankBack = 0; windProg = 0; crankTick = 0; crankA = 0; Sfx.ratchet(CRANK_VOL, true, 0, CRANK_BACK_PITCH); buzz(10); }   // home: a heavier clack
     }
     // the grind follows the hand: how fast it's turning (rad/s, eased quickly), silent when it stops or lets go
     crankSpeed += ((dt > 0 ? crankMove/dt : 0) - crankSpeed)*Math.min(1, dt*18); crankMove = 0;
