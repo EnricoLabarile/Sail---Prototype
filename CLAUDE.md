@@ -118,7 +118,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   first time both of a village's dishes have been bought (`boughtEver`). The gifts are a surprise: never mention them
   anywhere before one is earned. (The course names in `TEXT.villages` are no longer shown.)
   **Orders: off for now** (`ORDERS_ON` = false: no order in the logbook, no deliveries, no dinner verdict or order
-  toasts; the logbook's left page shows the day and the cargo, the right page the **wind card**). When on:
+  toasts; the logbook's left page shows the day and the cargo, the right page the **compass**). When on:
   **Orders** (the `// ---------- Orders ----------` section; no endings any more): every day an `order` for the
   restaurant at home. Day 1: `FIRST_ORDER_FISH` (3) fish of any kind. From day 2: `ORDER_FISH_MIN`–`ORDER_FISH_MAX`
   fish of one kind plus one village dish (two from day `ORDER_TWO_DISHES_FROM` = 4), named in the logbook (the player
@@ -241,8 +241,8 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   them across, "Done" (the only button) moves them (popups "n stored" / "n taken aboard"); taking aboard more than the
   hold's free slots is refused ("No room in the hold"). Sails not rigged sit on the table too (`homeStore.sails`; one left at home
   is not aboard: `sailsInHold` skips it, so it takes no slot); the village markets never show them, so they can't be sold. Goods left at home are meant to count toward the end goal.
-- **Compass** (95 px, `CMP_PX`, top centre of the screen (the open logbook covers it); in its tutorial step the bubble hangs under it; hidden in the tutorial
-  until its own tutorial step): points home, a dot per village filled once a dish is bought there; drawn like the
+- **Compass** (drawn at 95 px, `CMP_PX`; it lives **in the logbook**, moved at start into `#cmp-slot` on the first spread's right page,
+  shown up to 150 px wide; no longer on the screen; hidden in the tutorial until its own tutorial step): points home, a dot per village filled once a dish is bought there; drawn like the
   wheel (greys into a low-res canvas, then dithered): brass bezel with rivets, shaded card, wind rose, glass glare.
   The hinged brass **lid** is gone for now (`lidOpen` always true, `lidT` 0; the drawing is still there). A tap
   (or Enter/Space) turns the face over like a card (`watchOn`, `watchT`: squeezed sideways, then the other side opens out) to a
@@ -353,7 +353,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   (Wind lines on the sail were tried several ways, fixed streamlines, faint squiggles, short curls along both faces after a sketch, and dropped: they didn't work.) Changing tack, the heavy yard swings across slowly (`LATEEN_SWING` in
   Tuning, 0.9 against the usual trim rate of 3; `boat.swingAcross` until it's settled on the new side). A new voyage
   starts with `START_RIG` again.
-  **Wind card** (the logbook's right page, first spread; `windHTML`, texts in `TEXT.sails`): a polar diagram in ink,
+  **Wind card** (the logbook's second spread, right page, facing the chart; `windHTML`, texts in `TEXT.sails`): a polar diagram in ink,
   the wind blowing down from the top (an arrow): the filled curve is the share of top speed the sail she carries gives
   on each heading (its `SAIL_POLAR_*`; none with no sail rigged: "No sail: the oars"), a dashed curve for each sail in the hold, a little boat in the middle (paper hull, two thwarts, mast;
   rotated to her heading) with a dotted line on from her bow to a dot where her heading meets the curve; under it "Square sail: 47%" (that share, `speedFactor` at her angle off the wind) and the breeze
@@ -450,7 +450,8 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   **Three spreads**: a sideways swipe across the open book turns the page (left = forward: the list and cargo, the
   **sea chart**, then **home's look**; right = back; `turnPage`, `logSpread` 0..2): a sheet swings over on the spine (copies of the pages, `snapPage`), with
   `Sfx.pageTurn()` and a buzz; the book remembers the spread it was left on and opens there. The **sea chart** (`renderMap`)
-  is drawn across both pages and the crease, square, `MAP_RES` pixels a side then dithered like the widgets: only the
+  is drawn on the second spread's left page only (`#map-l`), square, a pixel per CSS pixel of the page (at most `MAP_RES`,
+  so the dither stays fine), then dithered like the widgets; the **wind card** faces it on the right page (`#wind-page`): only the
   cells the boat has seen (fog of war's `explored`; land inked round its coast) and nothing else: no marks for home,
   ports, ruins or the boat (Enrico's choice: you find your way by the coastlines). It is drawn only when
   shown (book opened on it, or a page turned to it), never while sailing (~3 ms; the land under each pixel is worked out

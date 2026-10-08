@@ -297,6 +297,10 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Logbook: the compass now lives inside it, on the right page of the first spread (no longer at the top of the screen); a tap still turns it to the watch',
+      'Logbook: the sea chart fits on one page, and the wind card (the polar diagram) is on the page facing it',
+    ]},
+    {build: '2026-10-08 19:24', items: [
       'Square sail: it turns more readily (manoeuvrability 1.3, was 0.8)',
       'Crank: it sounds the same with the sail set or furled (the freewheeling paddles no longer splash while you turn it)',
       'The sail button is gone',
@@ -308,12 +312,8 @@
     {build: '2026-10-08 18:32', items: [
       'At anchor (and moored) the crank is hidden and can\'t be used; it comes back as soon as the anchor is up',
     ]},
-    {build: '2026-10-08 18:27', items: [
-      'Controls back as before: hold the centre of the wheel to drop or weigh anchor (at anchor the wheel fades away and only the hub stays), the sail badge on the right (a tap sets or furls the sail, a hold stows it)',
-      'The crank is always in sight, at the top right of the wheel (also when moored), no button to bring it up. The anchor button, the windlass and the halyard winch are gone',
-    ]},
   ];
-  const BUILD = '2026-10-08 19:24';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-08 19:28';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -662,9 +662,8 @@
 
   #wood .res-item{display:flex; align-items:center; gap:3px;}
   /* the logbook is a compact card: the list on the left, the compass on the right */
-  /* the compass sits at the top of the screen, in the middle (the open logbook covers it; that's fine) */
-  #compass{position:fixed; left:calc(50% - 47.5px); top:calc(10px + env(safe-area-inset-top,0px));
-    width:95px; height:95px; z-index:7; cursor:pointer; touch-action:manipulation; transition:opacity .5s;}
+  /* the compass lives in the logbook, on the first spread's right page (a tap turns it over to the watch) */
+  #compass{display:block; margin:10px auto 0; width:min(100%, 150px); height:auto; aspect-ratio:1; cursor:pointer; touch-action:manipulation; image-rendering:pixelated;}
   #compass:focus-visible{outline:2px dashed var(--ink); outline-offset:2px; border-radius:50%;}
   body.tut-no-compass #compass{opacity:0; pointer-events:none;}
   #wood{display:none !important;}      /* the fish counters round the compass are retired: the hold is in the logbook */
@@ -949,14 +948,10 @@
   #base-l .base-pick svg{width:34px; height:34px; flex:none;}
   #base-r canvas{width:100%; display:block; image-rendering:pixelated; border:1.5px solid var(--ink); border-radius:2px;}
   #base-name{margin:6px 0 14px; text-align:center; font-weight:bold; font-style:italic;}
-  #shoplist.on-map .map-cv{display:block;}
-  #shoplist.on-map #shoplist-body, #shoplist.on-map #hold-page{display:none;}
-  #shoplist.on-map .page.left{padding:10px 0 10px 10px;}
-  #shoplist.on-map .page.right{padding:10px 10px 10px 0;}
-  #shoplist.on-map .crease{padding:10px 0; background-image:none;}
-  #shoplist.on-map .crease::before{content:""; position:absolute; left:3px; right:3px; top:10px; bottom:10px; opacity:.45;   /* the gutter's shade, over the chart */
-    background-image:radial-gradient(var(--ink) 0.7px, transparent 0.9px); background-size:3px 3px;}
-  #shoplist.on-map .crease::after{opacity:.5;}
+  #shoplist.on-map .map-cv{display:block; border:1.5px solid var(--ink); border-radius:2px; box-sizing:border-box;}   /* the chart: one page, square */
+  #shoplist.on-map #shoplist-body, #shoplist.on-map #hold-page, #shoplist.on-map #cmp-slot{display:none;}
+  #wind-page{display:none;} #shoplist.on-map #wind-page{display:block;}   /* the wind card, on the chart's facing page */
+  #shoplist.on-base #cmp-slot{display:none;}
   /* a page being turned: a sheet swinging on the spine, the page it leaves on its front and the new one on its back */
   #shoplist .turn{position:absolute; z-index:4; transform-style:preserve-3d; pointer-events:none;}
   #shoplist .turn > .page{position:absolute; inset:0; overflow:hidden; backface-visibility:hidden; -webkit-backface-visibility:hidden;}
@@ -1004,7 +999,7 @@
   #wind-card .wind-polar{width:100%; max-width:150px; display:block; margin:0 auto;}
   #wind-card .wind-eff{margin:2px 0 0; text-align:center; font-weight:bold;}
   #wind-card .wind-sub{margin:1px 0 0; text-align:center; font-size:11px; font-style:italic; opacity:.8; white-space:nowrap;}
-  #hold-page:empty{min-height:126px; opacity:.16; background:repeating-linear-gradient(to bottom, transparent 0 17px, var(--ink) 17px 18px);}   /* a blank ruled page */
+  #hold-page:empty{display:none;}
   #shoplist .hold-head{display:flex; justify-content:space-between; align-items:baseline; gap:6px; margin-bottom:6px;}
   #shoplist .hold-count{font-size:12px; font-style:italic; font-variant-numeric:tabular-nums; margin-right:auto;}
   #shoplist h3{margin:0; font-size:16px; font-style:italic;}
@@ -1235,8 +1230,8 @@
         <div class="page left"><div id="shoplist-body"></div><canvas class="map-cv" id="map-l"></canvas><div id="base-l"></div></div>
         <div class="leaf-back" aria-hidden="true"><svg viewBox="0 0 24 24"><g fill="var(--paper)"><path d="M12 1.5 L13.6 9.2 L21 12 L13.6 14.8 L12 22.5 L10.4 14.8 L3 12 L10.4 9.2 Z"/><path d="M12 6 L13 11 L18 12 L13 13 L12 18 L11 13 L6 12 L11 11 Z" transform="rotate(45 12 12)" opacity=".7"/></g><circle cx="12" cy="12" r="6.6" fill="none" stroke="var(--paper)" stroke-width="0.9"/><circle cx="12" cy="12" r="1.2" fill="var(--ink)"/></svg></div>
       </div>
-      <div class="crease" aria-hidden="true"><canvas class="map-cv" id="map-c"></canvas></div>
-      <div class="page right"><div id="hold-page"></div><canvas class="map-cv" id="map-r"></canvas><div id="base-r"><canvas id="base-prev"></canvas><p id="base-name"></p></div></div>
+      <div class="crease" aria-hidden="true"></div>
+      <div class="page right"><div id="hold-page"></div><div id="cmp-slot"></div><div id="wind-page"></div><div id="base-r"><canvas id="base-prev"></canvas><p id="base-name"></p></div></div>
     </div>
   </div>
   <!-- the compass, top centre of the main view (not interactive; the open logbook may cover it) -->
@@ -4029,6 +4024,7 @@
 
   // compass: the needle always points home, the short way round the world
   const cmp = document.getElementById('compass');
+  document.getElementById('cmp-slot').appendChild(cmp);                 // (it lives in the logbook now)
   const cmpCtx = cmp.getContext('2d');
   // the compass is drawn like the wheel: in greys into a low-res canvas (one
   // pixel per CSS pixel), then dithered to the two interface colours, so it
@@ -6187,8 +6183,8 @@
   function renderList(){
     if(!ORDERS_ON){                                // no orders: the day and the cargo on the left page, a blank page on the right
       elListBody.innerHTML = '<div class="list-head"><h2>'+fmt(TEXT.logbook.day, {n: dayNo})+'</h2></div>' + holdHTML();
-      elHoldPage.innerHTML = '<div id="wind-card">'+windHTML()+'</div>';
-      listKey = holdKey(); windKey = windCardKey();
+      elHoldPage.innerHTML = '';                                   // (the right page: the compass)
+      listKey = holdKey();
       return;
     }
     // today's order: each line crossed off once it's been delivered at home
@@ -6206,8 +6202,8 @@
     elListBody.innerHTML = '<div class="list-head"><h2>'+TEXT.logbook.order+'</h2><span class="day">'+fmt(TEXT.logbook.day, {n: dayNo})+'</span></div>'
       + '<ul class="courses">' + (o ? o.items.map(line).join('') : '') + '</ul>'
       + (note ? '<p class="note">'+note+'</p>' : '');
-    elHoldPage.innerHTML = holdHTML() + '<div id="wind-card">'+windHTML()+'</div>';
-    listKey = holdKey(); windKey = windCardKey();
+    elHoldPage.innerHTML = holdHTML();
+    listKey = holdKey();
   }
   // the wind card: a polar diagram, the wind blowing down from the top. The
   // filled curve is how much of her top speed the sail she carries gives on
@@ -6340,7 +6336,7 @@
   function refreshList(){
     if(!elList.classList.contains('open')) return;
     if(holdKey() !== listKey) renderList();
-    else if(logSpread === 0 && windCardKey() !== windKey){                 // the wind card follows her heading live
+    else if(logSpread === 1 && windCardKey() !== windKey){                 // the wind card follows her heading live
       windKey = windCardKey(); const el = document.getElementById('wind-card'); if(el) el.innerHTML = windHTML();
     }
   }
@@ -6465,17 +6461,19 @@
   }
 
   // ---------- Sea chart ----------
-  // The logbook's second spread: a rough chart of the sea, drawn across both
+  // The logbook's second spread: a rough chart of the sea on the left page (the wind card faces it)
   // pages. Only what the boat has seen is on it (the fog of war's cells),
   // and nothing else: no marks for home, ports or the boat. Drawn only when it is shown (the book
   // opens on it, or a page is turned to it), never while sailing.
-  const elMapL = document.getElementById('map-l'), elMapC = document.getElementById('map-c'), elMapR = document.getElementById('map-r');
-  for(const c of [elMapL, elMapC, elMapR]){ c.setAttribute('role', 'img'); c.setAttribute('aria-label', TEXT.logbook.chart); }
-  const mapCv = document.createElement('canvas'); mapCv.width = mapCv.height = MAP_RES;
+  const elMapL = document.getElementById('map-l'), elWindPage = document.getElementById('wind-page');
+  elMapL.setAttribute('role', 'img'); elMapL.setAttribute('aria-label', TEXT.logbook.chart);
+  const mapCv = document.createElement('canvas');
   const mapCtx = mapCv.getContext('2d', {willReadFrequently:true});
-  let mapLand = null;                          // land under each chart pixel, worked out once
+  let mapLand = null, mapN = 0;                // land under each chart pixel, worked out once (again if the page's width changes)
   function renderMap(){
-    const N = MAP_RES, S = WORLD.w/N;
+    // a chart pixel per CSS pixel of the page (dithered at that size, so the dots stay fine), at most MAP_RES
+    const N = Math.max(60, Math.min(MAP_RES, Math.round(elMapL.clientWidth || 140))), S = WORLD.w/N;
+    if(N !== mapN){ mapN = N; mapLand = null; mapCv.width = mapCv.height = N; }
     if(!mapLand){
       mapLand = new Uint8Array(N*N);
       for(let j=0;j<N;j++) for(let i=0;i<N;i++) mapLand[j*N+i] = onLand((i+0.5)*S, (j+0.5)*S, 0) ? 1 : 0;
@@ -6500,16 +6498,9 @@
       mapCtx.beginPath(); mapCtx.moveTo(x-xs, y-xs); mapCtx.lineTo(x+xs, y+xs); mapCtx.moveTo(x+xs, y-xs); mapCtx.lineTo(x-xs, y+xs); mapCtx.stroke();
     }
     ditherUI(mapCtx, N, N);
-    // cut it into the three strips the spread shows: left page, crease, right page
-    const wl = elMapL.clientWidth, wc = elMapC.clientWidth, wr = elMapR.clientWidth, W = wl + wc + wr;
-    if(!wl || !wr) return;                                             // (not on show)
-    let x0 = 0;
-    for(const [cv, w] of [[elMapL, wl], [elMapC, wc], [elMapR, wr]]){
-      const x1 = Math.round(N*(x0 + w)/W), sx = Math.round(N*x0/W);
-      cv.width = Math.max(1, x1 - sx); cv.height = N; cv.style.height = W+'px';
-      cv.getContext('2d').drawImage(mapCv, sx, 0, cv.width, N, 0, 0, cv.width, N);
-      x0 += w;
-    }
+    // the chart fills the left page, square; the wind card goes on the facing page
+    elMapL.width = N; elMapL.height = N; elMapL.getContext('2d').drawImage(mapCv, 0, 0);
+    elWindPage.innerHTML = '<div id="wind-card">'+windHTML()+'</div>'; windKey = windCardKey();
   }
 
   // ---------- Home's look (the logbook's third spread) ----------
