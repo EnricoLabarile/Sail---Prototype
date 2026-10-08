@@ -282,11 +282,12 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   its state changes): a **tap** drops or weighs the anchor (weighing it: `Sfx.anchor(false)`, the chain's links an octave lower than at first and louder, ×2.4, over a low rumble of chain running in);
   inked at anchor, shaking while the chain comes in; over a fish bank (not fishing, not at anchor) its anchor turns into a fish
   with a dashed ring (`bankHint`). The wheel no longer goes away at anchor.
-  **Hub of the wheel = wheel/crank switch**: held `HUB_HOLD` (0.32 s; a ring fills) it swaps the wheel for the crank
-  and back (`crankMode`, `setCrankMode`, body class `crank-mode`). The wheel **comes apart** (`wheelVis` eases to 0: the
-  spokes fly outward turning, the rim breaks into eight pieces that scatter, all fading; the reverse puts it back) and the
-  crank **assembles** in its place (CSS class `away`: the whole crank turned and shrunk, its rings scaled out, its gear
-  in, all faded). In crank mode the wheel's canvas lets touches through to the crank, which handles a press on its centre
+  **Hub of the wheel = wheel/crank switch**: held `HUB_HOLD` (0.05 s, a quick press; was 0.32) it swaps the wheel for the crank
+  and back (`crankMode`, `setCrankMode`, body class `crank-mode`). The wheel **comes apart**, gently since it's swapped often (`wheelVis` eases to 0: the
+  spokes drift a little outward turning, the rim breaks into eight pieces that ease apart, all fading; the reverse puts it back) and the
+  crank **assembles** in its place (CSS class `away`, 0.3 s ease-out: the crank turned 12° and at 0.92, its rings ×1.1, its gear
+  ×0.85 turned 15°, all faded). On the wheel the hub also shows the spring's charge (`max(spring, windProg)`): a thick ink
+  arc round it over a dotted track, like the crank's ring, so it's known without swapping. In crank mode the wheel's canvas lets touches through to the crank, which handles a press on its centre
   as the hub (`onCrankHub`); the hub (drawn on the wheel's canvas over the crank's centre) stays; the helm eases back
   amidships. The hub is always drawn big (`hubScale` = 2); in wheel mode its grip is just the hub (`HUB_SAIL_R`), so the
   spokes still steer. It's drawn like the compass, in greys then dithered: a light brass bezel (lit top left) with four

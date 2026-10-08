@@ -231,7 +231,7 @@
   const TUT_PAUSE = 1500;            // ms between one step and the next
   const TUT_COMPASS_T = 4500;        // ms the compass step lasts (no input needed)
   const TUT_DROP_WAIT = 3000, TUT_DROP_T = 3000;   // after the wheel: wait, then the optional drop-anchor tip for a while (ms)
-  const HUB_HOLD = 320;              // ms to hold the hub of the wheel (or of the crank) to swap the wheel and the crank
+  const HUB_HOLD = 50;               // ms to hold the hub of the wheel (or of the crank) to swap the wheel and the crank
 
   // -- Look --
   const UI_TINT = 0.7;               // how much the interface takes on the day/night colours (0 = never, 1 = like the world)
@@ -295,6 +295,10 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Wheel and crank: a quick press on the centre swaps them now (was a hold of a third of a second), and the swap is gentler, the crank and the wheel just easing apart and back',
+      'On the wheel, a ring round the centre button shows how much charge the spring has left, the same as round the crank',
+    ]},
+    {build: '2026-10-08 00:00', items: [
       'Anchor: its own round button on the right, under the sail badge (a tap drops or weighs it; inked at anchor; a fish over a fish bank)',
       'Wheel and crank: hold the centre of the wheel for a moment and the wheel comes apart, the crank taking its place (wind it there); hold its centre again to bring the wheel back. While on the crank the helm stays amidships',
       'Fair wind: no more medallion button; once Eolus gives it, it is an item in the Cargo (with the gifts): tap it to call the wind; while it recharges it shows the seconds left',
@@ -302,15 +306,12 @@
     {build: '2026-10-07 23:38', items: [
       'Crank: the arm no longer jumps to where the finger lands; it rests pointing up, turns only as far as the finger turns, and points up again when fully wound or when it has sprung back',
     ]},
-    {build: '2026-10-07 23:27', items: [
-      'Storms: the screen flashes only when the bolt or its cloud is in view (a storm out of sight is only heard)',
-    ]},
     {build: '2026-10-07 22:43', items: [
       'Storm clouds: some rain clouds are darker and throw lightning. A dashed ring flickers on the water where a bolt will strike; if the boat is inside it when the bolt falls she is hit (-15 hull). Flash and thunder',
       'First screen, Dangers: knobs for the storms (STORM_ON, STORM_SHARE, STORM_WARN, STORM_AIM, STORM_HIT_R, STORM_DAMAGE); Audio: a Thunder slider',
     ]},
   ];
-  const BUILD = '2026-10-08 00:00';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-08 10:04';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -723,10 +724,10 @@
   /* the crank (SPRING_PADDLES): a paper disc with an arm and a handle that follows the finger round; the ring round it
      fills as the spring is wound, and empties as the wheels use it */
   #crank{position:fixed; left:calc(50% - 110px); bottom:calc(7px + env(safe-area-inset-bottom,0px)); width:220px; height:220px; z-index:5; touch-action:none; cursor:grab; color:var(--ink);
-    transition:opacity .4s, transform .45s cubic-bezier(.3,1.4,.5,1);}   /* in the wheel's place, centred on its hub (the hub, drawn on the wheel's canvas, sits over it) */
-  #crank .asm-in, #crank .asm-out{transition:transform .45s cubic-bezier(.3,1.4,.5,1), opacity .35s; transform-box:view-box; transform-origin:center;}
-  #crank.away{opacity:0; transform:rotate(-70deg) scale(.7); pointer-events:none;}   /* the wheel's turn: the crank comes apart, parts flying off */
-  #crank.away .asm-out{transform:scale(1.45); opacity:0;} #crank.away .asm-in{transform:scale(.4) rotate(90deg);}
+    transition:opacity .28s ease-out, transform .3s ease-out;}   /* in the wheel's place, centred on its hub (the hub, drawn on the wheel's canvas, sits over it) */
+  #crank .asm-in, #crank .asm-out{transition:transform .3s ease-out, opacity .28s ease-out; transform-box:view-box; transform-origin:center;}
+  #crank.away{opacity:0; transform:rotate(-12deg) scale(.92); pointer-events:none;}   /* the wheel's turn: the crank comes gently apart (it's swapped often) */
+  #crank.away .asm-out{transform:scale(1.1); opacity:0;} #crank.away .asm-in{transform:scale(.85) rotate(15deg);}
   #crank svg{width:100%; height:100%; display:block; overflow:visible;}
   #crank .disc{fill:var(--paper); stroke:var(--ink); stroke-width:2;}
   #crank .gear{fill:url(#crank-dots); stroke:var(--ink); stroke-width:1.6; stroke-linejoin:round;}
@@ -4229,14 +4230,14 @@
 
     // at anchor the wheel is put away: it fades out
     // and only the hub stays, to weigh anchor or switch sail
-    wheelVis += ((crankMode ? 0 : 1) - wheelVis) * 0.1;
+    wheelVis += ((crankMode ? 0 : 1) - wheelVis) * 0.16;
     if(Math.abs(wheelVis - (crankMode ? 0 : 1)) < 0.002) wheelVis = crankMode ? 0 : 1;
     // skip the redraw (and its dither) while nothing on it moves: same angle,
     // same state, no animation running (a hold, a shake, the bank ring, a tutorial hint)
     {
       const busy = hubHold || hubShake > 0 || wheelVis !== (crankMode ? 0 : 1)
         || ((tut === 'anchor' || tut === 'drop' || tut === 'wheel') && !tutWait);
-      const key = wheelAngle.toFixed(4) + '|' + wheelVis.toFixed(3) + '|' + crankMode + '|' + !!hubHold + '|' + uiPalKey;   // (a let-go hold must clear its ring)
+      const key = wheelAngle.toFixed(4) + '|' + wheelVis.toFixed(3) + '|' + crankMode + '|' + !!hubHold + '|' + Math.round(Math.max(spring, windProg)*100) + '|' + uiPalKey;   // (a let-go hold must clear its ring)
       if(!busy && key === wheelKey) return;
       wheelKey = key;
     }
@@ -4270,7 +4271,7 @@
     const SPOKE  = [[13,3.8],[22,3.2],[27,3],[28.5,4.6],[31,4.6],[32.5,3],[44,2.8],[50,3.2]];
     for(let k=0;k<8;k++){
       c.save(); c.rotate(k*Math.PI/4 - Math.PI/2);
-      if(e) { c.translate(e*(26 + 9*(k%3)), 0); c.rotate(e*(k%2 ? 0.7 : -0.5)); }   // coming apart
+      if(e) { c.translate(e*(14 + 5*(k%3)), 0); c.rotate(e*(k%2 ? 0.35 : -0.25)); }   // coming apart
       // handle: paper body, ink outline, an ink band at the neck
       c.fillStyle=WOOD; c.strokeStyle=INKW; c.lineWidth=1.6;
       turned(HANDLE); c.fill();
@@ -4314,7 +4315,7 @@
     if(!e) rim();
     else for(let k=0;k<8;k++){                                 // the rim in eight pieces, each round a spoke, scattering
       const mid = k*Math.PI/4 - Math.PI/2;
-      c.save(); c.translate(Math.cos(mid)*e*34, Math.sin(mid)*e*34); c.rotate(e*(k%2 ? 0.4 : -0.3));
+      c.save(); c.translate(Math.cos(mid)*e*18, Math.sin(mid)*e*18); c.rotate(e*(k%2 ? 0.2 : -0.15));
       c.beginPath(); c.moveTo(0,0); c.arc(0, 0, 80, mid - Math.PI/8, mid + Math.PI/8); c.closePath(); c.clip();
       rim(); c.restore();
     }
@@ -4365,6 +4366,12 @@
         c.strokeStyle=INKW; c.lineWidth=lw;   c.beginPath(); c.arc(0,0,r,a0,a1); c.stroke();
         c.restore();
       };
+      // on the wheel, the spring's charge round the hub: the same ring as round the crank, so it's known without swapping
+      if(wheelVis >= 0.5){
+        const ch = Math.max(spring, windProg);
+        ring(HR + 2.2, 0, Math.PI*2, 0.6, [1, 1.6]);                          // the track
+        if(ch > 0.005) ring(HR + 2.2, -Math.PI/2, -Math.PI/2 + ch*Math.PI*2, 2.6);
+      }
       if(hubHold && !hubHold.done){
         const k = Math.min(1, (performance.now()-hubHold.t0)/HUB_HOLD);
         ring(HR + 1.5, -Math.PI/2, -Math.PI/2+k*Math.PI*2, 2.8);
