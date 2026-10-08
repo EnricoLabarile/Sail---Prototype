@@ -287,7 +287,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
 - **Controls:** wheel (drag in a circle; half a turn = full lock; its sounds, the spokes' knocks, the thump at full lock and the rub, × `WHEEL_VOL` 2 in Tuning). Inside the rim a dark backing (a radial grey 70→44, dithered to a deep dotted texture) fills the gaps between the spokes, so the light wood reads clearly; the wood
   is a mid grey (`WOOD`, `WOOD_SH`, `WOOD_RIM` in drawWheel) so it stands out from the pale sea.
   Layout (no panel behind the controls: a wooden dashboard was tried and dropped, it hid too much sea): compass over
-  logbook bottom left (compass at the top centre), wheel bottom centre; on the right the crank (at the top right of the wheel; hidden at anchor).
+  logbook bottom left (compass at the top centre), wheel bottom centre; the crank bottom right, mirroring the logbook (hidden at anchor).
   (An anchor button of its own and three buttons swapping the wheel for a crank, a windlass or a halyard winch were
   tried and dropped: back to the anchor on the hub and the crank always in sight.)
   Hub of the wheel = anchor only:
@@ -362,7 +362,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   (Oar handles on the screen's sides, dragged down in time, were tried after a sketch and dropped: they didn't work
   well; the round button below is back.)
   **The spring and the crank** (`SPRING_PADDLES` in Tuning, on; false = the old rhythmic oar button below): the
-  paddle wheels run off a wound spring (`spring` 0..1). The crank (`#crank`, 84 px (was 132; viewBox ±36 now that the hint arrow above it is gone), at the top right of the wheel, shown while playing, but hidden and out of use at anchor (moored too), at the market and while someone talks; a winding in progress is let go and springs back: a toothed gear
+  paddle wheels run off a wound spring (`spring` 0..1). The crank (`#crank`, 84 px (was 132; viewBox ±36 now that the hint arrow above it is gone), in the bottom right corner mirroring the logbook bottom left (same centre, z-index over the wheel's canvas), shown while playing, but hidden and out of use at anchor (moored too), at the market and while someone talks; a winding in progress is let go and springs back: a toothed gear
   (16 teeth, a dotted pattern fill `#crank-dots`) turning with the arm, a hatched plate with three rivets, an arm with a
   big knob that turns by as much as the finger turns round the centre (it doesn't jump to where the finger lands; `crankA`, 0 = pointing up, reset to 0 when wound full and when it has sprung back), and, inside the plate under the arm, a dotted track and a ring (r 19.5 in the viewBox, between the turning gear
   group and the turning arm group, both `.rot`, so it stays still) that fills with the charge (it used to run all round

@@ -297,6 +297,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Crank: moved to the bottom right corner, mirroring the logbook in the bottom left',
+    ]},
+    {build: '2026-10-08 19:35', items: [
       'Crank: smaller (about a fifth smaller than before), and the curved arrow above it is gone',
     ]},
     {build: '2026-10-08 19:28', items: [
@@ -309,11 +312,8 @@
       'The sail button is gone',
       'Paddle wheels: when she turns on the spot, the two wheels turn opposite ways',
     ]},
-    {build: '2026-10-08 18:47', items: [
-      'Crank: the black ring with the spring\'s charge is now smaller and inside the crank, round its plate under the arm, instead of all round it',
-    ]},
   ];
-  const BUILD = '2026-10-08 19:35';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-08 19:48';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -732,7 +732,7 @@
   #oar-ctl{position:fixed; right:12px; bottom:calc(178px + env(safe-area-inset-bottom,0px)); width:64px; height:74px; z-index:5; touch-action:none; cursor:pointer;}
   /* the crank (SPRING_PADDLES): a paper disc with an arm and a handle that follows the finger round; the ring round it
      fills as the spring is wound, and empties as the wheels use it */
-  #crank{position:fixed; right:30px; bottom:calc(220px + env(safe-area-inset-bottom,0px)); width:84px; height:84px; z-index:5; touch-action:none; cursor:grab; color:var(--ink);}
+  #crank{position:fixed; right:7px; bottom:calc(8px + env(safe-area-inset-bottom,0px)); width:84px; height:84px; z-index:7; touch-action:none; cursor:grab; color:var(--ink);}
   #crank svg{width:100%; height:100%; display:block; overflow:visible;}
   #crank .disc{fill:var(--paper); stroke:var(--ink); stroke-width:2;}
   #crank .gear{fill:url(#crank-dots); stroke:var(--ink); stroke-width:1.6; stroke-linejoin:round;}
