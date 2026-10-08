@@ -299,6 +299,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'At anchor (and moored) the crank is hidden and can\'t be used; it comes back as soon as the anchor is up',
+    ]},
+    {build: '2026-10-08 18:27', items: [
       'Controls back as before: hold the centre of the wheel to drop or weigh anchor (at anchor the wheel fades away and only the hub stays), the sail badge on the right (a tap sets or furls the sail, a hold stows it)',
       'The crank is always in sight, at the top right of the wheel (also when moored), no button to bring it up. The anchor button, the windlass and the halyard winch are gone',
     ]},
@@ -311,11 +314,8 @@
       'Anchor button: drops the anchor and brings up the windlass, a drum with a chain round it: turn it clockwise to haul the anchor up (one and a half turns), then the steering wheel comes back',
       'Sail button: brings up the halyard winch, a drum with rope coiled on it: turn it clockwise to hoist the sail, anticlockwise to lower it, as far as you like. Holding the button still stows the sail',
     ]},
-    {build: '2026-10-08 12:35', items: [
-      'Steam: a little funnel amidships puffs steam, a thick white plume while the spring drives the paddle wheels, and only a faint wisp now and then when she sails along with the wheels just freewheeling',
-    ]},
   ];
-  const BUILD = '2026-10-08 18:27';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-08 18:32';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -5749,8 +5749,9 @@
   elCrank.addEventListener('pointerup', crankUp); elCrank.addEventListener('pointercancel', crankUp);
   elCrank.addEventListener('keydown', ev=>{ if(ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); ev.stopPropagation(); if(crankLocked) return; crankA += Math.PI*2; windSpring(Math.PI*2*SPRING_TURNS); } });   // (keys: a whole winding at once)
   function updateSpring(dt){
-    const show = MANUAL_OARS && playing && !marketV;      // always there (at the market and while someone talks to you it steps aside)
+    const show = MANUAL_OARS && playing && !marketV && !anchored;      // at anchor (moored too), at the market and while someone talks to you it steps aside
     if(show !== !elCrank.classList.contains('hidden')) elCrank.classList.toggle('hidden', !show);
+    if(!show && crankDrag){ crankDrag = null; if(windProg > 0){ crankBack = windProg*Math.PI*2*SPRING_TURNS; crankTick = crankStep = 0; } }   // let go of it as it goes (a half winding springs back)
     if(!elOar.classList.contains('hidden')) elOar.classList.add('hidden');
     const can = spring > 0 && !(anchored || moor || boat.whirl) && (boat.sailV || 0) < SPRING_SPEED;   // (> 0: it once stopped at 0.001 and the crank stayed locked for good)
     oarSpin += ((can ? 1 : 0) - oarSpin)*Math.min(1, dt*2.5);                 // the wheels take up and let go smoothly
