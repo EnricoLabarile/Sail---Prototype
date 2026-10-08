@@ -300,6 +300,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Fix: turning the halyard winch for the first time froze the game (the wheel stayed half apart). It works now',
+    ]},
+    {build: '2026-10-08 12:51', items: [
       'The wheel is clean again (no button in the middle). On the right, three buttons: crank, sail and anchor. Each puts its own wheel in the wheel\'s place (tap it again for the steering wheel); only one at a time',
       'Crank button: the crank, as before; the ring round the button shows the spring\'s charge',
       'Anchor button: drops the anchor and brings up the windlass, a drum with a chain round it: turn it clockwise to haul the anchor up (one and a half turns), then the steering wheel comes back',
@@ -313,12 +316,8 @@
       'Temple of Eolus: a ghostly spirit now talks to you in three lines, then gives you the fair wind',
       'Wheel and crank: the centre button wants a slightly longer press again (0.15 s)',
     ]},
-    {build: '2026-10-08 10:04', items: [
-      'Wheel and crank: a quick press on the centre swaps them now (was a hold of a third of a second), and the swap is gentler, the crank and the wheel just easing apart and back',
-      'On the wheel, a ring round the centre button shows how much charge the spring has left, the same as round the crank',
-    ]},
   ];
-  const BUILD = '2026-10-08 12:51';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-08 18:15';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -2696,6 +2695,7 @@
 
   // ---------- Boat ----------
   const boat = {
+    hoist: 1,                            // how far the sail is up on the halyard winch, 0..1
     x: SPAWN.x, y: SPAWN.y,
     angle: SPAWN.angle,
     speed: 0,
@@ -5864,7 +5864,7 @@
   }
   function turnWinch(da){
     if(!boat.rig) return;
-    const was = boat.hoist, h = Math.max(0, Math.min(1, was + da/(Math.PI*2*SAIL_TURNS)));
+    const was = isFinite(boat.hoist) ? boat.hoist : 1, h = Math.max(0, Math.min(1, was + da/(Math.PI*2*SAIL_TURNS)));   // (it was undefined at first: NaN froze the game)
     if(h === was) return;                                    // at the top or the bottom: it won't go further
     boat.hoist = h; winchA += da; winchTick += Math.abs(da);
     const TOOTH = Math.PI*2/16;
