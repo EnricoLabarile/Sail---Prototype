@@ -176,7 +176,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   and a smaller round button on the right (`.t-btn`: an arrow to go on, a cross on the last line, `TEXT.talk.next/end`;
   pale while typing, nudging once the line is out). A tap on it or the box (or Space/Enter) first shows the whole
   line, then goes on (`talkPress`, a page sound). While it's up the boat's controls are hidden (body class `talking`:
-  the wheel, the crank, the sail badge, the dock badge, the logbook) and the anchor can't be weighed (`setAnchor` refuses).
+  the wheel, the crank, the dock badge, the logbook) and the anchor can't be weighed (`setAnchor` refuses).
   While it's on, **Nordania is gone**: `VILLAGES` holds only Estolia, Sudia and Westa (its texts stay in `TEXT.villages.nord`,
   unused; sardines still swim in the north). The compass has one dot per village (`DOT_ANG` from each village's
   direction), the trade lanes are home to each village plus each village to the next round (`pairs`, any number), and
@@ -287,7 +287,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
 - **Controls:** wheel (drag in a circle; half a turn = full lock; its sounds, the spokes' knocks, the thump at full lock and the rub, × `WHEEL_VOL` 2 in Tuning). Inside the rim a dark backing (a radial grey 70→44, dithered to a deep dotted texture) fills the gaps between the spokes, so the light wood reads clearly; the wood
   is a mid grey (`WOOD`, `WOOD_SH`, `WOOD_RIM` in drawWheel) so it stands out from the pale sea.
   Layout (no panel behind the controls: a wooden dashboard was tried and dropped, it hid too much sea): compass over
-  logbook bottom left (compass at the top centre), wheel bottom centre; on the right the crank (at the top right of the wheel; hidden at anchor) and the sail badge.
+  logbook bottom left (compass at the top centre), wheel bottom centre; on the right the crank (at the top right of the wheel; hidden at anchor).
   (An anchor button of its own and three buttons swapping the wheel for a crank, a windlass or a halyard winch were
   tried and dropped: back to the anchor on the hub and the crank always in sight.)
   Hub of the wheel = anchor only:
@@ -342,7 +342,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   shift the square needs ~5 s to be back to 90%, the lateen ~0.5 s; sharp turns cost the square too. (3) **The
   lateen's tack**: while its yard swings across (`boat.swingAcross`) the drive is × `LATEEN_TACK_DRIVE` (0.35), and on its
   bad tack (wind from port, `sailSide` < 0, 'a la mala') × `LATEEN_MALA` (0.85). (4) **Handling**: turning × `RIG_TURN`
-  (0.8 / 1.25), gathering way × `RIG_ACCEL` (0.7 / 1.4). (5) **Leeway** (`boat.lwx/lwy`, added to her motion): to
+  (1.3 / 1.25; the square's was 0.8), gathering way × `RIG_ACCEL` (0.7 / 1.4). (5) **Leeway** (`boat.lwx/lwy`, added to her motion): to
   leeward, × `RIG_LEEWAY` (0.35 / 0.08) × her speed, full close-hauled (≤50° off), none from 130°. (6) **Big waves**:
   surfing push and length × `RIG_SURF` (1.35 / 0.7, `boat.surfK`), damage × `RIG_WAVE_HIT` (0.6 / 1.4), the slew round
   × `RIG_BROACH` (0.6 / 2.2). Measured (sail-only target): open sea, square at 150° ~51 px/s, lateen at 70° ~55; among
@@ -375,7 +375,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   surges or kicks), and the spring runs down over `SPRING_TIME` (15 s; was 30) of driving; otherwise it rests. `updateSpring`
   (called by `updateOarCtl`) also turns the wheels (`oarRate`, 1.4 × `OAR_RATE` × `SPRING_SPEED`/14); the steady churn (`Sfx.rowBed`) is
   silent in this mode: instead `drawBoat` plays `Sfx.paddle` (a low lowpassed splash and a 105→62 Hz thud, loudness
-  `PADDLE_VOL` 3.6 × `oarSpin`) each time a paddle comes round (eight a turn of `B.wheelA`), so the sound follows the wheels; freewheeling under sail (no spring drive, her speed > 3 px/s) the same splash plays at half the volume, same pitch (`PADDLE_FREE_VOL` 0.5 × `PADDLE_VOL`, `PADDLE_FREE_PITCH` 1, Tuning; it was 0.22 × a fade-in with her speed and 0.7 pitch, too faint to hear);
+  `PADDLE_VOL` 3.6 × `oarSpin`) each time a paddle comes round (eight a turn of `B.wheelA`), so the sound follows the wheels; freewheeling under sail (no spring drive, her speed > 3 px/s, and not while the crank is being turned, so its clicks always sound the same) the same splash plays at half the volume, same pitch (`PADDLE_FREE_VOL` 0.5 × `PADDLE_VOL`, `PADDLE_FREE_PITCH` 1, Tuning; it was 0.22 × a fade-in with her speed and 0.7 pitch, too faint to hear);
   when the spring runs down `Sfx.springOff` (the gear's last links slowing, a slack clunk). A new voyage starts with it empty.
   **Steam** (`STEAM_ON`, `STEAM_RATE` 9 puffs/s × `oarSpin` while the spring drives, `STEAM_IDLE` 0.18 of that and
   `STEAM_LIGHT` 0.45 the size/whiteness while she moves (> 3 px/s) with the wheels only freewheeling; none moored or
@@ -386,7 +386,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   greys vanished in the dither); old ones break into dotted grey wisps.
   **Paddle wheels, not oars** (pedalò style; in `drawBoat`, every boat): two upright wheels, one a side amidships
   (axle across her at the gunwale, `R` 7, eight flat paddles drawn as quads through `P`, only what's above the water,
-  both rims and the hub), turned by the pedalling (`oarRate` × 2π: one turn a stroke of the oar button) or, under sail, freewheeling with the water going by (her speed / R × 0.9), whichever is quicker (`B.wheelA`);
+  both rims and the hub), turned by the pedalling (`oarRate` × 2π: one turn a stroke of the oar button) or, under sail, freewheeling with the water going by (her speed / R × 0.9), whichever is quicker (`B.wheelA`); turning, each wheel also turns with its side's water (`B.spinA` from `B.turnRate` × half her beam, + on one side, − on the other), so spun on the spot they turn opposite ways;
   while pedalling a little foam churns astern of each wheel. The oars are no longer drawn; the rowing logic, sounds and
   the button are unchanged (their names still say 'oar').
   **Oars: rowed by hand, in rhythm** (like grinding berries in Pokémon Emerald; `MANUAL_OARS` in Tuning; false brings
@@ -424,12 +424,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   the oars are shipped (power 0, they come in) and the button is greyed and dashed, untouchable (class `locked`,
   label `TEXT.oars.locked`); rowing is for slow going, e.g. close to the wind. Turning is `ROW_TURN_MULT` × quicker while rowing (`boat.rowing`). With manual oars the sail is never
   brailed up.
-  **Sail badge** (`#sail-btn`, a round badge on the right under the oar button, which sits above it; shown only while
-  a sail is rigged and the market is shut; `updateSailBtn`): it shows the rigged sail's icon. A **tap** sets or furls
-  the sail (`boat.sailFurled`: no drive, the cloth gathered to the yard, the badge inked). **Hold it**: past
-  `SAIL_SHAKE_AFTER` (0.2 s) it shakes, and at `SAIL_STOW_HOLD` (1.1 s) the sail is unbent and stowed in the hold
-  (`boat.rig` = null, toast "… stowed in the hold"; refused with "the hold is full" if no slot is free), leaving her on
-  the oars. Both knobs in Tuning.
+  **No sail badge** (removed: the sail is always set; sails are swapped from the Cargo; `boat.sailFurled` stays false).
   **Sail: automatic** (no button; the old switch `#sail` / `drawSail` is hidden and unused, the halyard rope before it is
   gone). The sail is up by default. When she's slower than `ROW_ENTER` and the wind can't drive her past it either
   (head to wind, or nearly), after `ROW_DELAY` the sail is brailed up and the oars come out (`sailLevel` = `SAIL_MIN`:
@@ -547,6 +542,6 @@ The smoke test checks there are no JS errors (the market and the storehouse are 
 Eolus (its spirit's talk tapped through) that gives it, then a trip to a village to buy a dish with foreign
 fish (after fishing up a message in a bottle, reading it: a cross on the chart, and throwing it overboard), back home
 (a fish left in the storehouse), a new day, the
-logbook shows it, a tap on the spare sail rigs it, a tap on the sail badge furls the sail, and holding the badge stows it. With `ORDERS_ON`: two days of orders (day 1: 3 fish home before
+logbook shows it, and a tap on the spare sail rigs it. With `ORDERS_ON`: two days of orders (day 1: 3 fish home before
 dinner; day 2: the ordered dish bought at its village, everything brought home and delivered).
 For quick manual testing on the phone: `python -m http.server 8000` and open `http://<pc-ip>:8000` on the same Wi-Fi.

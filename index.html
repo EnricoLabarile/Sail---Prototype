@@ -254,7 +254,7 @@
   const SQUARE_RUN_BONUS = 0.25;     // running downwind (from DOWNWIND_DEG to dead astern) the square sail gains up to this much more (the lateen none)
   // -- how the two sails differ beyond their speed curves: the square sail for the open sea and steady wind, the lateen
   //    for the islands' channels and shifting wind (each value: {square, lateen}; with no sail rigged, 1) --
-  const RIG_TURN = {square: 0.8, lateen: 1.25};      // turning speed × (the lateen is nimble, the square clumsy in narrow water)
+  const RIG_TURN = {square: 1.3, lateen: 1.25};      // turning speed × (was 0.8 for the square: now it turns as readily as the lateen)
   const RIG_ACCEL = {square: 0.7, lateen: 1.4};      // how quickly she gathers way × (the lateen picks up at once, the square slowly)
   const RIG_RETRIM = {square: 0.4, lateen: 3.5};     // how quickly the sail is trimmed again when the wind (or her heading) changes (higher = quicker)
   const RETRIM_SPAN = 60;            // degrees of mis-trim at which the sail gives only RETRIM_FLOOR of its drive
@@ -274,8 +274,6 @@
   const LEE_DIST = 140;              // px: land this close upwind puts her in its lee
   const LEE_DROP = 0.6;              // how much of the wind the lee takes (land right upwind; less the farther it is)
   const LATEEN_SWING = 0.9;          // how quickly the lateen yard swings across when she changes tack (3 = as quick as the sail trims; lower = heavier)
-  const SAIL_STOW_HOLD = 1.1;        // seconds holding the sail badge to unbend the sail and stow it in the hold
-  const SAIL_SHAKE_AFTER = 0.2;      // a press longer than this is a hold (the badge shakes); shorter is a tap (set or furl)
   const WIND_STREAK_RATE = 2;        // wind streaks across the sea: how many more than the old ones (1 = as before)
   const WIND_STREAK_WIDTH = 1.8;     // their line width (was 1.2)
   const WIND_STREAK_ALPHA = 0.85;    // how dark they are (was 0.65)
@@ -299,6 +297,12 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Square sail: it turns more readily (manoeuvrability 1.3, was 0.8)',
+      'Crank: it sounds the same with the sail set or furled (the freewheeling paddles no longer splash while you turn it)',
+      'The sail button is gone',
+      'Paddle wheels: when she turns on the spot, the two wheels turn opposite ways',
+    ]},
+    {build: '2026-10-08 18:47', items: [
       'Crank: the black ring with the spring\'s charge is now smaller and inside the crank, round its plate under the arm, instead of all round it',
     ]},
     {build: '2026-10-08 18:32', items: [
@@ -308,11 +312,8 @@
       'Controls back as before: hold the centre of the wheel to drop or weigh anchor (at anchor the wheel fades away and only the hub stays), the sail badge on the right (a tap sets or furls the sail, a hold stows it)',
       'The crank is always in sight, at the top right of the wheel (also when moored), no button to bring it up. The anchor button, the windlass and the halyard winch are gone',
     ]},
-    {build: '2026-10-08 18:15', items: [
-      'Fix: turning the halyard winch for the first time froze the game (the wheel stayed half apart). It works now',
-    ]},
   ];
-  const BUILD = '2026-10-08 18:47';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-08 19:24';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -492,8 +493,6 @@
       spareLine: '- - - in the hold',
       none:      'No sail: the oars',
       rigged:  '{sail} rigged',
-      badge:   '{sail}: tap to set or furl it, hold to stow it in the hold',
-      stowed:  '{sail} stowed in the hold',
     },
     logbook: {
       order:   'Tonight\'s order',
@@ -751,16 +750,6 @@
   #crank.full .plate{fill:var(--ink);} #crank.full .hatch{opacity:0;} #crank.full .arm{stroke:var(--paper);} #crank.full .hub{fill:var(--paper);}
   #crank.locked{cursor:default;} #crank.locked .rot, #crank.locked .hint{opacity:.45;}   /* wound full: locked until the spring has run down */
   #crank.hidden, body.at-market #crank{display:none;}
-  /* the sail badge, under the oar button: a tap sets or furls the sail, a long press stows it in the hold */
-  #sail-btn{position:fixed; right:16px; bottom:calc(104px + env(safe-area-inset-bottom,0px)); width:56px; height:56px; z-index:5; padding:0;
-    border-radius:50%; background:var(--paper); color:var(--ink); border:2px solid var(--ink); box-shadow:2px 3px 0 var(--ink); cursor:pointer;
-    display:flex; align-items:center; justify-content:center; touch-action:none;}
-  #sail-btn svg{width:36px; height:36px;}
-  #sail-btn.furled{background:var(--ink); color:var(--paper);}       /* furled: inked */
-  #sail-btn.furled svg{opacity:.85;}
-  #sail-btn.shaking{animation:sailShake .09s linear infinite;}       /* held: about to be stowed */
-  @keyframes sailShake{0%{translate:0 0} 25%{translate:-2px 1px} 50%{translate:1px -1px} 75%{translate:2px 1px} 100%{translate:0 0}}
-  body.at-market #sail-btn{display:none;}
   /* the talk box (Stardew style): a framed portrait on the left, the words typed out, a smaller round button on the right
      (go on / farewell); while it's up, the boat's controls step aside */
   #talk{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(14px + env(safe-area-inset-bottom,0px));
@@ -780,7 +769,7 @@
   #talk:not(.typing) .t-btn svg{animation:talkNudge 1.1s ease-in-out infinite;}
   @keyframes talkNudge{50%{transform:translateX(2px);}}
   #talk .t-btn:active{transform:translate(1px,1px); box-shadow:1px 1px 0 var(--ink);}
-  body.talking #wheel, body.talking #crank, body.talking #sail-btn, body.talking #oar-ctl,
+  body.talking #wheel, body.talking #crank, body.talking #oar-ctl,
   body.talking #dock-btn, body.talking #btn-list, body.talking #tut-tip{display:none !important;}
   #oar-ctl .oar-mark{position:absolute; left:50%; top:0; width:0; height:0; margin-left:-6px; border-left:6px solid transparent; border-right:6px solid transparent;
     border-top:9px solid var(--ink); filter:drop-shadow(0 0 1.5px var(--paper));}   /* the fixed mark: the moment to press */
@@ -1300,7 +1289,6 @@
     <div id="mk-foot"></div>
   </div>
   <!-- the oar handle, right side: slide it down to pull the oars (rowing by hand) -->
-  <button id="sail-btn" type="button" class="hidden"></button>
   <div id="crank" class="hidden" role="button" tabindex="0"><svg viewBox="-46 -46 92 92" aria-hidden="true">
     <defs><pattern id="crank-dots" width="3" height="3" patternUnits="userSpaceOnUse"><rect width="3" height="3" fill="var(--paper)"/><circle cx="1" cy="1" r=".75" fill="var(--ink)"/></pattern>
       <pattern id="crank-hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4" stroke="var(--ink)" stroke-width=".8" opacity=".55"/></pattern></defs>
@@ -5630,51 +5618,6 @@
   const storeCount = ()=> Object.values(homeStore.fish).reduce((a,n)=> a+n, 0) + Object.values(homeStore.dish).reduce((a,n)=> a+n, 0) + homeStore.bottles.length + homeStore.sails.length;
   function resetStore(){ homeStore.fish = {}; homeStore.dish = {}; homeStore.bottles = []; homeStore.sails = []; }
   function openStore(){ openMarket(STORE); }
-  // ---- the sail badge (under the oar button, while a sail is rigged) ----
-  // A tap sets or furls the sail (furled: the cloth gathered to the yard, no
-  // drive; the badge inked). Hold it: after a moment it shakes, and after
-  // SAIL_STOW_HOLD seconds the sail is unbent and stowed in the hold (a slot;
-  // not with a full hold), leaving her on the oars.
-  const elSailBtn = document.getElementById('sail-btn');
-  let sailHold = null, sailBtnKey = '';
-  elSailBtn.addEventListener('pointerdown', ev=>{
-    ev.preventDefault(); Sfx.init(); if(!boat.rig) return;
-    elSailBtn.setPointerCapture(ev.pointerId);
-    sailHold = {t0: performance.now(), id: ev.pointerId, done: false};
-  });
-  const sailRelease = ev=>{
-    const h = sailHold; if(!h || ev.pointerId !== h.id) return;
-    sailHold = null; elSailBtn.classList.remove('shaking');
-    if(h.done || ev.type === 'pointercancel') return;
-    if(performance.now() - h.t0 < SAIL_SHAKE_AFTER*1000){                 // a tap: set or furl
-      boat.sailFurled = !boat.sailFurled;
-      Sfx.thunk(0.2); buzz(boat.sailFurled ? [10,30,10] : [20,30,20]);
-    }
-  };
-  elSailBtn.addEventListener('pointerup', sailRelease); elSailBtn.addEventListener('pointercancel', sailRelease);
-  function updateSailBtn(){
-    const show = !!boat.rig && playing && !marketV;
-    if(show !== !elSailBtn.classList.contains('hidden')) elSailBtn.classList.toggle('hidden', !show);
-    if(!show){ sailHold = null; return; }
-    const key = boat.rig + '|' + !!boat.sailFurled;
-    if(key !== sailBtnKey){
-      sailBtnKey = key;
-      elSailBtn.innerHTML = itemIcon(SAIL_ICON[boat.rig]);
-      elSailBtn.classList.toggle('furled', !!boat.sailFurled);
-      const lbl = fmt(TEXT.sails.badge, {sail: TEXT.sails[boat.rig]}); elSailBtn.title = lbl; elSailBtn.setAttribute('aria-label', lbl);
-    }
-    const h = sailHold; if(!h || h.done) return;
-    const held = (performance.now() - h.t0)/1000;
-    if(held > SAIL_SHAKE_AFTER && !elSailBtn.classList.contains('shaking')){ elSailBtn.classList.add('shaking'); buzz(10); }
-    if(held >= SAIL_STOW_HOLD){                                            // held long enough: stow it
-      h.done = true; elSailBtn.classList.remove('shaking');
-      if(slotsUsed() >= HOLD_MAX){ popups.push({x:boat.x, y:boat.y-24, text:TEXT.popups.holdFull, life:1.6, max:1.6}); buzz(20); return; }
-      const name = TEXT.sails[boat.rig];
-      boat.rig = null; boat.sailFurled = false;
-      toast(fmt(TEXT.sails.stowed, {sail: name})); Sfx.thunk(0.35); buzz([30,40,30]);
-      if(elList.classList.contains('open')) renderList();
-    }
-  }
   // ---- rowing by hand: the oar button on the right, pressed in rhythm ----
   // Like grinding berries: the first press sets her rowing, slowly (power
   // oarSpin = OAR_START), and the button's disc starts turning, its pointer
@@ -7361,7 +7304,6 @@
     refreshList();
     updateDockBtn();
     updateOarCtl(dt);
-    updateSailBtn();
   }
 
   // ---------- 1-bit rendering ----------
@@ -9154,7 +9096,7 @@
       const rel = norm(B.angle - windAngle - (B.windOff||0)), lee = (B.boomSigned||0) >= 0 ? 1 : -1;
       const drive = B.rig ? (B.sailPower||0)*(B.sailAmount === undefined ? 1 : B.sailAmount)*(1 - (B.furl||0)) : 0;
       const heel = -lee*BOAT_HEEL*drive*Math.abs(Math.sin(rel))*(B.rig === 'lateen' ? 1 : 0.8);
-      const turn = mdt > 0 ? norm(B.angle - (B.angPrev === undefined ? B.angle : B.angPrev))/mdt : 0; B.angPrev = B.angle;
+      const turn = mdt > 0 ? norm(B.angle - (B.angPrev === undefined ? B.angle : B.angPrev))/mdt : 0; B.angPrev = B.angle; B.turnRate = turn;
       const acc = mdt > 0 ? ((B.speed||0) - (B.spdPrev === undefined ? (B.speed||0) : B.spdPrev))/mdt : 0; B.spdPrev = B.speed||0;
       const rollT = rollWave + heel - turn*(B.speed||0)*0.006;               // she leans out of the turn
       const pitchT = pitchWave + Math.max(-0.08, Math.min(0.08, acc*0.006)) - (B.surfT > 0 ? 0.05 : 0);
@@ -9302,12 +9244,15 @@
       const wnow = performance.now(), wdt = Math.min(0.05, (wnow - (B.wheelLast || wnow))/1000); B.wheelLast = wnow;
       B.wheelA = (B.wheelA || 0) + Math.max(g ? 0 : oarRate*Math.PI*2, Math.max(0, B.speed || 0)/R*0.9)*wdt;
       const turnA = B.wheelA;
+      // turning, each side's water goes by at its own pace (her way ∓ the turn × half her beam): spun round on the spot,
+      // the two wheels turn opposite ways
+      B.spinA = (B.spinA || 0) + (B.turnRate || 0)*12.8/R*0.9*wdt;
       // a paddle slapping into the water each time one comes round (eight a turn): while the spring drives the wheels,
       // or, quieter and lower, while they only freewheel under sail (fading in with her way)
       { const idx = Math.floor(turnA/(Math.PI/4));
         if(!g && SPRING_PADDLES && idx !== B.padIdx){
           if(oarSpin > 0.05) Sfx.paddle(PADDLE_VOL*oarSpin);
-          else if((B.speed || 0) > 3) Sfx.paddle(PADDLE_VOL*PADDLE_FREE_VOL, PADDLE_FREE_PITCH);
+          else if((B.speed || 0) > 3 && !crankDrag) Sfx.paddle(PADDLE_VOL*PADDLE_FREE_VOL, PADDLE_FREE_PITCH);   // (not while the crank is turned: its clicks stay its own)
         }
         B.padIdx = idx; }
       const pedal = !g && (oarSpin > 0.01 || B.oarK > 0.05);
@@ -9318,7 +9263,7 @@
         { const [a0, a1] = P(cx, sd*9.6, FB), [b0, b1] = P(cx, yc, zc); ctx.strokeStyle = INKC; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(a0, a1); ctx.lineTo(b0, b1); ctx.stroke(); }
         // the paddles: flat boards from hub to rim, across the wheel's width; only those above the water show
         for(let k = 0; k < 8; k++){
-          const a = turnA + k*Math.PI/4, ca = Math.cos(a), sa = Math.sin(a);
+          const a = turnA - sd*B.spinA + k*Math.PI/4, ca = Math.cos(a), sa = Math.sin(a);
           const zTip = zc + sa*R; if(zTip < -0.3) continue;
           const r0 = R*0.35, x0 = cx + ca*r0, z0 = zc + sa*r0, x1 = cx + ca*R, z1 = Math.max(0, zTip);
           const q = [P(x0, yc - half, z0), P(x1, yc - half, z1), P(x1, yc + half, z1), P(x0, yc + half, z0)];
