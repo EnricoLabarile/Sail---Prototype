@@ -221,6 +221,13 @@
   const RAIN_CLOUD_EVERY = 3;        // one cloud in this many carries rain (world)
   const STORM_ON = knob('STORM_ON', 1);   // 1 = on, 0 = off. Storm clouds: some rain clouds are darker and throw lightning down onto the sea under them
   const STORM_SHARE = knob('STORM_SHARE', 0.5); // share of the rain clouds that are storms (world)
+  // Biomes: the sea is split into regions with their own weather. For now one, the stormy West: past WEST_FROM
+  // west of home (out to the far side of the world, and WEST_HALF_H north and south), thick with storm clouds
+  // that hang there (they don't drift away with the others) and with whirlpools
+  const WEST_STORM_CLOUDS = knob('WEST_STORM_CLOUDS', 16);   // storm clouds hanging over the stormy West (world; 0 = no biome)
+  const WEST_WHIRLS = knob('WEST_WHIRLS', 40);              // extra whirlpools in the stormy West, on top of the usual ones (world)
+  const WEST_FROM = 800;             // px west of home where the stormy West begins (home waters end at ~665) (world)
+  const WEST_HALF_H = 1300;          // px north and south of home's latitude it reaches (world)
   const STORM_EVERY = [6, 14];       // seconds between one bolt and the next from a storm cloud (shortest, longest)
   const STORM_WARN = knob('STORM_WARN', 1.2); // seconds of warning before a bolt: a ring flickers on the water where it will strike
   const STORM_AIM = knob('STORM_AIM', 0.4); // chance a bolt aims at her when she's under the storm (else anywhere under it)
@@ -297,6 +304,10 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Biomes: the West of the map (past home waters, out to the far side) is now the stormy West, thick with storm clouds that hang over it and with whirlpools (about 7 storms and 20 whirlpools round any spot there, against 1 or 2 elsewhere)',
+      'First screen, World: two new knobs, WEST_STORM_CLOUDS (16) and WEST_WHIRLS (40)',
+    ]},
+    {build: '2026-10-08 19:48', items: [
       'Crank: moved to the bottom right corner, mirroring the logbook in the bottom left',
     ]},
     {build: '2026-10-08 19:35', items: [
@@ -306,14 +317,8 @@
       'Logbook: the compass now lives inside it, on the right page of the first spread (no longer at the top of the screen); a tap still turns it to the watch',
       'Logbook: the sea chart fits on one page, and the wind card (the polar diagram) is on the page facing it',
     ]},
-    {build: '2026-10-08 19:24', items: [
-      'Square sail: it turns more readily (manoeuvrability 1.3, was 0.8)',
-      'Crank: it sounds the same with the sail set or furled (the freewheeling paddles no longer splash while you turn it)',
-      'The sail button is gone',
-      'Paddle wheels: when she turns on the spot, the two wheels turn opposite ways',
-    ]},
   ];
-  const BUILD = '2026-10-08 19:48';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-08 21:29';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -2374,13 +2379,16 @@
   // opens up somewhere else. While faded out it has no effect at all.
   const whirlAsleep = (w)=>{ w.phase = 'off'; w.s = 0; w.timer = rand(2, 40); };   // shut, waking at a staggered time
   const bankList = [];                    // fish banks (filled further down)
-  function findWhirlSpot(avoidBoat){
+  // the stormy West (see Biomes in Tuning): west of home past WEST_FROM, within WEST_HALF_H of its latitude
+  const inWest = (x, y)=> wdx(x, START.x) < -WEST_FROM && Math.abs(wdy(y, START.y)) < WEST_HALF_H;
+  const westPoint = ()=> [wrapX(START.x - WEST_FROM - rand(0, WORLD.w/2 - WEST_FROM)), wrapY(START.y + rand(-WEST_HALF_H, WEST_HALF_H))];
+  function findWhirlSpot(avoidBoat, west){
     for(let tries=0; tries<600; tries++){
-      const x = rand(0, WORLD.w), y = rand(0, WORLD.h);
+      const [x, y] = west ? westPoint() : [rand(0, WORLD.w), rand(0, WORLD.h)];
       const dg = danger(x,y);
       if(wdist(x,y,START.x,START.y) < SAFE_R + 170) continue;        // not in home waters (pull ring included)
       if(SPECIALS.some(v=>wdist(x,y,v.isl.x,v.isl.y) < 460)) continue;
-      if(Math.random() > Math.pow(dg,1.5)*(0.3 + 1.4*(1 - archipelago(x,y)))) continue;   // far out, and mostly in open seas
+      if(!west && Math.random() > Math.pow(dg,1.5)*(0.3 + 1.4*(1 - archipelago(x,y)))) continue;   // far out, and mostly in open seas (in the West: anywhere)
       const r = rand(120, 155);            // outer edge of the pull ring (wide)
       const core = rand(30, 40);           // where the boat gets caught and spun
       if(avoidBoat && wdist(x,y,boat.x,boat.y) < r+260) continue;   // never right under the boat
@@ -2394,11 +2402,12 @@
     return null;
   }
   (function genWhirlpools(){
-    const N = WHIRL_COUNT;
+    const N = WHIRL_COUNT + WEST_WHIRLS;
     for(let k=0; k<N*3 && whirlpools.length<N; k++){
-      const sp = findWhirlSpot(false);
+      const west = whirlpools.length >= WHIRL_COUNT;            // the last WEST_WHIRLS of them belong to the stormy West
+      const sp = findWhirlSpot(false, west);
       if(!sp) continue;
-      const w = {...sp, dir: Math.random()<0.5?-1:1, rot: rand(0,Math.PI*2),
+      const w = {...sp, west, dir: Math.random()<0.5?-1:1, rot: rand(0,Math.PI*2),
                  hd: rand(0,Math.PI*2), vel: rand(5,9),
                  speed: rand(1.4,2.2), armed: true, escaping: false};
       whirlAsleep(w);                                // all shut on day 1 (out of step with each other later)
@@ -2455,7 +2464,7 @@
         w.timer -= dt;
         if(w.timer<=0){
           w.phase = 'wait';                                       // mark as free while searching
-          const sp = findWhirlSpot(true);
+          const sp = findWhirlSpot(true, w.west);                 // (a West one opens again in the West)
           if(sp){ Object.assign(w, sp); w.phase='in'; w.s=0; w.armed=true; w.escaping=false; w.dir=Math.random()<0.5?-1:1; w.hd=rand(0,Math.PI*2); w.vel=rand(5,9); }
           else { w.phase='off'; w.timer=rand(3,8); }
         }
@@ -4870,7 +4879,7 @@
   }
   (function worldGen(){
     const K = {ISLAND_SCALE, ISLAND_COUNT, CLUSTER_SHARE, SPIRAL, SPIRAL_ARMS, OPEN_ISLANDS, ISLAND_BIG, ISLAND_L, ISLAND_C, ISLAND_ATOLL,
-               OPEN_ROCK_TRIES, TRADERS_HOME, TRADERS_VILLAGES, ROLLER_RATE, CLOUD_COUNT};
+               OPEN_ROCK_TRIES, TRADERS_HOME, TRADERS_VILLAGES, ROLLER_RATE, CLOUD_COUNT, WEST_STORM_CLOUDS, WEST_WHIRLS};
     const box = document.getElementById('wg-knobs'), T = TEXT.worldGen;
     document.getElementById('wg-title').textContent = T.title;
     document.getElementById('wg-sum-changes').textContent = T.changesTitle;
@@ -8448,6 +8457,21 @@
     c.storm = !!STORM_ON && Math.floor((rainN + 1)*STORM_SHARE) > Math.floor(rainN*STORM_SHARE); rainN++;
     c.drops = Array.from({length: Math.round(c.W*(c.storm ? 0.45 : 0.3))}, ()=>{ const a = rand(0,6.3), r = Math.sqrt(Math.random()); return {u: Math.cos(a)*r, v: Math.sin(a)*r, ph: Math.random(), len: rand(6,10)}; });
   });
+  // the stormy West's own storm clouds: placed once in the world (not in the tiled cloud field) and hanging there,
+  // only swaying a little (c.west: see cloudGround), spaced apart, clear of the villages' quays
+  if(STORM_ON){
+    const west = [];
+    for(let tries=0; tries<3000 && west.length<WEST_STORM_CLOUDS; tries++){
+      const [x, y] = westPoint();
+      if(VILLAGES.some(v=> wdist(x, y, v.isl.x, v.isl.y) < 380)) continue;
+      if(west.some(c=> wdist(c.x, c.y, x, y) < 300)) continue;
+      const shape = CLOUD_SHAPES[west.length % CLOUD_SHAPES.length];
+      const c = {x, y, ...shape, shape, west: true, rain: true, storm: true, ph: rand(0, 6.3), sway: rand(25, 60)};
+      c.drops = Array.from({length: Math.round(c.W*0.45)}, ()=>{ const a = rand(0,6.3), r = Math.sqrt(Math.random()); return {u: Math.cos(a)*r, v: Math.sin(a)*r, ph: Math.random(), len: rand(6,10)}; });
+      west.push(c);
+    }
+    clouds.push(...west);
+  }
   function puffPath(P, ox, oy, grow, dx, dy, k){
     ctx.beginPath();
     for(const [x,y,r,lv] of P){
@@ -8502,6 +8526,10 @@
   }
   // nearest copy of a cloud's ground point to the view centre
   function cloudGround(c, vcx, vcy){
+    if(c.west){                                               // a West storm: its own place in the world, swaying slowly round it
+      const x = c.x + Math.sin(t*0.05 + c.ph)*c.sway, y = c.y + Math.cos(t*0.037 + c.ph)*c.sway*0.6;
+      return [vcx + wdx(x, vcx), vcy + wdy(y, vcy)];
+    }
     let x = c.x + cloudOX, y = c.y + cloudOY;
     x += CLOUD_P*Math.round((vcx-x)/CLOUD_P); y += CLOUD_P*Math.round((vcy-y)/CLOUD_P);
     return [x,y];

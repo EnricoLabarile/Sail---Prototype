@@ -130,6 +130,15 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   no game over for it. **The mood is off for now** (`SATISFACTION_ON` = false: no bar, dinners don't move it, so the
   masseria keeps the look of `SAT_START`). The voyage still ends only by sinking (`#gameover`).
   Each has a bay, a wooden pier, a lighthouse with a sweeping beam, a pixel-art town, 17 buoys at ~616 px (`BUOYS_PER_VILLAGE`, `BUOY_R`) (toasts "Entering / Leaving the waters of …"; leaving counts 150 px past the buoys).
+- **Biomes** (Tuning "Biomes", world): the sea is split into regions with their own weather; for now one, the **stormy
+  West** (`inWest(x, y)`: more than `WEST_FROM` 800 px west of home, out to the far side of the wrapped world, and within
+  `WEST_HALF_H` 1300 px of home's latitude; `westPoint()` picks a spot in it; Westa's village lies in it). It gets
+  `WEST_STORM_CLOUDS` (16) storm clouds of its own (`c.west`: placed once in the world, not in the tiled cloud field, so
+  they stay there, only swaying 25–60 px round their place, `cloudGround`; kept 300 px apart and 380 px from the
+  villages; rain and lightning as any storm) and `WEST_WHIRLS` (40) whirlpools on top of `WHIRL_COUNT` (`w.west`:
+  `findWhirlSpot(avoidBoat, true)` places them, and places them again when they reopen, anywhere in the West, not only
+  far out in open sea). Both knobs are also on the first screen's World. Measured: within 900 px of a spot in the West
+  ~7 storms and ~23 whirlpools, against ~1–2 of each in the east.
 - **Home: a fortified masseria** (`drawHomeBuildings`, home units ×`HOME_BLD`): a walled court with crenellated white
   walls (north gate to our pier, south gate to the guests'), a square watchtower on the north-east corner, the owner's
   house along the south wall, a well, and five trulli (whitewashed drums under grey stone cones) outside the east wall;
@@ -254,7 +263,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   `TEXT.intro` aren't shown for now): a 200 px preview of this world (land in ink, the clusters' zones dotted, home a
   square, the villages rings), a field per world knob (named as in Tuning: `ISLAND_SCALE`, `ISLAND_COUNT`,
   `CLUSTER_SHARE`, `SPIRAL`, `SPIRAL_ARMS`, `OPEN_ISLANDS`, `ISLAND_BIG`, `ISLAND_L`, `ISLAND_C`, `ISLAND_ATOLL`, `OPEN_ROCK_TRIES`, `TRADERS_HOME`,
-  `TRADERS_VILLAGES`, `ROLLER_RATE`, `CLOUD_COUNT`; a changed field turns dark), **Generate** (reloads the page with the
+  `TRADERS_VILLAGES`, `ROLLER_RATE`, `CLOUD_COUNT`, `WEST_STORM_CLOUDS`, `WEST_WHIRLS`; a changed field turns dark), **Generate** (reloads the page with the
   changed fields, and those already there, in the address: `?ISLAND_SCALE=1.5&…`; untouched knobs keep their own rule,
   e.g. `ISLAND_COUNT` follows `ISLAND_SCALE`) and **Defaults** (reloads with a bare address). In Tuning those knobs are
   `knob('NAME', value)`: a value in the address wins. Under the build time the card has **folding sections**
