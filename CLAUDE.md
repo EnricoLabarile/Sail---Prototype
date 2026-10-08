@@ -383,6 +383,13 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   silent in this mode: instead `drawBoat` plays `Sfx.paddle` (a low lowpassed splash and a 105→62 Hz thud, loudness
   `PADDLE_VOL` 3.6 × `oarSpin`) each time a paddle comes round (eight a turn of `B.wheelA`), so the sound follows the wheels; freewheeling under sail (no spring drive, her speed > 3 px/s) the same splash plays at half the volume, same pitch (`PADDLE_FREE_VOL` 0.5 × `PADDLE_VOL`, `PADDLE_FREE_PITCH` 1, Tuning; it was 0.22 × a fade-in with her speed and 0.7 pitch, too faint to hear);
   when the spring runs down `Sfx.springOff` (the gear's last links slowing, a slack clunk). A new voyage starts with it empty.
+  **Steam** (`STEAM_ON`, `STEAM_RATE` 9 puffs/s × `oarSpin` while the spring drives, `STEAM_IDLE` 0.18 of that and
+  `STEAM_LIGHT` 0.45 the size/whiteness while she moves (> 3 px/s) with the wheels only freewheeling; none moored or
+  still): a short dark funnel amidships (x −4, `FB` to `FB`+7, in `drawBoat`, every boat) and puffs from its top
+  (`steam`, updated with the bow spray, drawn by `drawSteam` right after the boat): each rises (`z`, shown as a shift up
+  the screen × `BOAT_TILT`), swells (×4.5) and drifts downwind; the air stays put, so she leaves them astern. Drawn as
+  cartoon clouds: the young puffs all stroked in ink then filled with paper, so they merge into one outlined plume (soft
+  greys vanished in the dither); old ones break into dotted grey wisps.
   **Paddle wheels, not oars** (pedalò style; in `drawBoat`, every boat): two upright wheels, one a side amidships
   (axle across her at the gunwale, `R` 7, eight flat paddles drawn as quads through `P`, only what's above the water,
   both rims and the hub), turned by the pedalling (`oarRate` × 2π: one turn a stroke of the oar button) or, under sail, freewheeling with the water going by (her speed / R × 0.9), whichever is quicker (`B.wheelA`);

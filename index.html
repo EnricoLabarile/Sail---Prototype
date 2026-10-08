@@ -42,6 +42,10 @@
   const SPRING_TURNS = 1;            // full turns of the crank, in one go, that wind the spring right up (let go before and the winding is lost: start again)
   const SPRING_TIME = 15;            // seconds the wheels can drive her on a full spring (it only runs down while they're driving; was 30)
   const PADDLE_VOL = 3.6;            // loudness of the paddles slapping into the water as the spring drives the wheels (one low splash a paddle; 0 = silent; was 1.8); freewheeling under sail is × PADDLE_FREE_VOL of it
+  const STEAM_ON = true;             // steam puffing from a little funnel amidships: thick while the spring drives the paddle wheels, a faint wisp while they only freewheel under way
+  const STEAM_RATE = 9;              // puffs a second while the wheels drive her (× how hard they drive)
+  const STEAM_IDLE = 0.18;           // …while she moves and the wheels only freewheel: this share of the puffs…
+  const STEAM_LIGHT = 0.45;          // …each this much as big and as white (1 = like the driving steam)
   const PADDLE_FREE_VOL = 0.5;       // …and when they only freewheel under sail (dragged round by the water): the same splash at this share of it (× PADDLE_VOL; was 0.22, fading in with her speed)…
   const PADDLE_FREE_PITCH = 1;       // …and this pitch (1 = the same as when driven; was 0.7)
   const CRANK_BACK_SPEED = 12;       // let go of the crank before a full turn and it springs back anticlockwise, like an alarm clock's key: turns a second (radians, quicker the more it was wound)
@@ -295,6 +299,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Steam: a little funnel amidships puffs steam, a thick white plume while the spring drives the paddle wheels, and only a faint wisp now and then when she sails along with the wheels just freewheeling',
+    ]},
+    {build: '2026-10-08 11:18', items: [
       'Talk box: when someone speaks to you, a box at the bottom with their framed portrait on the left (a silhouette for now), the words typed out, and a round button on the right to go on (an arrow) or end the talk (a cross). The boat\'s controls step aside meanwhile',
       'Temple of Eolus: a ghostly spirit now talks to you in three lines, then gives you the fair wind',
       'Wheel and crank: the centre button wants a slightly longer press again (0.15 s)',
@@ -308,11 +315,8 @@
       'Wheel and crank: hold the centre of the wheel for a moment and the wheel comes apart, the crank taking its place (wind it there); hold its centre again to bring the wheel back. While on the crank the helm stays amidships',
       'Fair wind: no more medallion button; once Eolus gives it, it is an item in the Cargo (with the gifts): tap it to call the wind; while it recharges it shows the seconds left',
     ]},
-    {build: '2026-10-07 23:38', items: [
-      'Crank: the arm no longer jumps to where the finger lands; it rests pointing up, turns only as far as the finger turns, and points up again when fully wound or when it has sprung back',
-    ]},
   ];
-  const BUILD = '2026-10-08 11:18';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-08 12:35';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -2672,7 +2676,8 @@
     r: 16
   };
   const wake=[]; let wakeAcc=0;
-  const bowSpray=[]; let bowAcc=0;          // bow foam: bits of white water peeling off the stem
+  const bowSpray=[]; let bowAcc=0;
+  const steam=[]; let steamAcc=0;            // steam from the funnel: {x, y (world, under the puff), z (height), r, a (strength), life, max}          // bow foam: bits of white water peeling off the stem
   for(let k=0;k<BANK_COUNT;k++) spawnBank(false, false);
 
   // ---------- Trade routes and the boats that sail them ----------
@@ -5025,7 +5030,7 @@
     rollers.length = 0; rollerT = 6; boat.surfT = 0;
     windAngle = rand(0, Math.PI*2); shiftDur = 0; windTimer = rand(28,36); guideWind = false;
     explored.fill(0); fogVer++; resetBottles(); resetStore(); resetShark(); spring = 0; windProg = 0; crankBack = 0; crankLocked = false; document.getElementById('crank').classList.remove('locked');
-    wake.length = 0; bowSpray.length = 0; popups.length = 0;
+    wake.length = 0; bowSpray.length = 0; steam.length = 0; popups.length = 0;
     voyageTime = 0; hurtFlash = 0; shake = 0;
     gameover.classList.add('hidden');
     playing = true; watchOn = false; watchT = 0;           // a new voyage: compass side up
@@ -7285,6 +7290,26 @@
         f.x += f.vx*dt; f.y += f.vy*dt;
       }
     }
+    // steam: puffs from the funnel, thick while the spring drives the wheels, a faint wisp while they freewheel under
+    // way; each rises, swells, drifts downwind and fades (the air stays put: she sails out from under it)
+    if(STEAM_ON){
+      const drive = oarSpin > 0.05 && !moor, idle = !drive && !moor && boat.speed > 3;
+      const k = drive ? oarSpin : idle ? STEAM_LIGHT : 0;
+      steamAcc += dt*(drive ? STEAM_RATE*oarSpin : idle ? STEAM_RATE*STEAM_IDLE : 0);
+      const ca = Math.cos(boat.angle), sa = Math.sin(boat.angle);
+      while(steamAcc > 1){
+        steamAcc -= 1;
+        steam.push({x: boat.x - ca*4 + rand(-0.6, 0.6), y: boat.y - sa*4 + rand(-0.6, 0.6), z: 10, vz: rand(12, 18)*(0.6 + 0.4*k),
+                    r: rand(1.4, 2)*(0.5 + 0.8*k), a: Math.min(1, 0.35 + 0.75*k), life: 0, max: rand(2, 2.8)*(0.55 + 0.6*k), seed: Math.random()*6.3});
+      }
+      const dw = windAngle + boat.windOff + Math.PI, wx = Math.cos(dw)*windStrength*14, wy = Math.sin(dw)*windStrength*14;
+      for(let i=steam.length-1;i>=0;i--){
+        const f = steam[i];
+        f.life += dt;
+        if(f.life >= f.max){ steam.splice(i,1); continue; }
+        f.x += wx*dt; f.y += wy*dt; f.z += f.vz*dt; f.vz *= Math.exp(-1.2*dt);
+      }
+    } else steam.length = 0;
     for(let k=wake.length-1;k>=0;k--){
       const f=wake[k];
       f.life-=dt;
@@ -9152,6 +9177,28 @@
 
   // the boat; with g (a client's boat at the guest pier: {x, y, angle, speed,
   // moored, …}) the same model is drawn for it, sail furled when it's tied up
+  // the steam over the funnel: little cartoon clouds, white with an ink outline (all the young puffs stroked first,
+  // then filled, so they merge into one billowing plume), growing as they rise; old ones break up into a few dotted
+  // wisps and fade. A puff's height shows as a shift up the screen (BOAT_TILT), like the boat's own
+  function drawSteam(){
+    if(!steam.length) return;
+    const groups = [[new Path2D(), 0, 1], [new Path2D(), 0, STEAM_LIGHT + 0.25]], wisps = new Path2D();
+    for(const f of steam){
+      const y = f.y - f.z*BOAT_TILT;
+      if(!inView(f.x, y, 14)) continue;
+      const q = f.life/f.max, r = f.r*(1 + 3.5*q);
+      if(q < 0.62){ const gp = groups[f.a > 0.85 ? 0 : 1]; gp[0].moveTo(f.x + r, y); gp[0].arc(f.x, y, r, 0, Math.PI*2); gp[1]++; }
+      else for(let m=0;m<3;m++){ const a = f.seed + m*2.1, d = r*0.7, rr = r*0.45*(1 - q)/0.38 + 0.4;
+        wisps.moveTo(f.x + Math.cos(a)*d + rr, y + Math.sin(a)*d); wisps.arc(f.x + Math.cos(a)*d, y + Math.sin(a)*d, rr, 0, Math.PI*2); }
+    }
+    ctx.globalAlpha = 0.8; ctx.fillStyle = V(0.6); ctx.fill(wisps);                       // dissolving: dotted grey wisps
+    for(const [path, n, al] of groups){
+      if(!n) continue;
+      ctx.globalAlpha = al; ctx.strokeStyle = INKC; ctx.lineWidth = 1.6; ctx.stroke(path);   // the outline round the whole plume
+      ctx.fillStyle = PAPERC; ctx.fill(path);
+    }
+    ctx.globalAlpha = 1;
+  }
   function drawBoat(g){
     const B = g || boat;
     const LWK = 1;                      // line-width factor for the boat's details
@@ -9364,6 +9411,14 @@
       }
       L(FB);
     }
+    // the funnel of the little steam engine that turns the wheels, amidships: a short dark stack with a lit rim
+    if(STEAM_ON){
+      const fx = -4, top = FB + 7;
+      for(let z = FB; z < top; z += 1){ L(z); ctx.fillStyle = z > top - 2 ? INKC : V(0.25); ctx.beginPath(); ctx.arc(fx, 0, 2, 0, Math.PI*2); ctx.fill(); }
+      L(top); ctx.fillStyle = INKC; ctx.beginPath(); ctx.arc(fx, 0, 2.3, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = PAPERC; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.arc(fx, 0, 1.7, Math.PI*1.05, Math.PI*1.7); ctx.stroke();
+      L(FB);
+    }
     // at anchor the cloth is gathered up to the yard (only a look: the sail
     // itself stays set); it spreads again as soon as the anchor comes up
     {
@@ -9568,6 +9623,7 @@
     });
     layer(()=>{ for(const g of guests) if(inView(g.x, g.y, 40)) drawBoat(g); });   // the clients' boats
     drawBoat();
+    layer(()=>drawSteam());                                  // the funnel's steam, over the boat
     layer(()=>drawStreaks());
     layer(()=>{
       for(const g of gulls) if(inView(g.x,g.y,16)) drawGull(g);
