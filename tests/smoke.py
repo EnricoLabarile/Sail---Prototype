@@ -33,6 +33,22 @@ def press_dock(pg):
     pg.wait_for_function("!document.getElementById('dock-btn').classList.contains('hidden')", timeout=5000)
     pg.evaluate("document.getElementById('dock-btn').click()")
 
+def turn(pg, sel, turns, cw=True):
+    # a finger going round the middle of one of the wheels in the wheel's place (crank, windlass, winch)
+    import math
+    pg.wait_for_selector(sel + ':not(.away)', timeout=3000); pg.wait_for_timeout(350)
+    bb = pg.query_selector(sel).bounding_box(); cx, cy, r = bb['x']+bb['width']/2, bb['y']+bb['height']/2, bb['width']*0.3
+    n = int(24*turns) + 2; sgn = 1 if cw else -1
+    pg.mouse.move(cx + r, cy); pg.mouse.down()
+    for k in range(1, n + 1):
+        a = sgn*k*2*math.pi/24; pg.mouse.move(cx + r*math.cos(a), cy + r*math.sin(a)); pg.wait_for_timeout(12)
+    pg.mouse.up(); pg.wait_for_timeout(200)
+
+def haul_up(pg):
+    # the anchor button brings up the windlass in the wheel's place; turned round, it hauls the anchor up
+    pg.click('#anchor-btn'); turn(pg, '#windlass', 1.7)
+    pg.wait_for_timeout(300)
+
 def leave(pg):
     pg.keyboard.press('Space'); pg.wait_for_timeout(1300)          # weigh anchor
 
@@ -101,7 +117,7 @@ def bottle(pg):
 
 def trip(pg):
     global ORDERS; ORDERS = False
-    leave(pg)
+    haul_up(pg)                                                       # (this time on the windlass; later ones with Space)
     assert not pg.evaluate('!!__d.moor'), 'did not leave the home pier'
     eolus(pg)
     bottle(pg)
@@ -125,13 +141,14 @@ def trip(pg):
         rig = pg.evaluate('__d.rig')
         pg.click('.spare-sail'); pg.wait_for_timeout(200)
         assert pg.evaluate('__d.rig') != rig, 'the spare sail was not rigged'
-        # the sail badge: a tap furls the sail, holding it stows the sail in the hold
+        # the sail badge: a tap brings up the halyard winch, turned anticlockwise it lowers the sail; holding the badge stows it
         pg.click('#btn-list', force=True); pg.wait_for_timeout(900)
         pg.wait_for_selector('#sail-btn:not(.hidden)', timeout=3000)
         bb = pg.query_selector('#sail-btn').bounding_box(); cx, cy = bb['x']+bb['width']/2, bb['y']+bb['height']/2
         pg.mouse.move(cx, cy); pg.mouse.down(); pg.mouse.up(); pg.wait_for_timeout(200)
-        assert pg.evaluate('__d.boat.sailFurled'), 'a tap on the sail badge did not furl the sail'
-        pg.mouse.down(); pg.wait_for_timeout(1500); pg.mouse.up(); pg.wait_for_timeout(200)
+        turn(pg, '#winch', 1.2, cw=False)
+        assert pg.evaluate('__d.boat.hoist') < 0.05, 'the halyard winch did not lower the sail'
+        pg.mouse.move(cx, cy); pg.mouse.down(); pg.wait_for_timeout(1500); pg.mouse.up(); pg.wait_for_timeout(200)
         assert pg.evaluate('__d.rig') is None, 'holding the sail badge did not stow the sail'
 
 def orders(pg):

@@ -176,7 +176,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   and a smaller round button on the right (`.t-btn`: an arrow to go on, a cross on the last line, `TEXT.talk.next/end`;
   pale while typing, nudging once the line is out). A tap on it or the box (or Space/Enter) first shows the whole
   line, then goes on (`talkPress`, a page sound). While it's up the boat's controls are hidden (body class `talking`:
-  wheel, crank, anchor, sail badge, dock badge, logbook) and the anchor can't be weighed (`setAnchor` refuses).
+  the wheel and the three other wheels, the crank, sail and anchor buttons, dock badge, logbook) and the anchor can't be weighed (`setAnchor` refuses).
   While it's on, **Nordania is gone**: `VILLAGES` holds only Estolia, Sudia and Westa (its texts stay in `TEXT.villages.nord`,
   unused; sardines still swim in the north). The compass has one dot per village (`DOT_ANG` from each village's
   direction), the trade lanes are home to each village plus each village to the next round (`pairs`, any number), and
@@ -287,23 +287,37 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
 - **Controls:** wheel (drag in a circle; half a turn = full lock; its sounds, the spokes' knocks, the thump at full lock and the rub, × `WHEEL_VOL` 2 in Tuning). Inside the rim a dark backing (a radial grey 70→44, dithered to a deep dotted texture) fills the gaps between the spokes, so the light wood reads clearly; the wood
   is a mid grey (`WOOD`, `WOOD_SH`, `WOOD_RIM` in drawWheel) so it stands out from the pale sea.
   Layout (no panel behind the controls: a wooden dashboard was tried and dropped, it hid too much sea): compass over
-  logbook bottom left (compass at the top centre), wheel bottom centre; on the right the sail badge over the anchor button (bottom right).
+  logbook bottom left (compass at the top centre), wheel bottom centre; on the right, top to bottom, the crank button, the sail badge and the anchor button.
   No rudder gauge above the wheel (removed): the wheel's turn and the rudder on the boat show the helm.
-  **Anchor button** (`#anchor-btn`, round, on the right under the sail badge; `anchorUI`, every frame, written only when
-  its state changes): a **tap** drops or weighs the anchor (weighing it: `Sfx.anchor(false)`, the chain's links an octave lower than at first and louder, ×2.4, over a low rumble of chain running in);
-  inked at anchor, shaking while the chain comes in; over a fish bank (not fishing, not at anchor) its anchor turns into a fish
-  with a dashed ring (`bankHint`). The wheel no longer goes away at anchor.
-  **Hub of the wheel = wheel/crank switch**: held `HUB_HOLD` (0.15 s, a short press; was 0.32, then 0.05) it swaps the wheel for the crank
-  and back (`crankMode`, `setCrankMode`, body class `crank-mode`). The wheel **comes apart**, gently since it's swapped often (`wheelVis` eases to 0: the
-  spokes drift a little outward turning, the rim breaks into eight pieces that ease apart, all fading; the reverse puts it back) and the
-  crank **assembles** in its place (CSS class `away`, 0.3 s ease-out: the crank turned 12° and at 0.92, its rings ×1.1, its gear
-  ×0.85 turned 15°, all faded). On the wheel the hub also shows the spring's charge (`max(spring, windProg)`): a thick ink
-  arc round it over a dotted track, like the crank's ring, so it's known without swapping. In crank mode the wheel's canvas lets touches through to the crank, which handles a press on its centre
-  as the hub (`onCrankHub`); the hub (drawn on the wheel's canvas over the crank's centre) stays; the helm eases back
-  amidships. The hub is always drawn big (`hubScale` = 2); in wheel mode its grip is just the hub (`HUB_SAIL_R`), so the
-  spokes still steer. It's drawn like the compass, in greys then dithered: a light brass bezel (lit top left) with four
-  rivets round a light shaded face with a glint, and on it what a hold turns it into: a little crank (a cog, the arm out
-  to the upper right, the knob) on the wheel, a little ship's wheel on the crank.
+  **The wheel's place: four wheels, three buttons** (`helmMode`: 'wheel' | 'crank' | 'anchor' | 'sail'; `setHelmMode(m,
+  quiet)`; body class `helm-alt`). The steering wheel is the default and has no button in the middle (the old hub
+  switch, `HUB_HOLD`, is gone). On the right, top to bottom: **crank** (`#crank-btn`, 174 px up; a cog-and-arm icon and
+  round it the spring's charge, `max(spring, windProg)`, as a thick ink ring over a dotted track), **sail badge**
+  (`#sail-btn`) and **anchor** (`#anchor-btn`). Each brings its own wheel into the wheel's place, one at a time (the
+  active button is lifted ×1.1 with a ring of its own, class `on`); the same button again brings the steering wheel
+  back. The wheel **comes apart** gently (`wheelVis` eases to 0: the spokes drift outward turning, the rim breaks into
+  eight pieces, all fading; the reverse puts it back) and the other **assembles** (CSS `.mech` + `.away`, 0.3 s
+  ease-out: turned 12° and at 0.92, its rings ×1.1, its drum ×0.85 turned 15°, all faded). While it's away the helm
+  eases back amidships. The three are SVGs of the same build (`.mech`, 220 px, centred where the wheel's hub is,
+  viewBox ±46: a dashed track and a thick ring that fills, `.charge`, a turning group `.rot` with a drum and an arm
+  with a big knob): **the crank** (`#crank`, below), **the windlass** (`#windlass`: a dotted drum with a chain of
+  14 links round it, an anchor on a fixed cap in the middle; its ring is the chain hauled) and **the halyard winch**
+  (`#winch`: a drum with three coils of rope, a sail on the cap; its ring is how far the sail is up, `boat.hoist`; a
+  hint arrow both ways). The windlass and the winch are turned like the crank (`turner(el, onTurn)`: the angle the
+  finger goes round the middle; Enter/Space do a whole job at once).
+  **Anchor button**: a **tap** drops the anchor (`setAnchor(true)`) and brings up the windlass (already at anchor: just
+  the windlass; a tap while it's up puts the wheel back, the anchor stays down). **Turned clockwise** it hauls the
+  anchor up (`turnWindlass`: `ANCHOR_TURNS` 1.5 turns, `haul` 0..1; a ratchet: the other way does nothing and letting
+  go keeps what's hauled; a chain link clanks every twelfth of a turn, `Sfx.ratchet` at pitch 0.55, heavier every
+  third); once it's up (`hauled`) she's free, a thunk, and the steering wheel comes back. Weighed another way (Space,
+  still `setAnchor(false)` with the 0.9 s chain) the windlass goes too. The button is inked at anchor, shaking while
+  the chain comes in by Space; over a fish bank (not fishing, not at anchor) its anchor turns into a fish with a dashed
+  ring (`bankHint`). The wheel no longer goes away at anchor.
+  **Sail badge**: a tap brings up the **halyard winch**: clockwise hoists the sail, anticlockwise lowers it
+  (`turnWinch`: `SAIL_TURNS` 1 turn from all down to all up; `boat.hoist` 0..1, it stops at either end with a thunk;
+  ticks pitched up hoisting, down lowering). The drive follows it (`sailAmount` → the level × `hoist`) and so does the
+  cloth (`B.furl` → 1 − hoist; at anchor it's gathered anyway). `boat.sailFurled` is gone; a new voyage, a rigged or a
+  stowed sail start fully hoisted. Holding the badge still stows the sail (below). The badge is inked when it's all down.
   **The boat is a gozzo** (`hullPath`: beamy, pointed at both ends, no transom; white sides with a dark band along the top, the open hull inside a shade darker with a little planked deck at the bow and one at the stern, two thwarts, the tall stem post, the 'capone', rising over the bow and a short stern post carrying the rudder and tiller). **The boat in 3D** (`drawBoat`): she is a small 3D model projected each frame: a point (x, y, z) of hers (bow +x,
   starboard +y, up +z) is rolled (`B.roll`, + lifts starboard) and pitched (`B.pitch`, + lifts the bow), then seen from
   above with the view tilted toward the south (`BOAT_TILT` 0.45 in Tuning: height shows as a shift up the screen, like
@@ -369,7 +383,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   (Oar handles on the screen's sides, dragged down in time, were tried after a sketch and dropped: they didn't work
   well; the round button below is back.)
   **The spring and the crank** (`SPRING_PADDLES` in Tuning, on; false = the old rhythmic oar button below): the
-  paddle wheels run off a wound spring (`spring` 0..1). The crank (`#crank`, 220 px, in the wheel's place in crank mode, centred on the hub: a toothed gear
+  paddle wheels run off a wound spring (`spring` 0..1). The crank (`#crank`, 220 px, in the wheel's place in crank mode (the crank button), centred where the wheel's hub is: a toothed gear
   (16 teeth, a dotted pattern fill `#crank-dots`) turning with the arm, a hatched plate with three rivets, an arm with a
   big knob that turns by as much as the finger turns round the centre (it doesn't jump to where the finger lands; `crankA`, 0 = pointing up, reset to 0 when wound full and when it has sprung back), a dashed track and a thick ring round it that fills with the charge; the
   plate inked when full): a finger on it turned **clockwise** winds the spring (`windSpring`:
@@ -430,9 +444,9 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   the oars are shipped (power 0, they come in) and the button is greyed and dashed, untouchable (class `locked`,
   label `TEXT.oars.locked`); rowing is for slow going, e.g. close to the wind. Turning is `ROW_TURN_MULT` × quicker while rowing (`boat.rowing`). With manual oars the sail is never
   brailed up.
-  **Sail badge** (`#sail-btn`, a round badge on the right under the oar button, which sits above it; shown only while
-  a sail is rigged and the market is shut; `updateSailBtn`): it shows the rigged sail's icon. A **tap** sets or furls
-  the sail (`boat.sailFurled`: no drive, the cloth gathered to the yard, the badge inked). **Hold it**: past
+  **Sail badge** (`#sail-btn`, a round badge on the right between the crank and the anchor buttons; shown only while
+  a sail is rigged and the market is shut; `updateSailBtn`): it shows the rigged sail's icon. A **tap** brings up the
+  halyard winch (above). **Hold it**: past
   `SAIL_SHAKE_AFTER` (0.2 s) it shakes, and at `SAIL_STOW_HOLD` (1.1 s) the sail is unbent and stowed in the hold
   (`boat.rig` = null, toast "… stowed in the hold"; refused with "the hold is full" if no slot is free), leaving her on
   the oars. Both knobs in Tuning.
@@ -549,10 +563,10 @@ pip install playwright && playwright install chromium
 python tests/smoke.py
 ```
 The smoke test checks there are no JS errors (the market and the storehouse are opened from the quay badge,
-`press_dock`). With the orders off (now): the fair wind locked, a visit to the Temple of
+`press_dock`). With the orders off (now): the anchor hauled up on the windlass at the home pier (`haul_up`, `turn`), the fair wind locked, a visit to the Temple of
 Eolus (its spirit's talk tapped through) that gives it, then a trip to a village to buy a dish with foreign
 fish (after fishing up a message in a bottle, reading it: a cross on the chart, and throwing it overboard), back home
 (a fish left in the storehouse), a new day, the
-logbook shows it, and a tap on the spare sail rigs it. With `ORDERS_ON`: two days of orders (day 1: 3 fish home before
+logbook shows it, a tap on the spare sail rigs it, the sail badge's halyard winch turned anticlockwise lowers the sail, and holding the badge stows it. With `ORDERS_ON`: two days of orders (day 1: 3 fish home before
 dinner; day 2: the ordered dish bought at its village, everything brought home and delivered).
 For quick manual testing on the phone: `python -m http.server 8000` and open `http://<pc-ip>:8000` on the same Wi-Fi.
