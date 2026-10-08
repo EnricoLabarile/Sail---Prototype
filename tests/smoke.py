@@ -74,8 +74,13 @@ def eolus(pg):
     if not pg.evaluate('__d.RUINS.some(r=>r.eolus)'): return
     assert not pg.evaluate('__d.powerOwned'), 'the fair wind is not locked at the start'
     dock_at(pg, 'd.RUINS.find(r=>r.eolus).pier')
+    pg.wait_for_selector('#talk:not(.hidden)', timeout=5000)      # the spirit speaks: three lines, a tap each
+    for _ in range(12):
+        if pg.evaluate("document.getElementById('talk').classList.contains('hidden')"): break
+        pg.click('#talk .t-btn'); pg.wait_for_timeout(250)
+    assert pg.evaluate("document.getElementById('talk').classList.contains('hidden')"), 'the talk box did not close'
     assert pg.evaluate('__d.powerOwned'), 'Eolus did not give the fair wind'
-    pg.wait_for_timeout(5000)                                      # (his words run, then she may leave)
+    pg.wait_for_timeout(1500)
     leave(pg)
 
 def bottle(pg):

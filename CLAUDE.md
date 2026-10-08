@@ -165,7 +165,18 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
 - **Temple of Eolus** (`EOLUS_ON` in Tuning, world): it stands in the north, where **Nordania** was, as far out as the
   villages (`VILLAGE_DIST`, not nudged): a ruin island (`makeRuinIsland`, an entry in `RUINS` with `eolus: true`, stone
   pier, temple with columns) whose fog is always clear for `VILLAGE_CLEAR` like a village. Docking there the first time
-  gives the fair wind (`startRuin`: bell, flutter, `TEXT.eolus.gift`); later visits just say `TEXT.eolus.again`.
+  its spirit talks to you in the **talk box** (`TEXT.eolus.spirit`, portrait `ghost`, three lines `TEXT.eolus.giftLines`)
+  and, once the last line is dismissed, gives the fair wind (bell, buzz, toast `TEXT.eolus.gift`); later visits are one
+  line, `TEXT.eolus.again`. She can leave only once the talk is over.
+- **Talk box** (section "Talk box", reusable for any character; texts `TEXT.talk`): `openTalk(who, lines, onEnd)`, `who` =
+  `{name, portrait}` (name from TEXT, portrait a key of `PORTRAITS`: 80×80 SVG drawings on a dotted ground, `silhouette`
+  (a dark bust, the default) and `ghost` for now: add a key per character), `lines` strings or `{text, name?, portrait?}`
+  to hand over to another speaker mid-talk, `onEnd` called after the last line. A Stardew-style panel at the bottom
+  (`#talk`): the framed portrait on the left, the name and the words typed out (`DLG_CPS`, `Sfx.type`) in the middle,
+  and a smaller round button on the right (`.t-btn`: an arrow to go on, a cross on the last line, `TEXT.talk.next/end`;
+  pale while typing, nudging once the line is out). A tap on it or the box (or Space/Enter) first shows the whole
+  line, then goes on (`talkPress`, a page sound). While it's up the boat's controls are hidden (body class `talking`:
+  wheel, crank, anchor, sail badge, dock badge, logbook) and the anchor can't be weighed (`setAnchor` refuses).
   While it's on, **Nordania is gone**: `VILLAGES` holds only Estolia, Sudia and Westa (its texts stay in `TEXT.villages.nord`,
   unused; sardines still swim in the north). The compass has one dot per village (`DOT_ANG` from each village's
   direction), the trade lanes are home to each village plus each village to the next round (`pairs`, any number), and
@@ -282,7 +293,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   its state changes): a **tap** drops or weighs the anchor (weighing it: `Sfx.anchor(false)`, the chain's links an octave lower than at first and louder, ×2.4, over a low rumble of chain running in);
   inked at anchor, shaking while the chain comes in; over a fish bank (not fishing, not at anchor) its anchor turns into a fish
   with a dashed ring (`bankHint`). The wheel no longer goes away at anchor.
-  **Hub of the wheel = wheel/crank switch**: held `HUB_HOLD` (0.05 s, a quick press; was 0.32) it swaps the wheel for the crank
+  **Hub of the wheel = wheel/crank switch**: held `HUB_HOLD` (0.15 s, a short press; was 0.32, then 0.05) it swaps the wheel for the crank
   and back (`crankMode`, `setCrankMode`, body class `crank-mode`). The wheel **comes apart**, gently since it's swapped often (`wheelVis` eases to 0: the
   spokes drift a little outward turning, the rim breaks into eight pieces that ease apart, all fading; the reverse puts it back) and the
   crank **assembles** in its place (CSS class `away`, 0.3 s ease-out: the crank turned 12° and at 0.92, its rings ×1.1, its gear
@@ -532,7 +543,7 @@ python tests/smoke.py
 ```
 The smoke test checks there are no JS errors (the market and the storehouse are opened from the quay badge,
 `press_dock`). With the orders off (now): the fair wind locked, a visit to the Temple of
-Eolus that gives it, then a trip to a village to buy a dish with foreign
+Eolus (its spirit's talk tapped through) that gives it, then a trip to a village to buy a dish with foreign
 fish (after fishing up a message in a bottle, reading it: a cross on the chart, and throwing it overboard), back home
 (a fish left in the storehouse), a new day, the
 logbook shows it, and a tap on the spare sail rigs it. With `ORDERS_ON`: two days of orders (day 1: 3 fish home before

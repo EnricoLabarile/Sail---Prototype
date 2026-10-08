@@ -231,7 +231,7 @@
   const TUT_PAUSE = 1500;            // ms between one step and the next
   const TUT_COMPASS_T = 4500;        // ms the compass step lasts (no input needed)
   const TUT_DROP_WAIT = 3000, TUT_DROP_T = 3000;   // after the wheel: wait, then the optional drop-anchor tip for a while (ms)
-  const HUB_HOLD = 50;               // ms to hold the hub of the wheel (or of the crank) to swap the wheel and the crank
+  const HUB_HOLD = 150;              // ms to hold the hub of the wheel (or of the crank) to swap the wheel and the crank
 
   // -- Look --
   const UI_TINT = 0.7;               // how much the interface takes on the day/night colours (0 = never, 1 = like the world)
@@ -295,6 +295,11 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Talk box: when someone speaks to you, a box at the bottom with their framed portrait on the left (a silhouette for now), the words typed out, and a round button on the right to go on (an arrow) or end the talk (a cross). The boat\'s controls step aside meanwhile',
+      'Temple of Eolus: a ghostly spirit now talks to you in three lines, then gives you the fair wind',
+      'Wheel and crank: the centre button wants a slightly longer press again (0.15 s)',
+    ]},
+    {build: '2026-10-08 10:04', items: [
       'Wheel and crank: a quick press on the centre swaps them now (was a hold of a third of a second), and the swap is gentler, the crank and the wheel just easing apart and back',
       'On the wheel, a ring round the centre button shows how much charge the spring has left, the same as round the crank',
     ]},
@@ -306,11 +311,8 @@
     {build: '2026-10-07 23:38', items: [
       'Crank: the arm no longer jumps to where the finger lands; it rests pointing up, turns only as far as the finger turns, and points up again when fully wound or when it has sprung back',
     ]},
-    {build: '2026-10-07 23:27', items: [
-      'Storms: the screen flashes only when the bolt or its cloud is in view (a storm out of sight is only heard)',
-    ]},
   ];
-  const BUILD = '2026-10-08 10:04';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-08 11:18';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -517,11 +519,23 @@
     // the Temple of Eolus, in the north: the god of the winds gives the fair wind
     eolus: {
       name:    'Temple of Eolus',
-      gift:    'A warm breath stirs among the columns. Eolus lends you his wind: you\'ll find it in your cargo. Tap it, and for a while it will blow at your back.',
+      gift:    'Eolus\' fair wind is in your cargo',   // a toast once the spirit has spoken
       item:       'Fair wind: tap to call it',
       blowing:    'Fair wind: blowing, {s} s left',
       recharging: 'Fair wind: back in {s} s',
       again:   'The columns hum softly in the breeze. Eolus is watching over your sails.',
+      spirit:  'Spirit of the temple',                // the ghostly keeper who talks to you there (the name over the talk box)
+      // docking there the first time: the spirit's words, one line a tap (then the fair wind is given)
+      giftLines: [
+        'Sailor... few keels still find their way to these old stones. I am what is left of the one who kept this temple.',
+        'Eolus, lord of the winds, was honoured here. He has not forgotten those who cross the sea to find him.',
+        'Take his breath with you: you\'ll find it in your cargo. Call it, and for a while the wind will blow at your back.',
+      ],
+    },
+    // the talk box at the bottom of the screen (a portrait on the left, the words, a button on the right)
+    talk: {
+      next: 'Go on',                                 // the button's label while there's more to say
+      end:  'Farewell',                              // …and on the last line
     },
     ruins: {
       name:    'Ruins',
@@ -742,6 +756,27 @@
   #crank.full .plate{fill:var(--ink);} #crank.full .hatch{opacity:0;} #crank.full .arm{stroke:var(--paper);} #crank.full .hub{fill:var(--paper);}
   #crank.locked{cursor:default;} #crank.locked .rot, #crank.locked .hint{opacity:.45;}   /* wound full: locked until the spring has run down */
   #crank.hidden, body.at-market #crank{display:none;}
+  /* the talk box (Stardew style): a framed portrait on the left, the words typed out, a smaller round button on the right
+     (go on / farewell); while it's up, the boat's controls step aside */
+  #talk{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(14px + env(safe-area-inset-bottom,0px));
+    width:min(460px, calc(var(--fw) - 24px)); box-sizing:border-box; z-index:8; display:flex; align-items:center; gap:10px; padding:10px; cursor:pointer;}
+  #talk.hidden{display:none;}
+  #talk .t-portrait{flex:0 0 84px; height:84px; box-sizing:border-box; border:2px solid var(--ink); border-radius:3px; overflow:hidden;
+    box-shadow:inset 0 0 0 3px var(--paper), inset 0 0 0 4.5px var(--ink); background:var(--paper); align-self:flex-start;}
+  #talk .t-portrait svg{width:100%; height:100%; display:block;}
+  #talk .t-body{flex:1; min-width:0;}
+  #talk .t-name{font-weight:bold; font-style:italic; font-size:14px; margin-bottom:4px; letter-spacing:.02em;}
+  #talk .t-text{font-size:15px; line-height:1.4; min-height:5.6em;}
+  #talk .t-btn{flex:0 0 46px; height:46px; padding:0; border-radius:50%; background:var(--paper); color:var(--ink); border:2px solid var(--ink);
+    box-shadow:2px 3px 0 var(--ink); display:flex; align-items:center; justify-content:center; cursor:pointer;}
+  #talk .t-btn svg{width:22px; height:22px;} #talk .t-btn .ico-end{display:none;}
+  #talk.last .t-btn .ico-next{display:none;} #talk.last .t-btn .ico-end{display:block;}
+  #talk.typing .t-btn{opacity:.45; box-shadow:none;}                  /* still typing: a tap shows the whole line */
+  #talk:not(.typing) .t-btn svg{animation:talkNudge 1.1s ease-in-out infinite;}
+  @keyframes talkNudge{50%{transform:translateX(2px);}}
+  #talk .t-btn:active{transform:translate(1px,1px); box-shadow:1px 1px 0 var(--ink);}
+  body.talking #wheel, body.talking #crank, body.talking #anchor-btn, body.talking #sail-btn, body.talking #oar-ctl,
+  body.talking #dock-btn, body.talking #btn-list, body.talking #tut-tip{display:none !important;}
   body.crank-mode #wheel{pointer-events:none;}           /* the crank takes the touches; its hub (on the wheel's canvas) is handled by the crank */
   /* the sail badge, under the oar button: a tap sets or furls the sail, a long press stows it in the hold */
   #sail-btn{position:fixed; right:16px; bottom:calc(104px + env(safe-area-inset-bottom,0px)); width:56px; height:56px; z-index:5; padding:0;
@@ -1312,6 +1347,12 @@
     <div class="l-title"></div>
     <div class="l-text"></div>
     <div class="l-foot"></div>
+  </div>
+  <div id="talk" class="panel hidden" role="dialog" aria-live="polite">
+    <div class="t-portrait"></div>
+    <div class="t-body"><div class="t-name"></div><div class="t-text"></div></div>
+    <button class="t-btn" type="button"><svg class="ico-next" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4.5 L18 12 L8 19.5 Z" fill="currentColor"/></svg>
+      <svg class="ico-end" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6 L18 18 M18 6 L6 18" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></button>
   </div>
   <div id="dialog" class="panel hidden" role="status" aria-live="polite">
     <div id="dlg-title"></div>
@@ -2931,6 +2972,7 @@
   window.addEventListener('keydown', e=>{
     if(e.key==='ArrowLeft'||e.key==='a'||e.key==='A') turnLeft=true;
     if(e.key==='ArrowRight'||e.key==='d'||e.key==='D') turnRight=true;
+    if((e.code==='Space' || e.key==='Enter') && !e.repeat && talk){ e.preventDefault(); talkPress(); return; }   // talking: Space/Enter go on
     if(e.code==='Space' && !e.repeat){ e.preventDefault(); if(tutAt('anchor')) setAnchor(!anchored); }   // space: anchor (once the tutorial shows it)
   });
   window.addEventListener('keyup', e=>{
@@ -4446,6 +4488,7 @@
     Sfx.init(); Sfx.thunk(0.3); buzz([15, 30, 25]);
   }
   function setAnchor(on, instant){
+    if(talk && !instant) return;                                          // someone's talking to you: stay put
     if(tut === 'drop') tutSet('done');                                    // tutorial: they found it
     // at the quay with the text still running: the first press just finishes it
     if(!on && moor && moor.phase==='moored' && dlg && !dlg.ready){
@@ -5092,6 +5135,64 @@
   }
   // tap the box to show the whole text at once (the pause still runs)
   elDlg.addEventListener('pointerdown', ()=>{ if(dlg){ dlg.shown = dlg.text.length; elDlgText.textContent = dlg.text; } });
+
+  // ---------- Talk box: someone speaking to you, a line at a time ----------
+  // For anyone who talks to you (the Temple of Eolus' spirit is the first). openTalk(who, lines, onEnd):
+  //   who:   {name, portrait} — the name over the words (from TEXT) and a key of PORTRAITS (a framed picture on the left)
+  //   lines: the lines, in order; each a string (said by who) or {text, name?, portrait?} to switch speaker mid-talk
+  //   onEnd: called once the last line is dismissed (give a gift, open a market, start a quest...)
+  // The words are typed out; the round button on the right (and a tap on the box, Space or Enter) shows the whole
+  // line, then goes on to the next, and on the last (its icon a cross) ends it. While it's up the boat's controls are
+  // hidden (body class 'talking') and the anchor can't be weighed.
+  // portraits: 80×80 SVG drawings in ink on a dotted ground (for now dark silhouettes; add a key per character)
+  const PORTRAIT_BG = '<defs><pattern id="talk-dots" width="3" height="3" patternUnits="userSpaceOnUse"><rect width="3" height="3" fill="var(--paper)"/><circle cx="1" cy="1" r=".7" fill="var(--ink)"/></pattern>'
+    + '<pattern id="talk-hatch" width="3" height="3" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="3" height="3" fill="var(--paper)"/><line x1="0" y1="0" x2="0" y2="3" stroke="var(--ink)" stroke-width="1.6"/></pattern></defs>';
+  const BUST = 'M40 14 C30 14 25 22 25 31 C25 38 28 43 31 46 C20 49 12 57 9 80 H71 C68 57 60 49 49 46 C52 43 55 38 55 31 C55 22 50 14 40 14 Z';
+  const PORTRAITS = {
+    silhouette: '<rect width="80" height="80" fill="url(#talk-dots)"/><path d="'+BUST+'" fill="var(--ink)"/>',          // anyone, for now
+    ghost: '<rect width="80" height="80" fill="var(--paper)"/><path d="M40 12 C28 12 22 22 22 32 C22 40 26 45 29 48 C19 52 13 60 11 72 L16 68 L21 74 L27 68 L33 75 L40 68 L47 75 L53 68 L59 74 L64 68 L69 72 C67 60 61 52 51 48 C54 45 58 40 58 32 C58 22 52 12 40 12 Z" fill="url(#talk-hatch)" stroke="var(--ink)" stroke-width="1.6"/>'
+      + '<ellipse cx="34" cy="31" rx="3" ry="4" fill="var(--ink)"/><ellipse cx="46" cy="31" rx="3" ry="4" fill="var(--ink)"/>',   // a pale, ragged spirit (the temple's keeper)
+  };
+  const elTalk = document.getElementById('talk'), elTalkName = elTalk.querySelector('.t-name'), elTalkText = elTalk.querySelector('.t-text'), elTalkBtn = elTalk.querySelector('.t-btn'), elTalkPic = elTalk.querySelector('.t-portrait');
+  let talk = null, talkPicKey = '';
+  const talkText = l=> typeof l === 'string' ? l : l.text;
+  function talkLine(){
+    const t = talk, l = t.lines[t.i];
+    t.shown = 0; elTalkText.textContent = '';
+    if(typeof l !== 'string' && l.name) t.name = l.name;                     // a line may hand over to someone else
+    if(typeof l !== 'string' && l.portrait) t.portrait = l.portrait;
+    elTalkName.textContent = t.name;
+    const pk = PORTRAITS[t.portrait] ? t.portrait : 'silhouette';
+    if(pk !== talkPicKey){ talkPicKey = pk; elTalkPic.innerHTML = '<svg viewBox="0 0 80 80" aria-hidden="true">'+PORTRAIT_BG+PORTRAITS[pk]+'</svg>'; }
+    const last = t.i >= t.lines.length - 1;
+    elTalk.classList.toggle('last', last); elTalk.classList.add('typing');
+    const lbl = last ? TEXT.talk.end : TEXT.talk.next; elTalkBtn.title = lbl; elTalkBtn.setAttribute('aria-label', lbl);
+  }
+  function openTalk(who, lines, onEnd){
+    talk = {lines, i: 0, shown: 0, onEnd, name: who.name || '', portrait: who.portrait || 'silhouette'};
+    talkLine();
+    elTalk.classList.remove('hidden'); document.body.classList.add('talking');
+    toggleList(false);
+  }
+  function talkPress(){
+    const t = talk; if(!t) return;
+    Sfx.init();
+    const line = talkText(t.lines[t.i]);
+    if(t.shown < line.length){ t.shown = line.length; elTalkText.textContent = line; elTalk.classList.remove('typing'); return; }   // the whole line at once
+    if(t.i < t.lines.length - 1){ t.i++; talkLine(); Sfx.pageTurn(); buzz(8); return; }                                         // the next line
+    talk = null; elTalk.classList.add('hidden'); document.body.classList.remove('talking'); buzz(12);                           // the end
+    if(t.onEnd) t.onEnd();
+  }
+  function updateTalk(dt){
+    const t = talk; if(!t) return;
+    const line = talkText(t.lines[t.i]); if(t.shown >= line.length) return;
+    const before = Math.floor(t.shown);
+    t.shown = Math.min(line.length, t.shown + dt*DLG_CPS);
+    const n = Math.floor(t.shown);
+    if(n !== before){ elTalkText.textContent = line.slice(0, n); if(n%3===0 && line[n-1]!==' ') Sfx.type(); }
+    if(n >= line.length) elTalk.classList.remove('typing');
+  }
+  elTalk.addEventListener('click', e=>{ e.stopPropagation(); talkPress(); });
   const elGoTitle = document.getElementById('go-title');
   // ---------- Fishing ----------
   const NET_DROP = 1.4;          // net deploying animation
@@ -5540,8 +5641,12 @@
   function startRuin(r){
     if(r.eolus){                                          // the Temple of Eolus: the fair wind, once and for all
       Sfx.bell(); buzz([14,22,14,22,14,22,14,22,14,22,40]);
-      if(!powerOwned){ powerOwned = true; powerLeft = POWER_USES; powerUI(); elListBtn.classList.add('news'); openDialog(r.name, TEXT.eolus.gift, 5); }
-      else openDialog(r.name, TEXT.eolus.again, 3);
+      const spirit = {name: TEXT.eolus.spirit, portrait: 'ghost'};
+      if(!powerOwned) openTalk(spirit, TEXT.eolus.giftLines, ()=>{       // his words, then the gift
+        powerOwned = true; powerLeft = POWER_USES; powerUI(); elListBtn.classList.add('news');
+        Sfx.bell(); buzz([20,40,60]); toast(TEXT.eolus.gift);
+      });
+      else openTalk(spirit, [TEXT.eolus.again]);
       return;
     }
     const now = voyageTime;
@@ -6889,7 +6994,7 @@
     updateWhirlpools(dt);
     updateShark(dt);
     reveal(boat.x, boat.y);
-    updateDialog(dt);
+    updateDialog(dt); updateTalk(dt);
     updateBoonBadge();
     {
       const dinnerT = (DINNER_HOUR - DAWN_HOUR)/24, before = dayT;
@@ -6908,7 +7013,7 @@
     // camera focus: normally the boat; during a village visit it glides over
     // to frame the village below the dialog box, then back to the boat
     let fx = boat.x, fy = boat.y;
-    if(moor && (moor.pier.isl.village || moor.pier.isl.ruin) && (dlg || marketV)){
+    if(moor && (moor.pier.isl.village || moor.pier.isl.ruin) && (dlg || marketV || talk)){
       const vi = moor.pier.isl;
       fx = boat.x + wdx(vi.x, boat.x);
       fy = boat.y + wdy(vi.y, boat.y) - viewH()*0.03;
@@ -7049,7 +7154,7 @@
           dlg.shown = dlg.text.length; elDlgText.textContent = dlg.text; dlg.t = Math.max(dlg.t, dlg.pause); dlg.ready = true;
           moor.skipLock = true;
         }
-        const done = village ? true : ruin ? (dlg && dlg.ready && repaired) : repaired;
+        const done = village ? true : ruin ? (ruin.eolus ? !talk : dlg && dlg.ready) && repaired : repaired;
         if(ruin && done && !moor.told){                        // visit over and hull seen to
           moor.told = true; moor.rang = true;
           elDlgFoot.textContent = TEXT.pier.weighHint;
