@@ -158,7 +158,17 @@
   const FISH_SETTLE = 2;             // seconds stopped on a bank before the nets go over
   const BANK_LOOK = [4, 5, 1.45];    // every fish bank looks alike, whatever it holds: [fewest fish, most fish, their size] (dark, going round)
   const FISH_ANCHOR_SETTLE = 0.25;   // …or this long after dropping anchor on a bank
-  const FISH_TIME_MIN = 2, FISH_TIME_MAX = 4;   // seconds with the nets out before the haul
+  const FISH_TIME_MIN = 2, FISH_TIME_MAX = 4;   // seconds with the nets out before the haul (with REEL_ON: before the bite)
+  // the reel (a Stardew-style minigame): anchored on a bank, a bite, then a ring round the anchor hub is the reel: turned
+  // round clockwise it lifts the band up the bar on the right, let alone it sinks; keep the fish in the band to fill the meter
+  const REEL_ON = true;              // false: the old passive nets (stop on a bank and they haul it in by themselves)
+  const REEL_ZONE = 0.28;            // the band's height, a share of the bar
+  const REEL_PULL = 0.75;            // the band's lift per rad/s the reel turns (half a turn a second about holds it still)
+  const REEL_GRAVITY = 1.9;          // how fast it sinks when the reel is left alone (bar heights per s²)
+  const REEL_FILL = 0.3;             // meter gained per second with the fish in the band
+  const REEL_DRAIN = 0.15;           // …and lost per second with it out (empty: it gets away)
+  const REEL_START = 0.35;           // the meter at the bite
+  const REEL_FISH = {sarde: 0.6, sgombri: 0.8, triglie: 1, orate: 1.3};   // how wild each kind is (1 = middling): darts quicker and farther
   const COIN_LOCAL = 1;              // a village pays this for its own kind of fish
   const COIN_FOREIGN = 3;            // …and this for fish from other waters
   const DISH_PRICE = 6;              // coins per specialty dish
@@ -304,6 +314,11 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Fishing is a minigame now: drop anchor on a fish bank and wait for a bite; a reel appears round the anchor hub (where the wheel was) and a bar on the right',
+      'Turn the reel round clockwise to lift the band up the bar, let go and it sinks: keep the fish inside the band to fill the meter beside it; empty, the fish gets away',
+      'Each kind fights differently (sea bream the wildest, sardines the calmest); stopping on a bank without the anchor no longer fishes (bottles still come up in the net as before)',
+    ]},
+    {build: '2026-10-08 21:29', items: [
       'Biomes: the West of the map (past home waters, out to the far side) is now the stormy West, thick with storm clouds that hang over it and with whirlpools (about 7 storms and 20 whirlpools round any spot there, against 1 or 2 elsewhere)',
       'First screen, World: two new knobs, WEST_STORM_CLOUDS (16) and WEST_WHIRLS (40)',
     ]},
@@ -313,12 +328,8 @@
     {build: '2026-10-08 19:35', items: [
       'Crank: smaller (about a fifth smaller than before), and the curved arrow above it is gone',
     ]},
-    {build: '2026-10-08 19:28', items: [
-      'Logbook: the compass now lives inside it, on the right page of the first spread (no longer at the top of the screen); a tap still turns it to the watch',
-      'Logbook: the sea chart fits on one page, and the wind card (the polar diagram) is on the page facing it',
-    ]},
   ];
-  const BUILD = '2026-10-08 21:29';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-08 21:56';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -397,6 +408,8 @@
       catch:    '+{n} {fish}',
       holdFull: 'the hold is full',
       netsIn:   'nets hauled in',
+      bite:     'a bite! reel it in',
+      gotAway:  'it got away!',
       overboard: '{item} overboard',
       surf:     'surf!',
       fairWind: 'fair wind!',
@@ -446,6 +459,7 @@
       locked: 'Oars shipped: the sail drives her fast enough',
       crank: 'The spring: turn the crank round clockwise to wind it; the paddle wheels then drive her until it runs down',
       helm:  'Helm: drag round to steer. Centre: hold to drop or weigh anchor',
+      reel:  'The reel: turn it round clockwise to lift the band, keep the fish inside it',
     },
     // home's storehouse: drag goods between the hold and the store (what's left here waits at home)
     store: {
@@ -753,6 +767,30 @@
   #crank.full .plate{fill:var(--ink);} #crank.full .hatch{opacity:0;} #crank.full .arm{stroke:var(--paper);} #crank.full .hub{fill:var(--paper);}
   #crank.locked{cursor:default;} #crank.locked .rot{opacity:.45;}   /* wound full: locked until the spring has run down */
   #crank.hidden, body.at-market #crank{display:none;}
+  /* the reel (fishing): a ring round the anchor hub, where the wheel was (its middle left open: the hub still weighs anchor) */
+  #reel{position:fixed; left:calc(50% - 100px); bottom:calc(17px + env(safe-area-inset-bottom,0px)); width:200px; height:200px;
+    z-index:7; pointer-events:none; color:var(--ink); transition:opacity .25s, transform .25s;}
+  #reel svg{width:100%; height:100%; display:block; overflow:visible;}
+  #reel .grip{fill:none; stroke:transparent; stroke-width:40; pointer-events:stroke; cursor:grab; touch-action:none;}
+  #reel .rim{fill:url(#reel-dots); stroke:var(--ink); stroke-width:2; fill-rule:evenodd;}
+  #reel .teeth{fill:none; stroke:var(--ink); stroke-width:5; stroke-dasharray:2 8.08;}   /* 48 teeth round r 77 */
+  #reel .line{fill:none; stroke:var(--ink); stroke-width:1; opacity:.7;}
+  #reel .arm{stroke:var(--ink); stroke-width:6; stroke-linecap:round;}
+  #reel .knob{fill:var(--paper); stroke:var(--ink); stroke-width:2.4;}
+  #reel .knob-in{fill:var(--ink);}
+  #reel.hidden{opacity:0; transform:scale(.8); visibility:hidden;}
+  /* …and the bar on the right: the band the reel lifts, the fish darting up and down, the meter beside it */
+  #fishbar{position:fixed; right:14px; bottom:calc(28px + env(safe-area-inset-bottom,0px)); width:52px; height:250px; z-index:7;
+    pointer-events:none; transition:opacity .25s;}
+  #fishbar.hidden{opacity:0; visibility:hidden;}
+  #fishbar .fb-track{position:absolute; left:0; top:0; bottom:0; width:32px; border:2px solid var(--ink); border-radius:6px;
+    background-color:var(--paper); background-image:radial-gradient(var(--ink) .7px, transparent 1px); background-size:4px 4px; overflow:hidden;}
+  #fishbar .fb-zone{position:absolute; left:2px; right:2px; border:2px solid var(--ink); border-radius:3px; background:var(--paper);}
+  #fishbar.in .fb-zone{background:repeating-linear-gradient(45deg, var(--paper) 0 3px, color-mix(in srgb, var(--ink) 30%, var(--paper)) 3px 5px);}
+  #fishbar .fb-fish{position:absolute; left:3px; width:22px; height:14px; margin-bottom:-7px; color:var(--ink);}
+  #fishbar .fb-meter{position:absolute; right:0; top:0; bottom:0; width:12px; border:2px solid var(--ink); border-radius:4px; background:var(--paper); overflow:hidden;}
+  #fishbar .fb-fill{position:absolute; left:0; right:0; bottom:0; background:var(--ink);}
+  body.at-market #reel, body.talking #reel, body.at-market #fishbar, body.talking #fishbar{display:none;}
   /* the talk box (Stardew style): a framed portrait on the left, the words typed out, a smaller round button on the right
      (go on / farewell); while it's up, the boat's controls step aside */
   #talk{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(14px + env(safe-area-inset-bottom,0px));
@@ -1297,6 +1335,15 @@
     <circle class="track" r="19.5"/><circle class="charge" r="19.5" stroke-dasharray="0 123" transform="rotate(-90)"/>
     <g class="rot"><line class="arm" x1="0" y1="0" x2="0" y2="-26"/><circle class="knob" cy="-26" r="8.5"/><circle class="rivet" cy="-26" r="2.4"/></g>
     <circle class="hub" r="4.5"/></svg></div>
+  <div id="reel" class="hidden"><svg viewBox="-100 -100 200 200" aria-hidden="true">
+    <defs><pattern id="reel-dots" width="3" height="3" patternUnits="userSpaceOnUse"><rect width="3" height="3" fill="var(--paper)"/><circle cx="1" cy="1" r=".7" fill="var(--ink)"/></pattern></defs>
+    <path class="rim" d="M0 -92 A92 92 0 1 1 0 92 A92 92 0 1 1 0 -92 Z M0 -62 A62 62 0 1 0 0 62 A62 62 0 1 0 0 -62 Z"/>
+    <circle class="line" r="66"/><circle class="line" r="88"/>
+    <g class="rot"><circle class="teeth" r="77"/><line class="arm" x1="0" y1="-64" x2="0" y2="-84"/><circle class="knob" cy="-84" r="12"/><circle class="knob-in" cy="-84" r="3.5"/></g>
+    <circle class="grip" r="77" role="button" tabindex="0"/></svg></div>
+  <div id="fishbar" class="hidden"><div class="fb-track"><div class="fb-zone"></div>
+    <svg class="fb-fish" viewBox="0 0 22 14" aria-hidden="true"><path d="M2 7 C5 1.5 13 1.5 16 7 C13 12.5 5 12.5 2 7 Z M15 7 L21 2.5 L21 11.5 Z" fill="currentColor"/><circle cx="5.5" cy="6" r="1.2" fill="var(--paper)"/></svg></div>
+    <div class="fb-meter"><div class="fb-fill"></div></div></div>
   <div id="oar-ctl" class="hidden" role="button" tabindex="0">
     <div class="oar-mark"></div>
     <div class="oar-disc"><svg viewBox="-28 -28 56 56" aria-hidden="true"><g class="oar-rot">
@@ -5171,10 +5218,10 @@
       if(b !== fullSaid) fullSaid = null;
       if(b && holdFull()){                                // no room: the nets stay aboard (said once per bank)
         settleT = 0;
-        if(!fullSaid && (atAnchor || boat.speed < FISH_STOP)){ fullSaid = b; popups.push({x:boat.x, y:boat.y-24, text:TEXT.popups.holdFull, life:1.6, max:1.6}); buzz(20); }
+        if(!fullSaid && (atAnchor || (!(REEL_ON && fb) && boat.speed < FISH_STOP))){ fullSaid = b; popups.push({x:boat.x, y:boat.y-24, text:TEXT.popups.holdFull, life:1.6, max:1.6}); buzz(20); }
         return;
       }
-      if(b && (atAnchor || boat.speed < FISH_STOP)){
+      if(b && (atAnchor || (!(REEL_ON && fb) && boat.speed < FISH_STOP))){   // (with the reel a bank is fished only at anchor)
         settleT += dt;
         if(settleT >= (atAnchor ? FISH_ANCHOR_SETTLE : FISH_SETTLE)){
           // the net is thrown at the fish: toward the bank's middle (a side if right on top of it)
@@ -5195,6 +5242,41 @@
     // nets act like a sea anchor: the boat stays put while fishing
     boat.speed *= Math.exp(-3*dt); boat.kx *= Math.exp(-3*dt); boat.ky *= Math.exp(-3*dt);
     if(f.phase==='drop' && f.t>=NET_DROP){ f.phase='wait'; f.t=0; }
+    else if((f.phase==='wait' || f.phase==='game') && REEL_ON && f.bank && !(anchored && weighT <= 0)){   // anchor weighed: the line comes in
+      f.phase='cancel'; f.t=0; popups.push({x:boat.x, y:boat.y-22, text:TEXT.popups.netsIn, life:1.3, max:1.3});
+    }
+    else if(f.phase==='wait' && REEL_ON && f.bank && f.t>=f.dur){   // a bite: the reel takes the wheel's place
+      f.phase='game'; f.t=0;
+      const d = REEL_FISH[FISH[f.bank.sec].key] || 1;
+      f.game = {z:0, v:0, f:rand(0.25, 0.5), fv:0, tgt:0.5, tt:0, p:REEL_START, d, w:0, inZ:false};
+      popups.push({x:boat.x, y:boat.y-24, text:TEXT.popups.bite, life:1.6, max:1.6});
+      Sfx.splash(); buzz([12,40,12,40,20]);
+    }
+    else if(f.phase==='game'){
+      const g = f.game;
+      // the fish: darts toward a new depth every so often, quicker and farther the wilder its kind
+      g.tt -= dt;
+      if(g.tt <= 0){ g.tgt = Math.max(0.03, Math.min(0.97, g.f + rand(-1, 1)*(0.25 + 0.45*g.d))); g.tt = rand(0.5, 1.6)/g.d; }
+      g.fv += ((g.tgt - g.f)*14*g.d - g.fv*5)*dt; g.f += g.fv*dt;
+      if(g.f < 0.02){ g.f = 0.02; g.fv = Math.abs(g.fv)*0.3; } else if(g.f > 0.98){ g.f = 0.98; g.fv = -Math.abs(g.fv)*0.3; }
+      // the band: the reel lifts it, it sinks on its own; a little bounce on the floor, stopped at the top
+      g.w += ((dt > 0 ? reelMove/dt : 0) - g.w)*Math.min(1, dt*12);
+      g.v = Math.max(-2.5, Math.min(2.5, g.v + (REEL_PULL*g.w - REEL_GRAVITY)*dt));
+      g.z += g.v*dt;
+      if(g.z < 0){ g.z = 0; g.v = g.v < -0.4 ? -g.v*0.3 : 0; }
+      if(g.z > 1 - REEL_ZONE){ g.z = 1 - REEL_ZONE; g.v = Math.min(0, g.v); }
+      const inZ = g.f >= g.z && g.f <= g.z + REEL_ZONE;
+      if(g.inZ && !inZ) buzz(8);                             // it slips out of the band: a little tug
+      g.inZ = inZ;
+      g.p += (inZ ? REEL_FILL : -REEL_DRAIN)*dt;
+      if(g.p >= 1){ f.phase='haul'; f.t=0; catchFish(f); }
+      else if(g.p <= 0){                                     // it got away: the school scatters
+        f.phase='cancel'; f.t=0;
+        popups.push({x:boat.x, y:boat.y-24, text:TEXT.popups.gotAway, life:1.6, max:1.6});
+        Sfx.splash(); buzz([30,40,30]);
+        f.bank.state='scatter'; f.bank.t=0;
+      }
+    }
     else if(f.phase==='wait'){
       if(steering){ f.phase='cancel'; f.t=0; popups.push({x:boat.x, y:boat.y-22, text:TEXT.popups.netsIn, life:1.3, max:1.3}); }
       else if(f.t>=f.dur && f.bottle){                  // a bottle in the net: into the hold, and another drifts in elsewhere
@@ -5207,8 +5289,11 @@
         Sfx.pickup(); buzz([15,50,25]);
         elListBtn.classList.add('news');                // the logbook shimmers: something to read
       }
-      else if(f.t>=f.dur){
-        f.phase='haul'; f.t=0;
+      else if(f.t>=f.dur){ f.phase='haul'; f.t=0; catchFish(f); }
+    }
+    else if((f.phase==='haul' || f.phase==='cancel') && f.t>=NET_HAUL){ fishing = null; settleT = 0; }
+  }
+  function catchFish(f){
         let n = FISH_CATCH_MIN + Math.floor(Math.random()*(FISH_CATCH_MAX - FISH_CATCH_MIN + 1));
         if(boonFish>0){ n *= 2; boonFish--; }
         n = Math.max(0, Math.min(n, HOLD_MAX - slotsUsed()));    // only as many as the hold has room for
@@ -5218,17 +5303,52 @@
         Sfx.pickup();
         buzz([15,50,25]);                           // fish in the boat
         f.bank.state='scatter'; f.bank.t=0;            // the school disperses
-      }
-    }
-    else if((f.phase==='haul' || f.phase==='cancel') && f.t>=NET_HAUL){ fishing = null; settleT = 0; }
   }
   // 0..1 how far the net is out
   function netAmount(){
     if(!fishing) return 0;
     const f = fishing;
     if(f.phase==='drop') return Math.min(1, f.t/NET_DROP);
-    if(f.phase==='wait') return 1;
+    if(f.phase==='wait' || f.phase==='game') return 1;
     return Math.max(0, 1 - f.t/NET_HAUL);
+  }
+  // ---- the reel: a ring round the anchor hub, turned clockwise (a ratchet: back does nothing) while a fish is on ----
+  const elReel = document.getElementById('reel'), elReelGrip = elReel.querySelector('.grip'), elReelRot = elReel.querySelector('.rot');
+  const elFishbar = document.getElementById('fishbar'), elFbZone = elFishbar.querySelector('.fb-zone'),
+        elFbFish = elFishbar.querySelector('.fb-fish'), elFbFill = elFishbar.querySelector('.fb-fill');
+  let reelMove = 0, reelA = 0, reelTick = 0, reelDrag = null, reelKey = false, reelShown = false;
+  elReelGrip.setAttribute('aria-label', TEXT.oars.reel); elReel.title = TEXT.oars.reel;
+  const reelAngle = ev=>{ const r = elReel.getBoundingClientRect(); return Math.atan2(ev.clientY - (r.top + r.height/2), ev.clientX - (r.left + r.width/2)); };
+  const reelTurn = da=>{
+    if(!(da > 0)) return;
+    reelMove += da; reelA += da; reelTick += da;
+    while(reelTick >= Math.PI/12){ reelTick -= Math.PI/12; Sfx.ratchet(CRANK_VOL*0.35, false, 0, 1.6); }   // a light click every 1/24 turn
+  };
+  elReelGrip.addEventListener('pointerdown', ev=>{ ev.preventDefault(); Sfx.init(); reelDrag = {id: ev.pointerId, a: reelAngle(ev)}; try{ elReelGrip.setPointerCapture(ev.pointerId); }catch(e){} });
+  elReelGrip.addEventListener('pointermove', ev=>{
+    const d = reelDrag; if(!d || ev.pointerId !== d.id) return;
+    const a = reelAngle(ev), da = norm(a - d.a); d.a = a;
+    if(Math.abs(da) < 1.5) reelTurn(da);
+  });
+  const reelUp = ev=>{ if(reelDrag && ev.pointerId === reelDrag.id) reelDrag = null; };
+  elReelGrip.addEventListener('pointerup', reelUp); elReelGrip.addEventListener('pointercancel', reelUp);
+  window.addEventListener('keydown', e=>{ if(e.key==='ArrowUp' || e.key==='w' || e.key==='W') reelKey = true; });   // (keys: held, it turns the reel)
+  window.addEventListener('keyup', e=>{ if(e.key==='ArrowUp' || e.key==='w' || e.key==='W') reelKey = false; });
+  function updateReel(dt){
+    const g = fishing && fishing.phase==='game' ? fishing.game : null;
+    if(!!g !== reelShown){
+      reelShown = !!g;
+      elReel.classList.toggle('hidden', !g); elFishbar.classList.toggle('hidden', !g);
+      if(!g) reelDrag = null;
+    }
+    if(reelKey && g) reelTurn(5*dt);
+    reelMove = 0;
+    if(!g) return;
+    elReelRot.setAttribute('transform', 'rotate(' + (reelA*180/Math.PI).toFixed(1) + ')');
+    elFbZone.style.bottom = (g.z*100).toFixed(2) + '%'; elFbZone.style.height = (REEL_ZONE*100).toFixed(2) + '%';
+    elFbFish.style.bottom = (g.f*100).toFixed(2) + '%';
+    elFbFill.style.height = (Math.max(0, Math.min(1, g.p))*100).toFixed(1) + '%';
+    elFishbar.classList.toggle('in', g.inZ);
   }
 
   // ---------- Fog of war ----------
@@ -7247,6 +7367,7 @@
     else elHint.classList.add('hidden');              // at a quay: no hint window
 
     updateFishing(dt);
+    updateReel(dt);
     updateGuests(dt);
     if(homeStageFor(satisfaction) !== homeStage){ homeStage = homeStageFor(satisfaction); rebakeHome(); }   // the masseria changes with the mood
     updateRollers(dt);

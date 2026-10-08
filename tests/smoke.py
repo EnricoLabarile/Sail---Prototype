@@ -7,7 +7,7 @@ With the orders off: a trip to a village to buy a dish with foreign fish, back h
 a new day, and the logbook (day and cargo) opens.
 Run from the project folder:  python tests/smoke.py
 """
-import pathlib, sys
+import math, pathlib, sys
 from playwright.sync_api import sync_playwright
 
 GAME = pathlib.Path(__file__).resolve().parent.parent / 'index.html'
@@ -18,7 +18,7 @@ HOOK = ('requestAnimationFrame(loop);\n})();',
         'get order(){return order},get sat(){return satisfaction},satOn:SATISFACTION_ON,get moor(){return moor},'
         'get dayT(){return dayT},set dayT(v){dayT=v},'
         'dinnerT:(DINNER_HOUR-DAWN_HOUR)/24,ordersOn:ORDERS_ON,get dayNo(){return dayNo},'
-        'RUINS,get powerOwned(){return powerOwned},get rig(){return boat.rig},bottles,bottleHold,marks,homeStore,'
+        'RUINS,get powerOwned(){return powerOwned},get rig(){return boat.rig},bottles,bottleHold,marks,homeStore,banks,get fishing(){return fishing},REEL_ON,REEL_ZONE,'
         'unmoor(){moor=null;moorLock=null;}};'
         'tutSet("done");'                  # skip the tutorial: the test drives the controls directly
         'requestAnimationFrame(loop);\n})();')
@@ -99,11 +99,41 @@ def bottle(pg):
     pg.click('#btn-list', force=True); pg.wait_for_timeout(900)
     leave(pg)
 
+def reel(pg):
+    # anchored on a fish bank: a bite, the reel round the hub and the bar; turning the reel lifts the band;
+    # kept on the fish the meter fills and it's caught; left alone it gets away
+    if not pg.evaluate('__d.REEL_ON'): return
+    def anchor_on_bank():
+        pg.evaluate("()=>{const d=__d; d.unmoor(); const b=d.banks.find(b=>b.state==='live'); d.boat.x=b.x; d.boat.y=b.y; d.boat.speed=0;}")
+        pg.keyboard.press('Space')
+        pg.wait_for_function("__d.fishing && __d.fishing.phase==='game'", timeout=9000)
+        assert pg.evaluate("!document.getElementById('reel').classList.contains('hidden')"), 'the reel did not show'
+    anchor_on_bank()
+    fish0 = pg.evaluate('Object.values(__d.counts).reduce((a,n)=>a+n,0)')
+    pg.evaluate("()=>{const t=setInterval(()=>{const f=__d.fishing; if(!f||f.phase!=='game'){clearInterval(t);return;} const g=f.game; window.__zmax=Math.max(window.__zmax||0, g.z); g.f=g.z+__d.REEL_ZONE/2; g.fv=0;},16);}")
+    r = pg.evaluate("(()=>{const r=document.querySelector('#reel').getBoundingClientRect(); return [r.left+r.width/2, r.top+r.height/2];})()")
+    pg.mouse.move(r[0], r[1]-77); pg.mouse.down()
+    for i in range(1, 50):
+        a = -math.pi/2 + i*0.25
+        pg.mouse.move(r[0] + 77*math.cos(a), r[1] + 77*math.sin(a)); pg.wait_for_timeout(16)
+    pg.mouse.up()
+    pg.wait_for_function("!__d.fishing || __d.fishing.phase!=='game'", timeout=8000)
+    assert pg.evaluate('window.__zmax') > 0.15, 'turning the reel did not lift the band'
+    assert pg.evaluate('Object.values(__d.counts).reduce((a,n)=>a+n,0)') > fish0, 'the fish kept in the band was not caught'
+    leave(pg); pg.wait_for_timeout(1200)
+    anchor_on_bank()
+    pg.evaluate("()=>{const t=setInterval(()=>{const f=__d.fishing; if(!f||f.phase!=='game'){clearInterval(t);return;} const g=f.game; g.f=0.95; g.tgt=0.95; g.fv=0;},16);}")
+    pg.wait_for_function("!__d.fishing || __d.fishing.phase!=='game'", timeout=8000)
+    assert pg.evaluate("__d.fishing && __d.fishing.phase==='cancel'"), 'the fish left alone did not get away'
+    assert pg.evaluate("document.getElementById('reel').classList.contains('hidden')"), 'the reel stayed up'
+    leave(pg)
+
 def trip(pg):
     global ORDERS; ORDERS = False
     leave(pg)
     assert not pg.evaluate('!!__d.moor'), 'did not leave the home pier'
     eolus(pg)
+    reel(pg)
     bottle(pg)
     d = pg.evaluate('__d.VILLAGES[0].dishes[0]')
     buy_dish(pg, 0, d['name'], d['icon'])

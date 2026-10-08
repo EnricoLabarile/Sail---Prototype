@@ -218,7 +218,18 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   the straight line (`routeSpot`), so the fish lead from place to place; home waters have all kinds and plenty of banks (`HOME_BANKS` = 9 in the smaller world, same density as 18 before; refilled as they are fished).
   **Every bank looks alike** (`BANK_LOOK` in Tuning: 4–5 big dark fish going round over the darker water, the old sea
   bream's look), so what's in it is only known when the net comes up.
-  Fishing: stop on a bank for 2 s and the nets go over; drop anchor on a bank and they go over after 0.25 s.
+  Fishing: drop anchor on a bank and the net goes over after 0.25 s (with `REEL_ON` only at anchor; off, stopping on a
+  bank for 2 s fishes too, and the net hauls in by itself). **The reel** (Stardew-style minigame, `REEL_ON` in Tuning;
+  `updateFishing` phase 'game', `fishing.game`, `updateReel`, `catchFish`): after a bite (`FISH_TIME_MIN–MAX` s, popup
+  `TEXT.popups.bite`) a **reel** (`#reel`, an SVG ring round the anchor hub where the wheel was, 200 px, its middle open so
+  the hub still weighs anchor; only the ring takes the finger, `.grip`) and a **bar** on the right (`#fishbar`: a dotted
+  track, the band `.fb-zone`, the fish `.fb-fish`, the meter `.fb-fill`) appear. Turning the reel clockwise (a ratchet,
+  a light click every 1/24 turn; ArrowUp/W held turns it too) lifts the band (`REEL_PULL` × its eased rad/s against
+  `REEL_GRAVITY`; a bounce on the floor), let alone it sinks; the fish darts to new depths, wilder per kind
+  (`REEL_FISH`: sardines 0.6 … sea bream 1.3, so the fight hints at the kind). Fish in the band (`REEL_ZONE` 0.28 of the
+  bar): the meter fills (`REEL_FILL`), out of it drains (`REEL_DRAIN`, a tug buzz as it slips out), starting at
+  `REEL_START`; full = the haul (as before), empty = "it got away!" and the bank scatters. Weighing anchor ends it.
+  Bottles keep the passive net.
   **Hold: `HOLD_MAX` = 9 slots**, each fish or dish takes one, and the spare sail one (`slotsUsed` = `fishAboard` + `dishesAboard` + `spareSlots`; the gifts
   are kept apart, below the slots, and take none): with a full hold the nets stay aboard (a popup "the hold is full",
   once per bank; the hub doesn't turn into a fish), and a haul brings in only what fits. The Cargo shows the slots as a
