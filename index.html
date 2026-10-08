@@ -297,6 +297,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Crank: smaller (about a fifth smaller than before), and the curved arrow above it is gone',
+    ]},
+    {build: '2026-10-08 19:28', items: [
       'Logbook: the compass now lives inside it, on the right page of the first spread (no longer at the top of the screen); a tap still turns it to the watch',
       'Logbook: the sea chart fits on one page, and the wind card (the polar diagram) is on the page facing it',
     ]},
@@ -309,11 +312,8 @@
     {build: '2026-10-08 18:47', items: [
       'Crank: the black ring with the spring\'s charge is now smaller and inside the crank, round its plate under the arm, instead of all round it',
     ]},
-    {build: '2026-10-08 18:32', items: [
-      'At anchor (and moored) the crank is hidden and can\'t be used; it comes back as soon as the anchor is up',
-    ]},
   ];
-  const BUILD = '2026-10-08 19:28';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-08 19:35';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -732,7 +732,7 @@
   #oar-ctl{position:fixed; right:12px; bottom:calc(178px + env(safe-area-inset-bottom,0px)); width:64px; height:74px; z-index:5; touch-action:none; cursor:pointer;}
   /* the crank (SPRING_PADDLES): a paper disc with an arm and a handle that follows the finger round; the ring round it
      fills as the spring is wound, and empties as the wheels use it */
-  #crank{position:fixed; right:6px; bottom:calc(196px + env(safe-area-inset-bottom,0px)); width:132px; height:132px; z-index:5; touch-action:none; cursor:grab; color:var(--ink);}
+  #crank{position:fixed; right:30px; bottom:calc(220px + env(safe-area-inset-bottom,0px)); width:84px; height:84px; z-index:5; touch-action:none; cursor:grab; color:var(--ink);}
   #crank svg{width:100%; height:100%; display:block; overflow:visible;}
   #crank .disc{fill:var(--paper); stroke:var(--ink); stroke-width:2;}
   #crank .gear{fill:url(#crank-dots); stroke:var(--ink); stroke-width:1.6; stroke-linejoin:round;}
@@ -745,9 +745,8 @@
   #crank .arm{stroke:var(--ink); stroke-width:4; stroke-linecap:round;}
   #crank .knob{fill:var(--paper); stroke:var(--ink); stroke-width:2.2;}
   #crank .hub{fill:var(--ink);}
-  #crank .hint{fill:none; stroke:var(--ink); stroke-width:1.2; opacity:.45;}
   #crank.full .plate{fill:var(--ink);} #crank.full .hatch{opacity:0;} #crank.full .arm{stroke:var(--paper);} #crank.full .hub{fill:var(--paper);}
-  #crank.locked{cursor:default;} #crank.locked .rot, #crank.locked .hint{opacity:.45;}   /* wound full: locked until the spring has run down */
+  #crank.locked{cursor:default;} #crank.locked .rot{opacity:.45;}   /* wound full: locked until the spring has run down */
   #crank.hidden, body.at-market #crank{display:none;}
   /* the talk box (Stardew style): a framed portrait on the left, the words typed out, a smaller round button on the right
      (go on / farewell); while it's up, the boat's controls step aside */
@@ -1284,7 +1283,7 @@
     <div id="mk-foot"></div>
   </div>
   <!-- the oar handle, right side: slide it down to pull the oars (rowing by hand) -->
-  <div id="crank" class="hidden" role="button" tabindex="0"><svg viewBox="-46 -46 92 92" aria-hidden="true">
+  <div id="crank" class="hidden" role="button" tabindex="0"><svg viewBox="-36 -36 72 72" aria-hidden="true">
     <defs><pattern id="crank-dots" width="3" height="3" patternUnits="userSpaceOnUse"><rect width="3" height="3" fill="var(--paper)"/><circle cx="1" cy="1" r=".75" fill="var(--ink)"/></pattern>
       <pattern id="crank-hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4" stroke="var(--ink)" stroke-width=".8" opacity=".55"/></pattern></defs>
     <g class="rot"><path class="gear" d="M30.5 0.0 L33.8 3.3 L33.3 6.6 L29.2 8.9 L28.2 11.7 L30.0 16.0 L28.3 18.9 L23.6 19.3 L21.6 21.6 L21.6 26.3 L18.9 28.3 L14.4 26.9 L11.7 28.2 L9.9 32.5 L6.6 33.3 L3.0 30.4 L0.0 30.5 L-3.3 33.8 L-6.6 33.3 L-8.9 29.2 L-11.7 28.2 L-16.0 30.0 L-18.9 28.3 L-19.3 23.6 L-21.6 21.6 L-26.3 21.6 L-28.3 18.9 L-26.9 14.4 L-28.2 11.7 L-32.5 9.9 L-33.3 6.6 L-30.4 3.0 L-30.5 0.0 L-33.8 -3.3 L-33.3 -6.6 L-29.2 -8.9 L-28.2 -11.7 L-30.0 -16.0 L-28.3 -18.9 L-23.6 -19.3 L-21.6 -21.6 L-21.6 -26.3 L-18.9 -28.3 L-14.4 -26.9 L-11.7 -28.2 L-9.9 -32.5 L-6.6 -33.3 L-3.0 -30.4 L-0.0 -30.5 L3.3 -33.8 L6.6 -33.3 L8.9 -29.2 L11.7 -28.2 L16.0 -30.0 L18.9 -28.3 L19.3 -23.6 L21.6 -21.6 L26.3 -21.6 L28.3 -18.9 L26.9 -14.4 L28.2 -11.7 L32.5 -9.9 L33.3 -6.6 L30.4 -3.0 Z"/>
@@ -1292,7 +1291,7 @@
       <circle class="rivet" cx="0" cy="13" r="1.5"/><circle class="rivet" cx="11.3" cy="-6.5" r="1.5"/><circle class="rivet" cx="-11.3" cy="-6.5" r="1.5"/></g>
     <circle class="track" r="19.5"/><circle class="charge" r="19.5" stroke-dasharray="0 123" transform="rotate(-90)"/>
     <g class="rot"><line class="arm" x1="0" y1="0" x2="0" y2="-26"/><circle class="knob" cy="-26" r="8.5"/><circle class="rivet" cy="-26" r="2.4"/></g>
-    <circle class="hub" r="4.5"/><path class="hint" d="M-30 -33 A44 44 0 0 1 30 -33 M25 -37 L30 -33 L24 -30"/></svg></div>
+    <circle class="hub" r="4.5"/></svg></div>
   <div id="oar-ctl" class="hidden" role="button" tabindex="0">
     <div class="oar-mark"></div>
     <div class="oar-disc"><svg viewBox="-28 -28 56 56" aria-hidden="true"><g class="oar-rot">
