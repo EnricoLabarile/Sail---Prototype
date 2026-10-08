@@ -299,6 +299,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Crank: the black ring with the spring\'s charge is now smaller and inside the crank, round its plate under the arm, instead of all round it',
+    ]},
+    {build: '2026-10-08 18:32', items: [
       'At anchor (and moored) the crank is hidden and can\'t be used; it comes back as soon as the anchor is up',
     ]},
     {build: '2026-10-08 18:27', items: [
@@ -308,14 +311,8 @@
     {build: '2026-10-08 18:15', items: [
       'Fix: turning the halyard winch for the first time froze the game (the wheel stayed half apart). It works now',
     ]},
-    {build: '2026-10-08 12:51', items: [
-      'The wheel is clean again (no button in the middle). On the right, three buttons: crank, sail and anchor. Each puts its own wheel in the wheel\'s place (tap it again for the steering wheel); only one at a time',
-      'Crank button: the crank, as before; the ring round the button shows the spring\'s charge',
-      'Anchor button: drops the anchor and brings up the windlass, a drum with a chain round it: turn it clockwise to haul the anchor up (one and a half turns), then the steering wheel comes back',
-      'Sail button: brings up the halyard winch, a drum with rope coiled on it: turn it clockwise to hoist the sail, anticlockwise to lower it, as far as you like. Holding the button still stows the sail',
-    ]},
   ];
-  const BUILD = '2026-10-08 18:32';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-08 18:47';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -744,8 +741,9 @@
   #crank .plate{fill:var(--paper); stroke:var(--ink); stroke-width:1.4;}
   #crank .hatch{fill:url(#crank-hatch);}
   #crank .rivet{fill:var(--ink);}
-  #crank .track{fill:none; stroke:var(--ink); stroke-width:1; stroke-dasharray:2 3; opacity:.6;}
-  #crank .charge{fill:none; stroke:var(--ink); stroke-width:6; stroke-linecap:butt; transform:rotate(-90deg); transition:stroke-dasharray .1s;}
+  #crank .track{fill:none; stroke:var(--ink); stroke-width:1; stroke-dasharray:1.5 2; opacity:.6;}   /* the spring's charge: a ring inside the plate (under the arm) */
+  #crank .charge{fill:none; stroke:var(--ink); stroke-width:3.6; stroke-linecap:butt; transition:stroke-dasharray .1s;}
+  #crank.full .charge, #crank.full .track{stroke:var(--paper);}   /* (on the inked plate when full) */
   #crank .arm{stroke:var(--ink); stroke-width:4; stroke-linecap:round;}
   #crank .knob{fill:var(--paper); stroke:var(--ink); stroke-width:2.2;}
   #crank .hub{fill:var(--ink);}
@@ -1306,11 +1304,11 @@
   <div id="crank" class="hidden" role="button" tabindex="0"><svg viewBox="-46 -46 92 92" aria-hidden="true">
     <defs><pattern id="crank-dots" width="3" height="3" patternUnits="userSpaceOnUse"><rect width="3" height="3" fill="var(--paper)"/><circle cx="1" cy="1" r=".75" fill="var(--ink)"/></pattern>
       <pattern id="crank-hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4" stroke="var(--ink)" stroke-width=".8" opacity=".55"/></pattern></defs>
-    <circle class="track" r="42"/><circle class="charge" r="42" stroke-dasharray="0 264"/>
     <g class="rot"><path class="gear" d="M30.5 0.0 L33.8 3.3 L33.3 6.6 L29.2 8.9 L28.2 11.7 L30.0 16.0 L28.3 18.9 L23.6 19.3 L21.6 21.6 L21.6 26.3 L18.9 28.3 L14.4 26.9 L11.7 28.2 L9.9 32.5 L6.6 33.3 L3.0 30.4 L0.0 30.5 L-3.3 33.8 L-6.6 33.3 L-8.9 29.2 L-11.7 28.2 L-16.0 30.0 L-18.9 28.3 L-19.3 23.6 L-21.6 21.6 L-26.3 21.6 L-28.3 18.9 L-26.9 14.4 L-28.2 11.7 L-32.5 9.9 L-33.3 6.6 L-30.4 3.0 L-30.5 0.0 L-33.8 -3.3 L-33.3 -6.6 L-29.2 -8.9 L-28.2 -11.7 L-30.0 -16.0 L-28.3 -18.9 L-23.6 -19.3 L-21.6 -21.6 L-21.6 -26.3 L-18.9 -28.3 L-14.4 -26.9 L-11.7 -28.2 L-9.9 -32.5 L-6.6 -33.3 L-3.0 -30.4 L-0.0 -30.5 L3.3 -33.8 L6.6 -33.3 L8.9 -29.2 L11.7 -28.2 L16.0 -30.0 L18.9 -28.3 L19.3 -23.6 L21.6 -21.6 L26.3 -21.6 L28.3 -18.9 L26.9 -14.4 L28.2 -11.7 L32.5 -9.9 L33.3 -6.6 L30.4 -3.0 Z"/>
       <circle class="plate" r="24"/><circle class="hatch" r="23"/>
-      <circle class="rivet" cx="0" cy="16" r="1.6"/><circle class="rivet" cx="13.9" cy="-8" r="1.6"/><circle class="rivet" cx="-13.9" cy="-8" r="1.6"/>
-      <line class="arm" x1="0" y1="0" x2="0" y2="-26"/><circle class="knob" cy="-26" r="8.5"/><circle class="rivet" cy="-26" r="2.4"/></g>
+      <circle class="rivet" cx="0" cy="13" r="1.5"/><circle class="rivet" cx="11.3" cy="-6.5" r="1.5"/><circle class="rivet" cx="-11.3" cy="-6.5" r="1.5"/></g>
+    <circle class="track" r="19.5"/><circle class="charge" r="19.5" stroke-dasharray="0 123" transform="rotate(-90)"/>
+    <g class="rot"><line class="arm" x1="0" y1="0" x2="0" y2="-26"/><circle class="knob" cy="-26" r="8.5"/><circle class="rivet" cy="-26" r="2.4"/></g>
     <circle class="hub" r="4.5"/><path class="hint" d="M-30 -33 A44 44 0 0 1 30 -33 M25 -37 L30 -33 L24 -30"/></svg></div>
   <div id="oar-ctl" class="hidden" role="button" tabindex="0">
     <div class="oar-mark"></div>
@@ -5720,7 +5718,7 @@
   // A finger on the crank and turned round clockwise winds the spring (SPRING_TURNS full turns to fill it; turning back
   // does nothing, a ratchet); a click every quarter turn. While it holds some charge the paddle wheels drive her on their
   // own (SPRING_SPEED), and it runs down over SPRING_TIME s of driving; it rests while the sail drives her faster, at anchor or moored
-  const elCrank = document.getElementById('crank'), elCrankRot = elCrank.querySelector('.rot'), elCrankCharge = elCrank.querySelector('.charge');
+  const elCrank = document.getElementById('crank'), elCrankRot = elCrank.querySelectorAll('.rot'), elCrankCharge = elCrank.querySelector('.charge');
   let spring = 0, windProg = 0, crankA = 0, crankDrag = null, crankTick = 0, crankStep = 0, crankKey = '', crankLocked = false, crankBack = 0, crankMove = 0, crankSpeed = 0;   // (crankBack: radians still to unwind as it springs back)
   // (locked: wound full, it won't turn again until the spring has run right down)
   elCrank.setAttribute('aria-label', TEXT.oars.crank); elCrank.title = TEXT.oars.crank;
@@ -5780,8 +5778,8 @@
     const key = Math.round(crankA*40) + '|' + Math.round(spring*200) + '|' + Math.round(windProg*200);
     if(key !== crankKey){
       crankKey = key;
-      elCrankRot.setAttribute('transform', 'rotate(' + (crankA*180/Math.PI).toFixed(1) + ')');
-      const L = 2*Math.PI*42; elCrankCharge.setAttribute('stroke-dasharray', (Math.max(spring, windProg)*L).toFixed(1) + ' ' + L.toFixed(1));
+      for(const g of elCrankRot) g.setAttribute('transform', 'rotate(' + (crankA*180/Math.PI).toFixed(1) + ')');   // (the gear and the arm turn; the charge ring between them stays)
+      const L = 2*Math.PI*19.5; elCrankCharge.setAttribute('stroke-dasharray', (Math.max(spring, windProg)*L).toFixed(1) + ' ' + L.toFixed(1));
       elCrank.classList.toggle('full', spring >= 1);
     }
   }
