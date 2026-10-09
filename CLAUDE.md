@@ -312,14 +312,20 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   is not aboard: `sailsInHold` skips it, so it takes no slot); the village markets never show them, so they can't be sold. Goods left at home are meant to count toward the end goal.
 - **Room map** (Zelda 1 style; in `#cmp-slot`, the first spread's right page, where the compass was: the compass is
   hidden there for now, `#cmp-slot #compass{display:none}`, its code untouched): the world cut into `ROOM_N` (9, Tuning)
-  × `ROOM_N` rooms with home in the middle one (`roomOf`); every room she has sailed in (`rooms`, marked each frame by
-  `markRoom`, cleared on a new voyage) is an ink block, joined to a sailed neighbour by a little door; unsailed rooms are a
-  faint dot; a paper dot blinks where she is, to the pixel (`renderRooms` when `roomsVer` changes, `placeRoomDot` every
-  frame while the book is open on that spread; an SVG `#rooms`, label `TEXT.logbook.rooms`).
+  × `ROOM_N` rooms with home in the middle one (`roomOf`; `rooms`, marked by `markRoom`, is still kept but no longer
+  drawn: the ink blocks and doors are gone); **under the grid, the chart of what she has seen** (`#rooms-chart`, a canvas
+  inside `#rooms-box` under the SVG, at 8..98% where the squares are; `paintChart(canvas, N)` in the section "Sea chart",
+  N = its CSS width × min(2, devicePixelRatio), at most `MAP_RES`: land solid ink (30, like the world generator's
+  preview), the water along the shore a dotted edge (150, then 235 a pixel further out), the sea not yet seen (fog of
+  war's `explored`) a light dotted grey (215), the bottles' crosses; dithered like the widgets; repainted by
+  `paintRoomsChart` with the grid, and when `fogVer` has changed, at most twice a second, while the book is open on
+  it); a paper dot blinks where she is, to the pixel (`renderRooms` when `roomsVer` changes, `placeRoomDot` every
+  frame while the book is open on that spread; an SVG `#rooms`, label `TEXT.logbook.rooms`). (Enrico: this is the map;
+  the old sea chart on the second spread is gone.)
   Each square has a **name** like a chess board (`cellName`): a letter for its column (A from the west) and a number for
   its row (1 from the north); the letters run along the top and the numbers down the side, dotted seams between the
   squares (`.seam`), and under the map "You are in E5" (`#rooms-here`, `TEXT.logbook.roomHere`; home is E5). The **sea
-  chart** dots the same seams (`renderMap`, grey dashes before the dither; no names there, they'd crowd it). So does the **sea
+  chart** under them has no seams of its own (the grid's are over it). So does the **sea
   itself** (`drawRoomSeams`, right after the boiling South's tint, under the islands: ink dashes 3/7 at `ROOM_SEAMS` 0.3).
 - **Compass** (drawn at 95 px, `CMP_PX`; it lived **in the logbook**, moved at start into `#cmp-slot` on the first spread's right page,
   shown up to 150 px wide; no longer on the screen; hidden in the tutorial until its own tutorial step): points home, a dot per village filled once a dish is bought there; drawn like the
@@ -544,14 +550,9 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   hover; the book grows to fit). Each dish and gift has its own 24×24 ink icon (`ITEM_ICONS`, `itemIcon(name)`), used at the market stall too.
   **Three spreads**: a sideways swipe across the open book turns the page (left = forward: the list and cargo, the
   **sea chart**, then **home's look**; right = back; `turnPage`, `logSpread` 0..2): a sheet swings over on the spine (copies of the pages, `snapPage`), with
-  `Sfx.pageTurn()` and a buzz; the book remembers the spread it was left on and opens there. The **sea chart** (`renderMap`)
-  is drawn on the second spread's left page only (`#map-l`), square, two pixels per CSS pixel of the page on a sharp
-  screen (× min(2, devicePixelRatio), at most `MAP_RES`): land solid ink (30, like the world generator's preview), the
-  water along the shore a dotted edge (150, then 235 a pixel further out), so the coasts' shape reads, then dithered like the widgets; the **wind card** faces it on the right page (`#wind-page`): only the
-  cells the boat has seen (fog of war's `explored`; land inked round its coast) and nothing else: no marks for home,
-  ports, ruins or the boat (Enrico's choice: you find your way by the coastlines). It is drawn only when
-  shown (book opened on it, or a page turned to it), never while sailing (~3 ms; the land under each pixel is worked out
-  once, ~10 ms, on the first showing).
+  `Sfx.pageTurn()` and a buzz; the book remembers the spread it was left on and opens there. The second spread is the
+  **wind card** alone on its right page (`renderMap` now only fills it; its left page is empty: the sea chart that was
+  there is gone, the chart is under the map of squares on the first spread).
   **Home's look** (third spread, class `on-base`; `renderBase`, texts in `TEXT.base`): the left page has a title, a
   hint and three buttons, each a little ink drawing (`BASE_ICONS`: hut, walled court with a tower, palace with two
   towers and a flag) and its name, the chosen one inked solid; the right page a preview of home as it would look
