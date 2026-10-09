@@ -357,6 +357,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Logbook map: no more dots on the sea not seen yet; only the dotted line round what you have seen marks it',
+    ]},
+    {build: '2026-10-10 00:22', items: [
       'Logbook map: the sea you have seen is clean paper with a dotted line round its edge; the sea not seen yet has only a few scattered dots',
     ]},
     {build: '2026-10-10 00:16', items: [
@@ -366,12 +369,8 @@
       'Logbook: the map with the squares (A1 to I9) now shows the coasts you have seen, land in ink; the sea you have not seen yet stays dotted grey',
       'The old sea chart on the next spread is gone: the wind card is there on its own',
     ]},
-    {build: '2026-10-10 00:04', items: [
-      'Drawn map: no more spiral of island clusters made up by chance (in the preview and in the wind): all the sea is plain open sea',
-      'Logbook sea chart: land in solid ink like the preview, a dotted edge along the shore, twice as sharp on the phone, so you can read the shape of the coasts',
-    ]},
   ];
-  const BUILD = '2026-10-10 00:22';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-10 00:24';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -7191,7 +7190,7 @@
     const seen = (i,j)=> explored[fci(Math.floor((((j+N)%N)+0.5)*S/FOG_CELL))*FOG_N + fci(Math.floor((((i+N)%N)+0.5)*S/FOG_CELL))];
     const land = (i,j)=> mapLand[((j+N)%N)*N + (i+N)%N];
     for(let j=0;j<N;j++) for(let i=0;i<N;i++){
-      let g = (i % 12 === 6 && j % 12 === 6) ? 0 : 255;                // not yet seen: paper with a very sparse lattice of dots
+      let g = 255;                                                     // not yet seen: clean paper (a dotted line marks the edge of what she has seen)
       if(seen(i,j) && !(seen(i-1,j) && seen(i+1,j) && seen(i,j-1) && seen(i,j+1))) g = 120;   // the edge of what she has seen: a dotted line
       else if(seen(i,j)){
         const near = (a,b)=> land(i+a,j+b);

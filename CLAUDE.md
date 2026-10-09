@@ -317,8 +317,8 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   inside `#rooms-box` under the SVG, at 8..98% where the squares are; `paintChart(canvas, N)` in the section "Sea chart",
   N = its CSS width × min(2, devicePixelRatio), at most `MAP_RES`: land solid ink (30, like the world generator's
   preview), the water along the shore a dotted edge (150, then 235 a pixel further out), the sea not yet seen (fog of
-  war's `explored`) paper with a very sparse lattice of ink dots (one every 12 chart pixels; Enrico: the dense grey was annoying), the
-  edge of what she has seen a dotted line (120), the bottles' crosses; dithered like the widgets; repainted by
+  war's `explored`) clean paper, no texture (Enrico: a dense grey, then sparse dots, were too much), only the edge of
+  what she has seen marked by a dotted line (120), the bottles' crosses; dithered like the widgets; repainted by
   `paintRoomsChart` with the grid, and when `fogVer` has changed, at most twice a second, while the book is open on
   it); a paper dot blinks where she is, to the pixel (`renderRooms` when `roomsVer` changes, `placeRoomDot` every
   frame while the book is open on that spread; an SVG `#rooms`, label `TEXT.logbook.rooms`). (Enrico: this is the map;
