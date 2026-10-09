@@ -129,6 +129,9 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   cell from a seed (`drawnDecor`); all-sea tiles are skipped. The drawn land is drawn after the islands' land and leaves
   a hole inside the village and temple islands' scrub and round the lighthouse (`drawnHole`), so their towns show and
   their edges join the land. The boiling South stops at the map's south edge on the drawn map.
+  **Rule for the next drawn maps (Enrico):** put in the world only what he drew or wrote; never add or place things
+  of my own (as Sudia and the temple were placed this first time); keep randomness down wherever possible; and wait
+  for his go before generating a new map.
 - **Villages** (for now three: E, S, W; Nordania's place is the Temple of Eolus' while `EOLUS_ON`) (cardinal, ~1733 px from home: `VILLAGE_DIST`; each game nudged by `placeVillages`: pushed out by up to
   `VILLAGE_OUT_MAX`, slid sideways by up to `VILLAGE_SIDE_MAX`, kept `VILLAGE_EDGE` from the map edge, never closer to
   each other or to the ruins than in the plain cross, measured on the map; across the wrapped edge N–S and E–W do get closer), one course each, two specialties (1 unit each, all at `DISH_PRICE` = 6
