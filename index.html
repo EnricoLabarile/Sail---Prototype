@@ -55,6 +55,10 @@
   const WHEEL_VOL = 2;               // loudness of the ship's wheel: the spokes' knocks, the thump at full lock and the rub as it turns (was 1)
   const CRANK_BACK_PITCH = 0.6;      // pitch of the ticks as the crank springs back on its own (1 = the winding's clicks; lower = less tinny)
   const CRANK_VOL = 1;               // loudness of the crank's gears as it winds (a tick a tooth, a heavier step each quarter turn; 0 = silent)
+  const SLING_ON = true;             // the slingshot on the right: drag its pouch down and let go, a stone flies off ahead of the bow
+  const SLING_RANGE = [40, 230];     // px the stone flies ahead: a short pull, a full pull
+  const SLING_RELOAD = 0.9;          // seconds before the next stone is in the pouch
+  const SLING_SCARE_R = 45;          // a stone landing within this many px of the shark sends it off
   const SPRING_SPEED = 39.2;         // px/s the wheels give her (the spring rests while the sail drives her faster than this; was 19.6, doubled)
   const OAR_START = 0.2;             // power the first press gives (0..1): she starts rowing, slowly
   const OAR_GOOD = 0.0;             // power a press right on time adds (the pointer at the mark)…
@@ -328,6 +332,10 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Slingshot: on the right, above the crank. Drag its pouch down and let go: a stone flies off ahead of the bow, further the harder you pull, and lands with a splash',
+      'A stone landing by a shark sends it off',
+    ]},
+    {build: '2026-10-09 20:55', items: [
       'Paddle wheels: half as many slaps in their sound (four a turn instead of eight)',
       'Logbook: a Zelda-style map where the compass was (first spread, right page): the sea cut into 9 x 9 rooms, each room you have sailed in filled in, joined to its neighbours, and a blinking dot where you are',
     ]},
@@ -339,11 +347,8 @@
       'In it, after a couple of seconds the hull starts to suffer (about 4 a second): steam pours off her sides, scorch marks appear on the hull, it blinks and hisses',
       'First screen, Dangers: BOIL_ON, BOIL_DELAY and BOIL_DAMAGE',
     ]},
-    {build: '2026-10-09 12:08', items: [
-      'Messages in a bottle: the placeholder text is gone; each message now hints at the sunken ship it leads to',
-    ]},
   ];
-  const BUILD = '2026-10-09 20:55';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-09 21:32';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -426,6 +431,7 @@
       netsIn:   'nets hauled in',
       bite:     'a bite! reel it in',
       gotAway:  'it got away!',
+      sharkScared: 'off it goes!',                   // a slingshot stone lands by the shark
       overboard: '{item} overboard',
       surf:     'surf!',
       fairWind: 'fair wind!',
@@ -474,6 +480,7 @@
     oars: {
       label: 'Oars: press to row, then press again each time the pointer comes round to the mark',
       locked: 'Oars shipped: the sail drives her fast enough',
+      sling: 'The slingshot: drag the pouch down and let go to throw a stone ahead',
       crank: 'The spring: turn the crank round clockwise to wind it; the paddle wheels then drive her until it runs down',
       helm:  'Helm: drag round to steer. Centre: hold to drop or weigh anchor',
       reel:  'The reel: turn it round clockwise to lift the band, keep the fish inside it',
@@ -785,6 +792,18 @@
   #crank.full .plate{fill:var(--ink);} #crank.full .hatch{opacity:0;} #crank.full .arm{stroke:var(--paper);} #crank.full .hub{fill:var(--paper);}
   #crank.locked{cursor:default;} #crank.locked .rot{opacity:.45;}   /* wound full: locked until the spring has run down */
   #crank.hidden, body.at-market #crank{display:none;}
+  /* the slingshot: on the right, above the crank; its pouch is dragged down and let go */
+  #sling{position:fixed; right:12px; bottom:calc(100px + env(safe-area-inset-bottom,0px)); width:64px; height:150px; z-index:7;
+    touch-action:none; cursor:grab; color:var(--ink);}
+  #sling svg{width:100%; height:100%; display:block; overflow:visible;}
+  #sling .wood{fill:var(--paper); stroke:var(--ink); stroke-width:2.2; stroke-linejoin:round;}
+  #sling .grain{fill:none; stroke:var(--ink); stroke-width:.8; opacity:.5;}
+  #sling .band-bg{fill:none; stroke:var(--paper); stroke-width:5.5; stroke-linecap:round;}   /* a paper edge, so the bands read over the wood */
+  #sling .band{fill:none; stroke:var(--ink); stroke-width:2.4; stroke-linecap:round;}
+  #sling .pouch{fill:url(#crank-dots); stroke:var(--ink); stroke-width:2;}
+  #sling .stone{fill:var(--ink);}
+  #sling.empty .stone{display:none;}
+  #sling.hidden, body.at-market #sling, body.talking #sling{display:none;}
   /* the reel (fishing): a ring round the anchor hub, where the wheel was (its middle left open: the hub still weighs anchor) */
   #reel{position:fixed; left:calc(50% - 100px); bottom:calc(17px + env(safe-area-inset-bottom,0px)); width:200px; height:200px;
     z-index:7; pointer-events:none; color:var(--ink); transition:opacity .25s, transform .25s;}
@@ -1361,6 +1380,11 @@
     <circle class="track" r="19.5"/><circle class="charge" r="19.5" stroke-dasharray="0 123" transform="rotate(-90)"/>
     <g class="rot"><line class="arm" x1="0" y1="0" x2="0" y2="-26"/><circle class="knob" cy="-26" r="8.5"/><circle class="rivet" cy="-26" r="2.4"/></g>
     <circle class="hub" r="4.5"/></svg></div>
+  <div id="sling" class="hidden" role="button" tabindex="0"><svg viewBox="0 0 64 150" aria-hidden="true">
+    <path class="wood" d="M28 146 L28 70 Q28 58 18 48 L8 22 Q6 14 12 13 Q17 13 18 20 L28 46 Q32 52 36 46 L46 20 Q47 13 52 13 Q58 14 56 22 L46 48 Q36 58 36 70 L36 146 Z"/>
+    <path class="grain" d="M31 140 L31 76 M33 128 L33 96"/>
+    <path class="band-bg" d="M11 16 L32 18 M53 16 L32 18"/><path class="band" d="M11 16 L32 18 M53 16 L32 18"/>
+    <g class="pull"><path class="pouch" d="M23 15 Q32 27 41 15 Q32 21 23 15 Z"/><circle class="stone" cx="32" cy="18" r="4.2"/></g></svg></div>
   <div id="reel" class="hidden"><svg viewBox="-100 -100 200 200" aria-hidden="true">
     <defs><pattern id="reel-dots" width="3" height="3" patternUnits="userSpaceOnUse"><rect width="3" height="3" fill="var(--paper)"/><circle cx="1" cy="1" r=".7" fill="var(--ink)"/></pattern></defs>
     <path class="rim" d="M0 -92 A92 92 0 1 1 0 92 A92 92 0 1 1 0 -92 Z M0 -62 A62 62 0 1 0 0 62 A62 62 0 1 0 0 -62 Z"/>
@@ -5991,6 +6015,77 @@
   const crankUp = ev=>{ if(crankDrag && ev.pointerId === crankDrag.id){ crankDrag = null; if(windProg > 0){ crankBack = windProg*Math.PI*2*SPRING_TURNS; crankTick = crankStep = 0; buzz(6); } } };   // let go before a full turn: it springs back anticlockwise (catch it again to go on), start again
   elCrank.addEventListener('pointerup', crankUp); elCrank.addEventListener('pointercancel', crankUp);
   elCrank.addEventListener('keydown', ev=>{ if(ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); ev.stopPropagation(); if(crankLocked) return; crankA += Math.PI*2; windSpring(Math.PI*2*SPRING_TURNS); } });   // (keys: a whole winding at once)
+  // ---- the slingshot (SLING_ON): the pouch dragged down stretches the bands; let go and a stone flies off ahead of
+  // the bow, further the harder it was pulled (SLING_RANGE), in an arc, landing with a splash; one by the shark sends it off ----
+  const elSling = document.getElementById('sling'), elSlingBand = elSling.querySelectorAll('.band, .band-bg'), elSlingPull = elSling.querySelector('.pull');
+  elSling.setAttribute('aria-label', TEXT.oars.sling); elSling.title = TEXT.oars.sling;
+  const SLING_MAX = 95;                                      // the pouch's travel in the drawing (viewBox units), a full pull
+  let slingDrag = null, slingPull = 0, slingReload = 0, slingStep = 0, slingKey = '';
+  const stones = [], stoneSplash = [];
+  const slingY = ev=>{ const r = elSling.getBoundingClientRect(); return (ev.clientY - r.top)*150/r.height; };
+  elSling.addEventListener('pointerdown', ev=>{ ev.preventDefault(); Sfx.init(); if(slingReload > 0) return;
+    slingDrag = {id: ev.pointerId, y0: slingY(ev)}; slingStep = 0; try{ elSling.setPointerCapture(ev.pointerId); }catch(e){} });
+  elSling.addEventListener('pointermove', ev=>{
+    const d = slingDrag; if(!d || ev.pointerId !== d.id) return;
+    slingPull = Math.max(0, Math.min(1, (slingY(ev) - d.y0)/SLING_MAX));
+    const st = Math.floor(slingPull*4);                      // the bands creak as they stretch
+    if(st > slingStep){ slingStep = st; Sfx.tick(0.25, 0.6 + 0.15*st); buzz(5); }
+  });
+  const slingUp = ev=>{ if(!slingDrag || ev.pointerId !== slingDrag.id) return; slingDrag = null; if(slingPull > 0.12) shootStone(slingPull); slingPull = 0; };
+  elSling.addEventListener('pointerup', slingUp); elSling.addEventListener('pointercancel', slingUp);
+  elSling.addEventListener('keydown', ev=>{ if(ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); ev.stopPropagation(); if(slingReload <= 0) shootStone(1); } });
+  function shootStone(k){
+    const ca = Math.cos(boat.angle), sa = Math.sin(boat.angle), d = SLING_RANGE[0] + (SLING_RANGE[1] - SLING_RANGE[0])*k;
+    const x0 = boat.x + ca*16, y0 = boat.y + sa*16;
+    stones.push({x0, y0, x1: x0 + ca*d, y1: y0 + sa*d, t: 0, dur: 0.45 + 0.5*k, h: 14 + 30*k});
+    slingReload = SLING_RELOAD; Sfx.thunk(0.35); buzz([10, 20, 25]);
+  }
+  function updateSling(dt){
+    const show = SLING_ON && playing && !marketV && !(fishing && fishing.phase === 'game');   // (the fishing bar has its place)
+    if(show !== !elSling.classList.contains('hidden')) elSling.classList.toggle('hidden', !show);
+    if(!show && slingDrag){ slingDrag = null; slingPull = 0; }
+    slingReload = Math.max(0, slingReload - dt);
+    for(let i=stones.length-1;i>=0;i--){
+      const s = stones[i]; s.t += dt;
+      if(s.t < s.dur) continue;
+      stones.splice(i, 1);
+      const x = wrapX(s.x1), y = wrapY(s.y1);
+      if(onLand(x, y, 2)){ Sfx.tick(0.4, 0.5); continue; }   // on a shore: a clack on the stones
+      stoneSplash.push({x, y, t: 0}); Sfx.splash();
+      if(shark && shark.mode !== 'flee' && wdist(x, y, shark.x, shark.y) < SLING_SCARE_R){
+        shark.mode = 'flee'; shark.hd = Math.atan2(wdy(shark.y, y), wdx(shark.x, x));
+        popups.push({x: shark.x, y: shark.y - 16, text: TEXT.popups.sharkScared, life: 1.4, max: 1.4});
+      }
+    }
+    for(let i=stoneSplash.length-1;i>=0;i--){ stoneSplash[i].t += dt; if(stoneSplash[i].t > 0.9) stoneSplash.splice(i, 1); }
+    if(!show) return;
+    const pull = slingDrag ? slingPull : 0, key = pull.toFixed(3) + '|' + (slingReload > 0);
+    if(key === slingKey) return;
+    slingKey = key;
+    const py = 18 + pull*SLING_MAX;                           // the bands from the prongs' tips to the pouch
+    for(const b of elSlingBand) b.setAttribute('d', 'M11 16 L' + (29 - 2*pull) + ' ' + py + ' M53 16 L' + (35 + 2*pull) + ' ' + py);
+    elSlingPull.setAttribute('transform', 'translate(0 ' + (pull*SLING_MAX).toFixed(1) + ')');
+    elSling.classList.toggle('empty', slingReload > 0);
+  }
+  // the stones in flight (a shadow on the water under each) and the splashes where they land
+  function drawStones(){
+    for(const s of stones){
+      const q = s.t/s.dur, x = s.x0 + (s.x1 - s.x0)*q, y = s.y0 + (s.y1 - s.y0)*q, z = 4*s.h*q*(1 - q);
+      if(!inView(x, y, 60)) continue;
+      ctx.fillStyle = INKC; ctx.globalAlpha = 0.3; ctx.beginPath(); ctx.ellipse(x, y, 2.2, 1.4, 0, 0, Math.PI*2); ctx.fill();
+      ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(x, y - z*BOAT_TILT*2, 2.6, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = PAPERC; ctx.beginPath(); ctx.arc(x - 0.7, y - z*BOAT_TILT*2 - 0.7, 0.7, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.strokeStyle = INKC; ctx.lineWidth = 1;
+    for(const sp of stoneSplash){
+      if(!inView(sp.x, sp.y, 20)) continue;
+      const k = sp.t/0.9;
+      ctx.globalAlpha = 1 - k; ctx.beginPath(); ctx.arc(sp.x, sp.y, 2 + 9*k, 0, Math.PI*2); ctx.stroke();
+      if(k < 0.5){ ctx.beginPath(); ctx.arc(sp.x, sp.y, 1 + 4*k, 0, Math.PI*2); ctx.stroke();
+        ctx.fillStyle = INKC; for(let m=0;m<4;m++){ const a = m*1.57 + 0.6, r = 3 + 8*k; ctx.fillRect(sp.x + Math.cos(a)*r - 0.6, sp.y + Math.sin(a)*r - 3*Math.sin(k*Math.PI*2) - 0.6, 1.2, 1.2); } }
+    }
+    ctx.globalAlpha = 1;
+  }
   function updateSpring(dt){
     const show = MANUAL_OARS && playing && !marketV && !anchored;      // at anchor (moored too), at the market and while someone talks to you it steps aside
     if(show !== !elCrank.classList.contains('hidden')) elCrank.classList.toggle('hidden', !show);
@@ -7647,6 +7742,7 @@
     refreshList();
     updateDockBtn();
     updateOarCtl(dt);
+    updateSling(dt);
   }
 
   // ---------- 1-bit rendering ----------
@@ -9876,7 +9972,8 @@
     layer(()=>{ for(const g of guests) if(inView(g.x, g.y, 40)) drawBoat(g); });   // the clients' boats
     drawBoat();
     layer(()=>drawSteam());                                  // the funnel's steam, over the boat
-    layer(()=>drawBoilFumes());                              // steam rising off the boiling South
+    layer(()=>drawBoilFumes());
+    layer(()=>drawStones());                                 // slingshot stones in the air, and their splashes                              // steam rising off the boiling South
     layer(()=>drawStreaks());
     layer(()=>{
       for(const g of gulls) if(inView(g.x,g.y,16)) drawGull(g);
