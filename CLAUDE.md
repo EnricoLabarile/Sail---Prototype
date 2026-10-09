@@ -424,10 +424,10 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   `PADDLE_VOL` 3.6 × `oarSpin`) every other paddle that comes round (four a turn of `B.wheelA`; it was eight), so the sound follows the wheels; freewheeling under sail (no spring drive, her speed > 3 px/s, and not while the crank is being turned, so its clicks always sound the same) the same splash plays at half the volume, same pitch (`PADDLE_FREE_VOL` 0.5 × `PADDLE_VOL`, `PADDLE_FREE_PITCH` 1, Tuning; it was 0.22 × a fade-in with her speed and 0.7 pitch, too faint to hear);
   when the spring runs down `Sfx.springOff` (the gear's last links slowing, a slack clunk). A new voyage starts with it empty.
   **The slingshot** (`SLING_ON`, `#sling`, section in the code before `updateSpring`; text `TEXT.oars.sling`): a wooden
-  Y fork on the right, above the crank (64×150, `bottom` 100 px), its bands (ink over a paper edge, so they read over the
+  Y fork on the right, above the crank (64×80, `bottom` 100 px; it was 150 tall), its bands (ink over a paper edge, so they read over the
   wood) from the prongs' tips to a dotted pouch with a stone; dragging the pouch down stretches them (`slingPull` 0..1 over
-  `SLING_MAX` 95 drawing units; a tick and a buzz each quarter); let go (pull > 0.12; Enter/Space a full shot) and
-  `shootStone` throws a big stone (5.5 px) from the bow straight ahead, `SLING_RANGE` [40, 230] px by the pull, flying 0.45–0.95 s in an
+  `SLING_MAX` 48 drawing units; a tick and a buzz each quarter); let go (pull > 0.12; Enter/Space a full shot) and
+  `shootStone` throws a big stone (5.5 px) from the bow straight ahead, `SLING_RANGE` [25, 115] px (was [40, 230]) by the pull, flying 0.45–0.95 s in an
   arc (`stones`, drawn by `drawStones` with a shadow on the water), a thunk and a buzz; it lands with a big splash, a crown of paper lumps thrown up, ten drops arcing out and
   falling back, two wide rings, 1.3 s (`stoneSplash`, `Sfx.splash` + a thunk) or a clack on a shore; one within `SLING_SCARE_R` (60) of the shark sends it off
   (`mode` 'flee', popup `TEXT.popups.sharkScared`). The pouch is empty for `SLING_RELOAD` (0.9 s). Hidden at the market,
