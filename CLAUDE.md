@@ -108,6 +108,27 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   **Foliage** is scattered at any angle (`vegPoint`, `sandAt`; the spurge in `scatterMacchia` by uniform tries over the
   island's box), never along the ISL_N spokes, which on big islands showed as lines; the spurge thins out in irregular
   open patches (a smooth noise of four crossing waves, new per island).
+- **The drawn map** (`MAP_DRAWN` in Tuning, world, a field in the generator's World; 1 = on, the default): the land is
+  the sea map Enrico drew on the Supernote template (`tools/map-template/`: `make_template.py` makes the page,
+  `import_map.py drawing.jpg --write` reads it back: the ink lines inside the frame, the sea flooded in from home's square,
+  everything it can't reach is land, home's own islet and small marks (letters, the house) dropped; it writes
+  `DRAWN_LAND` between the `// DRAWN_LAND >>>` markers in index.html: rings of world points, filled evenodd). The first
+  drawing: land all round the edge (inlets in D1/H1, a step in H4–H6, a tongue up into E7, points in B2 and C6), a long
+  island C2–C5 and one in D3–E4. Section "Drawn map": painted into a grid of `DRAWN_CELL` (4 px), the village and
+  temple islands added to it and their harbours dug out (`finishDrawnLand`, a 160 px wide channel from the bay past
+  the pier head), then a signed distance to the coast per cell (`drawnSD`, exact EDT `edt2` + a light blur; ~0.25–0.35 s
+  at load) read through `drawnDist(x,y)` (+ at sea, − on land, bilinear) and `drawnNormal`: `onLand` checks it first,
+  the boat is pushed back out along its slope (collision block), cicadas sing by its coasts. Villages and the temple
+  go where `DRAWN_PLACES` (Tuning) says, `{W, E, S, N}` in world px, each slid toward home until its harbour is open
+  water (`drawnPlace`): Westa on the hooked point in B2 and Estolia in E3 (Enrico's dots), Sudia on the tongue in E7 and
+  the temple in F2 (my picks: not on the drawing). No random wild islands (`genIslands` places 0); open-sea rocks,
+  whirlpools, storms etc. stay random. Drawn like an island (`drawnIsl`, baked in `ISL_TILE` tiles over the whole
+  world, `drawDrawnStatic`): water tiles pixel by pixel from the distance (two pale rings of shallows, the shadow
+  down-right, a static dashed surf line), land tiles (coast in ink, sand with specks, the scrub's inked edge, scrub with
+  darker thickets and pale clearings from a smooth noise, `drawnNoise`) then spurge, trees and tufts made per tile-sized
+  cell from a seed (`drawnDecor`); all-sea tiles are skipped. The drawn land is drawn after the islands' land and leaves
+  a hole inside the village and temple islands' scrub and round the lighthouse (`drawnHole`), so their towns show and
+  their edges join the land. The boiling South stops at the map's south edge on the drawn map.
 - **Villages** (for now three: E, S, W; Nordania's place is the Temple of Eolus' while `EOLUS_ON`) (cardinal, ~1733 px from home: `VILLAGE_DIST`; each game nudged by `placeVillages`: pushed out by up to
   `VILLAGE_OUT_MAX`, slid sideways by up to `VILLAGE_SIDE_MAX`, kept `VILLAGE_EDGE` from the map edge, never closer to
   each other or to the ruins than in the plain cross, measured on the map; across the wrapped edge N–S and E–W do get closer), one course each, two specialties (1 unit each, all at `DISH_PRICE` = 6

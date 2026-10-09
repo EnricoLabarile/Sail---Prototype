@@ -208,6 +208,12 @@
   const VILLAGE_OUT_MAX = Math.round(300*WORLD_K);   // px it may be pushed further from home (never closer) (world)
   const VILLAGE_SIDE_MAX = Math.round(300*WORLD_K);  // px it may slide sideways, either way; in practice the ruins keep it to about a third of VILLAGE_OUT_MAX (world)
   const VILLAGE_EDGE = Math.round(500*WORLD_K);      // px it must keep from the edge of the map (world)
+  // the sea map Enrico drew on the Supernote template (tools/map-template/import_map.py turns the drawing into
+  // DRAWN_LAND, in the section "Drawn map"): its coasts are the world's land, and the random wild islands are off
+  const MAP_DRAWN = knob('MAP_DRAWN', 1);            // 1 = the drawn map, 0 = the random archipelago of before (world)
+  // where the villages and the temple go on the drawn map, in world px (A1's corner is 0,0; a square is 560 px): each is
+  // slid toward home until its harbour opens on the sea (world)
+  const DRAWN_PLACES = {W: [988, 970], E: [2384, 1430], S: [2218, 3800], N: [3080, 840]};   // Westa B2 and Estolia E3 (the dots), Sudia on the tongue of land in E7, the Temple of Eolus in F2
   const SAFE_R = Math.round(950*WORLD_K);          // home waters: no whirlpools, no big waves
   const LAGOON_R = Math.round(650*WORLD_K);        // calm lagoon round home: no islands, no rocks (world)
   const DANGER_RING = Math.round(3400*WORLD_K);    // the sea gets wilder out to this distance from home (world)
@@ -346,6 +352,11 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The sea map you drew is the world now: land all round the edge, its bays and points, the long island in C3–C5 and the one in D3–E4; no more random islands (MAP_DRAWN 0 in the World section brings them back)',
+      'Westa sits on the hooked point in B2, Estolia on the island in E3 (your dots); Sudia on the tongue of land in E7 and the Temple of Eolus in F2 (not on the drawing yet)',
+      'The boiling sea stops at the south edge of the map (a strip along the south coast)',
+    ]},
+    {build: '2026-10-09 22:38', items: [
       'The room map\'s squares are now dotted on the sea itself too, so you can see where one square (A1 to I9) ends and the next begins (ROOM_SEAMS)',
     ]},
     {build: '2026-10-09 22:36', items: [
@@ -355,13 +366,8 @@
     {build: '2026-10-09 22:23', items: [
       'Current: it no longer pushes the boat close to a shore (within about 90 px of land); it eases off as you near the coast and takes hold again out at sea',
     ]},
-    {build: '2026-10-09 22:12', items: [
-      'New danger, the sea imp (like Zelda\'s Zora): out at sea it pops out of the water near you, spits a fireball at you, ducks under and pops up somewhere else, three to five times, then it\'s gone',
-      'Dodge the fireballs (they hurt the hull); a slingshot stone on the imp makes it dive away for good',
-      'First screen, Dangers: ZORA_ON, ZORA_CHANCE and ZORA_DAMAGE',
-    ]},
   ];
-  const BUILD = '2026-10-09 22:38';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-09 23:16';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -1871,6 +1877,7 @@
   function rockyAt(isl,th){ return isl.rocky[Math.round(islIndex(th))%ISL_N]===1; }
   // true if (x,y) is on land of any island (with optional extra margin)
   function onLand(x,y,margin){
+    if(drawnSD && drawnDist(x,y) < margin) return true;   // (the drawn map's land, see "Drawn map")
     return islandGrid.query(x,y,margin, isl=>{
       const dx=wdx(x,isl.x), dy=wdy(y,isl.y), d=Math.hypot(dx,dy);
       if(d>isl.rmax+margin) return false;
@@ -1927,6 +1934,106 @@
     return k*k*(3-2*k);
   }
   const islands = [];
+
+  // ---------- Drawn map ----------
+  // With MAP_DRAWN the land is the sea map Enrico drew on the Supernote template: tools/map-template/import_map.py
+  // turns the drawing into DRAWN_LAND, rings of world points filled evenodd (the world's square, the sea's
+  // outline, each island), written between the markers below. It's painted into a grid of DRAWN_CELL px; the
+  // village and temple islands are added to it and their harbours dug out (finishDrawnLand), then each cell
+  // gets its signed distance to the coast (px: + at sea, − on land, drawnSD), which onLand, the boat's
+  // collisions and the drawing (drawDrawnStatic) all read through drawnDist.
+  // DRAWN_LAND >>>
+  const DRAWN_LAND = [
+    [0,0,5040,0,5040,5040,0,5040],
+    [2710,1165,2647,1117,2578,1086,2483,1112,2414,1154,2282,1186,2240,1207,2192,1207,2134,1186,2076,1186,2050,1197,2002,1202,1902,1255,1823,1382,1802,1466,1802,1535,1823,1603,1838,1630,1823,1767,1828,1783,1870,1820,1923,1883,1939,1920,1944,1963,1971,2005,2013,2031,2060,2037,2087,2021,2134,1968,2155,1963,2166,1947,2161,1899,2097,1804,2097,1725,2092,1720,2092,1662,2118,1619,2166,1572,2192,1561,2325,1566,2356,1551,2552,1529,2615,1598,2631,1598,2657,1582,2768,1413,2763,1387,2715,1318,2715,1286,2737,1197],
+    [1838,858,1738,869,1680,885,1585,975,1564,1043,1537,1070,1506,1138,1485,1160,1448,1223,1442,1249,1448,1408,1432,1450,1400,1498,1331,1561,1278,1635,1231,1677,1183,1704,1162,1725,1146,1757,1157,1794,1194,1836,1363,1936,1405,1978,1405,2010,1395,2047,1384,2058,1384,2100,1395,2116,1395,2137,1463,2216,1479,2264,1458,2385,1426,2449,1448,2565,1463,2570,1543,2575,1643,2554,1669,2544,1696,2512,1664,2417,1664,2332,1675,2306,1680,2237,1654,2158,1643,2079,1701,2021,1717,1994,1712,1952,1675,1889,1675,1751,1696,1667,1722,1625,1706,1572,1680,1524,1680,1487,1717,1403,1712,1376,1701,1366,1701,1313,1712,1276,1738,1249,1765,1191,1796,1165,1849,1138,1875,1112,1886,1091,1891,1043,1923,1006,2018,1001,2034,991,2045,964,2045,938,2029,917],
+    [454,309,512,298,544,283,666,251,713,225,740,225,824,256,882,262,925,277,956,267,993,240,1051,240,1146,277,1210,272,1215,277,1374,283,1416,267,1448,267,1543,240,1574,225,1622,219,1722,177,1759,177,1823,203,1849,230,1875,267,1907,346,1907,383,1897,399,1828,404,1780,425,1749,425,1770,478,1786,494,1860,520,1897,505,1971,441,2008,441,2060,473,2076,473,2118,441,2145,394,2145,346,2113,267,2113,246,2155,182,2187,166,2298,166,2362,135,2398,135,2541,230,2541,309,2552,330,2552,367,2578,404,2605,409,2615,420,2610,446,2615,457,2631,446,2869,446,2890,452,2927,436,2995,441,3022,425,3022,415,3054,388,3170,362,3281,309,3344,309,3397,330,3439,335,3534,288,3614,288,3756,320,3814,320,3820,325,3936,320,3994,288,4026,288,4057,298,4131,293,4184,330,4184,351,4131,378,4115,394,4068,473,4126,600,4147,621,4179,615,4195,584,4205,520,4226,489,4300,499,4348,483,4395,388,4454,335,4522,288,4602,283,4644,304,4697,357,4734,415,4771,510,4771,531,4786,573,4786,615,4765,732,4723,800,4697,880,4702,954,4723,1001,4728,1102,4686,1313,4691,1371,4712,1408,4712,1461,4723,1498,4723,1529,4702,1572,4686,1630,4686,1741,4702,1772,4686,1883,4670,1905,4586,1952,4543,1963,4427,1952,4332,1920,4248,1920,4205,1936,4089,1947,4063,1963,4036,2015,4042,2058,4052,2074,4052,2200,4068,2280,4089,2332,4094,2465,4073,2538,4084,2575,4100,2591,4158,2591,4163,2586,4263,2591,4364,2618,4522,2623,4617,2665,4660,2708,4675,2750,4675,2824,4638,2929,4602,2998,4591,3062,4617,3162,4660,3231,4660,3289,4670,3326,4665,3415,4686,3474,4681,3579,4675,3585,4681,3590,4681,3680,4665,3759,4665,3833,4670,3838,4665,4007,4675,4060,4697,4097,4691,4176,4723,4287,4723,4319,4712,4335,4718,4430,4707,4488,4707,4588,4712,4594,4707,4641,4654,4683,4617,4699,4559,4694,4475,4662,4353,4646,4348,4652,4226,4652,4174,4662,4115,4689,3962,4715,3888,4710,3793,4673,3735,4683,3698,4683,3656,4673,3577,4673,3503,4689,3439,4689,3381,4673,3297,4668,3254,4678,3180,4678,3122,4694,3027,4694,2958,4683,2932,4689,2885,4720,2779,4773,2752,4778,2721,4800,2573,4800,2525,4773,2515,4747,2509,4583,2467,4435,2467,4414,2488,4377,2494,4351,2488,4113,2499,4044,2515,4002,2520,3928,2509,3917,2509,3891,2499,3875,2472,3780,2451,3748,2451,3732,2425,3680,2404,3653,2367,3632,2208,3674,2087,3669,2018,3685,1997,3701,1997,3759,2034,3875,2045,3944,2039,4044,2050,4102,2050,4208,2039,4245,2039,4419,2034,4425,2039,4472,2008,4514,1928,4557,1891,4631,1849,4673,1802,4673,1749,4662,1680,4678,1664,4689,1595,4699,1474,4705,1469,4710,1337,4705,1300,4710,1268,4726,1162,4736,1115,4752,1025,4747,988,4720,946,4668,956,4572,972,4541,998,4419,983,4356,967,4329,925,4292,872,4266,840,4266,734,4319,671,4335,629,4356,608,4356,549,4303,534,4298,475,4298,428,4314,386,4314,359,4292,338,4261,343,4160,417,4097,438,4044,433,4002,412,3960,412,3938,396,3896,391,3801,380,3780,365,3701,349,3680,333,3585,338,3505,359,3458,370,3410,365,3336,354,3294,354,3215,365,3199,380,3130,407,3104,470,3088,528,3088,560,3098,740,3098,851,3072,983,3072,1078,3035,1157,3046,1210,3077,1236,3109,1252,3289,1226,3320,1226,3331,1263,3347,1347,3352,1416,3331,1453,3289,1469,3246,1479,3183,1511,3104,1506,3056,1448,3009,1416,2993,1405,2914,1374,2908,1326,2882,1284,2877,1194,2919,1104,2919,1046,2898,940,2903,914,2792,914,2697,962,2612,956,2554,935,2533,803,2470,771,2465,613,2470,576,2454,465,2332,460,2285,444,2243,386,2179,380,2063,370,2042,370,2015,349,1942,354,1899,365,1883,365,1831,370,1825,370,1794,349,1720,349,1630,354,1625,349,1366,359,1318,354,1234,338,1160,349,1070,343,1038,349,980,417,917,623,901,645,890,671,890,755,959,903,948,925,964,946,1017,940,1054,914,1075,819,1070,803,1091,803,1133,814,1149,814,1170,840,1186,877,1197,919,1197,998,1144,1041,1144,1104,1091,1115,1065,1120,996,1131,975,1120,890,1078,848,1057,811,1020,800,951,753,919,753,872,732,814,737,740,663,687,642,602,647,555,663,523,684,449,684,417,700,391,700,370,689,343,663,322,594,333,478,354,415,380,378]
+  ];
+  // <<< DRAWN_LAND
+  const DRAWN_CELL = 4, DN = Math.ceil(WORLD.w/DRAWN_CELL);
+  let drawnSD = null;                                   // the signed distance per cell, once finished
+  const drawnCv = MAP_DRAWN ? (()=>{
+    const c = document.createElement('canvas'); c.width = c.height = DN;
+    const g = c.getContext('2d', {willReadFrequently: true});
+    g.scale(DN/WORLD.w, DN/WORLD.h); g.beginPath();
+    for(const r of DRAWN_LAND){ g.moveTo(r[0], r[1]); for(let k=2;k<r.length;k+=2) g.lineTo(r[k], r[k+1]); g.closePath(); }
+    g.fillStyle = '#000'; g.fill('evenodd');
+    return c;
+  })() : null;
+  let drawnRaw = drawnCv ? drawnCv.getContext('2d').getImageData(0, 0, DN, DN).data : null;   // (alpha > 127: land)
+  const drawnRawAt = (x, y)=>{ const i = Math.min(DN-1, Math.max(0, (wrapX(x)/DRAWN_CELL)|0)), j = Math.min(DN-1, Math.max(0, (wrapY(y)/DRAWN_CELL)|0)); return drawnRaw[(j*DN + i)*4 + 3] > 127; };
+  // a village or the temple on the drawn map: from its spot slid toward home until the water in front of it,
+  // where the bay and the pier go, is open sea
+  function drawnPlace(p){
+    const [x0, y0] = p, a = Math.atan2(START.y - y0, START.x - x0), ux = Math.cos(a), uy = Math.sin(a);
+    for(let s = 0; s < 900; s += 10){
+      const x = x0 + ux*s, y = y0 + uy*s;
+      let open = true;
+      for(let k = 90; k <= 270 && open; k += 15) for(const side of [-50, 0, 50]) if(drawnRawAt(x + ux*k - uy*side, y + uy*k + ux*side)){ open = false; break; }
+      if(open) return [x, y];
+    }
+    return [x0, y0];
+  }
+  // exact squared distances along rows then columns (Felzenszwalb): f holds 0 on the cells measured from, 1e20 elsewhere
+  function edt2(f, n){
+    const d = new Float64Array(n), v = new Int32Array(n), z = new Float64Array(n+1), row = new Float64Array(n);
+    const pass = (get, set)=>{
+      for(let q = 0; q < n; q++) row[q] = get(q);
+      let k = 0; v[0] = 0; z[0] = -1e30; z[1] = 1e30;
+      for(let q = 1; q < n; q++){
+        let s2 = ((row[q] + q*q) - (row[v[k]] + v[k]*v[k]))/(2*q - 2*v[k]);
+        while(s2 <= z[k]){ k--; s2 = ((row[q] + q*q) - (row[v[k]] + v[k]*v[k]))/(2*q - 2*v[k]); }
+        k++; v[k] = q; z[k] = s2; z[k+1] = 1e30;
+      }
+      k = 0;
+      for(let q = 0; q < n; q++){ while(z[k+1] < q) k++; d[q] = (q - v[k])*(q - v[k]) + row[v[k]]; }
+      for(let q = 0; q < n; q++) set(q, d[q]);
+    };
+    for(let j = 0; j < n; j++) pass(q=> f[j*n + q], (q, val)=> f[j*n + q] = val);
+    for(let i = 0; i < n; i++) pass(q=> f[q*n + i], (q, val)=> f[q*n + i] = val);
+  }
+  // the villages' and the temple's islands join the land, their harbours are dug out of it, then the distances
+  function finishDrawnLand(specials){
+    if(!drawnCv) return;
+    const g = drawnCv.getContext('2d');
+    g.save(); g.globalCompositeOperation = 'destination-out'; g.lineCap = 'round'; g.lineWidth = 160;
+    for(const sp of specials){                          // the harbour: the bay, along the pier and round its head
+      const pr = sp.pier, sx = pr.x0 + pr.dx*pr.shoreAlong, sy = pr.y0 + pr.dy*pr.shoreAlong;
+      g.beginPath(); g.moveTo(sx + pr.dx*20, sy + pr.dy*20); g.lineTo(pr.x1 + pr.dx*70, pr.y1 + pr.dy*70); g.stroke();
+    }
+    g.restore();
+    g.fillStyle = '#000';
+    for(const sp of specials){                          // the island itself
+      const isl = sp.isl; g.beginPath();
+      for(let i = 0; i < ISL_N; i++){ const r = isl.radii[i], x = isl.x + COS[i]*r, y = isl.y + SIN[i]*r; i ? g.lineTo(x, y) : g.moveTo(x, y); }
+      g.closePath(); g.fill();
+    }
+    drawnRaw = g.getImageData(0, 0, DN, DN).data;
+    const N = DN*DN, inL = new Float64Array(N), outL = new Float64Array(N);
+    for(let k = 0; k < N; k++){ const land = drawnRaw[k*4 + 3] > 127; inL[k] = land ? 1e20 : 0; outL[k] = land ? 0 : 1e20; }
+    edt2(inL, DN); edt2(outL, DN);                      // on land: how far to the sea; at sea: how far to land
+    const sd = new Float32Array(N);
+    for(let k = 0; k < N; k++) sd[k] = (outL[k] > 0 ? Math.sqrt(outL[k]) - 0.5 : 0.5 - Math.sqrt(inL[k]))*DRAWN_CELL;
+    drawnSD = new Float32Array(N);                      // a light blur takes the steps out of the coast
+    for(let j = 0; j < DN; j++) for(let i = 0; i < DN; i++){
+      let a = 0, n = 0;
+      for(let b = -1; b <= 1; b++){ const jj = j + b; if(jj < 0 || jj >= DN) continue; for(let c = -1; c <= 1; c++){ const ii = i + c; if(ii < 0 || ii >= DN) continue; a += sd[jj*DN + ii]; n++; } }
+      drawnSD[j*DN + i] = a/n;
+    }
+  }
+  // px from (x, y) to the drawn coast: + at sea, − on land (Infinity with no drawn map)
+  function drawnDist(x, y){
+    if(!drawnSD) return Infinity;
+    let fx = wrapX(x)/DRAWN_CELL - 0.5, fy = wrapY(y)/DRAWN_CELL - 0.5;
+    fx = Math.max(0, Math.min(DN - 1.001, fx)); fy = Math.max(0, Math.min(DN - 1.001, fy));
+    const i = fx|0, j = fy|0, u = fx - i, v = fy - j, k = j*DN + i;
+    return (drawnSD[k]*(1-u) + drawnSD[k+1]*u)*(1-v) + (drawnSD[k+DN]*(1-u) + drawnSD[k+DN+1]*u)*v;
+  }
+  // the way out to sea from (x, y): the distance's slope
+  function drawnNormal(x, y){
+    const e = 3, gx = drawnDist(x + e, y) - drawnDist(x - e, y), gy = drawnDist(x, y + e) - drawnDist(x, y - e), l = Math.hypot(gx, gy) || 1;
+    return [gx/l, gy/l];
+  }
 
   // ---------- Home island ----------
   // A tiny sandy islet in the middle of the map with a hut and a pier;
@@ -2306,6 +2413,7 @@
       if(gaps(Q).every((d,i)=> d >= need[i] - 1e-6)){ P = Q; break; }
     }
     VILLAGES.forEach((v,i)=>{ v.px = wrapX(START.x + P[i][0]); v.py = wrapY(START.y + P[i][1]); });
+    if(MAP_DRAWN) VILLAGES.forEach(v=>{ [v.px, v.py] = drawnPlace(DRAWN_PLACES[v.ux > 0 ? 'E' : v.ux < 0 ? 'W' : v.uy > 0 ? 'S' : 'N']); });   // (the drawn map: where Enrico put them)
   }
   placeVillages();
   for(const v of VILLAGES) makeVillageIsland(v);
@@ -2322,7 +2430,8 @@
   ]), ...(EOLUS_ON ? [{ name:TEXT.eolus.name, ux:0, uy:-1, eolus:true, d:VILLAGE_DIST }] : [])];   // (the temple: north, as far out as the villages)
   function makeRuinIsland(r){
     const d = r.d || VILLAGE_DIST/Math.SQRT2*1.02;
-    const x = wrapX(START.x + r.ux*d), y = wrapY(START.y + r.uy*d);
+    let x = wrapX(START.x + r.ux*d), y = wrapY(START.y + r.uy*d);
+    if(MAP_DRAWN && r.eolus) [x, y] = drawnPlace(DRAWN_PLACES.N);   // (the drawn map)
     const isl = makeIsland(x, y, rand(96,110));
     for(let i=0;i<ISL_N;i++) isl.radii[i] = isl.R*0.5 + isl.radii[i]*0.5;
     isl.rmax = Math.max(...isl.radii);
@@ -2356,6 +2465,7 @@
   }
   for(const r of RUINS) makeRuinIsland(r);
   const SPECIALS = [...VILLAGES, ...RUINS];        // keep rocks and whirlpools away from these
+  finishDrawnLand(SPECIALS);                       // (the drawn map: the villages and the temple join its land)
 
   // an atoll: a ring of low sandy islets, each lying along the ring, round a
   // lagoon; a few places on the ring are left open so a boat can sail in
@@ -2376,7 +2486,7 @@
     return true;
   }
   (function genIslands(){
-    const N = ISLAND_COUNT;
+    const N = MAP_DRAWN ? 0 : ISLAND_COUNT;                   // (the drawn map has only the land Enrico drew)
     let attempts=0, placed=0, openPlaced=0;                    // wild islands only (an atoll counts as one)
     // the shaped islands go down first (they need more room), then the blobs fill in
     const quota = {atoll: Math.round(N*ISLAND_ATOLL), L: Math.round(N*ISLAND_L), C: Math.round(N*ISLAND_C), big: Math.round(N*ISLAND_BIG)};
@@ -5118,7 +5228,7 @@
     box.appendChild(rb);
   }
   (function worldGen(){
-    const K = {ISLAND_SCALE, ISLAND_COUNT, CLUSTER_SHARE, SPIRAL, SPIRAL_ARMS, OPEN_ISLANDS, ISLAND_BIG, ISLAND_L, ISLAND_C, ISLAND_ATOLL,
+    const K = {MAP_DRAWN, ISLAND_SCALE, ISLAND_COUNT, CLUSTER_SHARE, SPIRAL, SPIRAL_ARMS, OPEN_ISLANDS, ISLAND_BIG, ISLAND_L, ISLAND_C, ISLAND_ATOLL,
                OPEN_ROCK_TRIES, TRADERS_HOME, TRADERS_VILLAGES, ROLLER_RATE, CLOUD_COUNT, WEST_STORM_CLOUDS, WEST_WHIRLS};
     const box = document.getElementById('wg-knobs'), T = TEXT.worldGen;
     document.getElementById('wg-title').textContent = T.title;
@@ -5654,7 +5764,7 @@
     if(!BOIL_ON) return false;
     const dy = ((y - START.y)%WORLD.h + WORLD.h)%WORLD.h, dx = wdx(x, START.x);
     const wob = 70*Math.sin(x*TAU*3/WORLD.w + 1.3) + 40*Math.sin(x*TAU*8/WORLD.w + 0.4);   // the edge isn't ruler-straight
-    if(dy < SOUTH_FROM + wob || dy > SOUTH_TO + wob) return false;
+    if(dy < SOUTH_FROM + wob || dy > (MAP_DRAWN ? Math.min(SOUTH_TO, WORLD.h - START.y) : SOUTH_TO) + wob) return false;   // (on the drawn map it stops at the south edge)
     if(Math.abs(dx) > SOUTH_HALF_W + 90*Math.sin(y*TAU*5/WORLD.h)) return false;
     return !SPECIALS.some(v=> wdist(x, y, v.isl.x, v.isl.y) < BOIL_SAFE);
   }
@@ -6583,6 +6693,7 @@
         const d = Math.max(0, Math.hypot(wdx(isl.x, boat.x), wdy(isl.y, boat.y)) - isl.rmax*0.9);   // ≈ distance from the shore
         best = Math.max(best, 1 - Math.min(1, d/CICADA_REACH));
       });
+      if(drawnSD) best = Math.max(best, 1 - Math.min(1, Math.max(0, drawnDist(boat.x, boat.y))/CICADA_REACH));   // the drawn map's coasts
       cicadaNear = best;
     }
     Sfx.cicadas(playing ? cicadaHours()*cicadaNear*cicadaNear : 0);
@@ -7809,6 +7920,10 @@
         boat.speed*=0.25;
       }
     });
+    if(drawnSD && !moor && !boat.whirl){                    // the drawn map's coasts: pushed back out along the slope
+      const d = drawnDist(boat.x, boat.y);
+      if(d < hullR){ const [nx, ny] = drawnNormal(boat.x, boat.y); impact(nx, ny); boat.x += nx*(hullR - d); boat.y += ny*(hullR - d); boat.speed *= 0.25; }
+    }
     for(const wk of wrecks) if(!wk.seen && wdist(boat.x, boat.y, wk.x, wk.y) < 220){ wk.seen = true; toast(TEXT.bottles.wreck); buzz([20,40,20]); }   // the wreck from the message, first sighted
     // rock collision
     if(!moor && !boat.whirl) rockGrid.query(boat.x, boat.y, 40, o=>{
@@ -8229,6 +8344,7 @@
   }
   function drawIslandWater(isl){
     drawIslandTiles(isl, true);
+    if(isl.drawn) return;                                  // (the drawn map's surf is baked)
     const R=isl.radii;
     ctx.strokeStyle=INKC; ctx.lineWidth=1.3;
     const surf = 6+Math.sin(t*1.4+isl.x)*2;
@@ -8281,7 +8397,7 @@
   function islandBox(isl, water){
     const k = water ? 'wbb' : 'bb';
     if(isl[k]) return isl[k];
-    const pad = (isl.home || isl.village || isl.ruin) ? PIER_LEN + 40 : water ? 40 : 30;   // (the shallows reach 34 px past the shore)
+    const pad = isl.drawn ? 0 : (isl.home || isl.village || isl.ruin) ? PIER_LEN + 40 : water ? 40 : 30;   // (the shallows reach 34 px past the shore)
     const ox = Math.floor(isl.x - isl.rmax - pad), oy = Math.floor(isl.y - isl.rmax - pad);
     const size = Math.ceil(2*(isl.rmax + pad)) + 2;
     return (isl[k] = {ox, oy, size, n: Math.ceil(size/ISL_TILE), tiles: new Map(), water});
@@ -8302,7 +8418,8 @@
     ctx = sceneCtx(c);
     ctx.translate(-x0, -y0);
     bakeR = {x0, y0, x1: x0 + w, y1: y0 + h};                         // only what falls on this tile is drawn
-    if(bb.water) drawIslandWaterStatic(isl); else drawIslandLandStatic(isl);
+    if(isl.drawn) drawDrawnStatic(bb.water, x0, y0, w, h);
+    else if(bb.water) drawIslandWaterStatic(isl); else drawIslandLandStatic(isl);
     bakeR = null; ctx = saved; bakedThisFrame++;
     tl = {c, x0, y0, seen: frameNo, bb, key};
     bb.tiles.set(key, tl); cached.push(tl);
@@ -8401,6 +8518,111 @@
     if(isl.ruin) drawRuins(isl);
     if(isl.bushes) drawSpurge(bakeR ? isl.bushes.filter(b=> inBake(b.x,b.y,b.r*2+2)) : isl.bushes);
     if(isl.umbrellas) for(const u of isl.umbrellas) if(inBake(u.x,u.y,60)) (u.olive ? drawOlive(u) : drawStonePine(u));
+  }
+  // The drawn map's land (see "Drawn map"), baked in tiles like an island's over the whole world: worked out
+  // pixel by pixel from the distance to the coast (drawnDist), with the islands' looks: two pale rings of
+  // shallows, the shadow down-right and a dashed surf line in the water tiles; the coast in ink, a sandy
+  // shore with specks, an inked edge to the scrub, darker thickets and pale clearings in it in the land tiles,
+  // then the spurge, the trees and the tufts (drawnDecor, made per tile-sized cell from a seed, so the same
+  // every time a tile is baked again). The village and temple islands draw themselves: the land tiles leave a
+  // hole where they are (inside their scrub, and round the lighthouse), so their towns show through.
+  const drawnIsl = MAP_DRAWN ? {drawn: true, x: WORLD.w/2, y: WORLD.h/2, rmax: WORLD.w/2} : null;
+  const DRAWN_PH = [rand(0,6.3), rand(0,6.3), rand(0,6.3), rand(0,6.3)];
+  const drawnNoise = (x, y)=> Math.sin(x*0.031+DRAWN_PH[0]) + Math.sin(y*0.027+DRAWN_PH[1]) + Math.sin((x+y)*0.019+DRAWN_PH[2]) + Math.sin((x-y)*0.043+DRAWN_PH[3]);
+  const drawnSand = (x, y)=> 11 + 3*Math.sin(x*0.021 + DRAWN_PH[1]) + 2*Math.sin(y*0.017 + DRAWN_PH[2]);   // px of sandy shore
+  const hash2 = (x, y)=>{ let h = Math.imul(x|0, 374761393) ^ Math.imul(y|0, 668265263); h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0)/4294967296; };
+  function drawnHole(x, y){                              // a village's or the temple's own ground
+    for(const sp of SPECIALS){
+      const isl = sp.isl, dx = wdx(x, isl.x), dy = wdy(y, isl.y), r = Math.hypot(dx, dy);
+      if(r < isl.rmax && r < rAt(isl, Math.atan2(dy, dx)) - 16) return true;
+      const L = isl.vl && isl.vl.light;
+      if(L && Math.hypot(wdx(x, L.x), wdy(y, L.y)) < 16) return true;
+    }
+    return false;
+  }
+  function drawDrawnStatic(water, x0, y0, w, h){
+    if(drawnDist(x0 + w/2, y0 + h/2) > Math.hypot(w, h)/2 + 40) return;   // all open sea: nothing to draw
+    const img = ctx.createImageData(w, h), D = img.data;
+    const near = SPECIALS.some(sp=> Math.abs(wdx(x0 + w/2, sp.isl.x)) < w/2 + sp.isl.rmax + 20 && Math.abs(wdy(y0 + h/2, sp.isl.y)) < h/2 + sp.isl.rmax + 20);
+    for(let j = 0; j < h; j++) for(let i = 0; i < w; i++){
+      const x = x0 + i + 0.5, y = y0 + j + 0.5, d = drawnDist(x, y);
+      let g = -1;
+      if(water){
+        if(d > 34) continue;
+        g = d > 15 ? 0.93 : 0.84;
+        if(d > 0 && drawnDist(x - 7, y - 9) < 0) g *= 0.74;                          // the land's shadow
+        if(d > 5 && d < 6.6 && ((x0 + i + y0 + j) >> 2) % 2 === 0) g = 0;            // the surf, in dashes
+      } else {
+        if(d > 1.1) continue;
+        if(near && drawnHole(x, y)) continue;
+        const S = drawnSand(x, y);
+        if(d > -1.2) g = 0;                                                            // the coast
+        else if(d > -S + 0.7) g = hash2(x0 + i, y0 + j) < 0.012 ? 0 : 1;              // sand, a few specks
+        else if(d > -S - 0.7) g = 0.2;                                                 // the scrub's edge
+        else { const n = drawnNoise(x, y); g = n > 1.6 ? 0.5 : n < -2.1 ? 0.93 : 0.6; }   // scrub, thickets, clearings
+      }
+      const k = (j*w + i)*4, c = Math.round(g*255);
+      D[k] = D[k+1] = D[k+2] = c; D[k+3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);                         // (pixel coordinates: the tile's own corner)
+    if(water) return;
+    const bushes = [], trees = [], tufts = [];
+    const cx0 = Math.floor(x0/ISL_TILE), cy0 = Math.floor(y0/ISL_TILE);
+    for(let b = -1; b <= 1; b++) for(let a = -1; a <= 1; a++){
+      const dc = drawnDecor(cx0 + a, cy0 + b);
+      for(const o of dc.bushes) if(inBake(o.x, o.y, o.r*2 + 2)) bushes.push(o);
+      for(const u of dc.trees) if(inBake(u.x, u.y, 60)) trees.push(u);
+      for(const t of dc.tufts) if(inBake(t[0], t[1], 4)) tufts.push(t);
+    }
+    ctx.strokeStyle = INKC; ctx.lineWidth = 1; ctx.globalAlpha = 0.75; ctx.beginPath();
+    for(const [tx, ty] of tufts){ ctx.moveTo(tx-1.5, ty-2); ctx.lineTo(tx, ty); ctx.lineTo(tx+1.2, ty-2.4); }
+    ctx.stroke(); ctx.globalAlpha = 1;
+    bushes.sort((a, b)=> a.y - b.y); trees.sort((a, b)=> a.y - b.y);
+    drawSpurge(bushes);
+    for(const u of trees) (u.olive ? drawOlive(u) : drawStonePine(u));
+  }
+  const drawnDecorCache = new Map();
+  function drawnDecor(cx, cy){
+    const key = cy*1000 + cx;
+    let dc = drawnDecorCache.get(key);
+    if(dc) return dc;
+    let seed = (Math.imul(cx + 7, 73856093) ^ Math.imul(cy + 13, 19349663) ^ (DRAWN_PH[0]*1e6)) >>> 0;
+    const rnd = ()=>{ seed = (seed + 0x6D2B79F5) >>> 0; let t = seed; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0)/4294967296; };
+    const T = ISL_TILE, ox = cx*T, oy = cy*T, bushes = [], trees = [], tufts = [];
+    const inside = (x, y, m)=>{ const d = drawnDist(x, y); return d < -drawnSand(x, y) - m && drawnNoise(x, y) > -2.1; };
+    const special = (x, y, m)=> SPECIALS.some(sp=> Math.hypot(wdx(x, sp.isl.x), wdy(y, sp.isl.y)) < sp.isl.rmax + m);
+    if(drawnSD && ox < WORLD.w && oy < WORLD.h && ox >= 0 && oy >= 0){
+      for(let k = 0; k < 3; k++){                          // a few trees, alone or in a little group
+        if(rnd() < 0.45) continue;
+        const gx = ox + rnd()*T, gy = oy + rnd()*T, n = rnd() < 0.4 ? 3 + Math.floor(rnd()*4) : 1;
+        for(let m = 0; m < n; m++){
+          const x = gx + (rnd() - 0.5)*40, y = gy + (rnd() - 0.5)*28;
+          if(!inside(x, y, 8) || special(x, y, 30) || trees.some(u=> Math.abs(u.x - x) < 9 && Math.abs(u.y - y) < 6)) continue;
+          const md = PINES[Math.floor(rnd()*PINES.length)], f = rnd() < 0.5 ? -1 : 1;
+          trees.push(md.olive ? {x, y, ...md, f} : f > 0 ? {x, y, ...md} : {x, y, ...md, lean: -md.lean, bend: -md.bend, lobes: md.lobes.map(([lx,ly,r])=>[-lx,ly,r])});
+        }
+      }
+      const G = 8, NG = T/G + 2, grid = new Array(NG*NG);
+      for(let k = 0, tries = Math.floor(T*T/22); k < tries; k++){
+        const r = 2.6 + rnd()*2.2, x = ox + rnd()*T, y = oy + rnd()*T;
+        if(!inside(x, y, r*0.7)) continue;
+        if(drawnNoise(x, y) < -1.3 + rnd()*1.1) continue;  // a ragged edge to the open patches
+        if(special(x, y, 10)) continue;
+        if(trees.some(u=> Math.hypot(u.x - x, u.y - y) < 7 || Math.hypot(u.x - x - u.w*0.25, (u.y - y)*2.6) < u.w*0.38)) continue;   // the trees' shade keeps the ground clear
+        const gx = ((x - ox)/G + 1)|0, gy = ((y - oy)/G + 1)|0;
+        let ok = true;
+        for(let a = -1; a <= 1 && ok; a++) for(let b = -1; b <= 1 && ok; b++){
+          const list = grid[(gy + b)*NG + gx + a];
+          if(list) for(const o of list){ const m = (o.r + r)*0.78; if((o.x - x)*(o.x - x) + (o.y - y)*(o.y - y) < m*m){ ok = false; break; } }
+        }
+        if(!ok) continue;
+        const o = {x, y, r}; bushes.push(o); (grid[gy*NG + gx] || (grid[gy*NG + gx] = [])).push(o);
+      }
+      for(let k = 0; k < 40; k++){ const x = ox + rnd()*T, y = oy + rnd()*T; if(inside(x, y, 2) && !special(x, y, 0)) tufts.push([x, y]); }
+    }
+    dc = {bushes, trees, tufts};
+    drawnDecorCache.set(key, dc);
+    return dc;
   }
   // tree spurge: each bush a little dome, shadowed down-right, darker
   // round its lower side, a bright crown, and an inked lower rim; together
@@ -10090,8 +10312,8 @@
     };
     layer(()=>{ for(const wp of whirlpools) if(wp.s>0 && inView(wp.x,wp.y,wp.r+10)){ ctx.globalAlpha = wp.s; drawWhirlpool(wp); ctx.globalAlpha = 1; } });
     layer(()=>drawBoilBubbles());                             // …bubbling
-    layer(()=>{ for(const isl of visIslands()) drawIslandWater(isl); }, true);
-    layer(()=>{ for(const isl of visIslands()) drawIslandLand(isl); }, true);
+    layer(()=>{ if(drawnIsl) drawIslandWater(drawnIsl); for(const isl of visIslands()) drawIslandWater(isl); }, true);
+    layer(()=>{ for(const isl of visIslands()) drawIslandLand(isl); if(drawnIsl) drawIslandLand(drawnIsl); }, true);   // (the drawn land over the villages' edges, so they join it)
     layer(()=>{ const vis = []; rockGrid.query(view.x+w/2, view.y+h/2, Math.max(w,h)/2+20, o=>{ if(!o.hidden && inView(o.x,o.y,o.r+6)) vis.push(o); }); drawRocks(vis);
       for(const wk of wrecks) if(inView(wk.x, wk.y, wk.L*0.7)) drawWreck(wk); });
     layer(()=>{ for(const b of banks) drawBank(b); for(const bo of bottles) drawBottle(bo); });
