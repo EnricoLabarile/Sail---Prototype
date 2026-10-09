@@ -566,6 +566,17 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   without biting) after `SHARK_GIVE_UP` s, or when she's back in home waters or moored; it swerves off land. Drawn
   under the water as a dark torpedo with pectoral fins and a beating tail (faster when it flees), the dorsal fin in
   ink above the surface with a pale rim and a curl of foam at its front.
+- **Sea imps** (like Zelda's Zora; section "Sea imps"; Tuning `ZORA_ON`, `ZORA_CHANCE` 0.5 a minute at sea out of home
+  waters, `ZORA_COOLDOWN` 40 s, `ZORA_POPS` [3, 5], `ZORA_DIST` [80, 150] px, `ZORA_BALL_SPEED` 75 px/s, `ZORA_DAMAGE` 6,
+  `ZORA_SIZE` 1.7; the three knobs also in the first screen's Dangers; texts `TEXT.popups.zoraSeen/zoraHit/zoraGone`):
+  one at a time (`zora`, `updateZora`, `drawZora`, `resetZora` on a new voyage). Each pop (`zoraSpot`: a spot of water
+  80–150 px from her): ripples warn of it ('rise', 0.6 s), it comes up out of the water ('aim': a dark round head with a
+  crest fin, big paper eyes, shoulders and webbed hands, a foam collar where the water meets it; the water line clips
+  it), rears back and spits a **fireball** at where she'll be in half a second (`fireballs`: an ink ball with a
+  flickering paper core and a short trail, 3 s; a thunk and a sizzle), ducks under ('sink' 0.5 s), stays under 1.2–2.4 s
+  ('gone') and pops up elsewhere; after its pops (or back in home waters, or moored) it's gone. A fireball within 13 px of
+  the boat: damage, flash, shake, rock, buzz, `Sfx.crash` + `Sfx.sizzle`, popup. A slingshot stone landing on it
+  (`stoneAtZora`, within 14 × `ZORA_SIZE`) makes it dive away for good.
 - **Atmosphere:** macchia (tree-spurge domes + trees: **olive trees** after Enrico's sketch, `TREE_KIND` 'olive' in Tuning ('pine' brings back the old stone pines, `makePine` / `drawStonePine`); `makeOlive` / `drawOlive`: a short, thick, twisted paper trunk outlined in ink with bark marks, flaring onto a little mound with roots and pebbles, forking into 3–4 outlined branches in a V, a wide flattish crown lifted above the fork: a solid ink mass (a dot per spray) edged with sprays of narrow pointed leaves fanned outward (spiky at the rim, drooping underneath), a few pale veins, a paper halo; a low branch or two with its own spray; `PINE_MODELS` = 4 tree shapes made each game, each maybe mirrored, stored in `isl.umbrellas`), clouds with parallax and shadows (`CLOUD_MODELS` = 4 shapes, made each game, still: they only drift), gulls, wind streaks (`updateStreaks` / `drawStreaks`: following the wind where she is, gusts included, `boat.windOff`, and more often in a gust; `WIND_STREAK_RATE` 2, `_WIDTH` 1.8, `_ALPHA` 0.85, `_LEN` 1.5 in Tuning),
   traders (motor boats on A* lanes: `TRADERS_HOME` = 2 on the four home-to-village lanes, two of them picked at random,
   and `TRADERS_VILLAGES` = 4 between neighbouring villages, one a lane; they don't avoid the player, a collision just shoves them aside

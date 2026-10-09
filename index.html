@@ -125,6 +125,15 @@
   const SHARK_COOLDOWN = knob('SHARK_COOLDOWN', 45); // seconds at least between one encounter and the next
   const SHARK_SPEED = knob('SHARK_SPEED', 26); // how fast it swims after her (px/s; was 38; under sail or the wheels she outruns it)
   const SHARK_DAMAGE = knob('SHARK_DAMAGE', 8); // hull damage from a bite
+  // the sea imp (like Zelda's Zora): pops out of the water near her, spits a fireball at her, ducks under and pops up elsewhere
+  const ZORA_ON = knob('ZORA_ON', 1);           // 1 = sea imps about, 0 = none
+  const ZORA_CHANCE = knob('ZORA_CHANCE', 0.5); // the chance of one turning up in each minute at sea, out of home waters
+  const ZORA_COOLDOWN = 40;          // seconds at least between one sea imp and the next
+  const ZORA_POPS = [3, 5];          // how many times it pops up before it leaves (fewest, most)
+  const ZORA_DIST = [80, 150];       // px from the boat it pops up (nearest, furthest)
+  const ZORA_BALL_SPEED = 75;        // px/s its fireball flies (she can dodge it)
+  const ZORA_DAMAGE = knob('ZORA_DAMAGE', 6);   // hull damage from a fireball
+  const ZORA_SIZE = 1.7;             // how big the sea imp is drawn (1 = about the boat's helmsman)
   const SHARK_GIVE_UP = knob('SHARK_GIVE_UP', 30); // seconds it follows before giving up, if it never reaches her
   const WHIRL_FOLLOW = knob('WHIRL_FOLLOW', 2); // a whirlpool creeps after her while she's within this many times its radius…
   const WHIRL_FOLLOW_SPEED = knob('WHIRL_FOLLOW_SPEED', 7); // …at this many px/s (slow; it never leaves open water); once it has caught and spun her it dies down
@@ -334,6 +343,11 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'New danger, the sea imp (like Zelda\'s Zora): out at sea it pops out of the water near you, spits a fireball at you, ducks under and pops up somewhere else, three to five times, then it\'s gone',
+      'Dodge the fireballs (they hurt the hull); a slingshot stone on the imp makes it dive away for good',
+      'First screen, Dangers: ZORA_ON, ZORA_CHANCE and ZORA_DAMAGE',
+    ]},
+    {build: '2026-10-09 21:46', items: [
       'Slingshot: half as tall, and it throws half as far (up to 115 instead of 230)',
     ]},
     {build: '2026-10-09 21:42', items: [
@@ -345,12 +359,8 @@
       'Slingshot: on the right, above the crank. Drag its pouch down and let go: a stone flies off ahead of the bow, further the harder you pull, and lands with a splash',
       'A stone landing by a shark sends it off',
     ]},
-    {build: '2026-10-09 20:55', items: [
-      'Paddle wheels: half as many slaps in their sound (four a turn instead of eight)',
-      'Logbook: a Zelda-style map where the compass was (first spread, right page): the sea cut into 9 x 9 rooms, each room you have sailed in filled in, joined to its neighbours, and a blinking dot where you are',
-    ]},
   ];
-  const BUILD = '2026-10-09 21:46';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-09 22:12';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -441,6 +451,9 @@
       whirl:    'Whirlpool! -{damage}',
       sharkSeen: 'a fin!',
       sharkBite: 'Shark bite! -{damage}',
+      zoraSeen:  'something in the water!',          // a sea imp pops up for the first time
+      zoraHit:   'Fireball! -{damage}',              // its fireball hits the boat
+      zoraGone:  'it dived away!',                   // a slingshot stone hits it
       lightning: 'Struck by lightning! -{damage}',   // a storm cloud's bolt hits the boat
       scald:    'the hull is scalding!',             // in the boiling South, once the hull starts to suffer
       bought:   '+ {item}',
@@ -2622,6 +2635,107 @@
     sh.x = wrapX(sh.x + Math.cos(sh.hd)*sh.v*dt); sh.y = wrapY(sh.y + Math.sin(sh.hd)*sh.v*dt);
     sh.vis = Math.min(1, sh.vis + dt/1.2);
     if(sh.mode === 'flee' && d > 420){ shark = null; sharkCool = SHARK_COOLDOWN; }
+  }
+  // ---------- Sea imps ----------
+  // Now and then (ZORA_CHANCE a minute at sea, out of home waters) a sea imp, like Zelda's Zora, turns up: ripples
+  // ZORA_DIST from her, it rises out of the water, stares, spits a fireball at her (ZORA_BALL_SPEED, ZORA_DAMAGE if it
+  // hits), ducks under and pops up somewhere else, ZORA_POPS times, then it's gone. A slingshot stone sends it off.
+  let zora = null, zoraCool = 20;
+  const fireballs = [];
+  function resetZora(){ zora = null; zoraCool = 20; fireballs.length = 0; }
+  function zoraSpot(){
+    for(let k=0;k<20;k++){
+      const a = rand(0, TAU), d = rand(ZORA_DIST[0], ZORA_DIST[1]), x = wrapX(boat.x + Math.cos(a)*d), y = wrapY(boat.y + Math.sin(a)*d);
+      if(!onLand(x, y, 14)) return [x, y];
+    }
+    return null;
+  }
+  function updateZora(dt){
+    // the fireballs fly on whatever the imp does
+    for(let i=fireballs.length-1;i>=0;i--){
+      const f = fireballs[i]; f.t += dt;
+      f.x = wrapX(f.x + f.vx*dt); f.y = wrapY(f.y + f.vy*dt);
+      if(f.t > f.life || onLand(f.x, f.y, 2)){ fireballs.splice(i, 1); continue; }
+      if(!moor && wdist(f.x, f.y, boat.x, boat.y) < 13){
+        fireballs.splice(i, 1);
+        boat.health = Math.max(0, boat.health - ZORA_DAMAGE);
+        hurtFlash = 0.35; shake = 0.12; showHealth(); Sfx.crash(0.45); Sfx.sizzle(0.6);
+        boat.rock = Math.min(2.5, (boat.rock||0) + 0.8); buzz([40, 30, 60]);
+        popups.push({x: boat.x, y: boat.y - 26, text: fmt(TEXT.popups.zoraHit, {damage: ZORA_DAMAGE}), life: 1.6, max: 1.6});
+      }
+    }
+    if(!ZORA_ON || !playing) return;
+    const home = wdist(boat.x, boat.y, START.x, START.y) < SAFE_R;
+    if(!zora){
+      zoraCool -= dt;
+      if(zoraCool > 0 || home || moor || boat.whirl) return;
+      if(Math.random() > ZORA_CHANCE*dt/60) return;
+      zora = {pops: ZORA_POPS[0] + Math.floor(Math.random()*(ZORA_POPS[1] - ZORA_POPS[0] + 1)), phase: 'gone', t: 0, wait: 0.3, x: 0, y: 0, seen: false, seed: rand(0, 6.3)};
+      return;
+    }
+    const z = zora; z.t += dt;
+    if((home || moor) && z.phase === 'gone'){ zora = null; zoraCool = ZORA_COOLDOWN; return; }
+    if(z.phase === 'gone'){                                   // under water, swimming to its next spot
+      if(z.t < z.wait) return;
+      if(z.pops <= 0){ zora = null; zoraCool = ZORA_COOLDOWN; return; }
+      const sp = zoraSpot(); if(!sp) return;
+      z.x = sp[0]; z.y = sp[1]; z.phase = 'rise'; z.t = 0; z.pops--; z.shot = false;
+    } else if(z.phase === 'rise' && z.t >= 0.6){
+      z.phase = 'aim'; z.t = 0; Sfx.splash();
+      if(!z.seen){ z.seen = true; popups.push({x: z.x, y: z.y - 20, text: TEXT.popups.zoraSeen, life: 1.4, max: 1.4}); buzz([15]); }
+    } else if(z.phase === 'aim' && z.t >= 0.75 && !z.shot){   // it spits: a fireball at where she'll be
+      z.shot = true;
+      const lead = 0.5, tx = wdx(boat.x + Math.cos(boat.angle)*boat.speed*lead, z.x), ty = wdy(boat.y + Math.sin(boat.angle)*boat.speed*lead, z.y), d = Math.hypot(tx, ty) || 1;
+      fireballs.push({x: z.x, y: z.y - 4, vx: tx/d*ZORA_BALL_SPEED, vy: ty/d*ZORA_BALL_SPEED, t: 0, life: 3});
+      Sfx.thunk(0.3); Sfx.sizzle(0.35);
+    } else if(z.phase === 'aim' && z.t >= 1.15){ z.phase = 'sink'; z.t = 0; }
+    else if(z.phase === 'sink' && z.t >= 0.5){ z.phase = 'gone'; z.t = 0; z.wait = rand(1.2, 2.4); }
+  }
+  // a stone from the slingshot lands at (x, y): if the imp is up there, it dives and leaves
+  function stoneAtZora(x, y){
+    const z = zora;
+    if(!z || z.phase === 'gone' || wdist(x, y, z.x, z.y) > 14*ZORA_SIZE) return false;
+    z.phase = 'sink'; z.t = 0; z.pops = 0;
+    popups.push({x: z.x, y: z.y - 20, text: TEXT.popups.zoraGone, life: 1.4, max: 1.4}); buzz([20, 30, 20]);
+    return true;
+  }
+  // drawn as a little fish-man rising out of a ring of ripples: a round dark head with a crest of fin along its top,
+  // big paper eyes, shoulders and two webbed hands; the water's edge covers it as it rises and sinks
+  function drawZora(){
+    const z = zora;
+    for(const f of fireballs){                               // fireballs: an ink ball, a flickering paper core, a little trail
+      if(!inView(f.x, f.y, 10)) continue;
+      const fl = 0.7 + 0.3*Math.sin(f.t*40);
+      ctx.fillStyle = INKC; ctx.globalAlpha = 0.35;
+      for(let k=1;k<=3;k++){ ctx.beginPath(); ctx.arc(f.x - f.vx*0.04*k, f.y - f.vy*0.04*k, 4.2 - 0.9*k, 0, TAU); ctx.fill(); }
+      ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(f.x, f.y, 5.2, 0, TAU); ctx.fill();
+      ctx.fillStyle = PAPERC; ctx.beginPath(); ctx.arc(f.x, f.y, 2.6*fl, 0, TAU); ctx.fill();
+    }
+    if(!z || z.phase === 'gone' || !inView(z.x, z.y, 60)) return;
+    const up = z.phase === 'rise' ? Math.max(0, (z.t - 0.25)/0.35) : z.phase === 'sink' ? 1 - z.t/0.5 : 1;
+    const e = up*up*(3 - 2*up), bob = z.phase === 'aim' ? Math.sin(z.t*6)*0.6 : 0, h = 10*e + bob;   // how far out of the water
+    // ripples (before it shows, they warn of it)
+    ctx.strokeStyle = INKC; ctx.lineWidth = 1;
+    for(let k=0;k<2;k++){ const q = ((z.t*0.9 + k*0.5) % 1); ctx.globalAlpha = (1 - q)*0.8; ctx.beginPath(); ctx.ellipse(z.x, z.y, (6 + 12*q)*ZORA_SIZE, (6 + 12*q)*0.55*ZORA_SIZE, 0, 0, TAU); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+    if(e <= 0.02) return;
+    const S = ZORA_SIZE;
+    ctx.save(); ctx.beginPath(); ctx.rect(z.x - 20*S, z.y - 40*S, 40*S, 40*S); ctx.clip();        // nothing below the water line shows
+    ctx.translate(z.x, z.y - h*S); ctx.scale(S, S);
+    const aimA = z.phase === 'aim' && z.t > 0.55 && !z.shot ? 1 : 0;      // it rears back before it spits
+    ctx.fillStyle = INKC; ctx.strokeStyle = PAPERC; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.ellipse(0, 6, 8, 5, 0, 0, TAU); ctx.fill(); ctx.stroke();          // shoulders
+    ctx.beginPath(); ctx.ellipse(-8.5, 4, 2.4, 2, 0, 0, TAU); ctx.ellipse(8.5, 4, 2.4, 2, 0, 0, TAU); ctx.fill();   // webbed hands
+    ctx.beginPath(); ctx.moveTo(0, -12 - aimA*1.5); ctx.lineTo(3, -6); ctx.lineTo(-3, -6); ctx.closePath(); ctx.fill(); ctx.stroke();   // the crest fin
+    ctx.beginPath(); ctx.ellipse(0, -1 - aimA, 6, 6.5, 0, 0, TAU); ctx.fill(); ctx.stroke();      // the head
+    ctx.fillStyle = PAPERC;
+    ctx.beginPath(); ctx.ellipse(-2.5, -2 - aimA, 1.8, 2.2, 0, 0, TAU); ctx.ellipse(2.5, -2 - aimA, 1.8, 2.2, 0, 0, TAU); ctx.fill();   // eyes
+    ctx.fillStyle = INKC; ctx.beginPath(); ctx.arc(-2.2, -1.6 - aimA, 0.8, 0, TAU); ctx.arc(2.8, -1.6 - aimA, 0.8, 0, TAU); ctx.fill();
+    if(aimA){ ctx.fillStyle = PAPERC; ctx.beginPath(); ctx.ellipse(0, 2.2 - aimA, 1.6, 1.2, 0, 0, TAU); ctx.fill(); }   // its mouth opens
+    ctx.restore();
+    // the water round its middle: a foam collar
+    ctx.strokeStyle = PAPERC; ctx.lineWidth = 2.6; ctx.beginPath(); ctx.ellipse(z.x, z.y, 10*S, 4*S, 0, 0, TAU); ctx.stroke();
+    ctx.strokeStyle = INKC; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(z.x, z.y, 11.5*S, 4.8*S, 0, 0, TAU); ctx.stroke();
   }
   function drawShark(){
     const sh = shark;
@@ -5028,7 +5142,7 @@
     const gen = document.getElementById('wg-gen'), reset = document.getElementById('wg-reset');
     gen.textContent = T.generate; reset.textContent = T.reset;
     // the dangers: the sharks' and whirlpools' knobs, the same kind of fields in their own section
-    const DK = {SHARK_ON, SHARK_CHANCE, SHARK_COOLDOWN, SHARK_SPEED, SHARK_DAMAGE, SHARK_GIVE_UP, WHIRL_FOLLOW, WHIRL_FOLLOW_SPEED, STORM_ON, STORM_SHARE, STORM_WARN, STORM_AIM, STORM_HIT_R, STORM_DAMAGE, BOIL_ON, BOIL_DELAY, BOIL_DAMAGE};
+    const DK = {SHARK_ON, SHARK_CHANCE, SHARK_COOLDOWN, SHARK_SPEED, SHARK_DAMAGE, SHARK_GIVE_UP, WHIRL_FOLLOW, WHIRL_FOLLOW_SPEED, STORM_ON, STORM_SHARE, STORM_WARN, STORM_AIM, STORM_HIT_R, STORM_DAMAGE, ZORA_ON, ZORA_CHANCE, ZORA_DAMAGE, BOIL_ON, BOIL_DELAY, BOIL_DAMAGE};
     const dbox = document.getElementById('wg-dknobs'), dapply = document.getElementById('wg-dapply');
     document.getElementById('wg-sum-dangers').textContent = T.dangersTitle; dapply.textContent = T.dangersApply;
     const fields = (K, box)=>{ for(const [k, v] of Object.entries(K)){
@@ -5085,7 +5199,7 @@
     boonWindT = 0; boonFish = 0; for(const r of RUINS) r.readyAt = 0;
     rollers.length = 0; rollerT = 6; boat.surfT = 0;
     windAngle = rand(0, Math.PI*2); shiftDur = 0; windTimer = rand(28,36); guideWind = false;
-    explored.fill(0); fogVer++; rooms.fill(0); roomsVer++; resetBottles(); resetStore(); resetShark(); spring = 0; windProg = 0; crankBack = 0; crankLocked = false; document.getElementById('crank').classList.remove('locked');
+    explored.fill(0); fogVer++; rooms.fill(0); roomsVer++; resetBottles(); resetStore(); resetShark(); resetZora(); spring = 0; windProg = 0; crankBack = 0; crankLocked = false; document.getElementById('crank').classList.remove('locked');
     wake.length = 0; bowSpray.length = 0; steam.length = 0; popups.length = 0;
     voyageTime = 0; hurtFlash = 0; shake = 0;
     gameover.classList.add('hidden');
@@ -6053,6 +6167,7 @@
       const x = wrapX(s.x1), y = wrapY(s.y1);
       if(onLand(x, y, 2)){ Sfx.tick(0.4, 0.5); continue; }   // on a shore: a clack on the stones
       stoneSplash.push({x, y, t: 0, seed: rand(0, 6.3)}); Sfx.splash(); Sfx.thunk(0.25);   // a heavy plunge
+      stoneAtZora(x, y);
       if(shark && shark.mode !== 'flee' && wdist(x, y, shark.x, shark.y) < SLING_SCARE_R){
         shark.mode = 'flee'; shark.hd = Math.atan2(wdy(shark.y, y), wdx(shark.x, x));
         popups.push({x: shark.x, y: shark.y - 16, text: TEXT.popups.sharkScared, life: 1.4, max: 1.4});
@@ -7314,6 +7429,7 @@
     updateCicadas(dt);
     updateWhirlpools(dt);
     updateShark(dt);
+    updateZora(dt);
     reveal(boat.x, boat.y);
     updateDialog(dt); updateTalk(dt);
     updateBoonBadge();
@@ -9943,6 +10059,7 @@
       for(const wk of wrecks) if(inView(wk.x, wk.y, wk.L*0.7)) drawWreck(wk); });
     layer(()=>{ for(const b of banks) drawBank(b); for(const bo of bottles) drawBottle(bo); });
     layer(()=>drawShark());
+    layer(()=>drawZora());
     layer(()=>{ for(const w of rollers) drawRoller(w); });
     layer(()=>{ for(const b of buoys) drawBuoy(b); for(const tr of traders) drawTrader(tr); });   // under the fog
     drawCloudShadowsAll(camX, camY, w, h);                   // cloud shadows fall on sea and land
