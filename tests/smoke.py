@@ -18,7 +18,7 @@ HOOK = ('requestAnimationFrame(loop);\n})();',
         'get order(){return order},get sat(){return satisfaction},satOn:SATISFACTION_ON,get moor(){return moor},'
         'get dayT(){return dayT},set dayT(v){dayT=v},'
         'dinnerT:(DINNER_HOUR-DAWN_HOUR)/24,ordersOn:ORDERS_ON,get dayNo(){return dayNo},'
-        'RUINS,get powerOwned(){return powerOwned},get rig(){return boat.rig},bottles,bottleHold,marks,homeStore,banks,get fishing(){return fishing},REEL_ON,REEL_ZONE,'
+        'RUINS,get powerOwned(){return powerOwned},get rig(){return boat.rig},bottles,bottleHold,marks,homeStore,banks,get fishing(){return fishing},get reelOn(){return reelOn},setReel,REEL_ZONE,'
         'unmoor(){moor=null;moorLock=null;}};'
         'tutSet("done");'                  # skip the tutorial: the test drives the controls directly
         'requestAnimationFrame(loop);\n})();')
@@ -102,7 +102,7 @@ def bottle(pg):
 def reel(pg):
     # anchored on a fish bank: a bite, the reel round the hub and the bar; turning the reel lifts the band;
     # kept on the fish the meter fills and it's caught; left alone it gets away
-    if not pg.evaluate('__d.REEL_ON'): return
+    pg.evaluate('__d.setReel(true)')                  # (off by default: the test switches it on)
     def anchor_on_bank():
         pg.evaluate("()=>{const d=__d; d.unmoor(); const b=d.banks.find(b=>b.state==='live'); d.boat.x=b.x; d.boat.y=b.y; d.boat.speed=0;}")
         pg.keyboard.press('Space')
@@ -127,6 +127,7 @@ def reel(pg):
     assert pg.evaluate("__d.fishing && __d.fishing.phase==='cancel'"), 'the fish left alone did not get away'
     assert pg.evaluate("document.getElementById('reel').classList.contains('hidden')"), 'the reel stayed up'
     leave(pg)
+    pg.evaluate('__d.setReel(false)')
 
 def trip(pg):
     global ORDERS; ORDERS = False

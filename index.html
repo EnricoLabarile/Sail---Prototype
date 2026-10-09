@@ -158,10 +158,10 @@
   const FISH_SETTLE = 2;             // seconds stopped on a bank before the nets go over
   const BANK_LOOK = [4, 5, 1.45];    // every fish bank looks alike, whatever it holds: [fewest fish, most fish, their size] (dark, going round)
   const FISH_ANCHOR_SETTLE = 0.25;   // …or this long after dropping anchor on a bank
-  const FISH_TIME_MIN = 2, FISH_TIME_MAX = 4;   // seconds with the nets out before the haul (with REEL_ON: before the bite)
+  const FISH_TIME_MIN = 2, FISH_TIME_MAX = 4;   // seconds with the nets out before the haul (with the reel: before the bite)
   // the reel (a Stardew-style minigame): anchored on a bank, a bite, then a ring round the anchor hub is the reel: turned
   // round clockwise it lifts the band up the bar on the right, let alone it sinks; keep the fish in the band to fill the meter
-  const REEL_ON = true;              // false: the old passive nets (stop on a bank and they haul it in by themselves)
+  const REEL_DEFAULT = false;        // the minigame on a first visit (off: the old passive nets, stop on a bank and they haul it in by themselves); the switch in the first screen's Settings changes it (and it's remembered)
   const REEL_ZONE = 0.28;            // the band's height, a share of the bar
   const REEL_PULL = 0.75;            // the band's lift per rad/s the reel turns (half a turn a second about holds it still)
   const REEL_GRAVITY = 1.9;          // how fast it sinks when the reel is left alone (bar heights per s²)
@@ -314,6 +314,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Fishing minigame: off by default, back to the passive nets; it can be switched on in Settings on this screen ("Fishing minigame", remembered)',
+    ]},
+    {build: '2026-10-08 21:56', items: [
       'Fishing is a minigame now: drop anchor on a fish bank and wait for a bite; a reel appears round the anchor hub (where the wheel was) and a bar on the right',
       'Turn the reel round clockwise to lift the band up the bar, let go and it sinks: keep the fish inside the band to fill the meter beside it; empty, the fish gets away',
       'Each kind fights differently (sea bream the wildest, sardines the calmest); stopping on a bank without the anchor no longer fishes (bottles still come up in the net as before)',
@@ -325,11 +328,8 @@
     {build: '2026-10-08 19:48', items: [
       'Crank: moved to the bottom right corner, mirroring the logbook in the bottom left',
     ]},
-    {build: '2026-10-08 19:35', items: [
-      'Crank: smaller (about a fifth smaller than before), and the curved arrow above it is gone',
-    ]},
   ];
-  const BUILD = '2026-10-08 21:56';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-09 08:40';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -346,6 +346,7 @@
       changesTitle: 'What\'s new',                   // the heading of the (folded) list of changes
       settings: 'Settings',                         // the heading of the settings (vibration)
       changes:  'New in this build',
+      reel:      'Fishing minigame',                 // the switch for the reel (fishing as a minigame instead of the passive nets)
       vibration: 'Vibration',                       // the slider for the strength of the phone's vibrations (the whole game)
       earlier:  'Earlier: build {time}',                // a heading for each of the few builds before this one
       build:    'Build {time}',                       // top right of the first screen: when this version was made
@@ -1159,6 +1160,7 @@
   .wg-setting{display:flex; align-items:center; gap:8px; margin:0 0 12px; font:12px/1.3 ui-monospace, monospace;}
   .wg-setting label{flex:0 0 auto;}
   .wg-setting input{flex:1 1 auto; accent-color:var(--ink);}
+  .wg-setting input[type=checkbox]{flex:0 0 auto; width:18px; height:18px; margin:0;}
   .wg-setting span{flex:0 0 2.6em; text-align:right;}
   #wg-sails .sl-hint{margin:0 0 8px; font:italic 12px/1.35 Georgia, serif;}
   #wg-sails .sl-sail{margin:0 0 6px; padding:6px 0 4px; border-top:1px dashed var(--ink);}
@@ -1294,7 +1296,8 @@
     <!-- collapsible sections (a tap on the heading opens or shuts it): what's new, settings, the world, all shut at first -->
     <details class="wg-sec" id="wg-sec-changes"><summary id="wg-sum-changes"></summary><div id="wg-changes"></div></details>
     <details class="wg-sec" id="wg-sec-settings"><summary id="wg-sum-settings"></summary>
-    <div class="wg-setting"><label for="wg-haptics" id="wg-haptics-label"></label><input id="wg-haptics" type="range" min="0" max="1" step="0.05"><span id="wg-haptics-val"></span></div></details>
+    <div class="wg-setting"><label for="wg-haptics" id="wg-haptics-label"></label><input id="wg-haptics" type="range" min="0" max="1" step="0.05"><span id="wg-haptics-val"></span></div>
+    <div class="wg-setting"><label for="wg-reel" id="wg-reel-label"></label><input id="wg-reel" type="checkbox"></div></details>
     <details class="wg-sec" id="wg-sec-sails"><summary id="wg-sum-sails"></summary><div id="wg-sails"></div></details>
     <details class="wg-sec" id="wg-sec-audio"><summary id="wg-sum-audio"></summary><div id="wg-audio"></div></details>
     <details class="wg-sec" id="wg-sec-dangers"><summary id="wg-sum-dangers"></summary>
@@ -3006,6 +3009,9 @@
   // The Vibration API has no strength, so it scales how long each pulse lasts (×1.6 at full; at 0 none at all)
   let haptics = HAPTICS_DEFAULT;
   try{ const v = localStorage.getItem('vv.haptics'); if(v !== null && isFinite(+v)) haptics = Math.max(0, Math.min(1, +v)); }catch(e){}
+  let reelOn = REEL_DEFAULT;                         // the fishing minigame (the switch in Settings), remembered as vv.reel
+  try{ const v = localStorage.getItem('vv.reel'); if(v === '1' || v === '0') reelOn = v === '1'; }catch(e){}
+  function setReel(on){ reelOn = !!on; try{ localStorage.setItem('vv.reel', reelOn ? '1' : '0'); }catch(e){} }
   function setHaptics(v){ haptics = Math.max(0, Math.min(1, v)); try{ localStorage.setItem('vv.haptics', String(haptics)); }catch(e){} }
   function buzz(pattern, minGap){
     if(!canBuzz || haptics <= 0) return;
@@ -4947,6 +4953,9 @@
     hs.value = haptics; hv.textContent = (+haptics).toFixed(2);
     hs.addEventListener('input', ()=>{ setHaptics(+hs.value); hv.textContent = (+hs.value).toFixed(2); });
     hs.addEventListener('change', ()=> buzz([30, 60, 30]));
+    const rs = document.getElementById('wg-reel');                 // the fishing minigame: on or off
+    document.getElementById('wg-reel-label').textContent = T.reel;
+    rs.checked = reelOn; rs.addEventListener('change', ()=> setReel(rs.checked));
     sailEditor(T);
     audioEditor(T);
     const gen = document.getElementById('wg-gen'), reset = document.getElementById('wg-reset');
@@ -5218,10 +5227,10 @@
       if(b !== fullSaid) fullSaid = null;
       if(b && holdFull()){                                // no room: the nets stay aboard (said once per bank)
         settleT = 0;
-        if(!fullSaid && (atAnchor || (!(REEL_ON && fb) && boat.speed < FISH_STOP))){ fullSaid = b; popups.push({x:boat.x, y:boat.y-24, text:TEXT.popups.holdFull, life:1.6, max:1.6}); buzz(20); }
+        if(!fullSaid && (atAnchor || (!(reelOn && fb) && boat.speed < FISH_STOP))){ fullSaid = b; popups.push({x:boat.x, y:boat.y-24, text:TEXT.popups.holdFull, life:1.6, max:1.6}); buzz(20); }
         return;
       }
-      if(b && (atAnchor || (!(REEL_ON && fb) && boat.speed < FISH_STOP))){   // (with the reel a bank is fished only at anchor)
+      if(b && (atAnchor || (!(reelOn && fb) && boat.speed < FISH_STOP))){   // (with the reel a bank is fished only at anchor)
         settleT += dt;
         if(settleT >= (atAnchor ? FISH_ANCHOR_SETTLE : FISH_SETTLE)){
           // the net is thrown at the fish: toward the bank's middle (a side if right on top of it)
@@ -5242,10 +5251,10 @@
     // nets act like a sea anchor: the boat stays put while fishing
     boat.speed *= Math.exp(-3*dt); boat.kx *= Math.exp(-3*dt); boat.ky *= Math.exp(-3*dt);
     if(f.phase==='drop' && f.t>=NET_DROP){ f.phase='wait'; f.t=0; }
-    else if((f.phase==='wait' || f.phase==='game') && REEL_ON && f.bank && !(anchored && weighT <= 0)){   // anchor weighed: the line comes in
+    else if((f.phase==='wait' || f.phase==='game') && reelOn && f.bank && !(anchored && weighT <= 0)){   // anchor weighed: the line comes in
       f.phase='cancel'; f.t=0; popups.push({x:boat.x, y:boat.y-22, text:TEXT.popups.netsIn, life:1.3, max:1.3});
     }
-    else if(f.phase==='wait' && REEL_ON && f.bank && f.t>=f.dur){   // a bite: the reel takes the wheel's place
+    else if(f.phase==='wait' && reelOn && f.bank && f.t>=f.dur){   // a bite: the reel takes the wheel's place
       f.phase='game'; f.t=0;
       const d = REEL_FISH[FISH[f.bank.sec].key] || 1;
       f.game = {z:0, v:0, f:rand(0.25, 0.5), fv:0, tgt:0.5, tt:0, p:REEL_START, d, w:0, inZ:false};
