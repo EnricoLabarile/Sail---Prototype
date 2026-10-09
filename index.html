@@ -270,6 +270,7 @@
   const CLOUD_ALPHA = 0.45, CLOUD_CORE = 0.88;   // clouds: see-through at the rim, denser in the middle
   const CLOUD_MODELS = 4;            // cloud shapes, shared by all the clouds in the sky (world)
   const MAP_RES = 280;               // the sea chart in the logbook: its pixels a side (fewer = coarser)
+  const ROOM_N = 9;                  // the room map in the logbook (Zelda 1 style): rooms a side, the world cut into ROOM_N × ROOM_N squares, home in the middle one
   const SAIL_SIZE = 1.15;             // size of the boat's sail (1 = the old one: a yard 30 px wide)
   const LATEEN_SIZE = 0.6;            // the lateen sail's size, on top of SAIL_SIZE (1 = as it was drawn before)
   // the two sails' speed curves: [degrees off the wind, share of top speed], made starker than real life so each
@@ -327,6 +328,10 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Paddle wheels: half as many slaps in their sound (four a turn instead of eight)',
+      'Logbook: a Zelda-style map where the compass was (first spread, right page): the sea cut into 9 x 9 rooms, each room you have sailed in filled in, joined to its neighbours, and a blinking dot where you are',
+    ]},
+    {build: '2026-10-09 13:41', items: [
       'Paddle wheels twice as strong: the wound spring drives her at about 39 instead of 20 (SPRING_SPEED)',
     ]},
     {build: '2026-10-09 13:11', items: [
@@ -337,11 +342,8 @@
     {build: '2026-10-09 12:08', items: [
       'Messages in a bottle: the placeholder text is gone; each message now hints at the sunken ship it leads to',
     ]},
-    {build: '2026-10-09 12:07', items: [
-      'Messages in a bottle: one message a voyage. The bottles at sea are all the same message, leading to the same wreck; once you fish one up, the others are gone',
-    ]},
   ];
-  const BUILD = '2026-10-09 13:41';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-09 20:55';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -540,6 +542,7 @@
       cargo:   'Cargo',
       throwAway: 'Throw overboard',
       holdCount: '{n}/{max}',
+      rooms:     'Map of the seas sailed',          // the room map's label (for screen readers and on hover)
       noFish:  'No fish aboard.',
       chart:   'Sea chart',
     },
@@ -1009,6 +1012,12 @@
   #shoplist.on-map #shoplist-body, #shoplist.on-map #hold-page, #shoplist.on-map #cmp-slot{display:none;}
   #wind-page{display:none;} #shoplist.on-map #wind-page{display:block;}   /* the wind card, on the chart's facing page */
   #shoplist.on-base #cmp-slot{display:none;}
+  #cmp-slot #compass{display:none;}                    /* the room map has its place for now (the compass's code stays) */
+  #rooms{display:block; margin:10px auto 0; width:min(100%, 150px); height:auto; color:var(--ink);}
+  #rooms .rm{fill:var(--ink);} #rooms .door{fill:var(--ink);} #rooms .frame{fill:none; stroke:var(--ink); stroke-width:1.2;}
+  #rooms .grid{fill:var(--ink); opacity:.35;}
+  #rooms .you{fill:var(--paper); stroke:var(--ink); stroke-width:.6; animation:roomBlink .8s steps(1) infinite;}
+  @keyframes roomBlink{50%{opacity:0;}}
   /* a page being turned: a sheet swinging on the spine, the page it leaves on its front and the new one on its back */
   #shoplist .turn{position:absolute; z-index:4; transform-style:preserve-3d; pointer-events:none;}
   #shoplist .turn > .page{position:absolute; inset:0; overflow:hidden; backface-visibility:hidden; -webkit-backface-visibility:hidden;}
@@ -1289,7 +1298,7 @@
         <div class="leaf-back" aria-hidden="true"><svg viewBox="0 0 24 24"><g fill="var(--paper)"><path d="M12 1.5 L13.6 9.2 L21 12 L13.6 14.8 L12 22.5 L10.4 14.8 L3 12 L10.4 9.2 Z"/><path d="M12 6 L13 11 L18 12 L13 13 L12 18 L11 13 L6 12 L11 11 Z" transform="rotate(45 12 12)" opacity=".7"/></g><circle cx="12" cy="12" r="6.6" fill="none" stroke="var(--paper)" stroke-width="0.9"/><circle cx="12" cy="12" r="1.2" fill="var(--ink)"/></svg></div>
       </div>
       <div class="crease" aria-hidden="true"></div>
-      <div class="page right"><div id="hold-page"></div><div id="cmp-slot"></div><div id="wind-page"></div><div id="base-r"><canvas id="base-prev"></canvas><p id="base-name"></p></div></div>
+      <div class="page right"><div id="hold-page"></div><div id="cmp-slot"><svg id="rooms" role="img"></svg></div><div id="wind-page"></div><div id="base-r"><canvas id="base-prev"></canvas><p id="base-name"></p></div></div>
     </div>
   </div>
   <!-- the compass, top centre of the main view (not interactive; the open logbook may cover it) -->
@@ -5051,7 +5060,7 @@
     boonWindT = 0; boonFish = 0; for(const r of RUINS) r.readyAt = 0;
     rollers.length = 0; rollerT = 6; boat.surfT = 0;
     windAngle = rand(0, Math.PI*2); shiftDur = 0; windTimer = rand(28,36); guideWind = false;
-    explored.fill(0); fogVer++; resetBottles(); resetStore(); resetShark(); spring = 0; windProg = 0; crankBack = 0; crankLocked = false; document.getElementById('crank').classList.remove('locked');
+    explored.fill(0); fogVer++; rooms.fill(0); roomsVer++; resetBottles(); resetStore(); resetShark(); spring = 0; windProg = 0; crankBack = 0; crankLocked = false; document.getElementById('crank').classList.remove('locked');
     wake.length = 0; bowSpray.length = 0; steam.length = 0; popups.length = 0;
     voyageTime = 0; hurtFlash = 0; shake = 0;
     gameover.classList.add('hidden');
@@ -6633,8 +6642,41 @@
   const holdKey = ()=> [dayNo, coins, boat.rig, cargoSel ? cargoSel.kind + cargoSel.key : '', bottleHold.map(b=> b.read ? 'r' : 'u').join(''), ...FISH_KEYS.map(k=>counts[k]), ...ALL_DISHES.map(d=> dishHold[d.icon]||0), ...VILLAGES.map(v=> v.giftGot?'g':''), powerOwned, powerLeft, Math.ceil(boonWindT), powerLeft < POWER_USES ? Math.ceil(powerT) : 0,
                         order ? order.items.map(it=> it.got).join(',') + order.closed : ''].join('|');
   // while the list is open, keep the hold up to date (a catch, a repair)
+  // ---- the room map (Zelda 1 style): the world cut into ROOM_N × ROOM_N rooms round home; each room she has sailed
+  // in is a block of ink, joined to its sailed neighbours by a little door, and a dot blinks where she is ----
+  const rooms = new Uint8Array(ROOM_N*ROOM_N), ROOM_W = WORLD.w/ROOM_N, ROOM_H = WORLD.h/ROOM_N;
+  const roomOf = (x, y)=>{
+    const i = Math.floor((wdx(x, START.x) + WORLD.w/2)/ROOM_W), j = Math.floor((wdy(y, START.y) + WORLD.h/2)/ROOM_H);
+    return [Math.max(0, Math.min(ROOM_N-1, i)), Math.max(0, Math.min(ROOM_N-1, j))];
+  };
+  let roomsVer = 0, roomsShown = -1;
+  function markRoom(){ const [i, j] = roomOf(boat.x, boat.y), k = j*ROOM_N + i; if(!rooms[k]){ rooms[k] = 1; roomsVer++; } }
+  const elRooms = document.getElementById('rooms');
+  elRooms.setAttribute('aria-label', TEXT.logbook.rooms); elRooms.insertAdjacentHTML('afterbegin', '<title>'+TEXT.logbook.rooms+'</title>');
+  const RS = 10, RP = 2;                                   // a room's size in the drawing, the frame's margin
+  elRooms.setAttribute('viewBox', '0 0 ' + (ROOM_N*RS + RP*2) + ' ' + (ROOM_N*RS + RP*2));
+  function renderRooms(){
+    roomsShown = roomsVer;
+    let h = '<title>'+TEXT.logbook.rooms+'</title><rect class="frame" x=".6" y=".6" width="'+(ROOM_N*RS + RP*2 - 1.2)+'" height="'+(ROOM_N*RS + RP*2 - 1.2)+'" rx="1.5"/>';
+    for(let j=0;j<ROOM_N;j++) for(let i=0;i<ROOM_N;i++){
+      const x = RP + i*RS, y = RP + j*RS;
+      if(!rooms[j*ROOM_N + i]){ h += '<rect class="grid" x="'+(x + RS/2 - .4)+'" y="'+(y + RS/2 - .4)+'" width=".8" height=".8"/>'; continue; }   // not yet sailed: a faint dot
+      h += '<rect class="rm" x="'+(x + 1.2)+'" y="'+(y + 1.2)+'" width="'+(RS - 2.4)+'" height="'+(RS - 2.4)+'" rx=".8"/>';
+      if(i < ROOM_N-1 && rooms[j*ROOM_N + i + 1]) h += '<rect class="door" x="'+(x + RS - 1.3)+'" y="'+(y + RS/2 - 1.2)+'" width="2.6" height="2.4"/>';
+      if(j < ROOM_N-1 && rooms[(j+1)*ROOM_N + i]) h += '<rect class="door" x="'+(x + RS/2 - 1.2)+'" y="'+(y + RS - 1.3)+'" width="2.4" height="2.6"/>';
+    }
+    h += '<circle class="you" r="1.4"/>';
+    elRooms.innerHTML = h;
+    placeRoomDot();
+  }
+  function placeRoomDot(){                                 // where she is, to the pixel: blinking in its room
+    const dot = elRooms.querySelector('.you'); if(!dot) return;
+    const x = RP + (wdx(boat.x, START.x) + WORLD.w/2)/ROOM_W*RS, y = RP + (wdy(boat.y, START.y) + WORLD.h/2)/ROOM_H*RS;
+    dot.setAttribute('cx', x.toFixed(1)); dot.setAttribute('cy', y.toFixed(1));
+  }
   function refreshList(){
     if(!elList.classList.contains('open')) return;
+    if(logSpread === 0){ if(roomsShown !== roomsVer) renderRooms(); else placeRoomDot(); }
     if(holdKey() !== listKey) renderList();
     else if(logSpread === 1 && windCardKey() !== windKey){                 // the wind card follows her heading live
       windKey = windCardKey(); const el = document.getElementById('wind-card'); if(el) el.innerHTML = windHTML();
@@ -7601,6 +7643,7 @@
     healthShowT = Math.max(0, healthShowT-dt);
     elStatus.classList.toggle('show', healthShowT>0);
     elWood.classList.add('show');                                   // always visible
+    if(playing) markRoom();
     refreshList();
     updateDockBtn();
     updateOarCtl(dt);
@@ -9574,9 +9617,9 @@
       // turning, each side's water goes by at its own pace (her way ∓ the turn × half her beam): spun round on the spot,
       // the two wheels turn opposite ways
       B.spinA = (B.spinA || 0) + (B.turnRate || 0)*12.8/R*0.9*wdt;
-      // a paddle slapping into the water each time one comes round (eight a turn): while the spring drives the wheels,
+      // a paddle slapping into the water every other one that comes round (four a turn): while the spring drives the wheels,
       // or, quieter and lower, while they only freewheel under sail (fading in with her way)
-      { const idx = Math.floor(turnA/(Math.PI/4));
+      { const idx = Math.floor(turnA/(Math.PI/2));
         if(!g && SPRING_PADDLES && idx !== B.padIdx){
           if(oarSpin > 0.05) Sfx.paddle(PADDLE_VOL*oarSpin);
           else if((B.speed || 0) > 3 && !crankDrag) Sfx.paddle(PADDLE_VOL*PADDLE_FREE_VOL, PADDLE_FREE_PITCH);   // (not while the crank is turned: its clicks stay its own)

@@ -279,7 +279,13 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   them across, "Done" (the only button) moves them (popups "n stored" / "n taken aboard"); taking aboard more than the
   hold's free slots is refused ("No room in the hold"). Sails not rigged sit on the table too (`homeStore.sails`; one left at home
   is not aboard: `sailsInHold` skips it, so it takes no slot); the village markets never show them, so they can't be sold. Goods left at home are meant to count toward the end goal.
-- **Compass** (drawn at 95 px, `CMP_PX`; it lives **in the logbook**, moved at start into `#cmp-slot` on the first spread's right page,
+- **Room map** (Zelda 1 style; in `#cmp-slot`, the first spread's right page, where the compass was: the compass is
+  hidden there for now, `#cmp-slot #compass{display:none}`, its code untouched): the world cut into `ROOM_N` (9, Tuning)
+  × `ROOM_N` rooms with home in the middle one (`roomOf`); every room she has sailed in (`rooms`, marked each frame by
+  `markRoom`, cleared on a new voyage) is an ink block, joined to a sailed neighbour by a little door; unsailed rooms are a
+  faint dot; a paper dot blinks where she is, to the pixel (`renderRooms` when `roomsVer` changes, `placeRoomDot` every
+  frame while the book is open on that spread; an SVG `#rooms`, label `TEXT.logbook.rooms`).
+- **Compass** (drawn at 95 px, `CMP_PX`; it lived **in the logbook**, moved at start into `#cmp-slot` on the first spread's right page,
   shown up to 150 px wide; no longer on the screen; hidden in the tutorial until its own tutorial step): points home, a dot per village filled once a dish is bought there; drawn like the
   wheel (greys into a low-res canvas, then dithered): brass bezel with rivets, shaded card, wind rose, glass glare.
   The hinged brass **lid** is gone for now (`lidOpen` always true, `lidT` 0; the drawing is still there). A tap
@@ -415,7 +421,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   surges or kicks), and the spring runs down over `SPRING_TIME` (15 s; was 30) of driving; otherwise it rests. `updateSpring`
   (called by `updateOarCtl`) also turns the wheels (`oarRate`, 1.4 × `OAR_RATE` × `SPRING_SPEED`/14); the steady churn (`Sfx.rowBed`) is
   silent in this mode: instead `drawBoat` plays `Sfx.paddle` (a low lowpassed splash and a 105→62 Hz thud, loudness
-  `PADDLE_VOL` 3.6 × `oarSpin`) each time a paddle comes round (eight a turn of `B.wheelA`), so the sound follows the wheels; freewheeling under sail (no spring drive, her speed > 3 px/s, and not while the crank is being turned, so its clicks always sound the same) the same splash plays at half the volume, same pitch (`PADDLE_FREE_VOL` 0.5 × `PADDLE_VOL`, `PADDLE_FREE_PITCH` 1, Tuning; it was 0.22 × a fade-in with her speed and 0.7 pitch, too faint to hear);
+  `PADDLE_VOL` 3.6 × `oarSpin`) every other paddle that comes round (four a turn of `B.wheelA`; it was eight), so the sound follows the wheels; freewheeling under sail (no spring drive, her speed > 3 px/s, and not while the crank is being turned, so its clicks always sound the same) the same splash plays at half the volume, same pitch (`PADDLE_FREE_VOL` 0.5 × `PADDLE_VOL`, `PADDLE_FREE_PITCH` 1, Tuning; it was 0.22 × a fade-in with her speed and 0.7 pitch, too faint to hear);
   when the spring runs down `Sfx.springOff` (the gear's last links slowing, a slack clunk). A new voyage starts with it empty.
   **Steam** (`STEAM_ON`, `STEAM_RATE` 9 puffs/s × `oarSpin` while the spring drives, `STEAM_IDLE` 0.18 of that and
   `STEAM_LIGHT` 0.45 the size/whiteness while she moves (> 3 px/s) with the wheels only freewheeling; none moored or
