@@ -316,6 +316,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Messages in a bottle: the placeholder text is gone; each message now hints at the sunken ship it leads to',
+    ]},
+    {build: '2026-10-09 12:07', items: [
       'Messages in a bottle: one message a voyage. The bottles at sea are all the same message, leading to the same wreck; once you fish one up, the others are gone',
     ]},
     {build: '2026-10-09 09:55', items: [
@@ -324,11 +327,8 @@
     {build: '2026-10-09 09:01', items: [
       'Current: the wind now carries the boat slowly downwind, sail or no sail, so you have to steer against it to keep off rocks and shores (not at anchor, moored or with the nets out)',
     ]},
-    {build: '2026-10-09 08:40', items: [
-      'Fishing minigame: off by default, back to the passive nets; it can be switched on in Settings on this screen ("Fishing minigame", remembered)',
-    ]},
   ];
-  const BUILD = '2026-10-09 12:07';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-09 12:08';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -485,20 +485,20 @@
       close:   'Tap to roll it up again.',
       marked:  'A cross on the sea chart',
       wreck:   'The wreck from the message!',          // the first time she comes close to it
-      // the messages (placeholders for now): each bottle fished up brings the next one, in a shuffled order
+      // the messages: one a voyage (the bottles at sea are all copies of it), in a shuffled order; each hints at a sunken ship
       texts: [
-        'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore. (1)',
-        'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo. (2)',
-        'Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. (3)',
-        'Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est. (4)',
-        'Curabitur pretium tincidunt lacus. Nulla gravida orci a odio, et tempus feugiat nisl a tellus. (5)',
-        'Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin. (6)',
-        'Integer in mauris eu nibh euismod gravida. Duis ac tellus et risus vulputate vehicula. (7)',
-        'Donec lobortis risus a elit. Etiam tempor. Ut ullamcorper, ligula eu tempor congue, eros est euismod. (8)',
-        'Maecenas fermentum consequat mi. Donec fermentum. Pellentesque malesuada nulla a mi. (9)',
-        'Aliquam erat volutpat. Nam dui mi, tincidunt quis, accumsan porttitor, facilisis luctus, metus. (10)',
-        'Phasellus ultrices nulla quis nibh. Quisque a lectus. Donec consectetuer ligula vulputate sem tristique. (11)',
-        'Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia curae; fusce id purus. (12)',
+        'To whoever finds this: the reef took her in the night. We are few, and the water is cold. Somewhere out there she lies, broken in two.',
+        'She was too big for these waters. The captain laughed at the rocks. Now the rocks are laughing. Look for her where the sea turns pale.',
+        'I hid my mother\'s ring in cabin 214 before the lights went out. If the sea has kept her, perhaps it has kept the ring too.',
+        'Day three on the lifeboat. We can still see the funnel above the water when the swell drops. Remember this place, please.',
+        'The band played until the very end. I never liked that song, but I will hum it now until someone finds us.',
+        'Twelve decks, four pools, a thousand lights, and not one of them showed us the reef. Tell my brother I am sorry.',
+        'If you are a fisherman, keep away from the white hull on the rocks. Something is still knocking from inside.',
+        'We drifted east, then the current turned. She is behind us now, sitting on the reef like a broken cake.',
+        'The purser locked the safe and ran. Whatever was in it is still down there, with her.',
+        'Rain, then a bang, then the floor leaning. That is all I remember. Whoever reads this: she was called the Aurora.',
+        'Do not trust the lighthouse to the north. It was dark the night we struck. The wreck is my proof.',
+        'I am writing this on the back of a dinner menu. Tonight was meant to be lobster. Instead, the sea came in.',
       ],
     },
     sails: {

@@ -212,7 +212,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   sprite painted once; `drawWreck` adds a dashed surf ring, live, in the rocks' layer). It's solid: a row of hidden
   rocks along each half (`hidden`, skipped when drawing) plus four real rocks by the break; the first time she comes
   within 220 px a toast ("The wreck from the message!", `TEXT.bottles.wreck`). A new voyage clears them
-  (`clearWrecks`, `rockGrid.remove`). 12 messages (placeholder lorem ipsum for now, `TEXT.bottles.texts`), one a voyage, dealt in a shuffled order (`msgQueue`)
+  (`clearWrecks`, `rockGrid.remove`). 12 messages (`TEXT.bottles.texts`, each a castaway's note hinting vaguely at the sunken cruise ship), one a voyage, dealt in a shuffled order (`msgQueue`)
   so they don't repeat until all have come up. A new voyage clears them all (`resetBottles`).
 - **Ruins** on the diagonals (the temples): **off for now** (`RUINS_ON` = false in Tuning: `RUINS` is empty). When on: dock there for
   a random power (friendly wind 60 s, blessed nets ×3, full hull).
