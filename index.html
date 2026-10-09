@@ -357,6 +357,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Logbook map: the sea you have seen is clean paper with a dotted line round its edge; the sea not seen yet has only a few scattered dots',
+    ]},
+    {build: '2026-10-10 00:16', items: [
       'Logbook map: the sea you have not seen yet is clean paper with just the grid, no more dense dotted grey',
     ]},
     {build: '2026-10-10 00:15', items: [
@@ -367,11 +370,8 @@
       'Drawn map: no more spiral of island clusters made up by chance (in the preview and in the wind): all the sea is plain open sea',
       'Logbook sea chart: land in solid ink like the preview, a dotted edge along the shore, twice as sharp on the phone, so you can read the shape of the coasts',
     ]},
-    {build: '2026-10-09 23:32', items: [
-      'Also gone for now, until you decide where they belong: rain clouds, the trading boats, the big waves (and the ones to surf), sharks and sea imps; the gulls and the plain clouds stay',
-    ]},
   ];
-  const BUILD = '2026-10-10 00:16';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-10 00:22';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -7188,11 +7188,12 @@
       for(let j=0;j<N;j++) for(let i=0;i<N;i++) mapLand[j*N+i] = onLand((i+0.5)*S, (j+0.5)*S, 0) ? 1 : 0;
     }
     const im = mapCtx.createImageData(N, N), d = im.data;
-    const seen = (i,j)=> explored[fci(Math.floor((j+0.5)*S/FOG_CELL))*FOG_N + fci(Math.floor((i+0.5)*S/FOG_CELL))];
+    const seen = (i,j)=> explored[fci(Math.floor((((j+N)%N)+0.5)*S/FOG_CELL))*FOG_N + fci(Math.floor((((i+N)%N)+0.5)*S/FOG_CELL))];
     const land = (i,j)=> mapLand[((j+N)%N)*N + (i+N)%N];
     for(let j=0;j<N;j++) for(let i=0;i<N;i++){
-      let g = 255;                                                     // not yet seen: clean paper, only the grid over it
-      if(seen(i,j)){
+      let g = (i % 12 === 6 && j % 12 === 6) ? 0 : 255;                // not yet seen: paper with a very sparse lattice of dots
+      if(seen(i,j) && !(seen(i-1,j) && seen(i+1,j) && seen(i,j-1) && seen(i,j+1))) g = 120;   // the edge of what she has seen: a dotted line
+      else if(seen(i,j)){
         const near = (a,b)=> land(i+a,j+b);
         if(land(i,j)) g = 30;                                          // land: solid ink, like the world generator's preview
         else if(near(-1,0) || near(1,0) || near(0,-1) || near(0,1)) g = 150;   // the water along the shore: a dotted edge, so the coast reads
