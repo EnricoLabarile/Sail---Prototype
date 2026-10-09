@@ -388,7 +388,8 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   bad tack (wind from port, `sailSide` < 0, 'a la mala') × `LATEEN_MALA` (0.85). (4) **Handling**: turning × `RIG_TURN`
   (1.3 / 1.25; the square's was 0.8), gathering way × `RIG_ACCEL` (0.7 / 1.4). **The current** (`CURRENT_DRIFT` 7 px/s × the local breeze, `boat.dfx/dfy`, added to her
   motion like the leeway): the wind carries her downwind whatever the sail does, so she must steer to make up for it; eased
-  in and out (`boat.driftK`), none at anchor, moored, in a whirlpool or while fishing. (5) **Leeway** (`boat.lwx/lwy`, added to her motion): to
+  in and out (`boat.driftK`), none at anchor, moored, in a whirlpool, while fishing or within `CURRENT_SHORE` (90 px) of any land (`onLand`), so it never
+  pins her to a coast. (5) **Leeway** (`boat.lwx/lwy`, added to her motion): to
   leeward, × `RIG_LEEWAY` (0.35 / 0.08) × her speed, full close-hauled (≤50° off), none from 130°. (6) **Big waves**:
   surfing push and length × `RIG_SURF` (1.35 / 0.7, `boat.surfK`), damage × `RIG_WAVE_HIT` (0.6 / 1.4), the slew round
   × `RIG_BROACH` (0.6 / 2.2). Measured (sail-only target): open sea, square at 150° ~51 px/s, lateen at 70° ~55; among

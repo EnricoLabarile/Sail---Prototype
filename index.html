@@ -306,6 +306,7 @@
   const LATEEN_TACK_DRIVE = 0.35;    // the lateen's drive while its yard swings across the mast on a change of tack
   const LATEEN_MALA = 0.85;          // the lateen's drive on its 'bad' tack ('a la mala': wind from port, the sail pressed against the mast)
   const CURRENT_DRIFT = 7;           // px/s the current (the wind's push on the water) carries her downwind at full breeze, sail or no sail: steer to make up for it (none at anchor, moored, in a whirlpool or with the nets out)
+  const CURRENT_SHORE = 90;          // px: within this of any shore the current lets go (calm water by the coasts); it takes hold again out past it
   const RIG_LEEWAY = {square: 0.35, lateen: 0.08};   // she slips sideways to leeward at this × her speed close-hauled (less on a reach, none running free)
   const RIG_SURF = {square: 1.35, lateen: 0.7};      // surfing a big wave: its push and how long it lasts ×
   const RIG_WAVE_HIT = {square: 0.6, lateen: 1.4};   // damage from a big wave taken badly ×
@@ -343,6 +344,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Current: it no longer pushes the boat close to a shore (within about 90 px of land); it eases off as you near the coast and takes hold again out at sea',
+    ]},
+    {build: '2026-10-09 22:12', items: [
       'New danger, the sea imp (like Zelda\'s Zora): out at sea it pops out of the water near you, spits a fireball at you, ducks under and pops up somewhere else, three to five times, then it\'s gone',
       'Dodge the fireballs (they hurt the hull); a slingshot stone on the imp makes it dive away for good',
       'First screen, Dangers: ZORA_ON, ZORA_CHANCE and ZORA_DAMAGE',
@@ -355,12 +359,8 @@
       'Slingshot: a big stone now, with a big splash (a crown of water, drops falling back, wide rings)',
       'Sharks: slower (26 instead of 38) but much more frequent (about every minute and a half at sea)',
     ]},
-    {build: '2026-10-09 21:32', items: [
-      'Slingshot: on the right, above the crank. Drag its pouch down and let go: a stone flies off ahead of the bow, further the harder you pull, and lands with a splash',
-      'A stone landing by a shark sends it off',
-    ]},
   ];
-  const BUILD = '2026-10-09 22:12';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-09 22:23';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -7531,7 +7531,7 @@
     }
     // the current: the wind sets the water moving, and it carries her downwind whatever the sail does
     {
-      const on = !anchored && !moor && !boat.whirl && !fishing ? 1 : 0;
+      const on = !anchored && !moor && !boat.whirl && !fishing && !onLand(boat.x, boat.y, CURRENT_SHORE) ? 1 : 0;   // (none close to a shore)
       boat.driftK += (on - boat.driftK)*Math.min(1, dt*0.8);       // (it takes hold slowly after weighing anchor, and lets go as the anchor bites)
       const v = CURRENT_DRIFT*localStrength*boat.driftK;
       boat.dfx = Math.cos(localWind + Math.PI)*v; boat.dfy = Math.sin(localWind + Math.PI)*v;
