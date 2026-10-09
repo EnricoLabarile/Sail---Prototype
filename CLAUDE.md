@@ -374,7 +374,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   `drawLateenSail` (`LATEEN_SIZE` 0.6 in Tuning, on top of `SAIL_SIZE`): a long slanted yard on a short mast near the bow, the triangle of cloth trailing aft, eased out
   to leeward about half the wind's angle off the bow (`boat.boomSigned`), bellied to leeward, a sheet to the stern
   quarter; it furls along the yard at anchor.
-  (Wind lines on the sail were tried several ways, fixed streamlines, faint squiggles, short curls along both faces after a sketch, and dropped: they didn't work.) Changing tack, the heavy yard swings across slowly (`LATEEN_SWING` in
+  (Wind lines on the sail were tried several ways, fixed streamlines, faint squiggles, short curls along both faces after a sketch, and dropped: they didn't work.) The sail (yard and belly, `boomSigned`, `sailPower`) follows a change of wind or course over `SAIL_TRIM_TIME` (2 s, Tuning; a look only, the drive's own retrim is `RIG_RETRIM`). Changing tack, the heavy yard swings across slowly (`LATEEN_SWING` in
   Tuning, 0.9 against the usual trim rate of 3; `boat.swingAcross` until it's settled on the new side). A new voyage
   starts with `START_RIG` again.
   **Wind card** (the logbook's second spread, right page, facing the chart; `windHTML`, texts in `TEXT.sails`): a polar diagram in ink,

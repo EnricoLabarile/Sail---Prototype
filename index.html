@@ -291,7 +291,8 @@
   const GUST_SHIFT = 35;             // degrees the wind veers back and forth among the islands
   const LEE_DIST = 140;              // px: land this close upwind puts her in its lee
   const LEE_DROP = 0.6;              // how much of the wind the lee takes (land right upwind; less the farther it is)
-  const LATEEN_SWING = 0.9;          // how quickly the lateen yard swings across when she changes tack (3 = as quick as the sail trims; lower = heavier)
+  const SAIL_TRIM_TIME = 2;          // seconds the sail takes to swing round and fill to a change of wind or course (a look: the yard and the cloth's belly)
+  const LATEEN_SWING = 0.9;          // how quickly the lateen yard swings across when she changes tack (3/SAIL_TRIM_TIME = as quick as the sail trims; lower = heavier)
   const WIND_STREAK_RATE = 2;        // wind streaks across the sea: how many more than the old ones (1 = as before)
   const WIND_STREAK_WIDTH = 1.8;     // their line width (was 1.2)
   const WIND_STREAK_ALPHA = 0.85;    // how dark they are (was 0.65)
@@ -315,6 +316,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Sail: it swings round and fills more slowly when the wind or her course changes, over about 2 seconds instead of at once (SAIL_TRIM_TIME)',
+    ]},
+    {build: '2026-10-09 09:01', items: [
       'Current: the wind now carries the boat slowly downwind, sail or no sail, so you have to steer against it to keep off rocks and shores (not at anchor, moored or with the nets out)',
     ]},
     {build: '2026-10-09 08:40', items: [
@@ -325,12 +329,8 @@
       'Turn the reel round clockwise to lift the band up the bar, let go and it sinks: keep the fish inside the band to fill the meter beside it; empty, the fish gets away',
       'Each kind fights differently (sea bream the wildest, sardines the calmest); stopping on a bank without the anchor no longer fishes (bottles still come up in the net as before)',
     ]},
-    {build: '2026-10-08 21:29', items: [
-      'Biomes: the West of the map (past home waters, out to the far side) is now the stormy West, thick with storm clouds that hang over it and with whirlpools (about 7 storms and 20 whirlpools round any spot there, against 1 or 2 elsewhere)',
-      'First screen, World: two new knobs, WEST_STORM_CLOUDS (16) and WEST_WHIRLS (40)',
-    ]},
   ];
-  const BUILD = '2026-10-09 09:01';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-09 09:55';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -7072,7 +7072,7 @@
     const oarSurge = 1 - OAR_SURGE + OAR_SURGE*Math.PI*Math.max(0, Math.sin(2*Math.PI*(oarCycle % 1)));
     boat.rowV = MANUAL_OARS && !(anchored || moor || boat.whirl) ? (SPRING_PADDLES ? SPRING_SPEED*oarSpin : OAR_MAX*oarSpin*oarSurge + oarKick) : 0;   // + the kick of a stroke on time (the spring's wheels: a steady push)
     if(boat.rowV > targetSpeed) targetSpeed = boat.rowV;
-    boat.sailPower += (windSf-boat.sailPower)*Math.min(1,dt*3);
+    boat.sailPower += (windSf-boat.sailPower)*Math.min(1,dt*3/SAIL_TRIM_TIME);   // (the cloth fills and slackens over SAIL_TRIM_TIME)
 
     // Square sail: the yard pivots on the mast at its centre. The sail's
     // belly faces where the wind blows TO (in boat frame), braced round at
@@ -7090,7 +7090,7 @@
     // the lateen's long yard is heavy: when she changes tack it swings across slowly (LATEEN_SWING), then trims as usual
     if(boat.rig === 'lateen' && Math.sign(faceTarget) !== Math.sign(boat.boomSigned) && Math.abs(boat.boomSigned) > 0.05) boat.swingAcross = true;
     if(boat.swingAcross && (boat.rig !== 'lateen' || Math.abs(faceTarget - boat.boomSigned) < 0.08)) boat.swingAcross = false;
-    boat.boomSigned += (faceTarget - boat.boomSigned)*Math.min(1, dt*(boat.swingAcross ? LATEEN_SWING : 3));
+    boat.boomSigned += (faceTarget - boat.boomSigned)*Math.min(1, dt*(boat.swingAcross ? LATEEN_SWING : 3/SAIL_TRIM_TIME));
     // surfing a roller from astern: a temporary push above normal top speed
     const surf = boat.surfT>0 ? SURF_BOOST*(boat.surfK || 1)*Math.min(1, boat.surfT/0.8) : 0;
     boat.surfT = Math.max(0, (boat.surfT||0) - dt);
