@@ -139,6 +139,19 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   `findWhirlSpot(avoidBoat, true)` places them, and places them again when they reopen, anywhere in the West, not only
   far out in open sea). Both knobs are also on the first screen's World. Measured: within 900 px of a spot in the West
   ~7 storms and ~23 whirlpools, against ~1–2 of each in the east.
+- **The boiling South** (section "The boiling South"; Tuning under Biomes): south of home from `SOUTH_FROM` (1900) to
+  `SOUTH_TO` (2900, past the map's wrapped edge), within `SOUTH_HALF_W` (1600) of home's longitude, the edge wobbling a
+  little (`boilRaw`), the sea boils; villages and temples keep a ring of cool water `BOIL_SAFE` (420; Sudia sits in one).
+  Worked out per `DEEP_CELL` like the deep water (`boilGrid`, `boilAt`) and drawn the same way, a darker tint
+  (`drawBoilTint`, `BOIL_TINT` 0.3, heaving a little), with clusters of bubbles welling up, swelling and popping into rings
+  (`boilBubbles`, `drawBoilBubbles`, `BOIL_BUBBLES` 70 clusters a second on a screenful) and puffs of steam rising and
+  drifting downwind over everything (`boilFumes`, `drawBoilFumes`, after the boat, `BOIL_FUMES` 12); all in `updateBoil`.
+  The boat in it (not moored): a toast once per visit (`TEXT.toasts.boilIn`), small wisps hissing off her waterline, and
+  after `BOIL_DELAY` (2.5 s) the hull loses `BOIL_DAMAGE` (4) a second: steam pours off her sides (pushed into `steam`),
+  `boat.scald` (0..1, rises at 0.5/s, fades at 0.07/s) darkens her white sides and draws ink scorch marks along the
+  gunwale, blistering; each second a blink (`hurtFlash`), the hull bar, a rock, a buzz and `Sfx.sizzle` (bright hiss with
+  crackles, kind `crash`); a popup `TEXT.popups.scald` once per visit. `BOIL_ON`, `BOIL_DELAY`, `BOIL_DAMAGE` are knobs
+  in the first screen's Dangers.
 - **Home: a fortified masseria** (`drawHomeBuildings`, home units ×`HOME_BLD`): a walled court with crenellated white
   walls (north gate to our pier, south gate to the guests'), a square watchtower on the north-east corner, the owner's
   house along the south wall, a well, and five trulli (whitewashed drums under grey stone cones) outside the east wall;

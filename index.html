@@ -238,6 +238,17 @@
   const WEST_WHIRLS = knob('WEST_WHIRLS', 40);              // extra whirlpools in the stormy West, on top of the usual ones (world)
   const WEST_FROM = 800;             // px west of home where the stormy West begins (home waters end at ~665) (world)
   const WEST_HALF_H = 1300;          // px north and south of home's latitude it reaches (world)
+  // the boiling South: past SOUTH_FROM south of home the sea boils (bubbles, steam); a while in it scalds the hull
+  const BOIL_ON = knob('BOIL_ON', 1);              // 1 = the boiling South is there, 0 = off (world)
+  const SOUTH_FROM = 1900;           // px south of home where the boiling sea begins (Sudia is ~1730–2030 down, in a cool ring) (world)
+  const SOUTH_TO = 2900;             // px south of home where it ends (past the map's wrapped edge: ~2140 north of home) (world)
+  const SOUTH_HALF_W = 1600;         // px east and west of home's longitude it reaches (world)
+  const BOIL_SAFE = 420;             // px of cool water round each village and temple inside it (world)
+  const BOIL_DELAY = knob('BOIL_DELAY', 2.5);      // seconds in boiling water before the hull starts to suffer (the hull hisses meanwhile)
+  const BOIL_DAMAGE = knob('BOIL_DAMAGE', 4);      // hull lost per second in boiling water after that (MAX_HEALTH 100)
+  const BOIL_TINT = 0.3;             // how dark the boiling water is drawn (ink over the sea, like DEEP_TINT)
+  const BOIL_BUBBLES = 70;           // clusters of bubbles welling up a second on a screenful of boiling sea (3–6 bubbles each)
+  const BOIL_FUMES = 12;             // puffs of steam rising off it a second, on a screenful
   const STORM_EVERY = [6, 14];       // seconds between one bolt and the next from a storm cloud (shortest, longest)
   const STORM_WARN = knob('STORM_WARN', 1.2); // seconds of warning before a bolt: a ring flickers on the water where it will strike
   const STORM_AIM = knob('STORM_AIM', 0.4); // chance a bolt aims at her when she's under the storm (else anywhere under it)
@@ -316,6 +327,11 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'New danger, the boiling South: far south of home (past Sudia, which keeps a ring of cool water) the sea boils: darker water, bubbles welling up and popping, steam rising',
+      'In it, after a couple of seconds the hull starts to suffer (about 4 a second): steam pours off her sides, scorch marks appear on the hull, it blinks and hisses',
+      'First screen, Dangers: BOIL_ON, BOIL_DELAY and BOIL_DAMAGE',
+    ]},
+    {build: '2026-10-09 12:08', items: [
       'Messages in a bottle: the placeholder text is gone; each message now hints at the sunken ship it leads to',
     ]},
     {build: '2026-10-09 12:07', items: [
@@ -324,11 +340,8 @@
     {build: '2026-10-09 09:55', items: [
       'Sail: it swings round and fills more slowly when the wind or her course changes, over about 2 seconds instead of at once (SAIL_TRIM_TIME)',
     ]},
-    {build: '2026-10-09 09:01', items: [
-      'Current: the wind now carries the boat slowly downwind, sail or no sail, so you have to steer against it to keep off rocks and shores (not at anchor, moored or with the nets out)',
-    ]},
   ];
-  const BUILD = '2026-10-09 12:08';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-09 13:11';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -392,6 +405,7 @@
     },
     // the little notes that slide in at the top
     toasts: {
+      boilIn:     'The sea is boiling here!',       // sailing into the boiling South
       homeBack:   'Back home',
       homeLeave:  'Leaving home',
       villageIn:  'You approach {village}',
@@ -418,6 +432,7 @@
       sharkSeen: 'a fin!',
       sharkBite: 'Shark bite! -{damage}',
       lightning: 'Struck by lightning! -{damage}',   // a storm cloud's bolt hits the boat
+      scald:    'the hull is scalding!',             // in the boiling South, once the hull starts to suffer
       bought:   '+ {item}',
       coinsIn:  '+{n} coins',
       coinsOut: '{n} coins',
@@ -3555,6 +3570,21 @@
       src.start(t0, Math.random()*0.9, 0.03);
     }
     // nets over the side: a soft splash
+    // boiling water on hot planks: a hiss of bright noise with a few crackles in it
+    function sizzle(k = 1){
+      if(!ac || ac.state!=='running') return;
+      const t0 = ac.currentTime, d = 0.7;
+      const src = ac.createBufferSource(); src.buffer = noise;
+      const hp = ac.createBiquadFilter(); hp.type = 'bandpass'; hp.frequency.setValueAtTime(5200, t0); hp.frequency.exponentialRampToValueAtTime(3000, t0 + d); hp.Q.value = 0.8;
+      const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.05*k, t0 + 0.06); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+      src.connect(hp); hp.connect(g); g.connect(master); src.start(t0, Math.random()*0.5, d + 0.05);
+      for(let i=0;i<5;i++){                                   // crackles
+        const at = t0 + Math.random()*d*0.8, c = ac.createBufferSource(); c.buffer = noise;
+        const cf = ac.createBiquadFilter(); cf.type = 'highpass'; cf.frequency.value = 2500;
+        const cg = ac.createGain(); cg.gain.setValueAtTime(0.0001, at); cg.gain.exponentialRampToValueAtTime(0.06*k, at + 0.002); cg.gain.exponentialRampToValueAtTime(0.0001, at + 0.02);
+        c.connect(cf); cf.connect(cg); cg.connect(master); c.start(at, Math.random()*0.8, 0.03);
+      }
+    }
     function splash(){
       if(!ac || ac.state!=='running') return;
       const t0 = ac.currentTime;
@@ -4010,12 +4040,12 @@
     // each sound's kind (for SOUND_VOL); the ones played every frame set gains made in init(), routed there
     const KIND = {oar: 'oars', oarCue: 'oars', oarHit: 'oars', rowBed: 'oars', ratchet: 'crank', paddle: 'paddles', springOff: 'paddles',
                   crate: 'crate', tick: 'clicks', thunk: 'clicks', type: 'clicks', hammer: 'clicks', book: 'book', pageTurn: 'book',
-                  pickup: 'nets', splash: 'nets', bell: 'bell', whirl: 'whirl', drone: 'whirl', gull: 'gulls', crash: 'crash',
+                  pickup: 'nets', splash: 'nets', sizzle: 'crash', bell: 'bell', whirl: 'whirl', drone: 'whirl', gull: 'gulls', crash: 'crash',
                   waveBreak: 'waves', waveHit: 'waves', surf: 'waves', townEvent: 'town', chatter: 'town', cricket: 'night', howl: 'night',
                   anchor: 'anchor', buoy: 'buoy', coins: 'coins', rain: 'rain', cicadas: 'cicadas', ambient: 'sea', wheel: 'wheel', engine: 'engine', grind: 'crank', thunder: 'thunder'};
     const kinded = (name, fn)=> (...a)=>{ const k = curKind; curKind = KIND[name]; try{ return routed(KIND[name], ()=> fn(...a)); } finally { curKind = k; } };
     for(const [k, v] of Object.entries(SOUND_VOL)) vol[k] = v;
-    return {init, setVol, ...Object.fromEntries(Object.entries({oar, ratchet, paddle, springOff, oarCue, oarHit, rowBed, crate, tick, thunk, wheel, ambient, rain, cicadas, book, pageTurn, pickup, hammer, bell, whirl, type, splash, drone, gull, crash, waveBreak, waveHit, surf, townEvent, chatter, cricket, howl, anchor, buoy, coins, engine, grind, thunder}).map(([n, f])=> [n, kinded(n, f)]))};
+    return {init, setVol, ...Object.fromEntries(Object.entries({oar, ratchet, paddle, springOff, oarCue, oarHit, rowBed, crate, tick, thunk, wheel, ambient, rain, cicadas, book, pageTurn, pickup, hammer, bell, whirl, type, splash, drone, gull, crash, waveBreak, waveHit, surf, townEvent, chatter, cricket, howl, anchor, buoy, coins, engine, grind, thunder, sizzle}).map(([n, f])=> [n, kinded(n, f)]))};
   })();
 
   // ---------- Ship's wheel ----------
@@ -4964,7 +4994,7 @@
     const gen = document.getElementById('wg-gen'), reset = document.getElementById('wg-reset');
     gen.textContent = T.generate; reset.textContent = T.reset;
     // the dangers: the sharks' and whirlpools' knobs, the same kind of fields in their own section
-    const DK = {SHARK_ON, SHARK_CHANCE, SHARK_COOLDOWN, SHARK_SPEED, SHARK_DAMAGE, SHARK_GIVE_UP, WHIRL_FOLLOW, WHIRL_FOLLOW_SPEED, STORM_ON, STORM_SHARE, STORM_WARN, STORM_AIM, STORM_HIT_R, STORM_DAMAGE};
+    const DK = {SHARK_ON, SHARK_CHANCE, SHARK_COOLDOWN, SHARK_SPEED, SHARK_DAMAGE, SHARK_GIVE_UP, WHIRL_FOLLOW, WHIRL_FOLLOW_SPEED, STORM_ON, STORM_SHARE, STORM_WARN, STORM_AIM, STORM_HIT_R, STORM_DAMAGE, BOIL_ON, BOIL_DELAY, BOIL_DAMAGE};
     const dbox = document.getElementById('wg-dknobs'), dapply = document.getElementById('wg-dapply');
     document.getElementById('wg-sum-dangers').textContent = T.dangersTitle; dapply.textContent = T.dangersApply;
     const fields = (K, box)=>{ for(const [k, v] of Object.entries(K)){
@@ -5010,7 +5040,7 @@
   })();
   document.getElementById('restart-btn').addEventListener('click', ()=>{
     boat.x = SPAWN.x; boat.y = SPAWN.y; boat.angle = SPAWN.angle;
-    boat.speed = 0; boat.health = MAX_HEALTH; boat.kx = boat.ky = 0; boat.whirl = null; boat.rig = START_RIG; boat.sailFurled = false;
+    boat.speed = 0; boat.scald = 0; boat.boilT = 0; boat.health = MAX_HEALTH; boat.kx = boat.ky = 0; boat.whirl = null; boat.rig = START_RIG; boat.sailFurled = false;
     for(const w of whirlpools) whirlAsleep(w);           // a calm first day again
     boat.oarK = 0; boat.oarsOut = false;
     for(const k in counts) counts[k] = 0;
@@ -5456,6 +5486,135 @@
     }
     ctx.globalAlpha = DEEP_TINT;
     ctx.drawImage(deepBig, 0, 0, deepBox.w, deepBox.h, deepBox.x, deepBox.y, deepBox.w, deepBox.h);
+    ctx.globalAlpha = 1;
+  }
+
+  // ---------- The boiling South ----------
+  // South of home past SOUTH_FROM (to SOUTH_TO, over the map's wrapped edge), within SOUTH_HALF_W of home's
+  // longitude, the sea boils; the edge wanders a little, and villages and temples keep a ring of cool water
+  // (BOIL_SAFE). Worked out per cell like the deep water, and drawn the same way as a darker tint, with bubbles
+  // swelling and popping and steam rising off it. A while in it (BOIL_DELAY, the hull hissing) and the hull
+  // suffers BOIL_DAMAGE a second: her sides scorch (boat.scald), steam pours off her waterline.
+  const TAU = Math.PI*2;
+  function boilRaw(x, y){
+    if(!BOIL_ON) return false;
+    const dy = ((y - START.y)%WORLD.h + WORLD.h)%WORLD.h, dx = wdx(x, START.x);
+    const wob = 70*Math.sin(x*TAU*3/WORLD.w + 1.3) + 40*Math.sin(x*TAU*8/WORLD.w + 0.4);   // the edge isn't ruler-straight
+    if(dy < SOUTH_FROM + wob || dy > SOUTH_TO + wob) return false;
+    if(Math.abs(dx) > SOUTH_HALF_W + 90*Math.sin(y*TAU*5/WORLD.h)) return false;
+    return !SPECIALS.some(v=> wdist(x, y, v.isl.x, v.isl.y) < BOIL_SAFE);
+  }
+  const boilGrid = new Int8Array(DEEP_N*DEEP_N).fill(-1);
+  function boilCell(i, j){
+    const k = dci(j)*DEEP_N + dci(i);
+    if(boilGrid[k] < 0) boilGrid[k] = boilRaw((dci(i)+0.5)*DEEP_CELL, (dci(j)+0.5)*DEEP_CELL) ? 1 : 0;
+    return boilGrid[k] === 1;
+  }
+  const boilAt = (x, y)=> boilCell(Math.floor(wrapX(x)/DEEP_CELL), Math.floor(wrapY(y)/DEEP_CELL));
+  const boilCv = document.createElement('canvas'), boilCtx = sceneCtx(boilCv);
+  const boilBig = document.createElement('canvas'), boilBigCtx = sceneCtx(boilBig);
+  let boilImg = null, boilKey = '', boilBox = null, boilAny = false;
+  function drawBoilTint(camX, camY, w, h){
+    if(!BOIL_ON) return;
+    const C = DEEP_CELL, i0 = Math.floor(camX/C)-1, j0 = Math.floor(camY/C)-1, nx = Math.ceil(w/C)+3, ny = Math.ceil(h/C)+3;
+    const key = i0 + '|' + j0 + '|' + nx + '|' + ny;
+    if(key !== boilKey){
+      boilKey = key; boilAny = false;
+      if(boilCv.width !== nx || boilCv.height !== ny || !boilImg){ boilCv.width = nx; boilCv.height = ny; boilImg = boilCtx.createImageData(nx, ny); }
+      const d = boilImg.data;
+      for(let j=0;j<ny;j++) for(let i=0;i<nx;i++){ const p = (j*nx+i)*4, on = boilCell(i0+i, j0+j); d[p] = d[p+1] = d[p+2] = 0; d[p+3] = on ? 255 : 0; if(on) boilAny = true; }
+      if(boilAny){
+        boilCtx.putImageData(boilImg, 0, 0);
+        if(boilBig.width < nx*C || boilBig.height < ny*C){ boilBig.width = Math.max(boilBig.width, nx*C); boilBig.height = Math.max(boilBig.height, ny*C); }
+        boilBigCtx.clearRect(0, 0, nx*C, ny*C);
+        boilBigCtx.imageSmoothingEnabled = true;
+        boilBigCtx.drawImage(boilCv, 0, 0, nx, ny, 0, 0, nx*C, ny*C);
+      }
+      boilBox = {x: i0*C, y: j0*C, w: nx*C, h: ny*C};
+    }
+    if(!boilAny) return;
+    ctx.globalAlpha = BOIL_TINT*(0.85 + 0.15*Math.sin(t*1.7));      // it heaves a little
+    ctx.drawImage(boilBig, 0, 0, boilBox.w, boilBox.h, boilBox.x, boilBox.y, boilBox.w, boilBox.h);
+    ctx.globalAlpha = 1;
+  }
+  const boilBubbles = [], boilFumes = [];
+  let boilBubAcc = 0, boilFumeAcc = 0, boilTick = 0, boilSaid = false, boilOutT = 0, boilScaldSaid = false;
+  function updateBoil(dt){
+    if(!BOIL_ON) return;
+    // bubbles and steam on the boiling water in sight (round the camera, which follows the boat)
+    const hw = GW*PX/2 + 30, hh = GH*PX/2 + 30;
+    boilBubAcc += dt*BOIL_BUBBLES; boilFumeAcc += dt*BOIL_FUMES;
+    while(boilBubAcc > 1){ boilBubAcc -= 1;
+      const x = wrapX(boat.x + rand(-hw, hw)), y = wrapY(boat.y + rand(-hh, hh));
+      if(boilAt(x, y) && !onLand(x, y, 6)){ const n = 3 + Math.floor(Math.random()*4), big = rand(0.8, 1.3);   // a cluster welling up together
+        for(let m=0;m<n;m++){ const a = rand(0, TAU), d = m ? rand(3, 9) : 0;
+          boilBubbles.push({x: x + Math.cos(a)*d, y: y + Math.sin(a)*d, r: rand(1.8, 4.2)*big*(m ? 0.8 : 1.2), life: -m*rand(0.05, 0.2), max: rand(0.6, 1.5), seed: rand(0, 6.3)}); } }
+    }
+    while(boilFumeAcc > 1){ boilFumeAcc -= 1;
+      const x = wrapX(boat.x + rand(-hw, hw)), y = wrapY(boat.y + rand(-hh, hh));
+      if(boilAt(x, y) && !onLand(x, y, 3)) boilFumes.push({x, y, z: 0, vz: rand(5, 9), r: rand(4, 8), life: 0, max: rand(2.5, 4), seed: rand(0, 6.3)});
+    }
+    const dw = windAngle + Math.PI, wx = Math.cos(dw)*windStrength*8, wy = Math.sin(dw)*windStrength*8;
+    for(let i=boilBubbles.length-1;i>=0;i--){ const b = boilBubbles[i]; b.life += dt; if(b.life >= b.max) boilBubbles.splice(i, 1); }
+    for(let i=boilFumes.length-1;i>=0;i--){ const f = boilFumes[i]; f.life += dt; if(f.life >= f.max){ boilFumes.splice(i, 1); continue; }
+      f.x += wx*dt; f.y += wy*dt; f.z += f.vz*dt; }
+    // the boat in it: a few seconds' grace (the hull hisses), then the hull suffers
+    const inBoil = playing && !moor && boilAt(boat.x, boat.y);
+    if(inBoil){
+      boilOutT = 0;
+      if(!boilSaid){ boilSaid = true; toast(TEXT.toasts.boilIn); buzz([15, 40, 15]); }
+      boat.boilT = (boat.boilT || 0) + dt;
+    } else {
+      boat.boilT = Math.max(0, (boat.boilT || 0) - dt*2);
+      boilOutT += dt; if(boilOutT > 4){ boilSaid = false; boilScaldSaid = false; }
+    }
+    const burning = inBoil && boat.boilT > BOIL_DELAY;
+    boat.scald = Math.max(0, Math.min(1, (boat.scald || 0) + (burning ? dt*0.5 : -dt*0.07)));   // her sides scorch, and slowly come clean
+    // steam off the hull at the waterline: a wisp while she's in it, pouring once it scalds
+    const hiss = inBoil ? (burning ? 10 : 3) : 0;
+    if(hiss && STEAM_ON && Math.random() < hiss*dt*2){
+      const ca = Math.cos(boat.angle), sa = Math.sin(boat.angle), u = rand(-15, 17), sd = Math.random() < 0.5 ? -1 : 1, v = sd*(7.5 - Math.abs(u)*0.2);
+      const out = sd*rand(3, 6);                             // a little out from her side, so it doesn't hide her
+      steam.push({x: boat.x + ca*u - sa*(v + out), y: boat.y + sa*u + ca*(v + out), z: 1, vz: rand(8, 14), r: rand(0.8, 1.3)*(burning ? 1 : 0.7),
+                  a: burning ? 0.9 : 0.5, life: 0, max: rand(1, 1.6), seed: Math.random()*6.3});
+    }
+    if(burning){
+      boat.health = Math.max(0, boat.health - BOIL_DAMAGE*dt);
+      if(!boilScaldSaid){ boilScaldSaid = true; popups.push({x: boat.x, y: boat.y - 26, text: TEXT.popups.scald, life: 1.8, max: 1.8}); }
+      boilTick -= dt;
+      if(boilTick <= 0){ boilTick = 1; showHealth(); hurtFlash = Math.max(hurtFlash, 0.15); boat.rock = Math.min(2.5, (boat.rock||0) + 0.3); Sfx.sizzle(1); buzz(30); }
+    } else boilTick = 0;
+  }
+  // bubbles: paper with an ink rim, swelling, then popping into a ring and a few specks; steam drifts over them
+  function drawBoilBubbles(){
+    if(!boilBubbles.length) return;
+    const whole = new Path2D(), rings = new Path2D(), specks = new Path2D();
+    for(const b of boilBubbles){
+      if(!inView(b.x, b.y, 8)) continue;
+      if(b.life < 0) continue;
+      const q = b.life/b.max;
+      if(q < 0.75){ const r = b.r*Math.sqrt(q/0.75) + 0.3; whole.moveTo(b.x + r, b.y); whole.arc(b.x, b.y, r, 0, TAU); }
+      else { const k = (q - 0.75)/0.25, r = b.r*(1 + 0.9*k);
+        rings.moveTo(b.x + r, b.y); rings.arc(b.x, b.y, r, 0, TAU);
+        for(let m=0;m<3;m++){ const a = b.seed + m*2.1, d = r + 1 + k*2; specks.moveTo(b.x + Math.cos(a)*d + 0.6, b.y + Math.sin(a)*d); specks.arc(b.x + Math.cos(a)*d, b.y + Math.sin(a)*d, 0.6, 0, TAU); } }
+    }
+    ctx.fillStyle = PAPERC; ctx.fill(whole); ctx.strokeStyle = INKC; ctx.lineWidth = 0.9; ctx.stroke(whole);
+    ctx.globalAlpha = 0.7; ctx.lineWidth = 0.8; ctx.stroke(rings); ctx.fillStyle = PAPERC; ctx.fill(specks); ctx.globalAlpha = 1;
+  }
+  function drawBoilFumes(){
+    if(!boilFumes.length) return;
+    const blobs = new Path2D(), wisps = new Path2D();
+    for(const f of boilFumes){
+      const y = f.y - f.z*BOAT_TILT;
+      if(!inView(f.x, y, 20)) continue;
+      const q = f.life/f.max, r = f.r*(1 + 2.2*q);
+      if(q < 0.55){ blobs.moveTo(f.x + r, y); blobs.arc(f.x, y, r, 0, TAU); }
+      else for(let m=0;m<3;m++){ const a = f.seed + m*2.1, d = r*0.7, rr = r*0.5*(1 - q)/0.45 + 0.4;
+        wisps.moveTo(f.x + Math.cos(a)*d + rr, y + Math.sin(a)*d); wisps.arc(f.x + Math.cos(a)*d, y + Math.sin(a)*d, rr, 0, TAU); }
+    }
+    ctx.globalAlpha = 0.55; ctx.fillStyle = V(0.7); ctx.fill(wisps);
+    ctx.globalAlpha = 0.45; ctx.strokeStyle = INKC; ctx.lineWidth = 1.2; ctx.stroke(blobs);
+    ctx.globalAlpha = 0.7; ctx.fillStyle = PAPERC; ctx.fill(blobs);
     ctx.globalAlpha = 1;
   }
 
@@ -7387,6 +7546,7 @@
     else elHint.classList.add('hidden');              // at a quay: no hint window
 
     updateFishing(dt);
+    updateBoil(dt);
     updateReel(dt);
     updateGuests(dt);
     if(homeStageFor(satisfaction) !== homeStage){ homeStage = homeStageFor(satisfaction); rebakeHome(); }   // the masseria changes with the mood
@@ -9326,7 +9486,8 @@
     // view looks at her), then the deck at the gunwale, paper; it blinks to ink when hit
     const blink = !g && hurtFlash>0 && Math.floor(hurtFlash*20)%2===0;
     // (a gozzo's sides: white, with a dark band of colour along the top)
-    for(const z of [0, FB*0.35, FB*0.7]){ L(z); ctx.fillStyle = z > FB*0.5 ? V(0.25) : V(0.8); hullPath(0.9 + 0.1*z/FB); ctx.fill(); }
+    const sc = g ? 0 : (B.scald || 0);                   // scalded in the boiling South: her white sides go dark
+    for(const z of [0, FB*0.35, FB*0.7]){ L(z); ctx.fillStyle = z > FB*0.5 ? V(0.25) : V(0.8 - 0.3*sc); hullPath(0.9 + 0.1*z/FB); ctx.fill(); }
     L(0); ctx.strokeStyle = INKC; ctx.lineWidth = 1; hullPath(0.9); ctx.stroke();
     L(FB);
     ctx.fillStyle = blink ? INKC : PAPERC;
@@ -9347,6 +9508,13 @@
     ctx.lineWidth=1; hullPath(0.8); ctx.stroke();
     ctx.lineWidth=1.3;
     ctx.beginPath(); skSeg(9,-7.4,9,7.4,0.6); skSeg(-7,-7.8,-7,7.8,0.6); ctx.stroke();
+    if(sc > 0.03){                                       // scorch marks along the gunwale, blistering while it scalds
+      ctx.save(); hullPath(1); ctx.clip(); ctx.fillStyle = INKC; ctx.globalAlpha = Math.min(1, sc*1.2);
+      const bl = (B.boilT || 0) > BOIL_DELAY ? 0.4*Math.sin(t*9) : 0;
+      ctx.beginPath();
+      for(const [x, y, r] of [[15, -4.5, 2.2], [6, -8, 2.6], [-3, 8, 2.4], [-11, -7, 2.2], [11, 6.5, 2], [-15, 4, 2]]){ const rr = r*(0.6 + 0.4*sc) + bl; ctx.moveTo(x + rr, y); ctx.ellipse(x, y, rr, rr*0.7, 0, 0, Math.PI*2); }
+      ctx.fill(); ctx.restore();
+    }
     ctx.strokeStyle=INKC; ctx.lineWidth=1.8; hullPath(1); ctx.stroke();
     // fenders: two a side, hung over the gunwale on short lines (fore and aft
     // of the oars), swinging a touch with the roll
@@ -9591,6 +9759,7 @@
     ctx.translate(-camX,-camY);
     drawSea(camX,camY,w,h);
     drawDeep(camX,camY,w,h);                                   // the deep water, where big waves run: a darker sea
+    drawBoilTint(camX,camY,w,h);                               // the boiling South: a murkier sea…
 
     // near an edge the view overlaps a neighbouring copy of the world:
     // draw each layer once per copy that touches the screen
@@ -9618,6 +9787,7 @@
       return out;
     };
     layer(()=>{ for(const wp of whirlpools) if(wp.s>0 && inView(wp.x,wp.y,wp.r+10)){ ctx.globalAlpha = wp.s; drawWhirlpool(wp); ctx.globalAlpha = 1; } });
+    layer(()=>drawBoilBubbles());                             // …bubbling
     layer(()=>{ for(const isl of visIslands()) drawIslandWater(isl); }, true);
     layer(()=>{ for(const isl of visIslands()) drawIslandLand(isl); }, true);
     layer(()=>{ const vis = []; rockGrid.query(view.x+w/2, view.y+h/2, Math.max(w,h)/2+20, o=>{ if(!o.hidden && inView(o.x,o.y,o.r+6)) vis.push(o); }); drawRocks(vis);
@@ -9663,6 +9833,7 @@
     layer(()=>{ for(const g of guests) if(inView(g.x, g.y, 40)) drawBoat(g); });   // the clients' boats
     drawBoat();
     layer(()=>drawSteam());                                  // the funnel's steam, over the boat
+    layer(()=>drawBoilFumes());                              // steam rising off the boiling South
     layer(()=>drawStreaks());
     layer(()=>{
       for(const g of gulls) if(inView(g.x,g.y,16)) drawGull(g);
