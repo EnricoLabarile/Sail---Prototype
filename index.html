@@ -357,6 +357,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Logbook map: the sea you have not seen yet is clean paper with just the grid, no more dense dotted grey',
+    ]},
+    {build: '2026-10-10 00:15', items: [
       'Logbook: the map with the squares (A1 to I9) now shows the coasts you have seen, land in ink; the sea you have not seen yet stays dotted grey',
       'The old sea chart on the next spread is gone: the wind card is there on its own',
     ]},
@@ -367,12 +370,8 @@
     {build: '2026-10-09 23:32', items: [
       'Also gone for now, until you decide where they belong: rain clouds, the trading boats, the big waves (and the ones to surf), sharks and sea imps; the gulls and the plain clouds stay',
     ]},
-    {build: '2026-10-09 23:25', items: [
-      'The world holds only what you drew: the land, Westa (B2) and Estolia (the dot in E3); Sudia and the Temple of Eolus are gone until you draw them (so no fair wind for now)',
-      'Also gone until drawn: rocks, whirlpools, fish banks, storm clouds, the boiling sea and the messages in a bottle (each can be brought back from the first screen)',
-    ]},
   ];
-  const BUILD = '2026-10-10 00:15';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-10 00:16';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -6997,7 +6996,7 @@
                         order ? order.items.map(it=> it.got).join(',') + order.closed : ''].join('|');
   // while the list is open, keep the hold up to date (a catch, a repair)
   // ---- the logbook's map: the world cut into ROOM_N × ROOM_N squares round home (named A1…I9), over a chart of what
-  // she has seen (land in ink, a dotted edge along the shore, the sea not yet seen a light dotted grey: paintChart,
+  // she has seen (land in ink, a dotted edge along the shore, the sea not yet seen left clean: paintChart,
   // in the section "Sea chart"), and a dot blinks where she is ----
   const rooms = new Uint8Array(ROOM_N*ROOM_N), ROOM_W = WORLD.w/ROOM_N, ROOM_H = WORLD.h/ROOM_N;
   const roomOf = (x, y)=>{
@@ -7175,7 +7174,7 @@
   // The chart under the logbook's map of squares (the first spread's right page): only what the boat has seen (the
   // fog of war's cells) and nothing else, no marks for home, ports or the boat: land solid ink (as in the world
   // generator's preview), a dotted edge on the water along the shore so the coasts' shape reads, the sea not yet seen
-  // a light dotted grey; the crosses from the messages in bottles wherever they are. Dithered like the widgets.
+  // clean paper (only the grid over it); the crosses from the messages in bottles wherever they are. Dithered like the widgets.
   // (It had a spread of its own, facing the wind card; that page is gone.) The wind card is on the second spread.
   const elWindPage = document.getElementById('wind-page');
   const mapCv = document.createElement('canvas');
@@ -7192,7 +7191,7 @@
     const seen = (i,j)=> explored[fci(Math.floor((j+0.5)*S/FOG_CELL))*FOG_N + fci(Math.floor((i+0.5)*S/FOG_CELL))];
     const land = (i,j)=> mapLand[((j+N)%N)*N + (i+N)%N];
     for(let j=0;j<N;j++) for(let i=0;i<N;i++){
-      let g = 215;                                                     // not yet seen: a light dotted grey
+      let g = 255;                                                     // not yet seen: clean paper, only the grid over it
       if(seen(i,j)){
         const near = (a,b)=> land(i+a,j+b);
         if(land(i,j)) g = 30;                                          // land: solid ink, like the world generator's preview
