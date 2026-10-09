@@ -148,7 +148,7 @@
   const HOME_WATERS = Math.round(950*WORLD_K);     // radius of home waters (all kinds of fish there)
   const HOME_BANKS = Math.round(18*WK2);           // fish banks in home waters, refilled as they are fished (world)
   const FISH_CATCH_MIN = 1, FISH_CATCH_MAX = 2;   // fish per haul (random in between)
-  const BOTTLE_COUNT = 6;            // messages in a bottle floating about the sea at once (one fished up, another drifts in elsewhere) (world)
+  const BOTTLE_COUNT = 6;            // copies of the one message in a bottle floating about the sea (more = easier to come across; once one is fished up the others are gone) (world)
   const BOTTLE_SIZE = 1.8;           // how big a bottle is drawn (1 = true to the boat's scale; bigger reads better)
   const WRECK_LEN = 190;             // px long, the wrecked cruise ship that lies where a message's cross is (in two halves)
   const BOTTLE_TIME = 1.2;           // seconds with the net out before a bottle is hauled in (fish take FISH_TIME_MIN–MAX)
@@ -316,6 +316,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Messages in a bottle: one message a voyage. The bottles at sea are all the same message, leading to the same wreck; once you fish one up, the others are gone',
+    ]},
+    {build: '2026-10-09 09:55', items: [
       'Sail: it swings round and fills more slowly when the wind or her course changes, over about 2 seconds instead of at once (SAIL_TRIM_TIME)',
     ]},
     {build: '2026-10-09 09:01', items: [
@@ -324,13 +327,8 @@
     {build: '2026-10-09 08:40', items: [
       'Fishing minigame: off by default, back to the passive nets; it can be switched on in Settings on this screen ("Fishing minigame", remembered)',
     ]},
-    {build: '2026-10-08 21:56', items: [
-      'Fishing is a minigame now: drop anchor on a fish bank and wait for a bite; a reel appears round the anchor hub (where the wheel was) and a bar on the right',
-      'Turn the reel round clockwise to lift the band up the bar, let go and it sinks: keep the fish inside the band to fill the meter beside it; empty, the fish gets away',
-      'Each kind fights differently (sea bream the wildest, sardines the calmest); stopping on a bank without the anchor no longer fishes (bottles still come up in the net as before)',
-    ]},
   ];
-  const BUILD = '2026-10-09 09:55';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-09 12:07';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -2825,12 +2823,14 @@
   // bobbing. Stop (or drop anchor) on one and the net fishes it up like a
   // fish bank; it goes into the hold, a slot of its own. A tap on it in the
   // logbook's Cargo reads it (#letter); the first reading puts a cross on the
-  // sea chart (for now at a random spot). Another bottle drifts in elsewhere.
+  // sea chart (for now at a random spot) and the wreck there. There's one message a
+  // voyage: the BOTTLE_COUNT bottles are all copies of it, only to make it easier to
+  // come across; once one is fished up the others quietly vanish and none drift in.
   const bottles = [];                    // floating: {x, y, ph, a, msg}
   const bottleHold = [];                 // aboard: {msg, read}
   const marks = [];                      // crosses on the sea chart: {x, y}
   const BOTTLE_REACH = 12 + 8*BOTTLE_SIZE;   // how close she must be to net one
-  let msgQueue = [];
+  let msgQueue = [], voyageMsg = 0, bottleFound = false;   // the voyage's one message; found: no more copies at sea
   const nextMsg = ()=>{ if(!msgQueue.length) msgQueue = TEXT.bottles.texts.map((_,i)=> i).sort(()=> Math.random() - 0.5); return msgQueue.pop(); };
   function spawnBottle(away){
     for(let tries=0; tries<300; tries++){
@@ -2838,7 +2838,7 @@
       if(wdist(x,y,START.x,START.y) < 300) continue;                       // not at home's quay
       if(away && wdist(x,y,boat.x,boat.y) < 900) continue;                 // a new one drifts in out of sight
       if(onLand(x,y,40) || pierDist(x,y).d < 80) continue;
-      bottles.push({x, y, ph: rand(0, 6.3), a: rand(0, 6.3), msg: nextMsg()});
+      bottles.push({x, y, ph: rand(0, 6.3), a: rand(0, 6.3), msg: voyageMsg});
       return;
     }
   }
@@ -2867,7 +2867,8 @@
   }
   function resetBottles(){
     clearWrecks();
-    bottles.length = 0; bottleHold.length = 0; marks.length = 0; msgQueue = [];
+    bottles.length = 0; bottleHold.length = 0; marks.length = 0;
+    voyageMsg = nextMsg(); bottleFound = false;          // (the shuffled queue carries on, so the next voyage brings another message)
     for(let k=0;k<BOTTLE_COUNT;k++) spawnBottle(false);
   }
   resetBottles();
@@ -2878,7 +2879,7 @@
       if(fishing && fishing.bottle === bo) continue;                         // held by the net
       bo.x = wrapX(bo.x + Math.cos(dw)*2.2*dt); bo.y = wrapY(bo.y + Math.sin(dw)*2.2*dt);
       bo.a += Math.sin(t*0.3 + bo.ph)*0.15*dt;
-      if(onLand(bo.x, bo.y, 14)){ bottles.splice(k,1); spawnBottle(true); }  // washed ashore: another drifts in elsewhere
+      if(onLand(bo.x, bo.y, 14)){ bottles.splice(k,1); if(!bottleFound) spawnBottle(true); }  // washed ashore: another copy drifts in elsewhere
     }
   }
   function bottleUnderBoat(){
@@ -5292,10 +5293,8 @@
       if(steering){ f.phase='cancel'; f.t=0; popups.push({x:boat.x, y:boat.y-22, text:TEXT.popups.netsIn, life:1.3, max:1.3}); }
       else if(f.t>=f.dur && f.bottle){                  // a bottle in the net: into the hold, and another drifts in elsewhere
         f.phase='haul'; f.t=0;
-        const k = bottles.indexOf(f.bottle);
-        if(k >= 0) bottles.splice(k, 1);
+        bottles.length = 0; bottleFound = true;         // the other copies vanish: as far as she knows there was only this one
         bottleHold.push({msg: f.bottle.msg, read: false});
-        spawnBottle(true);
         popups.push({x:boat.x, y:boat.y-24, text:TEXT.bottles.caught, life:1.8, max:1.8});
         Sfx.pickup(); buzz([15,50,25]);
         elListBtn.classList.add('news');                // the logbook shimmers: something to read
@@ -6447,7 +6446,10 @@
     let name = '';
     if(s.kind === 'fish' && counts[s.key] > 0){ counts[s.key]--; name = FISH_NAME[s.key].one; }
     else if(s.kind === 'dish' && dishHold[s.key] > 0){ dishHold[s.key]--; name = (ALL_DISHES.find(d=> d.icon === s.key) || {}).name || ''; }
-    else if(s.kind === 'bottle' && bottleHold[s.key]){ bottleHold.splice(s.key, 1); name = TEXT.bottles.name; }
+    else if(s.kind === 'bottle' && bottleHold[s.key]){
+      const b = bottleHold.splice(s.key, 1)[0]; name = TEXT.bottles.name;
+      if(!b.read && !bottles.length){ bottleFound = false; for(let k=0;k<BOTTLE_COUNT;k++) spawnBottle(true); }   // thrown back unread: the message is still out there
+    }
     else { cargoSel = null; renderList(); return; }
     cargoSel = null;
     popups.push({x:boat.x, y:boat.y-24, text:fmt(TEXT.popups.overboard, {item: name}), life:1.6, max:1.6});

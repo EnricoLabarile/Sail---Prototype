@@ -192,11 +192,14 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   the world generator's preview marks temples with a small diamond.
 - **Messages in a bottle** (section "Messages in a bottle"; texts in `TEXT.bottles`): `BOTTLE_COUNT` (6, Tuning, world)
   bottles float about the open sea (`bottles`, `spawnBottle`: not on land, not at a quay, not near home), drifting
-  slowly downwind (2.2 px/s) and bobbing; one washed ashore is replaced elsewhere. Drawn by `drawBottle` (with the
+  slowly downwind (2.2 px/s) and bobbing; one washed ashore is replaced elsewhere. **One message a voyage**: they are all
+  copies of it (`voyageMsg`, drawn from `msgQueue` by `resetBottles`), there only to make it easier to come across; once
+  one is fished up the others vanish and none drift in (`bottleFound`), so the player never knows there were others;
+  thrown overboard unread, the copies drift in again. Drawn by `drawBottle` (with the
   fish banks' layer): a patch of darker water round it (the fish banks' soft dot), a glass bottle on its side with a rolled note inside, a cork, a ripple ring, `BOTTLE_SIZE` (1.8)
   times true scale so it reads. Fished like a fish bank (stop on it, or drop anchor: `bottleUnderBoat`, within
   `BOTTLE_REACH`; fish banks come first): the net goes over, and after `BOTTLE_TIME` (1.2 s) it's hauled in with the
-  bottle ("a message in a bottle!", the logbook shimmers) and another one drifts in out of sight. Aboard it takes a
+  bottle ("a message in a bottle!", the logbook shimmers) and the other copies are gone. Aboard it takes a
   hold slot (`bottleHold`, counted in `slotsUsed` and `mkSlotsAfter`; a full hold leaves it in the sea), shown in the
   Cargo after the spare sail as a tappable slot (`bottleSlotHTML`, a dot while unread). A tap reads it (`readBottle`):
   the unrolled message `#letter` over everything (a tap rolls it up), and the first reading puts an ink cross on the
@@ -209,7 +212,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   sprite painted once; `drawWreck` adds a dashed surf ring, live, in the rocks' layer). It's solid: a row of hidden
   rocks along each half (`hidden`, skipped when drawing) plus four real rocks by the break; the first time she comes
   within 220 px a toast ("The wreck from the message!", `TEXT.bottles.wreck`). A new voyage clears them
-  (`clearWrecks`, `rockGrid.remove`). 12 messages (placeholder lorem ipsum for now, `TEXT.bottles.texts`), dealt in a shuffled order (`msgQueue`)
+  (`clearWrecks`, `rockGrid.remove`). 12 messages (placeholder lorem ipsum for now, `TEXT.bottles.texts`), one a voyage, dealt in a shuffled order (`msgQueue`)
   so they don't repeat until all have come up. A new voyage clears them all (`resetBottles`).
 - **Ruins** on the diagonals (the temples): **off for now** (`RUINS_ON` = false in Tuning: `RUINS` is empty). When on: dock there for
   a random power (friendly wind 60 s, blessed nets ×3, full hull).
@@ -566,7 +569,7 @@ The smoke test checks there are no JS errors (it switches the fishing minigame o
 that gets away, then off again) (the market and the storehouse are opened from the quay badge,
 `press_dock`). With the orders off (now): the fair wind locked, a visit to the Temple of
 Eolus (its spirit's talk tapped through) that gives it, then a trip to a village to buy a dish with foreign
-fish (after fishing up a message in a bottle, reading it: a cross on the chart, and throwing it overboard), back home
+fish (after fishing up a message in a bottle, the other copies gone, reading it: a cross on the chart, and throwing it overboard), back home
 (a fish left in the storehouse), a new day, the
 logbook shows it, and a tap on the spare sail rigs it. With `ORDERS_ON`: two days of orders (day 1: 3 fish home before
 dinner; day 2: the ordered dish bought at its village, everything brought home and delivered).
