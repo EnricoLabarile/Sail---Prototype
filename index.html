@@ -278,6 +278,7 @@
   const RETRIM_FLOOR = 0.3;          // the least a badly trimmed sail still gives
   const LATEEN_TACK_DRIVE = 0.35;    // the lateen's drive while its yard swings across the mast on a change of tack
   const LATEEN_MALA = 0.85;          // the lateen's drive on its 'bad' tack ('a la mala': wind from port, the sail pressed against the mast)
+  const CURRENT_DRIFT = 7;           // px/s the current (the wind's push on the water) carries her downwind at full breeze, sail or no sail: steer to make up for it (none at anchor, moored, in a whirlpool or with the nets out)
   const RIG_LEEWAY = {square: 0.35, lateen: 0.08};   // she slips sideways to leeward at this × her speed close-hauled (less on a reach, none running free)
   const RIG_SURF = {square: 1.35, lateen: 0.7};      // surfing a big wave: its push and how long it lasts ×
   const RIG_WAVE_HIT = {square: 0.6, lateen: 1.4};   // damage from a big wave taken badly ×
@@ -314,6 +315,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Current: the wind now carries the boat slowly downwind, sail or no sail, so you have to steer against it to keep off rocks and shores (not at anchor, moored or with the nets out)',
+    ]},
+    {build: '2026-10-09 08:40', items: [
       'Fishing minigame: off by default, back to the passive nets; it can be switched on in Settings on this screen ("Fishing minigame", remembered)',
     ]},
     {build: '2026-10-08 21:56', items: [
@@ -325,11 +329,8 @@
       'Biomes: the West of the map (past home waters, out to the far side) is now the stormy West, thick with storm clouds that hang over it and with whirlpools (about 7 storms and 20 whirlpools round any spot there, against 1 or 2 elsewhere)',
       'First screen, World: two new knobs, WEST_STORM_CLOUDS (16) and WEST_WHIRLS (40)',
     ]},
-    {build: '2026-10-08 19:48', items: [
-      'Crank: moved to the bottom right corner, mirroring the logbook in the bottom left',
-    ]},
   ];
-  const BUILD = '2026-10-09 08:40';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-09 09:01';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -2689,6 +2690,7 @@
     windMul: 1, windOff: 0, gustM: 1, gustA: 0, leeK: 0,   // the wind where she is: strength ×, direction offset; gust and lee state
     trimA: 0,         // the angle off the wind the sail is trimmed for (it follows the true one at RIG_RETRIM)
     lwx: 0, lwy: 0,   // leeway: her sideways slip to leeward (px/s)
+    dfx: 0, dfy: 0, driftK: 0,   // the current: carried downwind (px/s), eased in and out (driftK 0..1)
     r: 16
   };
   const wake=[]; let wakeAcc=0;
@@ -7103,6 +7105,13 @@
       const along = tx*hx + ty*hy, px = tx - along*hx, py = ty - along*hy, pl = Math.hypot(px, py) || 1;
       boat.lwx = px/pl*lv; boat.lwy = py/pl*lv;
     }
+    // the current: the wind sets the water moving, and it carries her downwind whatever the sail does
+    {
+      const on = !anchored && !moor && !boat.whirl && !fishing ? 1 : 0;
+      boat.driftK += (on - boat.driftK)*Math.min(1, dt*0.8);       // (it takes hold slowly after weighing anchor, and lets go as the anchor bites)
+      const v = CURRENT_DRIFT*localStrength*boat.driftK;
+      boat.dfx = Math.cos(localWind + Math.PI)*v; boat.dfy = Math.sin(localWind + Math.PI)*v;
+    }
     if(!anchored && boat.rowV > boat.speed) boat.speed += (boat.rowV - boat.speed)*Math.min(1, dt*3.5);   // the oars bite quickly
 
     const hullR = boat.r*0.75;
@@ -7249,8 +7258,8 @@
           w.escaping = true;
         }
       } else {
-        boat.x += Math.cos(boat.angle)*boat.speed*dt + (boat.kx + boat.lwx)*dt;
-        boat.y += Math.sin(boat.angle)*boat.speed*dt + (boat.ky + boat.lwy)*dt;
+        boat.x += Math.cos(boat.angle)*boat.speed*dt + (boat.kx + boat.lwx + boat.dfx)*dt;
+        boat.y += Math.sin(boat.angle)*boat.speed*dt + (boat.ky + boat.lwy + boat.dfy)*dt;
         const kd = Math.exp(-boat.kdamp*dt);              // rebound fades out
         boat.kx *= kd; boat.ky *= kd;
       }
