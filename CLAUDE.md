@@ -126,7 +126,8 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   with `MAP_DRAWN` on, the map features of the template's legend default to none (each a knob, so still switchable
   from the first screen): `WHIRL_COUNT`, `BANK_COUNT`, `HOME_BANKS`, `BOTTLE_COUNT` (so no wreck), `OPEN_ROCK_TRIES`,
   `STORM_SHARE`, `WEST_STORM_CLOUDS`, `WEST_WHIRLS`, `BOIL_ON` all 0; no random wild islands (`genIslands` places 0).
-  Still there: plain rain clouds, gulls, traders on the lanes, rollers, sharks and sea imps (encounters, not map marks). Drawn like an island (`drawnIsl`, baked in `ISL_TILE` tiles over the whole
+  Still there: plain rain clouds, gulls, traders on the lanes, rollers, sharks and sea imps (encounters, not map marks).
+  Gulls stay for good (only a look); Enrico will decide later about the rest. Drawn like an island (`drawnIsl`, baked in `ISL_TILE` tiles over the whole
   world, `drawDrawnStatic`): water tiles pixel by pixel from the distance (two pale rings of shallows, the shadow
   down-right, a static dashed surf line), land tiles (coast in ink, sand with specks, the scrub's inked edge, scrub with
   darker thickets and pale clearings from a smooth noise, `drawnNoise`) then spurge, trees and tufts made per tile-sized
