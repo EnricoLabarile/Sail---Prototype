@@ -288,7 +288,8 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   Each square has a **name** like a chess board (`cellName`): a letter for its column (A from the west) and a number for
   its row (1 from the north); the letters run along the top and the numbers down the side, dotted seams between the
   squares (`.seam`), and under the map "You are in E5" (`#rooms-here`, `TEXT.logbook.roomHere`; home is E5). The **sea
-  chart** dots the same seams (`renderMap`, grey dashes before the dither; no names there, they'd crowd it).
+  chart** dots the same seams (`renderMap`, grey dashes before the dither; no names there, they'd crowd it). So does the **sea
+  itself** (`drawRoomSeams`, right after the boiling South's tint, under the islands: ink dashes 3/7 at `ROOM_SEAMS` 0.3).
 - **Compass** (drawn at 95 px, `CMP_PX`; it lived **in the logbook**, moved at start into `#cmp-slot` on the first spread's right page,
   shown up to 150 px wide; no longer on the screen; hidden in the tutorial until its own tutorial step): points home, a dot per village filled once a dish is bought there; drawn like the
   wheel (greys into a low-res canvas, then dithered): brass bezel with rivets, shaded card, wind rose, glass glare.

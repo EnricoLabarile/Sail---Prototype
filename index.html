@@ -285,6 +285,7 @@
   const CLOUD_ALPHA = 0.45, CLOUD_CORE = 0.88;   // clouds: see-through at the rim, denser in the middle
   const CLOUD_MODELS = 4;            // cloud shapes, shared by all the clouds in the sky (world)
   const MAP_RES = 280;               // the sea chart in the logbook: its pixels a side (fewer = coarser)
+  const ROOM_SEAMS = 0.3;            // the room map's seams dotted on the sea itself too: how dark (0 = not drawn)
   const ROOM_N = 9;                  // the room map in the logbook (Zelda 1 style): rooms a side, the world cut into ROOM_N × ROOM_N squares, home in the middle one
   const SAIL_SIZE = 1.15;             // size of the boat's sail (1 = the old one: a yard 30 px wide)
   const LATEEN_SIZE = 0.6;            // the lateen sail's size, on top of SAIL_SIZE (1 = as it was drawn before)
@@ -345,6 +346,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The room map\'s squares are now dotted on the sea itself too, so you can see where one square (A1 to I9) ends and the next begins (ROOM_SEAMS)',
+    ]},
+    {build: '2026-10-09 22:36', items: [
       'Sail: it no longer turns to follow the wind; it only sways a little either way, so you have to turn the boat to the wind yourself (SAIL_SWING_MAX)',
       'Logbook maps: the squares are named like a chess board, a letter for the column (A from the west) and a number for the row (1 from the north), with dotted lines between them (the same squares are dotted on the sea chart too); under the room map, the square you are in',
     ]},
@@ -356,11 +360,8 @@
       'Dodge the fireballs (they hurt the hull); a slingshot stone on the imp makes it dive away for good',
       'First screen, Dangers: ZORA_ON, ZORA_CHANCE and ZORA_DAMAGE',
     ]},
-    {build: '2026-10-09 21:46', items: [
-      'Slingshot: half as tall, and it throws half as far (up to 115 instead of 230)',
-    ]},
   ];
-  const BUILD = '2026-10-09 22:36';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-09 22:38';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -5771,6 +5772,16 @@
     ctx.globalAlpha = 1;
   }
 
+  // the seams between the room map's squares (A1–I9, home's in the middle), dotted on the water like on the maps
+  function drawRoomSeams(camX, camY, w, h){
+    if(!(ROOM_SEAMS > 0)) return;
+    const x0 = START.x - WORLD.w/2, y0 = START.y - WORLD.h/2, rw = WORLD.w/ROOM_N, rh = WORLD.h/ROOM_N;
+    ctx.save(); ctx.strokeStyle = INKC; ctx.globalAlpha = ROOM_SEAMS; ctx.lineWidth = 1.5; ctx.setLineDash([3, 7]); ctx.beginPath();
+    for(let i = Math.ceil((camX - x0)/rw), e = Math.floor((camX + w - x0)/rw); i <= e; i++){ const x = Math.round(x0 + i*rw); ctx.moveTo(x, camY); ctx.lineTo(x, camY + h); }
+    for(let j = Math.ceil((camY - y0)/rh), e = Math.floor((camY + h - y0)/rh); j <= e; j++){ const y = Math.round(y0 + j*rh); ctx.moveTo(camX, y); ctx.lineTo(camX + w, y); }
+    ctx.stroke(); ctx.restore();
+  }
+
   // ---------- Rollers: big breaking waves ----------
   // Now and then a big wave rolls in from upwind, well away from any shore.
   // It builds up, breaks into tumbling foam, then fades out. Crossing its
@@ -10050,6 +10061,7 @@
     drawSea(camX,camY,w,h);
     drawDeep(camX,camY,w,h);                                   // the deep water, where big waves run: a darker sea
     drawBoilTint(camX,camY,w,h);                               // the boiling South: a murkier sea…
+    drawRoomSeams(camX,camY,w,h);                              // the room map's squares, dotted on the sea
 
     // near an edge the view overlaps a neighbouring copy of the world:
     // draw each layer once per copy that touches the screen
