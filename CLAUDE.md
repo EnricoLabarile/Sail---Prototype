@@ -120,9 +120,13 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   at load) read through `drawnDist(x,y)` (+ at sea, − on land, bilinear) and `drawnNormal`: `onLand` checks it first,
   the boat is pushed back out along its slope (collision block), cicadas sing by its coasts. Villages and the temple
   go where `DRAWN_PLACES` (Tuning) says, `{W, E, S, N}` in world px, each slid toward home until its harbour is open
-  water (`drawnPlace`): Westa on the hooked point in B2 and Estolia in E3 (Enrico's dots), Sudia on the tongue in E7 and
-  the temple in F2 (my picks: not on the drawing). No random wild islands (`genIslands` places 0); open-sea rocks,
-  whirlpools, storms etc. stay random. Drawn like an island (`drawnIsl`, baked in `ISL_TILE` tiles over the whole
+  water (`drawnPlace`): Westa on the hooked point in B2 and Estolia in E3 (Enrico's dots; the E3 one is unnamed, Estolia
+  is my pick); keys `S`, `N`, `temple` for Sudia, Nordania, the Temple of Eolus: a place not listed isn't in the world
+  (`VILLAGES` filtered by `drawnKey`, the temple left out of `RUINS`, so no fair wind for now). **Only what's drawn**:
+  with `MAP_DRAWN` on, the map features of the template's legend default to none (each a knob, so still switchable
+  from the first screen): `WHIRL_COUNT`, `BANK_COUNT`, `HOME_BANKS`, `BOTTLE_COUNT` (so no wreck), `OPEN_ROCK_TRIES`,
+  `STORM_SHARE`, `WEST_STORM_CLOUDS`, `WEST_WHIRLS`, `BOIL_ON` all 0; no random wild islands (`genIslands` places 0).
+  Still there: plain rain clouds, gulls, traders on the lanes, rollers, sharks and sea imps (encounters, not map marks). Drawn like an island (`drawnIsl`, baked in `ISL_TILE` tiles over the whole
   world, `drawDrawnStatic`): water tiles pixel by pixel from the distance (two pale rings of shallows, the shadow
   down-right, a static dashed surf line), land tiles (coast in ink, sand with specks, the scrub's inked edge, scrub with
   darker thickets and pale clearings from a smooth noise, `drawnNoise`) then spurge, trees and tufts made per tile-sized
@@ -638,7 +642,8 @@ pip install playwright && playwright install chromium
 python tests/smoke.py
 ```
 The smoke test checks there are no JS errors (it switches the fishing minigame on for one step: a catch and a fish
-that gets away, then off again) (the market and the storehouse are opened from the quay badge,
+that gets away, then off again; skipped when the world has no fish banks, as on the drawn map now; the temple and
+bottle steps are skipped likewise when there are none) (the market and the storehouse are opened from the quay badge,
 `press_dock`). With the orders off (now): the fair wind locked, a visit to the Temple of
 Eolus (its spirit's talk tapped through) that gives it, then a trip to a village to buy a dish with foreign
 fish (after fishing up a message in a bottle, the other copies gone, reading it: a cross on the chart, and throwing it overboard), back home

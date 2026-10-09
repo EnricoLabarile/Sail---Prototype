@@ -27,6 +27,17 @@
   const WORLD_K = WORLD_SIZE/7200;   // scale against the original 7200 world
   const WK2 = WORLD_K*WORLD_K;
 
+  // -- The drawn map (first too: with it on, the world holds only what Enrico drew) --
+  // the sea map drawn on the Supernote template (tools/map-template/import_map.py turns the drawing into DRAWN_LAND,
+  // in the section "Drawn map"): its coasts are the world's land. While it's on, whatever the drawing doesn't show is
+  // left out, each still switchable from the first screen: random wild islands, rocks, whirlpools, fish banks, storm
+  // clouds, the boiling sea, the messages in a bottle (and so the wreck), and the villages and temple not placed below
+  const MAP_DRAWN = knob('MAP_DRAWN', 1);            // 1 = the drawn map, 0 = the random archipelago of before (world)
+  // where the villages (W, E, S, N: Westa, Estolia, Sudia, Nordania) and the Temple of Eolus (temple) stand on the drawn
+  // map, in world px (A1's corner is 0,0; a square is 560 px), each slid toward home until its harbour opens on the
+  // sea; one not listed isn't in the world (world)
+  const DRAWN_PLACES = {W: [988, 970], E: [2384, 1430]};   // Westa: the dot in B2 named on the drawing; Estolia: the unnamed dot in E3
+
   // -- Boat --
   const MAX_SPEED = 50;              // px/s: reference speed (collision damage is scaled by it too)
   const WIND_BOOST = 0.96;           // how much the wind gives: sets the top speed (~52 px/s dead downwind in full wind)
@@ -114,7 +125,7 @@
   const HIT_MAX_DAMAGE = 25;         // damage of a head-on hit at full speed (grazes do less)
   const REPAIR_EVERY = 0.5;          // seconds between patches at a pier (repairs are free)
   const FISH_HEAL = 15;              // hull points per patch
-  const WHIRL_COUNT = Math.round(200*WK2);         // whirlpools in the world (world)
+  const WHIRL_COUNT = knob('WHIRL_COUNT', MAP_DRAWN ? 0 : Math.round(200*WK2));   // whirlpools in the world (none on the drawn map) (world)
   const WHIRL_FROM_DAY = 1;          // whirlpools start opening from this day (1 = from the start; was 2, a calm first day)
   const WHIRL_DAMAGE = 10;           // hull damage when caught in a whirlpool's core
   const WHIRL_PULL = 22;             // px/s pull at the edge of the core…
@@ -155,13 +166,13 @@
   const ROLLER_SPARE = 0.55;         // a wave about to hit her badly slows to this share of its pace (1 = never)
 
   // -- Fishing and market --
-  const BANK_COUNT = Math.round(240*WK2);          // fish banks out at sea (world)
+  const BANK_COUNT = knob('BANK_COUNT', MAP_DRAWN ? 0 : Math.round(240*WK2));   // fish banks out at sea (none on the drawn map) (world)
   const ROUTE_BANK_SHARE = 0.5;      // share of those banks laid along the sea roads (home to each village, village to village)
   const ROUTE_BANK_SPREAD = Math.round(170*WORLD_K);   // px either side of a road they may lie
   const HOME_WATERS = Math.round(950*WORLD_K);     // radius of home waters (all kinds of fish there)
-  const HOME_BANKS = Math.round(18*WK2);           // fish banks in home waters, refilled as they are fished (world)
+  const HOME_BANKS = knob('HOME_BANKS', MAP_DRAWN ? 0 : Math.round(18*WK2));   // fish banks in home waters, refilled as they are fished (none on the drawn map) (world)
   const FISH_CATCH_MIN = 1, FISH_CATCH_MAX = 2;   // fish per haul (random in between)
-  const BOTTLE_COUNT = 6;            // copies of the one message in a bottle floating about the sea (more = easier to come across; once one is fished up the others are gone) (world)
+  const BOTTLE_COUNT = knob('BOTTLE_COUNT', MAP_DRAWN ? 0 : 6);   // (none on the drawn map) copies of the one message in a bottle floating about the sea (more = easier to come across; once one is fished up the others are gone) (world)
   const BOTTLE_SIZE = 1.8;           // how big a bottle is drawn (1 = true to the boat's scale; bigger reads better)
   const WRECK_LEN = 190;             // px long, the wrecked cruise ship that lies where a message's cross is (in two halves)
   const BOTTLE_TIME = 1.2;           // seconds with the net out before a bottle is hauled in (fish take FISH_TIME_MIN–MAX)
@@ -208,18 +219,12 @@
   const VILLAGE_OUT_MAX = Math.round(300*WORLD_K);   // px it may be pushed further from home (never closer) (world)
   const VILLAGE_SIDE_MAX = Math.round(300*WORLD_K);  // px it may slide sideways, either way; in practice the ruins keep it to about a third of VILLAGE_OUT_MAX (world)
   const VILLAGE_EDGE = Math.round(500*WORLD_K);      // px it must keep from the edge of the map (world)
-  // the sea map Enrico drew on the Supernote template (tools/map-template/import_map.py turns the drawing into
-  // DRAWN_LAND, in the section "Drawn map"): its coasts are the world's land, and the random wild islands are off
-  const MAP_DRAWN = knob('MAP_DRAWN', 1);            // 1 = the drawn map, 0 = the random archipelago of before (world)
-  // where the villages and the temple go on the drawn map, in world px (A1's corner is 0,0; a square is 560 px): each is
-  // slid toward home until its harbour opens on the sea (world)
-  const DRAWN_PLACES = {W: [988, 970], E: [2384, 1430], S: [2218, 3800], N: [3080, 840]};   // Westa B2 and Estolia E3 (the dots), Sudia on the tongue of land in E7, the Temple of Eolus in F2
   const SAFE_R = Math.round(950*WORLD_K);          // home waters: no whirlpools, no big waves
   const LAGOON_R = Math.round(650*WORLD_K);        // calm lagoon round home: no islands, no rocks (world)
   const DANGER_RING = Math.round(3400*WORLD_K);    // the sea gets wilder out to this distance from home (world)
   const BUOY_R = Math.round(880*WORLD_K);          // radius of each village's ring of buoys (world)
   const BUOYS_PER_VILLAGE = Math.round(24*WORLD_K), HOME_BUOYS = Math.round(32*WORLD_K);   // buoys per ring (world)
-  const OPEN_ROCK_TRIES = knob('OPEN_ROCK_TRIES', Math.round(127*WK2));     // clusters of rocks tried out in open water (world)
+  const OPEN_ROCK_TRIES = knob('OPEN_ROCK_TRIES', MAP_DRAWN ? 0 : Math.round(127*WK2));     // clusters of rocks tried out in open water (none on the drawn map) (world)
   const ROCK_GAP = 64;               // px of clear water at least between two rocks, or a rock and the shore, unless they touch (about twice the boat's length, so she never gets stuck) (world)
   const ROCK_BIG = 0.4;              // share of rocks drawn bigger than the usual (up to ROCK_BIG_MAX ×) (world)
   const ROCK_BIG_MAX = 2.2;          // the biggest rocks are this many times the usual size (world)
@@ -249,16 +254,16 @@
   const CLOUD_COUNT = knob('CLOUD_COUNT', 12);            // clouds in the sky (world)
   const RAIN_CLOUD_EVERY = 3;        // one cloud in this many carries rain (world)
   const STORM_ON = knob('STORM_ON', 1);   // 1 = on, 0 = off. Storm clouds: some rain clouds are darker and throw lightning down onto the sea under them
-  const STORM_SHARE = knob('STORM_SHARE', 0.5); // share of the rain clouds that are storms (world)
+  const STORM_SHARE = knob('STORM_SHARE', MAP_DRAWN ? 0 : 0.5); // share of the rain clouds that are storms (none on the drawn map) (world)
   // Biomes: the sea is split into regions with their own weather. For now one, the stormy West: past WEST_FROM
   // west of home (out to the far side of the world, and WEST_HALF_H north and south), thick with storm clouds
   // that hang there (they don't drift away with the others) and with whirlpools
-  const WEST_STORM_CLOUDS = knob('WEST_STORM_CLOUDS', 16);   // storm clouds hanging over the stormy West (world; 0 = no biome)
-  const WEST_WHIRLS = knob('WEST_WHIRLS', 40);              // extra whirlpools in the stormy West, on top of the usual ones (world)
+  const WEST_STORM_CLOUDS = knob('WEST_STORM_CLOUDS', MAP_DRAWN ? 0 : 16);   // storm clouds hanging over the stormy West (world; 0 = no biome; none on the drawn map)
+  const WEST_WHIRLS = knob('WEST_WHIRLS', MAP_DRAWN ? 0 : 40);              // extra whirlpools in the stormy West, on top of the usual ones (none on the drawn map) (world)
   const WEST_FROM = 800;             // px west of home where the stormy West begins (home waters end at ~665) (world)
   const WEST_HALF_H = 1300;          // px north and south of home's latitude it reaches (world)
   // the boiling South: past SOUTH_FROM south of home the sea boils (bubbles, steam); a while in it scalds the hull
-  const BOIL_ON = knob('BOIL_ON', 1);              // 1 = the boiling South is there, 0 = off (world)
+  const BOIL_ON = knob('BOIL_ON', MAP_DRAWN ? 0 : 1);   // 1 = the boiling South is there, 0 = off (off on the drawn map) (world)
   const SOUTH_FROM = 1900;           // px south of home where the boiling sea begins (Sudia is ~1730–2030 down, in a cool ring) (world)
   const SOUTH_TO = 2900;             // px south of home where it ends (past the map's wrapped edge: ~2140 north of home) (world)
   const SOUTH_HALF_W = 1600;         // px east and west of home's longitude it reaches (world)
@@ -352,6 +357,10 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The world holds only what you drew: the land, Westa (B2) and Estolia (the dot in E3); Sudia and the Temple of Eolus are gone until you draw them (so no fair wind for now)',
+      'Also gone until drawn: rocks, whirlpools, fish banks, storm clouds, the boiling sea and the messages in a bottle (each can be brought back from the first screen)',
+    ]},
+    {build: '2026-10-09 23:16', items: [
       'The sea map you drew is the world now: land all round the edge, its bays and points, the long island in C3–C5 and the one in D3–E4; no more random islands (MAP_DRAWN 0 in the World section brings them back)',
       'Westa sits on the hooked point in B2, Estolia on the island in E3 (your dots); Sudia on the tongue of land in E7 and the Temple of Eolus in F2 (not on the drawing yet)',
       'The boiling sea stops at the south edge of the map (a strip along the south coast)',
@@ -363,11 +372,8 @@
       'Sail: it no longer turns to follow the wind; it only sways a little either way, so you have to turn the boat to the wind yourself (SAIL_SWING_MAX)',
       'Logbook maps: the squares are named like a chess board, a letter for the column (A from the west) and a number for the row (1 from the north), with dotted lines between them (the same squares are dotted on the sea chart too); under the room map, the square you are in',
     ]},
-    {build: '2026-10-09 22:23', items: [
-      'Current: it no longer pushes the boat close to a shore (within about 90 px of land); it eases off as you near the coast and takes hold again out at sea',
-    ]},
   ];
-  const BUILD = '2026-10-09 23:16';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-09 23:25';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -2178,6 +2184,7 @@
   // unit each); buy both and the merchant adds a gift that isn't for sale.
   // (all their words are in TEXT.villages; icon: the drawing in ITEM_ICONS)
   const VT = TEXT.villages;
+  const drawnKey = v=> v.ux > 0 ? 'E' : v.ux < 0 ? 'W' : v.uy > 0 ? 'S' : 'N';   // (its key in DRAWN_PLACES)
   const VILLAGES = [
     { name:VT.nord.name, ux:0, uy:-1, course:VT.nord.course, own:'sarde', line:VT.nord.line,
       dishes:[{name:VT.nord.dishes[0], icon:'Fiori di Zucca', price:DISH_PRICE}, {name:VT.nord.dishes[1], icon:'Mozzarelle', price:DISH_PRICE}], gift:VT.nord.gift, giftIcon:'Tarallini' },
@@ -2187,7 +2194,8 @@
       dishes:[{name:VT.sud.dishes[0], icon:'Zampina', price:DISH_PRICE}, {name:VT.sud.dishes[1], icon:'Pesce Arrosto', price:DISH_PRICE}], gift:VT.sud.gift, giftIcon:'Vino Rosso' },
     { name:VT.ovest.name, ux:-1, uy:0, course:VT.ovest.course, own:'orate', line:VT.ovest.line,
       dishes:[{name:VT.ovest.dishes[0], icon:'Cartellate', price:DISH_PRICE}, {name:VT.ovest.dishes[1], icon:'Tiramisu', price:DISH_PRICE}], gift:VT.ovest.gift, giftIcon:'Limoncello' }
-  ].filter(v=> !(EOLUS_ON && v.uy === -1));          // the Temple of Eolus stands where Nordania was
+  ].filter(v=> !(EOLUS_ON && v.uy === -1))           // the Temple of Eolus stands where Nordania was
+   .filter(v=> !MAP_DRAWN || DRAWN_PLACES[drawnKey(v)]);   // (on the drawn map, only those placed on it)
   // ---------- Orders ----------
   // Every day the restaurant at home has an order for dinner: on day 1 a few
   // fish of any kind, from day 2 fish of one kind and one or two village
@@ -2413,7 +2421,7 @@
       if(gaps(Q).every((d,i)=> d >= need[i] - 1e-6)){ P = Q; break; }
     }
     VILLAGES.forEach((v,i)=>{ v.px = wrapX(START.x + P[i][0]); v.py = wrapY(START.y + P[i][1]); });
-    if(MAP_DRAWN) VILLAGES.forEach(v=>{ [v.px, v.py] = drawnPlace(DRAWN_PLACES[v.ux > 0 ? 'E' : v.ux < 0 ? 'W' : v.uy > 0 ? 'S' : 'N']); });   // (the drawn map: where Enrico put them)
+    if(MAP_DRAWN) VILLAGES.forEach(v=>{ [v.px, v.py] = drawnPlace(DRAWN_PLACES[drawnKey(v)]); });   // (the drawn map: where Enrico put them)
   }
   placeVillages();
   for(const v of VILLAGES) makeVillageIsland(v);
@@ -2427,11 +2435,11 @@
     { name:TEXT.ruins.name, ux: 1, uy:-1 },
     { name:TEXT.ruins.name, ux: 1, uy: 1 },
     { name:TEXT.ruins.name, ux:-1, uy: 1 }
-  ]), ...(EOLUS_ON ? [{ name:TEXT.eolus.name, ux:0, uy:-1, eolus:true, d:VILLAGE_DIST }] : [])];   // (the temple: north, as far out as the villages)
+  ]), ...(EOLUS_ON && (!MAP_DRAWN || DRAWN_PLACES.temple) ? [{ name:TEXT.eolus.name, ux:0, uy:-1, eolus:true, d:VILLAGE_DIST }] : [])];   // (the temple: north, as far out as the villages)
   function makeRuinIsland(r){
     const d = r.d || VILLAGE_DIST/Math.SQRT2*1.02;
     let x = wrapX(START.x + r.ux*d), y = wrapY(START.y + r.uy*d);
-    if(MAP_DRAWN && r.eolus) [x, y] = drawnPlace(DRAWN_PLACES.N);   // (the drawn map)
+    if(MAP_DRAWN && r.eolus) [x, y] = drawnPlace(DRAWN_PLACES.temple);   // (the drawn map)
     const isl = makeIsland(x, y, rand(96,110));
     for(let i=0;i<ISL_N;i++) isl.radii[i] = isl.R*0.5 + isl.radii[i]*0.5;
     isl.rmax = Math.max(...isl.radii);
@@ -5228,7 +5236,7 @@
     box.appendChild(rb);
   }
   (function worldGen(){
-    const K = {MAP_DRAWN, ISLAND_SCALE, ISLAND_COUNT, CLUSTER_SHARE, SPIRAL, SPIRAL_ARMS, OPEN_ISLANDS, ISLAND_BIG, ISLAND_L, ISLAND_C, ISLAND_ATOLL,
+    const K = {MAP_DRAWN, WHIRL_COUNT, BANK_COUNT, HOME_BANKS, BOTTLE_COUNT, ISLAND_SCALE, ISLAND_COUNT, CLUSTER_SHARE, SPIRAL, SPIRAL_ARMS, OPEN_ISLANDS, ISLAND_BIG, ISLAND_L, ISLAND_C, ISLAND_ATOLL,
                OPEN_ROCK_TRIES, TRADERS_HOME, TRADERS_VILLAGES, ROLLER_RATE, CLOUD_COUNT, WEST_STORM_CLOUDS, WEST_WHIRLS};
     const box = document.getElementById('wg-knobs'), T = TEXT.worldGen;
     document.getElementById('wg-title').textContent = T.title;

@@ -103,6 +103,7 @@ def bottle(pg):
 def reel(pg):
     # anchored on a fish bank: a bite, the reel round the hub and the bar; turning the reel lifts the band;
     # kept on the fish the meter fills and it's caught; left alone it gets away
+    if not pg.evaluate("__d.banks.some(b=>b.state==='live')"): return   # (no fish banks in this world: the drawn map has none yet)
     pg.evaluate('__d.setReel(true)')                  # (off by default: the test switches it on)
     def anchor_on_bank():
         pg.evaluate("()=>{const d=__d; d.unmoor(); const b=d.banks.find(b=>b.state==='live'); d.boat.x=b.x; d.boat.y=b.y; d.boat.speed=0;}")
