@@ -58,7 +58,7 @@
   const SLING_ON = true;             // the slingshot on the right: drag its pouch down and let go, a stone flies off ahead of the bow
   const SLING_RANGE = [40, 230];     // px the stone flies ahead: a short pull, a full pull
   const SLING_RELOAD = 0.9;          // seconds before the next stone is in the pouch
-  const SLING_SCARE_R = 45;          // a stone landing within this many px of the shark sends it off
+  const SLING_SCARE_R = 60;          // a stone landing within this many px of the shark sends it off
   const SPRING_SPEED = 39.2;         // px/s the wheels give her (the spring rests while the sail drives her faster than this; was 19.6, doubled)
   const OAR_START = 0.2;             // power the first press gives (0..1): she starts rowing, slowly
   const OAR_GOOD = 0.0;             // power a press right on time adds (the pointer at the mark)…
@@ -121,9 +121,9 @@
   const WHIRL_CURVE = 4;             // …rising exponentially from ~0 at the rim
   const WHIRL_FADE = 3;              // seconds for a whirlpool to open up / die down
   const SHARK_ON = knob('SHARK_ON', 1);   // 1 = on, 0 = off. Sharks: now and then one finds her at sea, follows her, bites the hull and makes off
-  const SHARK_CHANCE = knob('SHARK_CHANCE', 0.25); // the chance of an encounter in each minute she spends at sea, out of home waters (rare)
-  const SHARK_COOLDOWN = knob('SHARK_COOLDOWN', 90); // seconds at least between one encounter and the next
-  const SHARK_SPEED = knob('SHARK_SPEED', 38); // how fast it swims after her (px/s; under a good sail she can outrun it)
+  const SHARK_CHANCE = knob('SHARK_CHANCE', 0.6); // the chance of an encounter in each minute she spends at sea, out of home waters (was 0.25)
+  const SHARK_COOLDOWN = knob('SHARK_COOLDOWN', 45); // seconds at least between one encounter and the next
+  const SHARK_SPEED = knob('SHARK_SPEED', 26); // how fast it swims after her (px/s; was 38; under sail or the wheels she outruns it)
   const SHARK_DAMAGE = knob('SHARK_DAMAGE', 8); // hull damage from a bite
   const SHARK_GIVE_UP = knob('SHARK_GIVE_UP', 30); // seconds it follows before giving up, if it never reaches her
   const WHIRL_FOLLOW = knob('WHIRL_FOLLOW', 2); // a whirlpool creeps after her while she's within this many times its radius…
@@ -267,7 +267,9 @@
   const TUT_PAUSE = 1500;            // ms between one step and the next
   const TUT_COMPASS_T = 4500;        // ms the compass step lasts (no input needed)
   const TUT_DROP_WAIT = 3000, TUT_DROP_T = 3000;   // after the wheel: wait, then the optional drop-anchor tip for a while (ms)
-  const HUB_HOLD = 320;              // ms to hold the hub of the wheel to drop or weigh anchor (was 500)
+  const HUB_HOLD = 160;              // ms to hold the hub of the wheel to drop or weigh anchor (was 320, before that 500)
+  const WEIGH_TIME = 0.45;           // seconds to get the anchor up before she's under way again (was 0.9)
+  const ANCHOR_BITE = 8;             // how quickly the anchor stops her once it's down (rate a second; was 4)
 
   // -- Look --
   const UI_TINT = 0.7;               // how much the interface takes on the day/night colours (0 = never, 1 = like the world)
@@ -332,6 +334,11 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Anchor twice as quick: hold the hub half as long (0.16 s), the anchor comes up in half the time and stops her twice as fast',
+      'Slingshot: a big stone now, with a big splash (a crown of water, drops falling back, wide rings)',
+      'Sharks: slower (26 instead of 38) but much more frequent (about every minute and a half at sea)',
+    ]},
+    {build: '2026-10-09 21:32', items: [
       'Slingshot: on the right, above the crank. Drag its pouch down and let go: a stone flies off ahead of the bow, further the harder you pull, and lands with a splash',
       'A stone landing by a shark sends it off',
     ]},
@@ -342,13 +349,8 @@
     {build: '2026-10-09 13:41', items: [
       'Paddle wheels twice as strong: the wound spring drives her at about 39 instead of 20 (SPRING_SPEED)',
     ]},
-    {build: '2026-10-09 13:11', items: [
-      'New danger, the boiling South: far south of home (past Sudia, which keeps a ring of cool water) the sea boils: darker water, bubbles welling up and popping, steam rising',
-      'In it, after a couple of seconds the hull starts to suffer (about 4 a second): steam pours off her sides, scorch marks appear on the hull, it blinks and hisses',
-      'First screen, Dangers: BOIL_ON, BOIL_DELAY and BOIL_DAMAGE',
-    ]},
   ];
-  const BUILD = '2026-10-09 21:32';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-09 21:42';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -1384,7 +1386,7 @@
     <path class="wood" d="M28 146 L28 70 Q28 58 18 48 L8 22 Q6 14 12 13 Q17 13 18 20 L28 46 Q32 52 36 46 L46 20 Q47 13 52 13 Q58 14 56 22 L46 48 Q36 58 36 70 L36 146 Z"/>
     <path class="grain" d="M31 140 L31 76 M33 128 L33 96"/>
     <path class="band-bg" d="M11 16 L32 18 M53 16 L32 18"/><path class="band" d="M11 16 L32 18 M53 16 L32 18"/>
-    <g class="pull"><path class="pouch" d="M23 15 Q32 27 41 15 Q32 21 23 15 Z"/><circle class="stone" cx="32" cy="18" r="4.2"/></g></svg></div>
+    <g class="pull"><path class="pouch" d="M21 15 Q32 31 43 15 Q32 23 21 15 Z"/><circle class="stone" cx="32" cy="19" r="6"/></g></svg></div>
   <div id="reel" class="hidden"><svg viewBox="-100 -100 200 200" aria-hidden="true">
     <defs><pattern id="reel-dots" width="3" height="3" patternUnits="userSpaceOnUse"><rect width="3" height="3" fill="var(--paper)"/><circle cx="1" cy="1" r=".7" fill="var(--ink)"/></pattern></defs>
     <path class="rim" d="M0 -92 A92 92 0 1 1 0 92 A92 92 0 1 1 0 -92 Z M0 -62 A62 62 0 1 0 0 62 A62 62 0 1 0 0 -62 Z"/>
@@ -4541,8 +4543,7 @@
 
   // weighing anchor takes a moment: the chain comes in (you hear it) and
   // only when it's aboard does the boat get under way again
-  const WEIGH_TIME = 0.9;
-  let weighT = 0;
+  let weighT = 0;                                      // (WEIGH_TIME in Tuning)
   function anchorUI(){ renderSailBtn(); }            // the hub of the wheel shows the state
   function setAnchor(on, instant){
     if(talk && !instant) return;                                          // someone's talking to you: stay put
@@ -6051,13 +6052,13 @@
       stones.splice(i, 1);
       const x = wrapX(s.x1), y = wrapY(s.y1);
       if(onLand(x, y, 2)){ Sfx.tick(0.4, 0.5); continue; }   // on a shore: a clack on the stones
-      stoneSplash.push({x, y, t: 0}); Sfx.splash();
+      stoneSplash.push({x, y, t: 0, seed: rand(0, 6.3)}); Sfx.splash(); Sfx.thunk(0.25);   // a heavy plunge
       if(shark && shark.mode !== 'flee' && wdist(x, y, shark.x, shark.y) < SLING_SCARE_R){
         shark.mode = 'flee'; shark.hd = Math.atan2(wdy(shark.y, y), wdx(shark.x, x));
         popups.push({x: shark.x, y: shark.y - 16, text: TEXT.popups.sharkScared, life: 1.4, max: 1.4});
       }
     }
-    for(let i=stoneSplash.length-1;i>=0;i--){ stoneSplash[i].t += dt; if(stoneSplash[i].t > 0.9) stoneSplash.splice(i, 1); }
+    for(let i=stoneSplash.length-1;i>=0;i--){ stoneSplash[i].t += dt; if(stoneSplash[i].t > 1.3) stoneSplash.splice(i, 1); }
     if(!show) return;
     const pull = slingDrag ? slingPull : 0, key = pull.toFixed(3) + '|' + (slingReload > 0);
     if(key === slingKey) return;
@@ -6072,17 +6073,26 @@
     for(const s of stones){
       const q = s.t/s.dur, x = s.x0 + (s.x1 - s.x0)*q, y = s.y0 + (s.y1 - s.y0)*q, z = 4*s.h*q*(1 - q);
       if(!inView(x, y, 60)) continue;
-      ctx.fillStyle = INKC; ctx.globalAlpha = 0.3; ctx.beginPath(); ctx.ellipse(x, y, 2.2, 1.4, 0, 0, Math.PI*2); ctx.fill();
-      ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(x, y - z*BOAT_TILT*2, 2.6, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = PAPERC; ctx.beginPath(); ctx.arc(x - 0.7, y - z*BOAT_TILT*2 - 0.7, 0.7, 0, Math.PI*2); ctx.fill();
+      const sy = y - z*BOAT_TILT*2, r = 5.5;               // a big round stone, a glint on it, its shadow on the water
+      ctx.fillStyle = INKC; ctx.globalAlpha = 0.3; ctx.beginPath(); ctx.ellipse(x, y, r*0.95, r*0.6, 0, 0, Math.PI*2); ctx.fill();
+      ctx.globalAlpha = 1; ctx.beginPath(); ctx.ellipse(x, sy, r, r*0.85, s.t*4, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = PAPERC; ctx.beginPath(); ctx.arc(x - r*0.35, sy - r*0.35, r*0.28, 0, Math.PI*2); ctx.fill();
     }
-    ctx.strokeStyle = INKC; ctx.lineWidth = 1;
-    for(const sp of stoneSplash){
-      if(!inView(sp.x, sp.y, 20)) continue;
-      const k = sp.t/0.9;
-      ctx.globalAlpha = 1 - k; ctx.beginPath(); ctx.arc(sp.x, sp.y, 2 + 9*k, 0, Math.PI*2); ctx.stroke();
-      if(k < 0.5){ ctx.beginPath(); ctx.arc(sp.x, sp.y, 1 + 4*k, 0, Math.PI*2); ctx.stroke();
-        ctx.fillStyle = INKC; for(let m=0;m<4;m++){ const a = m*1.57 + 0.6, r = 3 + 8*k; ctx.fillRect(sp.x + Math.cos(a)*r - 0.6, sp.y + Math.sin(a)*r - 3*Math.sin(k*Math.PI*2) - 0.6, 1.2, 1.2); } }
+    for(const sp of stoneSplash){                           // a big splash: a white crown of water thrown up, drops falling back, rings spreading
+      if(!inView(sp.x, sp.y, 50)) continue;
+      const k = sp.t/1.3;
+      ctx.strokeStyle = INKC;
+      ctx.globalAlpha = 1 - k; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(sp.x, sp.y, 5 + 30*k, 0, Math.PI*2); ctx.stroke();
+      if(k > 0.15){ ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(sp.x, sp.y, 3 + 18*(k - 0.15), 0, Math.PI*2); ctx.stroke(); }
+      if(k < 0.45){                                         // the crown: paper lumps edged in ink round the hole, rising then sinking
+        const up = Math.sin(k/0.45*Math.PI)*9, cr = new Path2D();
+        for(let m=0;m<9;m++){ const a = m*TAU/9 + sp.seed, d = 6 + 6*k/0.45, rr = 2.6*(1 - k/0.45) + 1;
+          cr.moveTo(sp.x + Math.cos(a)*d + rr, sp.y + Math.sin(a)*d*0.7 - up*(0.6 + 0.4*Math.abs(Math.sin(a*2)))); cr.arc(sp.x + Math.cos(a)*d, sp.y + Math.sin(a)*d*0.7 - up*(0.6 + 0.4*Math.abs(Math.sin(a*2))), rr, 0, TAU); }
+        ctx.globalAlpha = 1; ctx.lineWidth = 1.2; ctx.stroke(cr); ctx.fillStyle = PAPERC; ctx.fill(cr);
+      }
+      ctx.fillStyle = INKC; ctx.globalAlpha = Math.max(0, 1 - k*1.4);   // drops thrown out in an arc and falling back
+      for(let m=0;m<10;m++){ const a = m*TAU/10 + sp.seed*1.7, r = 6 + 26*k*(0.6 + 0.4*((m*7)%3)/2), h = Math.sin(Math.min(1, k*1.6)*Math.PI)*14;
+        ctx.fillRect(sp.x + Math.cos(a)*r - 1, sp.y + Math.sin(a)*r*0.7 - h - 1, 2, 2); }
     }
     ctx.globalAlpha = 1;
   }
@@ -7394,7 +7404,7 @@
     boat.surfT = Math.max(0, (boat.surfT||0) - dt);
     // she gathers way slowly (BOAT_ACCEL), loses it at the old pace; the anchor bites quickly
     const gaining = targetSpeed + surf > boat.speed;
-    boat.speed += (targetSpeed + surf - boat.speed)*Math.min(1,dt*(anchored ? 4 : surf>0 ? 3 : gaining ? BOAT_ACCEL*rigK(RIG_ACCEL) : 1.6));
+    boat.speed += (targetSpeed + surf - boat.speed)*Math.min(1,dt*(anchored ? ANCHOR_BITE : surf>0 ? 3 : gaining ? BOAT_ACCEL*rigK(RIG_ACCEL) : 1.6));
     // leeway: close-hauled (and less on a reach) the sail pushes her sideways too, to leeward (the square sail most)
     {
       const close = Math.max(0, Math.min(1, (130 - absRel)/80)), drive = boat.rig && !anchored && !moor && !boat.whirl ? boat.sailAmount*close : 0;

@@ -336,7 +336,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   tried and dropped: back to the anchor on the hub and the crank always in sight.)
   Hub of the wheel = anchor only:
   No rudder gauge above the wheel (removed): the wheel's turn and the rudder on the boat show the helm.
-  **long press 0.32 s = anchor** (weighing it: `Sfx.anchor(false)`, the chain's links an octave lower than at first and louder, ×2.4, over a low rumble of chain running in) (`HUB_HOLD`, was 0.5). At anchor the wheel fades out and only the hub (dark) remains. The hub is always drawn big (`hubScale` = 2, the
+  **long press 0.16 s = anchor** (the anchor comes up in `WEIGH_TIME` 0.45 s, it stops her at `ANCHOR_BITE` 8, both halved/doubled from 0.9 and 4) (weighing it: `Sfx.anchor(false)`, the chain's links an octave lower than at first and louder, ×2.4, over a low rumble of chain running in) (`HUB_HOLD`, was 0.32, before that 0.5). At anchor the wheel fades out and only the hub (dark) remains. The hub is always drawn big (`hubScale` = 2, the
   size it once grew to only at anchor); while sailing its grip is just the hub (`HUB_SAIL_R`), so the spokes still steer. The hub is
   drawn like the compass, in greys then dithered: a light brass bezel (lit top left) with four rivets round a shaded
   face with a glint; sailing, a light face with an ink anchor; at anchor, a dark face, one light rim and a paper anchor (same size both ways). Over a fish bank (not fishing, not
@@ -427,9 +427,9 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   Y fork on the right, above the crank (64×150, `bottom` 100 px), its bands (ink over a paper edge, so they read over the
   wood) from the prongs' tips to a dotted pouch with a stone; dragging the pouch down stretches them (`slingPull` 0..1 over
   `SLING_MAX` 95 drawing units; a tick and a buzz each quarter); let go (pull > 0.12; Enter/Space a full shot) and
-  `shootStone` throws a stone from the bow straight ahead, `SLING_RANGE` [40, 230] px by the pull, flying 0.45–0.95 s in an
-  arc (`stones`, drawn by `drawStones` with a shadow on the water), a thunk and a buzz; it lands with a splash ring and
-  droplets (`stoneSplash`, `Sfx.splash`) or a clack on a shore; one within `SLING_SCARE_R` (45) of the shark sends it off
+  `shootStone` throws a big stone (5.5 px) from the bow straight ahead, `SLING_RANGE` [40, 230] px by the pull, flying 0.45–0.95 s in an
+  arc (`stones`, drawn by `drawStones` with a shadow on the water), a thunk and a buzz; it lands with a big splash, a crown of paper lumps thrown up, ten drops arcing out and
+  falling back, two wide rings, 1.3 s (`stoneSplash`, `Sfx.splash` + a thunk) or a clack on a shore; one within `SLING_SCARE_R` (60) of the shark sends it off
   (`mode` 'flee', popup `TEXT.popups.sharkScared`). The pouch is empty for `SLING_RELOAD` (0.9 s). Hidden at the market,
   while someone talks and while the fishing bar is up.
   **Steam** (`STEAM_ON`, `STEAM_RATE` 9 puffs/s × `oarSpin` while the spring drives, `STEAM_IDLE` 0.18 of that and
@@ -557,8 +557,8 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   everything; only when the bolt's spot or its cloud is in view, else the storm is only heard) and `Sfx.thunder(vol, near)` (a crack of high-passed noise when close, then a low rumble in uneven swells
   over ~3 s; kind `thunder` in `SOUND_VOL`, Audio slider "Thunder"), delayed by the distance (d × 1.4 ms, at most
   1.6 s). Within `STORM_HIT_R` of the bolt (not moored) she's hit: damage, flash, shake, rock, buzz, `Sfx.crash`, popup.
-- **Sharks** (section "Sharks"; Tuning `SHARK_ON`, `SHARK_CHANCE` 0.25 an encounter per minute at sea out of home
-  waters, `SHARK_COOLDOWN` 90 s between encounters, `SHARK_SPEED` 38 px/s, `SHARK_DAMAGE` 8, `SHARK_GIVE_UP` 30 s;
+- **Sharks** (section "Sharks"; Tuning `SHARK_ON`, `SHARK_CHANCE` 0.6 an encounter per minute at sea out of home
+  waters (was 0.25), `SHARK_COOLDOWN` 45 s between encounters (was 90), `SHARK_SPEED` 26 px/s (was 38), `SHARK_DAMAGE` 8, `SHARK_GIVE_UP` 30 s;
   texts `TEXT.popups.sharkSeen` / `sharkBite`): one at a time (`shark`, `updateShark`, `drawShark`, cleared by
   `resetShark` on a new voyage). It comes in from 330 px off, out of sight, aiming a little ahead of her and weaving in
   long S-curves, a bit quicker once close; a popup "a fin!" when it comes within 230 px; at the hull it bites (damage,
