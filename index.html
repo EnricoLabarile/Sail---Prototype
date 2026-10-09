@@ -55,7 +55,7 @@
   const WHEEL_VOL = 2;               // loudness of the ship's wheel: the spokes' knocks, the thump at full lock and the rub as it turns (was 1)
   const CRANK_BACK_PITCH = 0.6;      // pitch of the ticks as the crank springs back on its own (1 = the winding's clicks; lower = less tinny)
   const CRANK_VOL = 1;               // loudness of the crank's gears as it winds (a tick a tooth, a heavier step each quarter turn; 0 = silent)
-  const SPRING_SPEED = 19.6;         // px/s the wheels give her (the spring rests while the sail drives her faster than this; was 14, +40%)
+  const SPRING_SPEED = 39.2;         // px/s the wheels give her (the spring rests while the sail drives her faster than this; was 19.6, doubled)
   const OAR_START = 0.2;             // power the first press gives (0..1): she starts rowing, slowly
   const OAR_GOOD = 0.0;             // power a press right on time adds (the pointer at the mark)…
   const OAR_MISS = 0.04;             // …and a press too early or too late (a little)
@@ -327,6 +327,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Paddle wheels twice as strong: the wound spring drives her at about 39 instead of 20 (SPRING_SPEED)',
+    ]},
+    {build: '2026-10-09 13:11', items: [
       'New danger, the boiling South: far south of home (past Sudia, which keeps a ring of cool water) the sea boils: darker water, bubbles welling up and popping, steam rising',
       'In it, after a couple of seconds the hull starts to suffer (about 4 a second): steam pours off her sides, scorch marks appear on the hull, it blinks and hisses',
       'First screen, Dangers: BOIL_ON, BOIL_DELAY and BOIL_DAMAGE',
@@ -337,11 +340,8 @@
     {build: '2026-10-09 12:07', items: [
       'Messages in a bottle: one message a voyage. The bottles at sea are all the same message, leading to the same wreck; once you fish one up, the others are gone',
     ]},
-    {build: '2026-10-09 09:55', items: [
-      'Sail: it swings round and fills more slowly when the wind or her course changes, over about 2 seconds instead of at once (SAIL_TRIM_TIME)',
-    ]},
   ];
-  const BUILD = '2026-10-09 13:11';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-09 13:41';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
