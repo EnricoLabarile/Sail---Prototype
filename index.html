@@ -319,6 +319,7 @@
   const GUST_SHIFT = 35;             // degrees the wind veers back and forth among the islands
   const LEE_DIST = 140;              // px: land this close upwind puts her in its lee
   const LEE_DROP = 0.6;              // how much of the wind the lee takes (land right upwind; less the farther it is)
+  const SAIL_SWING_MAX = 0.35;       // radians the yard may swing off square (square sail) or out past its rest (lateen): it only sways a little; the player turns the boat
   const SAIL_TRIM_TIME = 2;          // seconds the sail takes to swing round and fill to a change of wind or course (a look: the yard and the cloth's belly)
   const LATEEN_SWING = 0.9;          // how quickly the lateen yard swings across when she changes tack (3/SAIL_TRIM_TIME = as quick as the sail trims; lower = heavier)
   const WIND_STREAK_RATE = 2;        // wind streaks across the sea: how many more than the old ones (1 = as before)
@@ -344,6 +345,10 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Sail: it no longer turns to follow the wind; it only sways a little either way, so you have to turn the boat to the wind yourself (SAIL_SWING_MAX)',
+      'Logbook maps: the squares are named like a chess board, a letter for the column (A from the west) and a number for the row (1 from the north), with dotted lines between them (the same squares are dotted on the sea chart too); under the room map, the square you are in',
+    ]},
+    {build: '2026-10-09 22:23', items: [
       'Current: it no longer pushes the boat close to a shore (within about 90 px of land); it eases off as you near the coast and takes hold again out at sea',
     ]},
     {build: '2026-10-09 22:12', items: [
@@ -354,13 +359,8 @@
     {build: '2026-10-09 21:46', items: [
       'Slingshot: half as tall, and it throws half as far (up to 115 instead of 230)',
     ]},
-    {build: '2026-10-09 21:42', items: [
-      'Anchor twice as quick: hold the hub half as long (0.16 s), the anchor comes up in half the time and stops her twice as fast',
-      'Slingshot: a big stone now, with a big splash (a crown of water, drops falling back, wide rings)',
-      'Sharks: slower (26 instead of 38) but much more frequent (about every minute and a half at sea)',
-    ]},
   ];
-  const BUILD = '2026-10-09 22:23';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-09 22:36';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -565,6 +565,7 @@
       throwAway: 'Throw overboard',
       holdCount: '{n}/{max}',
       rooms:     'Map of the seas sailed',          // the room map's label (for screen readers and on hover)
+      roomHere:  'You are in {cell}',               // under the room map: the square she's in (a letter for its column, a number for its row)
       noFish:  'No fish aboard.',
       chart:   'Sea chart',
     },
@@ -1050,6 +1051,10 @@
   #rooms{display:block; margin:10px auto 0; width:min(100%, 150px); height:auto; color:var(--ink);}
   #rooms .rm{fill:var(--ink);} #rooms .door{fill:var(--ink);} #rooms .frame{fill:none; stroke:var(--ink); stroke-width:1.2;}
   #rooms .grid{fill:var(--ink); opacity:.35;}
+  #rooms .seam{stroke:var(--ink); stroke-width:.4; stroke-dasharray:.6 1.4; opacity:.55;}   /* the borders between the squares, dotted */
+  #rooms .lbl{fill:var(--ink); font:bold 4.2px Georgia, serif; opacity:.8;}
+  #rooms-here{margin:4px 0 0; text-align:center; font-size:12px; font-style:italic;}
+  #shoplist.on-map #rooms-here, #shoplist.on-base #rooms-here{display:none;}
   #rooms .you{fill:var(--paper); stroke:var(--ink); stroke-width:.6; animation:roomBlink .8s steps(1) infinite;}
   @keyframes roomBlink{50%{opacity:0;}}
   /* a page being turned: a sheet swinging on the spine, the page it leaves on its front and the new one on its back */
@@ -1332,7 +1337,7 @@
         <div class="leaf-back" aria-hidden="true"><svg viewBox="0 0 24 24"><g fill="var(--paper)"><path d="M12 1.5 L13.6 9.2 L21 12 L13.6 14.8 L12 22.5 L10.4 14.8 L3 12 L10.4 9.2 Z"/><path d="M12 6 L13 11 L18 12 L13 13 L12 18 L11 13 L6 12 L11 11 Z" transform="rotate(45 12 12)" opacity=".7"/></g><circle cx="12" cy="12" r="6.6" fill="none" stroke="var(--paper)" stroke-width="0.9"/><circle cx="12" cy="12" r="1.2" fill="var(--ink)"/></svg></div>
       </div>
       <div class="crease" aria-hidden="true"></div>
-      <div class="page right"><div id="hold-page"></div><div id="cmp-slot"><svg id="rooms" role="img"></svg></div><div id="wind-page"></div><div id="base-r"><canvas id="base-prev"></canvas><p id="base-name"></p></div></div>
+      <div class="page right"><div id="hold-page"></div><div id="cmp-slot"><svg id="rooms" role="img"></svg><p id="rooms-here"></p></div><div id="wind-page"></div><div id="base-r"><canvas id="base-prev"></canvas><p id="base-name"></p></div></div>
     </div>
   </div>
   <!-- the compass, top centre of the main view (not interactive; the open logbook may cover it) -->
@@ -6873,11 +6878,20 @@
   function markRoom(){ const [i, j] = roomOf(boat.x, boat.y), k = j*ROOM_N + i; if(!rooms[k]){ rooms[k] = 1; roomsVer++; } }
   const elRooms = document.getElementById('rooms');
   elRooms.setAttribute('aria-label', TEXT.logbook.rooms); elRooms.insertAdjacentHTML('afterbegin', '<title>'+TEXT.logbook.rooms+'</title>');
-  const RS = 10, RP = 2;                                   // a room's size in the drawing, the frame's margin
-  elRooms.setAttribute('viewBox', '0 0 ' + (ROOM_N*RS + RP*2) + ' ' + (ROOM_N*RS + RP*2));
+  // each square has a name: a letter for its column (A from the west), a number for its row (1 from the north), as on a chess board
+  const cellName = (i, j)=> String.fromCharCode(65 + i) + (j + 1);
+  const RS = 10, LM = 6, RP = LM + 2, FS = ROOM_N*RS + 4;  // a room's size in the drawing, the labels' margin, where the rooms start, the frame's size
+  elRooms.setAttribute('viewBox', '0 0 ' + (FS + LM) + ' ' + (FS + LM));
+  const elRoomsHere = document.getElementById('rooms-here');
+  let roomHereShown = '';
   function renderRooms(){
     roomsShown = roomsVer;
-    let h = '<title>'+TEXT.logbook.rooms+'</title><rect class="frame" x=".6" y=".6" width="'+(ROOM_N*RS + RP*2 - 1.2)+'" height="'+(ROOM_N*RS + RP*2 - 1.2)+'" rx="1.5"/>';
+    let h = '<title>'+TEXT.logbook.rooms+'</title><rect class="frame" x="'+(LM + .6)+'" y="'+(LM + .6)+'" width="'+(FS - 1.2)+'" height="'+(FS - 1.2)+'" rx="1.5"/>';
+    for(let i=0;i<ROOM_N;i++){                                // the names along the top and down the side, and the dotted seams
+      h += '<text class="lbl" x="'+(RP + i*RS + RS/2)+'" y="'+(LM - 1.4)+'" text-anchor="middle">'+String.fromCharCode(65 + i)+'</text>';
+      h += '<text class="lbl" x="'+(LM - 1.2)+'" y="'+(RP + i*RS + RS/2 + 1.5)+'" text-anchor="end">'+(i + 1)+'</text>';
+      if(i) h += '<line class="seam" x1="'+(RP + i*RS)+'" y1="'+RP+'" x2="'+(RP + i*RS)+'" y2="'+(RP + ROOM_N*RS)+'"/><line class="seam" x1="'+RP+'" y1="'+(RP + i*RS)+'" x2="'+(RP + ROOM_N*RS)+'" y2="'+(RP + i*RS)+'"/>';
+    }
     for(let j=0;j<ROOM_N;j++) for(let i=0;i<ROOM_N;i++){
       const x = RP + i*RS, y = RP + j*RS;
       if(!rooms[j*ROOM_N + i]){ h += '<rect class="grid" x="'+(x + RS/2 - .4)+'" y="'+(y + RS/2 - .4)+'" width=".8" height=".8"/>'; continue; }   // not yet sailed: a faint dot
@@ -6893,6 +6907,8 @@
     const dot = elRooms.querySelector('.you'); if(!dot) return;
     const x = RP + (wdx(boat.x, START.x) + WORLD.w/2)/ROOM_W*RS, y = RP + (wdy(boat.y, START.y) + WORLD.h/2)/ROOM_H*RS;
     dot.setAttribute('cx', x.toFixed(1)); dot.setAttribute('cy', y.toFixed(1));
+    const here = fmt(TEXT.logbook.roomHere, {cell: cellName(...roomOf(boat.x, boat.y))});
+    if(here !== roomHereShown){ roomHereShown = here; elRoomsHere.textContent = here; }
   }
   function refreshList(){
     if(!elList.classList.contains('open')) return;
@@ -7059,6 +7075,13 @@
       const x = m.x/S, y = m.y/S;
       mapCtx.beginPath(); mapCtx.moveTo(x-xs, y-xs); mapCtx.lineTo(x+xs, y+xs); mapCtx.moveTo(x+xs, y-xs); mapCtx.lineTo(x-xs, y+xs); mapCtx.stroke();
     }
+    // the squares of the room map (home's square in the middle, as there): dotted seams where they meet (their names are on the room map)
+    { const cw = WORLD.w/ROOM_N/S, x0 = wrapX(START.x - WORLD.w/2)/S, y0 = wrapY(START.y - WORLD.h/2)/S;
+      mapCtx.save(); mapCtx.strokeStyle = 'rgb(120,120,120)'; mapCtx.lineWidth = 1; mapCtx.setLineDash([1, 3]); mapCtx.beginPath();
+      for(let i=0;i<ROOM_N;i++){ const x = Math.round((x0 + i*cw) % N) + 0.5, y = Math.round((y0 + i*cw) % N) + 0.5;
+        mapCtx.moveTo(x, 0); mapCtx.lineTo(x, N); mapCtx.moveTo(0, y); mapCtx.lineTo(N, y); }
+      mapCtx.stroke(); mapCtx.setLineDash([]);
+      mapCtx.restore(); }
     ditherUI(mapCtx, N, N);
     // the chart fills the left page, square; the wind card goes on the facing page
     elMapL.width = N; elMapL.height = N; elMapL.getContext('2d').drawImage(mapCv, 0, 0);
@@ -7509,8 +7532,10 @@
     if(wantSide!==boat.sailSide && Math.abs(relR)>0.2) boat.sailSide = wantSide;
     const faceRaw = norm(Math.PI-relR);         // wind-to direction, boat frame
     // (a lateen yard instead trails aft, eased out to leeward about half the wind's angle off the bow)
-    const faceTarget = boat.rig === 'lateen' ? boat.sailSide*Math.max(0.12, Math.min(1.35, Math.abs(relR)*0.5))
-                                              : boat.sailSide*Math.min(Math.abs(faceRaw), MAX_BRACE);
+    // the yard only sways a little either way (SAIL_SWING_MAX), plus a faint flutter: she has to be turned to the wind
+    const sway = Math.sin(t*1.3 + 0.7)*0.03 + Math.sin(t*3.1)*0.015;
+    const faceTarget = boat.rig === 'lateen' ? boat.sailSide*Math.max(0.12, Math.min(0.12 + SAIL_SWING_MAX, Math.abs(relR)*0.5)) + sway
+                                              : boat.sailSide*Math.min(Math.abs(faceRaw), MAX_BRACE, SAIL_SWING_MAX) + sway;
     // the lateen's long yard is heavy: when she changes tack it swings across slowly (LATEEN_SWING), then trims as usual
     if(boat.rig === 'lateen' && Math.sign(faceTarget) !== Math.sign(boat.boomSigned) && Math.abs(boat.boomSigned) > 0.05) boat.swingAcross = true;
     if(boat.swingAcross && (boat.rig !== 'lateen' || Math.abs(faceTarget - boat.boomSigned) < 0.08)) boat.swingAcross = false;

@@ -285,6 +285,10 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   `markRoom`, cleared on a new voyage) is an ink block, joined to a sailed neighbour by a little door; unsailed rooms are a
   faint dot; a paper dot blinks where she is, to the pixel (`renderRooms` when `roomsVer` changes, `placeRoomDot` every
   frame while the book is open on that spread; an SVG `#rooms`, label `TEXT.logbook.rooms`).
+  Each square has a **name** like a chess board (`cellName`): a letter for its column (A from the west) and a number for
+  its row (1 from the north); the letters run along the top and the numbers down the side, dotted seams between the
+  squares (`.seam`), and under the map "You are in E5" (`#rooms-here`, `TEXT.logbook.roomHere`; home is E5). The **sea
+  chart** dots the same seams (`renderMap`, grey dashes before the dither; no names there, they'd crowd it).
 - **Compass** (drawn at 95 px, `CMP_PX`; it lived **in the logbook**, moved at start into `#cmp-slot` on the first spread's right page,
   shown up to 150 px wide; no longer on the screen; hidden in the tutorial until its own tutorial step): points home, a dot per village filled once a dish is bought there; drawn like the
   wheel (greys into a low-res canvas, then dithered): brass bezel with rivets, shaded card, wind rose, glass glare.
@@ -397,6 +401,9 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   `drawLateenSail` (`LATEEN_SIZE` 0.6 in Tuning, on top of `SAIL_SIZE`): a long slanted yard on a short mast near the bow, the triangle of cloth trailing aft, eased out
   to leeward about half the wind's angle off the bow (`boat.boomSigned`), bellied to leeward, a sheet to the stern
   quarter; it furls along the yard at anchor.
+  **The yard only sways a little** (`SAIL_SWING_MAX` 0.35 rad, Tuning): the square sail's yard is braced at most that far off
+  square, the lateen's eased out at most 0.12 + that past its rest, plus a faint flutter; it doesn't follow the wind round
+  (a look only: the drive is the polar's), so the player turns the boat to the wind.
   (Wind lines on the sail were tried several ways, fixed streamlines, faint squiggles, short curls along both faces after a sketch, and dropped: they didn't work.) The sail (yard and belly, `boomSigned`, `sailPower`) follows a change of wind or course over `SAIL_TRIM_TIME` (2 s, Tuning; a look only, the drive's own retrim is `RIG_RETRIM`). Changing tack, the heavy yard swings across slowly (`LATEEN_SWING` in
   Tuning, 0.9 against the usual trim rate of 3; `boat.swingAcross` until it's settled on the new side). A new voyage
   starts with `START_RIG` again.
