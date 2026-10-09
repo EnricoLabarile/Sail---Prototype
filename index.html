@@ -131,13 +131,13 @@
   const WHIRL_PULL = 22;             // px/s pull at the edge of the core…
   const WHIRL_CURVE = 4;             // …rising exponentially from ~0 at the rim
   const WHIRL_FADE = 3;              // seconds for a whirlpool to open up / die down
-  const SHARK_ON = knob('SHARK_ON', 1);   // 1 = on, 0 = off. Sharks: now and then one finds her at sea, follows her, bites the hull and makes off
+  const SHARK_ON = knob('SHARK_ON', MAP_DRAWN ? 0 : 1);   // 1 = on, 0 = off (off on the drawn map for now). Sharks: now and then one finds her at sea, follows her, bites the hull and makes off
   const SHARK_CHANCE = knob('SHARK_CHANCE', 0.6); // the chance of an encounter in each minute she spends at sea, out of home waters (was 0.25)
   const SHARK_COOLDOWN = knob('SHARK_COOLDOWN', 45); // seconds at least between one encounter and the next
   const SHARK_SPEED = knob('SHARK_SPEED', 26); // how fast it swims after her (px/s; was 38; under sail or the wheels she outruns it)
   const SHARK_DAMAGE = knob('SHARK_DAMAGE', 8); // hull damage from a bite
   // the sea imp (like Zelda's Zora): pops out of the water near her, spits a fireball at her, ducks under and pops up elsewhere
-  const ZORA_ON = knob('ZORA_ON', 1);           // 1 = sea imps about, 0 = none
+  const ZORA_ON = knob('ZORA_ON', MAP_DRAWN ? 0 : 1);   // 1 = sea imps about, 0 = none (none on the drawn map for now)
   const ZORA_CHANCE = knob('ZORA_CHANCE', 0.5); // the chance of one turning up in each minute at sea, out of home waters
   const ZORA_COOLDOWN = 40;          // seconds at least between one sea imp and the next
   const ZORA_POPS = [3, 5];          // how many times it pops up before it leaves (fewest, most)
@@ -151,7 +151,7 @@
   const WHIRL_FLING = 200;            // px/s² of extra speed while she runs round a whirlpool's outer ring with its swirl (a slingshot)…
   const WHIRL_FLING_MAX = 200;        // …up to this much above her normal speed (it fades once she's out)
   const WHIRL_FLING_COS = 0.8;       // how well her heading must follow the swirl to be flung (cos of ~37°)
-  const ROLLER_RATE = knob('ROLLER_RATE', 2);             // how often big waves come (2 = twice as often as at first, 1 = the old pace)
+  const ROLLER_RATE = knob('ROLLER_RATE', MAP_DRAWN ? 0 : 2);   // how often big waves come (2 = twice as often as at first, 1 = the old pace, 0 = none: so on the drawn map for now)
   // deep water: where the big waves can rise and run (shown as a darker sea); they die down on leaving it
   const DEEP_SHORE = 70;             // px from any land at which the deep water begins (world)
   const DEEP_PIER = 280;             // px from any pier (harbours are never deep) (world)
@@ -160,7 +160,7 @@
   const ROLLER_CATCH = 25;           // px/s a wave from astern runs faster than the boat, so it catches her to surf (0 = never helps)
   const DOWNWIND_DEG = 120;          // she's running downwind when the wind comes from at least this far round from her bow (180 = dead astern); from here the wind from behind adds speed too
   const SURF_WAVE_AFTER = 0.1;         // seconds running downwind before a wave may come up astern for her to surf
-  const SURF_WAVE_CHANCE = 0.3;      // chance each second (after that) of such a wave
+  const SURF_WAVE_CHANCE = MAP_DRAWN ? 0 : 0.3;   // chance each second (after that) of such a wave (none on the drawn map for now)
   const SURF_WAVE_BACK = 100;        // px astern it rises (close enough to reach her before it dies)
   const SURF_WAVE_SIDE = 45;         // px it may be off to either side, so catching it takes a touch of the helm
   const ROLLER_SPARE = 0.55;         // a wave about to hit her badly slows to this share of its pace (1 = never)
@@ -199,8 +199,8 @@
   const DISH_RESALE = 3;             // coins a stall gives for a dish from your hold (any stall takes any dish)
 
   // -- World --
-  const TRADERS_HOME = knob('TRADERS_HOME', 2);            // trading boats between home and the villages (on 2 of the 4 home lanes, picked at random) (world)
-  const TRADERS_VILLAGES = knob('TRADERS_VILLAGES', 4);        // trading boats between neighbouring villages (one on each of those 4 lanes) (world)
+  const TRADERS_HOME = knob('TRADERS_HOME', MAP_DRAWN ? 0 : 2);   // trading boats between home and the villages (on 2 of the 4 home lanes, picked at random; none on the drawn map for now) (world)
+  const TRADERS_VILLAGES = knob('TRADERS_VILLAGES', MAP_DRAWN ? 0 : 4);   // trading boats between neighbouring villages (one on each of those 4 lanes; none on the drawn map for now) (world)
   const ISLAND_SCALE = knob('ISLAND_SCALE', 2.5);          // size of the wild islands (1 = the old small ones) (world)
   const ISLAND_COUNT = knob('ISLAND_COUNT', Math.round(210*WK2*3.5/(ISLAND_SCALE*ISLAND_SCALE)));   // wild islands at most (about 58 at scale 2.5; the clusters fill up first) (world)
   const CLUSTER_SHARE = knob('CLUSTER_SHARE', 0.32);        // share of the sea taken by clusters of islands; the rest is open water (world)
@@ -252,7 +252,7 @@
   const SAT_LOSS = 0.25;             // an order with nothing delivered lowers it by this much (in proportion to what's missing)
   const SIGHT = 220;                 // px of fog uncovered round the boat
   const CLOUD_COUNT = knob('CLOUD_COUNT', 12);            // clouds in the sky (world)
-  const RAIN_CLOUD_EVERY = 3;        // one cloud in this many carries rain (world)
+  const RAIN_CLOUD_EVERY = MAP_DRAWN ? 0 : 3;   // one cloud in this many carries rain (0 = none: so on the drawn map for now) (world)
   const STORM_ON = knob('STORM_ON', 1);   // 1 = on, 0 = off. Storm clouds: some rain clouds are darker and throw lightning down onto the sea under them
   const STORM_SHARE = knob('STORM_SHARE', MAP_DRAWN ? 0 : 0.5); // share of the rain clouds that are storms (none on the drawn map) (world)
   // Biomes: the sea is split into regions with their own weather. For now one, the stormy West: past WEST_FROM
@@ -357,6 +357,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Also gone for now, until you decide where they belong: rain clouds, the trading boats, the big waves (and the ones to surf), sharks and sea imps; the gulls and the plain clouds stay',
+    ]},
+    {build: '2026-10-09 23:25', items: [
       'The world holds only what you drew: the land, Westa (B2) and Estolia (the dot in E3); Sudia and the Temple of Eolus are gone until you draw them (so no fair wind for now)',
       'Also gone until drawn: rocks, whirlpools, fish banks, storm clouds, the boiling sea and the messages in a bottle (each can be brought back from the first screen)',
     ]},
@@ -368,12 +371,8 @@
     {build: '2026-10-09 22:38', items: [
       'The room map\'s squares are now dotted on the sea itself too, so you can see where one square (A1 to I9) ends and the next begins (ROOM_SEAMS)',
     ]},
-    {build: '2026-10-09 22:36', items: [
-      'Sail: it no longer turns to follow the wind; it only sways a little either way, so you have to turn the boat to the wind yourself (SAIL_SWING_MAX)',
-      'Logbook maps: the squares are named like a chess board, a letter for the column (A from the west) and a number for the row (1 from the north), with dotted lines between them (the same squares are dotted on the sea chart too); under the room map, the square you are in',
-    ]},
   ];
-  const BUILD = '2026-10-09 23:25';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-09 23:32';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -5981,7 +5980,7 @@
   }
   function updateRollers(dt){
     if(playing) surfWaves(dt);
-    if(!moor && playing){
+    if(!moor && playing && ROLLER_RATE > 0){
       rollerT -= dt * (fishing ? 0.2 : 1);            // quieter seas while the nets are out
       if(rollerT<=0){
         const dg = danger(boat.x, boat.y);
@@ -9284,7 +9283,7 @@
   // and some of those are storms (STORM_SHARE): darker still, heavier rain, and lightning (see Storms)
   let rainN = 0;
   clouds.forEach((c,i)=>{
-    c.rain = i % RAIN_CLOUD_EVERY === 0;
+    c.rain = RAIN_CLOUD_EVERY > 0 && i % RAIN_CLOUD_EVERY === 0;
     if(!c.rain) return;
     c.storm = !!STORM_ON && Math.floor((rainN + 1)*STORM_SHARE) > Math.floor(rainN*STORM_SHARE); rainN++;
     c.drops = Array.from({length: Math.round(c.W*(c.storm ? 0.45 : 0.3))}, ()=>{ const a = rand(0,6.3), r = Math.sqrt(Math.random()); return {u: Math.cos(a)*r, v: Math.sin(a)*r, ph: Math.random(), len: rand(6,10)}; });
