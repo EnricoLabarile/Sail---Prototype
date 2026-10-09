@@ -134,7 +134,8 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   darker thickets and pale clearings from a smooth noise, `drawnNoise`) then spurge, trees and tufts made per tile-sized
   cell from a seed (`drawnDecor`); all-sea tiles are skipped. The drawn land is drawn after the islands' land and leaves
   a hole inside the village and temple islands' scrub and round the lighthouse (`drawnHole`), so their towns show and
-  their edges join the land. The boiling South stops at the map's south edge on the drawn map.
+  their edges join the land. The boiling South stops at the map's south edge on the drawn map. `archipelago` is 0
+  everywhere on the drawn map (no clusters by chance, no spiral in the preview; the wind is open sea's everywhere).
   **Rule for the next drawn maps (Enrico):** put in the world only what he drew or wrote; never add or place things
   of my own (as Sudia and the temple were placed this first time); keep randomness down wherever possible; and wait
   for his go before generating a new map.
@@ -544,8 +545,9 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   **Three spreads**: a sideways swipe across the open book turns the page (left = forward: the list and cargo, the
   **sea chart**, then **home's look**; right = back; `turnPage`, `logSpread` 0..2): a sheet swings over on the spine (copies of the pages, `snapPage`), with
   `Sfx.pageTurn()` and a buzz; the book remembers the spread it was left on and opens there. The **sea chart** (`renderMap`)
-  is drawn on the second spread's left page only (`#map-l`), square, a pixel per CSS pixel of the page (at most `MAP_RES`,
-  so the dither stays fine), then dithered like the widgets; the **wind card** faces it on the right page (`#wind-page`): only the
+  is drawn on the second spread's left page only (`#map-l`), square, two pixels per CSS pixel of the page on a sharp
+  screen (× min(2, devicePixelRatio), at most `MAP_RES`): land solid ink (30, like the world generator's preview), the
+  water along the shore a dotted edge (150, then 235 a pixel further out), so the coasts' shape reads, then dithered like the widgets; the **wind card** faces it on the right page (`#wind-page`): only the
   cells the boat has seen (fog of war's `explored`; land inked round its coast) and nothing else: no marks for home,
   ports, ruins or the boat (Enrico's choice: you find your way by the coastlines). It is drawn only when
   shown (book opened on it, or a page turned to it), never while sailing (~3 ms; the land under each pixel is worked out

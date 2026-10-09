@@ -357,6 +357,10 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Drawn map: no more spiral of island clusters made up by chance (in the preview and in the wind): all the sea is plain open sea',
+      'Logbook sea chart: land in solid ink like the preview, a dotted edge along the shore, twice as sharp on the phone, so you can read the shape of the coasts',
+    ]},
+    {build: '2026-10-09 23:32', items: [
       'Also gone for now, until you decide where they belong: rain clouds, the trading boats, the big waves (and the ones to surf), sharks and sea imps; the gulls and the plain clouds stay',
     ]},
     {build: '2026-10-09 23:25', items: [
@@ -368,11 +372,8 @@
       'Westa sits on the hooked point in B2, Estolia on the island in E3 (your dots); Sudia on the tongue of land in E7 and the Temple of Eolus in F2 (not on the drawing yet)',
       'The boiling sea stops at the south edge of the map (a strip along the south coast)',
     ]},
-    {build: '2026-10-09 22:38', items: [
-      'The room map\'s squares are now dotted on the sea itself too, so you can see where one square (A1 to I9) ends and the next begins (ROOM_SEAMS)',
-    ]},
   ];
-  const BUILD = '2026-10-09 23:32';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-10 00:04';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -1935,6 +1936,7 @@
   // (the field round the cut is steeper once mixed: keep the same soft band, in the field's own units)
   const SEA_BAND = SPIRAL > 0 ? 0.5/WAVE_SD : 0.5;
   function archipelago(x,y){
+    if(MAP_DRAWN) return 0;                         // (the drawn map: no clusters made up by chance, all of it plain sea)
     const k = Math.max(0, Math.min(1, (seaField(x,y) - SEA_CUT)/SEA_BAND + 0.5));   // a narrow band round the cut
     return k*k*(3-2*k);
   }
@@ -7178,8 +7180,8 @@
   const mapCtx = mapCv.getContext('2d', {willReadFrequently:true});
   let mapLand = null, mapN = 0;                // land under each chart pixel, worked out once (again if the page's width changes)
   function renderMap(){
-    // a chart pixel per CSS pixel of the page (dithered at that size, so the dots stay fine), at most MAP_RES
-    const N = Math.max(60, Math.min(MAP_RES, Math.round(elMapL.clientWidth || 140))), S = WORLD.w/N;
+    // two chart pixels per CSS pixel of the page on a sharp screen (finer coasts and dots), at most MAP_RES
+    const N = Math.max(60, Math.min(MAP_RES, Math.round((elMapL.clientWidth || 140)*Math.min(2, window.devicePixelRatio || 1)))), S = WORLD.w/N;
     if(N !== mapN){ mapN = N; mapLand = null; mapCv.width = mapCv.height = N; }
     if(!mapLand){
       mapLand = new Uint8Array(N*N);
@@ -7191,8 +7193,11 @@
     for(let j=0;j<N;j++) for(let i=0;i<N;i++){
       let g = 215;                                                     // not yet seen: a light dotted grey
       if(seen(i,j)){
-        g = 255;                                                       // open sea
-        if(land(i,j)) g = (land(i-1,j) && land(i+1,j) && land(i,j-1) && land(i,j+1)) ? 120 : 25;   // land, inked round its coast
+        const near = (a,b)=> land(i+a,j+b);
+        if(land(i,j)) g = 30;                                          // land: solid ink, like the world generator's preview
+        else if(near(-1,0) || near(1,0) || near(0,-1) || near(0,1)) g = 150;   // the water along the shore: a dotted edge, so the coast reads
+        else if(near(-2,0) || near(2,0) || near(0,-2) || near(0,2) || near(-1,-1) || near(1,1) || near(-1,1) || near(1,-1)) g = 235;
+        else g = 255;                                                  // open sea
       }
       const q = (j*N+i)*4; d[q] = d[q+1] = d[q+2] = g; d[q+3] = 255;
     }
