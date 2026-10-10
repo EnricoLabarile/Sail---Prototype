@@ -139,7 +139,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   filtered by `drawnKey`, the temple left out of `RUINS`, so no fair wind for now). **Only what's drawn**:
   with `MAP_DRAWN` on, the map features of the template's legend default to none (each a knob, so still switchable
   from the first screen): `WHIRL_COUNT`, `BANK_COUNT`, `HOME_BANKS` (but see the banks per square below), `BOTTLE_COUNT` (so no wreck), `OPEN_ROCK_TRIES`,
-  `STORM_SHARE`, `WEST_STORM_CLOUDS`, `WEST_WHIRLS`, `BOIL_ON` all 0; no random wild islands (`genIslands` places 0).
+  `STORM_SHARE`, `WEST_STORM_CLOUDS`, `WEST_WHIRLS` all 0 (whirlpools and the boiling sea only where drawn, see the fourth drawing); no random wild islands (`genIslands` places 0).
   Also off for now, until Enrico decides where they appear: rain clouds (`RAIN_CLOUD_EVERY` 0), traders
   (`TRADERS_HOME`, `TRADERS_VILLAGES` 0) and big waves (`ROLLER_RATE` 0, `SURF_WAVE_CHANCE` 0). Sharks and sea imps
   are on again (`SHARK_ON`, `ZORA_ON` 1) but only east and west of home (`CREATURE_SIDES` ['est', 'ovest'] in Tuning,
@@ -151,6 +151,23 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   a hole inside the village and temple islands' scrub and round the lighthouse (`drawnHole`), so their towns show and
   their edges join the land. The boiling South stops at the map's south edge on the drawn map. `archipelago` is 0
   everywhere on the drawn map (no clusters by chance, no spiral in the preview; the wind is open sea's everywhere).
+  **The fourth drawing (now; picture 1080×1448, `--frame=84.2,239.5,1040.8,1196.1`)**: new coasts, the same four dots
+  (E3, H4, C5, G8, so `DRAWN_PLACES` barely moved), the gaps at H1 and H9, home's islet in E5 (dropped as always), and
+  **new marks**, wiped from the picture before the import by `tools/map-template/map4_prep.py` (they aren't land) and
+  placed from Tuning: **driftwood jams** (the hatched bars of the legend, "destructible obstacle": Enrico imagines
+  debris, driftwood; `DRAWN_DEBRIS`, seven, H1, C3, B5, D5, E5, F4, H2, each a line from shore to shore across a channel):
+  section "driftwood jams" by the wreck's (`makeDebris` at start and on a new voyage, `debris`): solid through a row of
+  hidden rocks (`DEBRIS_W` 80 thick), drawn live in the rocks' layer (`drawDebris`: logs mostly along it, a few planks
+  across, shadows, grain, sawn ends, foam caught along both sides); a toast the first time she comes near
+  (`TEXT.toasts.debris`); a slingshot stone landing on it (`stoneAtDebris`, once a shot) takes one of `DEBRIS_HP` (3)
+  (`TEXT.popups.debrisHit`, it shakes), the last one breaks it: the rocks go, the wood drifts apart and fades over 2.5 s,
+  `TEXT.popups.debrisGone`. **Whirlpools** (two spirals, D2 and B3): `DRAWN_WHIRLS` (x, y, the drawn radius), always
+  open (`fixed`: no wandering, no creeping after her, not dying down after catching her). **The boiling sea**: the dashed
+  line from E7 to the big C-island (F6) and from H6 to the east edge; `DRAWN_BOIL` is that line and everything
+  south-east of it, `boilRaw` tests it (`inPoly`) on the drawn map, `BOIL_ON` now on by default (Sudia in G8 keeps its
+  cool ring, `BOIL_SAFE`). **"Mare Monstrum"** (written in B6–C7): sharks and sea imps turn up only in `MONSTER_SQUARES`
+  (A6–D9; `squareAt`), instead of `CREATURE_SIDES` (still used off the drawn map). "Home sea" and "Boiling sea" are
+  labels only. The previous (third) drawing's notes follow.
   **Rule for the next drawn maps (Enrico):** put in the world only what he drew or wrote; never add or place things
   of my own (as Sudia and the temple were placed this first time); keep randomness down wherever possible; and wait
   for his go before generating a new map.
