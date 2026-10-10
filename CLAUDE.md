@@ -159,7 +159,9 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   each other or to the ruins than in the plain cross, measured on the map; across the wrapped edge N–S and E–W do get closer), one course each, two specialties (1 unit each, all at `DISH_PRICE` = 6
   coins) + a gift: Nordania (N) Antipasti: Fiori di Zucca, Mozzarelle, gift Tarallini. Estolia (E) Primi: Orecchiette
   con Cime di Rapa, Lasagne, gift Olio Santo. Sudia (S) Secondi: Zampina, Pesce Arrosto, gift Vino Rosso. Westa (W)
-  Dessert: Cartellate, Tiramisu, gift Limoncello. The stall offers both dishes at every visit; bought dishes wait in the
+  Dessert: Cartellate, Tiramisu, gift Limoncello. The stall offers both dishes (and the packs of charges and nets) every day, **one of each a day**: bought, it stays
+  on the stall greyed out (`.mk-unit.out`, `v.soldDay[stock] = dayNo`, reset on a new voyage) and a tap on it puts
+  `TEXT.market.soldOut` ("It's out of stock, come back tomorrow") in bold in the panel's top line; bought dishes wait in the
   hold (`dishHold`, by icon id) until delivered. The gift is never for sale: the merchant adds it, once per voyage, the
   first time both of a village's dishes have been bought (`boughtEver`). The gifts are a surprise: never mention them
   anywhere before one is earned. (The course names in `TEXT.villages` are no longer shown.)
@@ -390,7 +392,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   `knob('NAME', value)`: a value in the address wins. Under the build time the card has **folding sections**
   (`<details class="wg-sec">`, a tap on the heading opens or shuts it, a little triangle turns): "What's new"
   (`#wg-sec-changes`, the list of changes, `TEXT.worldGen.changesTitle`), "Settings" (the Vibration slider,
-  `TEXT.worldGen.settings`), "Sails" (below), "Audio" (`#wg-sec-audio`, `audioEditor`, texts `TEXT.worldGen.audio*`: a slider 0–2 per kind of sound in `SOUND_VOL` (Tuning: master, sea, rain, cicadas, night, gulls, town, engine, whirl, waves, crash, wheel, clicks, anchor, crank, paddles, oars, nets, bell, buoy, crate, coins, book), live, a sample played on letting go, a line to paste into Tuning, "Reset all sounds"; kept in `localStorage` `vv.audio`, dropped once the Tuning defaults change. In `Sfx` each exported sound has a kind (`KIND`); `routed` points the buses at that kind's gain (`chan`) while it is made, the looping layers made in `init` are routed there, and `setVol` moves the gains), "Dangers" (`#wg-sec-dangers`, `TEXT.worldGen.dangersTitle`: fields like the World's for the sharks' and whirlpools' knobs, `SHARK_ON` 1/0, `SHARK_CHANCE`, `SHARK_COOLDOWN`, `SHARK_SPEED`, `SHARK_DAMAGE`, `SHARK_GIVE_UP`, `WHIRL_FOLLOW`, `WHIRL_FOLLOW_SPEED`, all `knob(...)` in Tuning; its Apply, like Generate, reloads with the changed fields of both sections in the address) and "World" (the preview, the knobs and Generate / Defaults; `TEXT.worldGen.title`), **all
+  `TEXT.worldGen.settings`), "Sails" (below), "Audio" (`#wg-sec-audio`, `audioEditor`, texts `TEXT.worldGen.audio*`: a slider 0–2 per kind of sound in `SOUND_VOL` (Tuning: master, sea, rain, cicadas, night, gulls, town, engine, whirl, waves, crash, wheel, clicks, anchor, crank, paddles, oars, nets, bell, buoy, crate, coins, book), live, a sample played on letting go, a line to paste into Tuning, "Reset all sounds"; kept in `localStorage` `vv.audio`, dropped once the Tuning defaults change. In `Sfx` each exported sound has a kind (`KIND`); `routed` points the buses at that kind's gain (`chan`) while it is made, the looping layers made in `init` are routed there, and `setVol` moves the gains), "Dangers" (`#wg-sec-dangers`, `TEXT.worldGen.dangersTitle`: fields like the World's for the sharks' and whirlpools' knobs, `SHARK_ON` 1/0, `SHARK_CHANCE`, `SHARK_COOLDOWN`, `SHARK_SPEED`, `SHARK_DAMAGE`, `WHIRL_FOLLOW`, `WHIRL_FOLLOW_SPEED`, all `knob(...)` in Tuning; its Apply, like Generate, reloads with the changed fields of both sections in the address) and "World" (the preview, the knobs and Generate / Defaults; `TEXT.worldGen.title`), **all
   shut at first**;
   **Sails** (`#wg-sec-sails`, `sailEditor`, texts `TEXT.worldGen.sails*`, between Settings and World): per sail its
   polar (`polarPath`, the same drawing as the wind card; the other sail dashed) redrawn live, a slider per angle of its
@@ -517,7 +519,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   Y fork on the right, above the crank (64×80, `bottom` 100 px; it was 150 tall), its bands (ink over a paper edge, so they read over the
   wood) from the prongs' tips to a dotted pouch with a stone; dragging the pouch down stretches them (`slingPull` 0..1 over
   `SLING_MAX` 48 drawing units; a tick and a buzz each quarter); let go (pull > 0.12; Enter/Space a full shot) and
-  `shootStone` throws a big stone (5.5 px) from the bow straight ahead, `SLING_RANGE` [25, 115] px (was [40, 230]) by the pull, flying 0.45–0.95 s in an
+  `shootStone` throws a big stone (5.5 px) from the bow straight ahead, `SLING_RANGE` [20, 80] px (was [25, 115], before that [40, 230]) by the pull; **while pulling, a dashed ring** (paper under ink, a dot in the middle) on the sea where it will land, as wide as what it can hit (14 px for a stone, `NET_REACH` for a net; drawn in `drawStones`), flying 0.45–0.95 s in an
   arc (`stones`, drawn by `drawStones` with a shadow on the water), a thunk and a buzz; it lands with a big splash, a crown of paper lumps thrown up, ten drops arcing out and
   falling back, two wide rings, 1.3 s (`stoneSplash`, `Sfx.splash` + a thunk) or a clack on a shore; one within `SLING_SCARE_R` (60) of the shark sends it off
   (`mode` 'flee', popup `TEXT.popups.sharkScared`). The pouch is empty for `SLING_RELOAD` (0.9 s). Hidden at the market,
@@ -618,11 +620,13 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   Opening/closing it plays `Sfx.book(open)`: paper flutter, and the cover's thump on closing. The list also shows the day of the voyage
   (`dayNo`, +1 at each dawn). A tiny faint frame-rate counter (`#fps`, refreshed twice a second while the logbook is open) sits on the
   paper, in the bottom right corner of the right page. Keyboard: arrows, Space = anchor.
+- **Hull bar** (`#status`, `#hp-meter`): always shown top left while she sails (hidden at the market and in a talk);
+  it was shown only for a few seconds after damage. The fair-wind badge `#boon` sits under it.
 - **Hazards:** rocks (the faraglioni, tall rock columns off the cliffs, were removed; **spacing**, Tuning, world: two rocks, or a rock and the shore, either touch or have at
   least `ROCK_GAP` 64 px of water between them, about twice the boat's length, so she never gets stuck in a slot:
   `tooTight`, `shoreTight` in `tryRock`; this left ~555
   rocks instead of ~760 and no tight pairs instead of ~930. **Sizes** vary: `rockSize`, a share `ROCK_BIG` 0.4 drawn
-  bigger, up to `ROCK_BIG_MAX` 2.2 ×), whirlpools (appear/disappear/wander; from day 1, `WHIRL_FROM_DAY` = 1; **they creep after her** while she's within `WHIRL_FOLLOW` (2) × their radius, at `WHIRL_FOLLOW_SPEED` (7 px/s), never out of open water (`whirlWaterOK`); **once one catches her** in its core it's set to fade out (`phase` 'out', held until she's flung); drawn as flowing water (`drawWhirlpool`): `WP_ARMS` broad pale arms winding in and curved foam streaks along a tighter spiral (C 1.6), each a smooth curve in three segments swelling in the middle, wobbling a little; **slingshot**:
+  bigger, up to `ROCK_BIG_MAX` 2.2 ×), whirlpools (appear/disappear/wander; outer ring 120–155 px × `WHIRL_OUTER` (2: doubled), the core 30–40; from day 1, `WHIRL_FROM_DAY` = 1; **they creep after her** while she's within `WHIRL_FOLLOW` (2) × their radius, at `WHIRL_FOLLOW_SPEED` (7 px/s), never out of open water (`whirlWaterOK`); **once one catches her** in its core it's set to fade out (`phase` 'out', held until she's flung); drawn as flowing water (`drawWhirlpool`): `WP_ARMS` broad pale arms winding in and curved foam streaks along a tighter spiral (C 1.6), each a smooth curve in three segments swelling in the middle, wobbling a little; **slingshot**:
   running round a whirlpool's outer ring with its swirl, heading within ~37° of the way it turns (`WHIRL_FLING_COS`),
   she gains speed, `WHIRL_FLING` px/s² × how well she follows it × how deep in she is (0.35 at the rim → 1 at the core),
   up to `WHIRL_FLING_MAX` above her normal speed, fading once she's out; once a pass a whoosh, a buzz and a "flung!"
@@ -656,26 +660,36 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   everything; only when the bolt's spot or its cloud is in view, else the storm is only heard) and `Sfx.thunder(vol, near)` (a crack of high-passed noise when close, then a low rumble in uneven swells
   over ~3 s; kind `thunder` in `SOUND_VOL`, Audio slider "Thunder"), delayed by the distance (d × 1.4 ms, at most
   1.6 s). Within `STORM_HIT_R` of the bolt (not moored) she's hit: damage, flash, shake, rock, buzz, `Sfx.crash`, popup.
+- **Creature areas** (Enrico; Tuning `CREATURE_WARN` 3 s, `CREATURE_AREA` 0.2, `CREATURE_AGAIN` 8 s): a shark or a sea
+  imp belongs to an **area**, the map square (A1…I9, as in the logbook) she was in when it turned up, grown by
+  `CREATURE_AREA` of a square on each side (`creatureArea`, `inArea`, `creatureSpot`: a spot of open water in it at a
+  distance from her). Before it shows, the water **ripples for `CREATURE_WARN` s** where it will come up
+  (`warnRipples`: three rings spreading, stronger as it nears; the shark's mode 'warn', the imp's phase 'rise'; stones
+  pass through ripples). It **never gives up**: it keeps coming as long as she's in its area, and leaves only when she
+  sails out of it (or into home waters, or ties up). The last area is remembered (`sharkArea`, `zoraArea`): while she's
+  still in it the next one comes for sure (no chance roll) once the cooldown is over (`CREATURE_AGAIN` after one is
+  caught in a net). New ones still need `CREATURE_SIDES` and the chance per minute.
 - **Sharks** (section "Sharks"; Tuning `SHARK_ON`, `SHARK_CHANCE` 0.6 an encounter per minute at sea out of home
-  waters (was 0.25), `SHARK_COOLDOWN` 45 s between encounters (was 90), `SHARK_SPEED` 26 px/s (was 38), `SHARK_DAMAGE` 8, `SHARK_GIVE_UP` 30 s;
-  texts `TEXT.popups.sharkSeen` / `sharkBite`): one at a time (`shark`, `updateShark`, `drawShark`, cleared by
-  `resetShark` on a new voyage). It comes in from 330 px off, out of sight, aiming a little ahead of her and weaving in
-  long S-curves, a bit quicker once close; a popup "a fin!" when it comes within 230 px; at the hull it bites (damage,
-  flash, shake, rock, buzz, `Sfx.crash`) and makes off at ~1.9× speed, gone once 420 px away. It gives up (makes off
-  without biting) after `SHARK_GIVE_UP` s, or when she's back in home waters or moored; it swerves off land. Drawn
+  waters (was 0.25), `SHARK_COOLDOWN` 45 s between encounters (was 90), `SHARK_SPEED` 26 px/s (was 38), `SHARK_DAMAGE` 8,
+  `SHARK_BITE_BACK` 2.5 s; texts `TEXT.popups.sharkSeen` / `sharkBite`): one at a time (`shark`, `updateShark`,
+  `drawShark`, cleared by `resetShark` on a new voyage). It comes up 140–220 px from her after the ripples, aiming a
+  little ahead of her and weaving in long S-curves, a bit quicker once close; a popup "a fin!" when it comes within
+  230 px; at the hull it bites (damage, flash, shake, rock, buzz, `Sfx.crash`), swims off for `SHARK_BITE_BACK` s
+  (`recoil`) and comes again. Weakened, once it recovers it hunts again with its health back. When she leaves its area
+  it makes off at ~1.9× speed, gone once 420 px away (mode 'flee'); it swerves off land. Drawn
   under the water as a dark torpedo with pectoral fins and a beating tail (faster when it flees), the dorsal fin in
   ink above the surface with a pale rim and a curl of foam at its front.
 - **Sea imps** (like Zelda's Zora; section "Sea imps"; Tuning `ZORA_ON`, `ZORA_CHANCE` 0.5 a minute at sea out of home
-  waters, `ZORA_COOLDOWN` 40 s, `ZORA_POPS` [3, 5], `ZORA_DIST` [80, 150] px, `ZORA_BALL_SPEED` 75 px/s, `ZORA_DAMAGE` 6,
+  waters, `ZORA_COOLDOWN` 40 s, `ZORA_DIST` [80, 150] px, `ZORA_BALL_SPEED` 75 px/s, `ZORA_DAMAGE` 6,
   `ZORA_SIZE` 1.7; the three knobs also in the first screen's Dangers; texts `TEXT.popups.zoraSeen/zoraHit/zoraGone`):
-  one at a time (`zora`, `updateZora`, `drawZora`, `resetZora` on a new voyage). Each pop (`zoraSpot`: a spot of water
-  80–150 px from her): ripples warn of it ('rise', 0.6 s), it comes up out of the water ('aim': a dark round head with a
+  one at a time (`zora`, `updateZora`, `drawZora`, `resetZora` on a new voyage). Each pop (`creatureSpot` in its area,
+  80–150 px from her): ripples warn of it ('rise', `CREATURE_WARN` s), it comes up out of the water ('aim': a dark round head with a
   crest fin, big paper eyes, shoulders and webbed hands, a foam collar where the water meets it; the water line clips
   it), rears back and spits a **fireball** at where she'll be in half a second (`fireballs`: an ink ball with a
   flickering paper core and a short trail, 3 s; a thunk and a sizzle), ducks under ('sink' 0.5 s), stays under 1.2–2.4 s
-  ('gone') and pops up elsewhere; after its pops (or back in home waters, or moored) it's gone. A fireball within 13 px of
-  the boat: damage, flash, shake, rock, buzz, `Sfx.crash` + `Sfx.sizzle`, popup. A slingshot stone landing on it
-  (`stoneAtZora`, within 14 × `ZORA_SIZE`) makes it dive away for good.
+  ('gone') and pops up elsewhere, with no limit, until she leaves its area. A fireball within 13 px of
+  the boat: damage, flash, shake, rock, buzz, `Sfx.crash` + `Sfx.sizzle`, popup. Stones hit it (`ZORA_HP`); dazed, it
+  recovers after `WEAK_TIME` with its health back.
 - **Atmosphere:** macchia (tree-spurge domes + trees: **olive trees** after Enrico's sketch, `TREE_KIND` 'olive' in Tuning ('pine' brings back the old stone pines, `makePine` / `drawStonePine`); `makeOlive` / `drawOlive`: a short, thick, twisted paper trunk outlined in ink with bark marks, flaring onto a little mound with roots and pebbles, forking into 3–4 outlined branches in a V, a wide flattish crown lifted above the fork: a solid ink mass (a dot per spray) edged with sprays of narrow pointed leaves fanned outward (spiky at the rim, drooping underneath), a few pale veins, a paper halo; a low branch or two with its own spray; `PINE_MODELS` = 4 tree shapes made each game, each maybe mirrored, stored in `isl.umbrellas`), clouds with parallax and shadows (`CLOUD_MODELS` = 4 shapes, made each game, still: they only drift), gulls, wind streaks (`updateStreaks` / `drawStreaks`: following the wind where she is, gusts included, `boat.windOff`, and more often in a gust; `WIND_STREAK_RATE` 2, `_WIDTH` 1.8, `_ALPHA` 0.85, `_LEN` 1.5 in Tuning),
   traders (motor boats on A* lanes: `TRADERS_HOME` = 2 on the four home-to-village lanes, two of them picked at random,
   and `TRADERS_VILLAGES` = 4 between neighbouring villages, one a lane; they don't avoid the player, a collision just shoves them aside
@@ -708,7 +722,7 @@ that gets away, then off again; skipped when the world has no fish banks, as on 
 bottle steps are skipped likewise when there are none) (the market and the storehouse are opened from the quay badge,
 `press_dock`). With the orders off (now): the fair wind locked, a visit to the Temple of
 Eolus (its spirit's talk tapped through) that gives it, then a trip to a village to buy a dish with foreign
-fish (three foreign ones; then the sling's charges: none at first, a pack bought there, a shot spends one) (after fishing up a message in a bottle, the other copies gone, reading it: a cross on the chart, and throwing it overboard), back home
+fish (three foreign ones; then the sling's charges: none at first, a pack bought there, then greyed out on the stall with the out-of-stock note, a shot spends one; then a sea imp: 3 s of ripples, it comes up, the hull bar shows, and it leaves once she is out of its area) (after fishing up a message in a bottle, the other copies gone, reading it: a cross on the chart, and throwing it overboard), back home
 (a fish left in the storehouse), a new day, the
 logbook shows it, and a tap on the spare sail rigs it (the lateen, taken aboard from the storehouse first). With `ORDERS_ON`: two days of orders (day 1: 3 fish home before
 dinner; day 2: the ordered dish bought at its village, everything brought home and delivered).

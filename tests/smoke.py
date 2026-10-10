@@ -19,7 +19,8 @@ HOOK = ('requestAnimationFrame(loop);\n})();',
         'get dayT(){return dayT},set dayT(v){dayT=v},'
         'dinnerT:(DINNER_HOUR-DAWN_HOUR)/24,ordersOn:ORDERS_ON,get dayNo(){return dayNo},'
         'RUINS,get powerOwned(){return powerOwned},get rig(){return boat.rig},bottles,bottleHold,marks,homeStore,banks,get fishing(){return fishing},get reelOn(){return reelOn},setReel,REEL_ZONE,'
-        'get charges(){return charges},get nets(){return nets},get ammo(){return slingAmmo},toSpread(n){while(logSpread!==n){turning=false;turnPage(n>logSpread?1:-1);}},coinsAdd(n){coins+=n},unmoor(){moor=null;moorLock=null;}};'
+        'get charges(){return charges},get nets(){return nets},get ammo(){return slingAmmo},toSpread(n){while(logSpread!==n){turning=false;turnPage(n>logSpread?1:-1);}},coinsAdd(n){coins+=n},unmoor(){moor=null;moorLock=null;},'
+        'get zora(){return zora},onLand,inArea,spawnZora(){zoraArea=creatureArea(boat.x,boat.y);zora={phase:"gone",t:0,wait:0,x:0,y:0,seen:false,seed:0,area:zoraArea};}};'
         'tutSet("done");'                  # skip the tutorial: the test drives the controls directly
         'requestAnimationFrame(loop);\n})();')
 
@@ -143,6 +144,13 @@ def charges(pg):
     pg.click('#mk-deal'); pg.wait_for_timeout(200)
     assert pg.evaluate('__d.charges') == 5, 'the pack of charges was not bought'
     assert pg.evaluate('__d.nets') == 3, 'the pack of nets was not bought'
+    # bought today: still on the stall, greyed out; a tap says it's out of stock
+    press_dock(pg); pg.wait_for_timeout(300)
+    assert pg.evaluate("document.querySelector('#mk-them-items .mk-unit[data-kind=charges]').classList.contains('out')"), 'the charges bought are not out of stock'
+    pg.click('#mk-them-items .mk-unit[data-kind=charges]'); pg.wait_for_timeout(50)
+    assert 'out of stock' in pg.inner_text('#mk-text'), 'no out-of-stock note'
+    assert pg.evaluate("[...document.querySelectorAll('#mk-them-items .mk-unit[data-kind=charges]')].every(u=>u.dataset.origin==='them')") and pg.evaluate('__d.charges') == 5
+    pg.click('#mk-quit'); pg.wait_for_timeout(200)
     leave(pg)
     pg.focus('#sling'); pg.keyboard.press('Enter'); pg.wait_for_timeout(1100)
     assert pg.evaluate('__d.charges') == 4, 'a shot did not spend a charge'
@@ -155,6 +163,22 @@ def charges(pg):
     pg.focus('#sling'); pg.keyboard.press('Enter'); pg.wait_for_timeout(1100)
     assert pg.evaluate('__d.nets') == 2 and pg.evaluate('__d.charges') == 4, 'a net shot did not spend a net'
 
+def creatures(pg):
+    # a sea imp: 3 s of ripples where it will come up, then it shows; it leaves only when she sails out of its area
+    if not pg.evaluate('__d.boat && true'): return
+    spot = pg.evaluate("(()=>{const d=__d; for(let k=0;k<400;k++){const x=d.PIER.isl.x+700+Math.random()*900, y=d.PIER.isl.y+(Math.random()-0.5)*600; if(!d.onLand(x,y,260)) return [x,y];} return null;})()")
+    if not spot: return
+    pg.evaluate(f"()=>{{const d=__d; d.unmoor(); d.boat.x={spot[0]}; d.boat.y={spot[1]}; d.boat.speed=0; d.spawnZora();}}")
+    pg.keyboard.press('Space'); pg.wait_for_timeout(1500)          # (at anchor, so she stays put)
+    assert pg.evaluate("__d.zora && __d.zora.phase") == 'rise', 'no ripples before the imp comes up'
+    pg.wait_for_timeout(2200)
+    assert pg.evaluate("__d.zora && __d.zora.phase") in ('aim', 'sink', 'gone'), 'the imp did not come up after the ripples'
+    assert pg.evaluate("document.getElementById('status').classList.contains('show')"), 'the hull bar is not shown'
+    pg.evaluate("()=>{const d=__d, a=d.zora.area; d.boat.x=a.x+a.hw+300; d.boat.y=a.y;}")
+    pg.wait_for_timeout(3500)
+    assert pg.evaluate("!__d.zora"), 'the imp did not leave when she sailed out of its area'
+    pg.keyboard.press('Space'); pg.wait_for_timeout(600)
+
 def trip(pg):
     global ORDERS; ORDERS = False
     leave(pg)
@@ -165,6 +189,7 @@ def trip(pg):
     d = pg.evaluate('__d.VILLAGES[0].dishes[0]')
     buy_dish(pg, 0, d['name'], d['icon'])
     charges(pg)
+    creatures(pg)
     dock_at(pg, 'd.PIER')
     assert pg.evaluate('__d.moor && __d.moor.pier === __d.PIER'), 'did not tie up at home'
     # the crate badge opens the storehouse: a fish goes into it, the lateen comes out of it

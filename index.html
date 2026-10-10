@@ -67,7 +67,7 @@
   const CRANK_BACK_PITCH = 0.6;      // pitch of the ticks as the crank springs back on its own (1 = the winding's clicks; lower = less tinny)
   const CRANK_VOL = 1;               // loudness of the crank's gears as it winds (a tick a tooth, a heavier step each quarter turn; 0 = silent)
   const SLING_ON = true;             // the slingshot on the right: drag its pouch down and let go, a stone flies off ahead of the bow
-  const SLING_RANGE = [25, 115];     // px the stone flies ahead: a short pull, a full pull (was [40, 230])
+  const SLING_RANGE = [20, 80];      // px the stone flies ahead: a short pull, a full pull (was [25, 115], before that [40, 230]); while pulling, a dashed ring shows where it will land
   const SLING_RELOAD = 0.9;          // seconds before the next stone is in the pouch
   const SPRING_SPEED = 39.2;         // px/s the wheels give her (the spring rests while the sail drives her faster than this; was 19.6, doubled)
   const OAR_START = 0.2;             // power the first press gives (0..1): she starts rowing, slowly
@@ -130,7 +130,8 @@
   const WHIRL_PULL = 22;             // px/s pull at the edge of the core…
   const WHIRL_CURVE = 4;             // …rising exponentially from ~0 at the rim
   const WHIRL_FADE = 3;              // seconds for a whirlpool to open up / die down
-  const SHARK_ON = knob('SHARK_ON', 1);   // 1 = on, 0 = off (only on the sides of home in CREATURE_SIDES). Sharks: now and then one finds her at sea, follows her, bites the hull and makes off
+  const WHIRL_OUTER = 2;             // the outer ring (the pull) of every whirlpool, × its old radius of 120–155 px (was 1); the core where she's caught stays 30–40
+  const SHARK_ON = knob('SHARK_ON', 1);   // 1 = on, 0 = off (only on the sides of home in CREATURE_SIDES). Sharks: now and then one finds her at sea and hunts her, biting again and again, as long as she stays in its area (CREATURE_AREA)
   const SHARK_CHANCE = knob('SHARK_CHANCE', 0.6); // the chance of an encounter in each minute she spends at sea, out of home waters (was 0.25)
   const SHARK_COOLDOWN = knob('SHARK_COOLDOWN', 45); // seconds at least between one encounter and the next
   const SHARK_SPEED = knob('SHARK_SPEED', 26); // how fast it swims after her (px/s; was 38; under sail or the wheels she outruns it)
@@ -139,12 +140,14 @@
   const ZORA_ON = knob('ZORA_ON', 1);   // 1 = sea imps about, 0 = none (only on the sides of home in CREATURE_SIDES)
   const ZORA_CHANCE = knob('ZORA_CHANCE', 0.5); // the chance of one turning up in each minute at sea, out of home waters
   const ZORA_COOLDOWN = 40;          // seconds at least between one sea imp and the next
-  const ZORA_POPS = [3, 5];          // how many times it pops up before it leaves (fewest, most)
   const ZORA_DIST = [80, 150];       // px from the boat it pops up (nearest, furthest)
   const ZORA_BALL_SPEED = 75;        // px/s its fireball flies (she can dodge it)
   const ZORA_DAMAGE = knob('ZORA_DAMAGE', 6);   // hull damage from a fireball
   const ZORA_SIZE = 1.7;             // how big the sea imp is drawn (1 = about the boat's helmsman)
-  const SHARK_GIVE_UP = knob('SHARK_GIVE_UP', 30); // seconds it follows before giving up, if it never reaches her
+  const CREATURE_WARN = 3;           // seconds of rippling water where a shark or a sea imp is about to come up, before it shows
+  const CREATURE_AREA = 0.2;         // a shark or an imp keeps to the map square it turned up in, plus this share of a square on each side; it keeps coming while she's in there, and leaves only when she sails out
+  const CREATURE_AGAIN = 8;          // seconds before another one comes, if she's still in the area after one was caught
+  const SHARK_BITE_BACK = 2.5;       // seconds a shark swims off after a bite before it turns to come again
   const WHIRL_FOLLOW = knob('WHIRL_FOLLOW', 2); // a whirlpool creeps after her while she's within this many times its radius…
   const WHIRL_FOLLOW_SPEED = knob('WHIRL_FOLLOW_SPEED', 7); // …at this many px/s (slow; it never leaves open water); once it has caught and spun her it dies down
   const WHIRL_FLING = 200;            // px/s² of extra speed while she runs round a whirlpool's outer ring with its swirl (a slingshot)…
@@ -374,6 +377,14 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Sharks and sea imps: 3 seconds of rippling water show where one is about to come up',
+      'They no longer leave after a few attacks: each keeps to its map square (and a bit round it) and comes again and again while you stay there; sail out of the area to lose it',
+      'Hull bar always shown, top left',
+      'Slingshot: shorter range; while you pull, a dashed ring on the sea shows where the shot will land',
+      'Stalls: what you buy stays on the stall, greyed out; tap it and the merchant says it is out of stock until tomorrow',
+      'Whirlpools: the outer ring (the pull) is twice as wide',
+    ]},
+    {build: '2026-10-10 15:34', items: [
       'Sharks and sea imps caught in a net can be sold at any stall (shark 12 coins, sea imp 15) or left in the storehouse at home',
       'Sharks and sea imps are back, but only east and west of home (where Estolia and Westa are)',
     ]},
@@ -383,18 +394,8 @@
       'A net on a fish bank catches its fish; on a shark or a sea imp it slips off, unless it is weakened: 3 stone hits first (it gets dizzy, little stars over it), then the net catches it and it goes in the hold',
       'Sharks and sea imps are still off on the drawn map: turn them on in the first screen, Dangers (SHARK_ON, ZORA_ON)',
     ]},
-    {build: '2026-10-10 15:06', items: [
-      'Logbook: lower than last time (still a fixed size)',
-      'The crease in the middle is lighter and narrower; over the map it is only a faint hairline, so the middle squares show',
-    ]},
-    {build: '2026-10-10 12:40', items: [
-      'Logbook: twice as tall and always the same size (it may cover the boat)',
-      'Pages 1–2: the map, big, across both pages (half each side of the crease), "You are in …" under it',
-      'Pages 3–4: the day and the Cargo, with bigger slots; your keepsakes (gifts, the fair wind) on page 4 once you have one',
-      'Then the wind card, then home\'s look',
-    ]},
   ];
-  const BUILD = '2026-10-10 15:34';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-10 16:47';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -524,6 +525,7 @@
       balPay:     'Balance: <b>{n}</b> {icon} paid from your purse',
       balShort:   'Balance: <b>{n}</b> {icon} not enough: offer more fish',
       balFull:    'No room in the hold: {n} too many',
+      soldOut:    "It's out of stock, come back tomorrow",
     },
     // the logbook's last spread: how home could look (a preview for now)
     base: {
@@ -726,12 +728,12 @@
   #wood{font-size:15px;}
   #status{
     position:fixed;
-    top:calc(162px + env(safe-area-inset-top,0px));
-    left:14px;
+    top:calc(12px + env(safe-area-inset-top,0px));
+    left:12px;
     display:flex;
     align-items:center;
     gap:14px;
-    padding:7px 12px;
+    padding:4px 9px;
     font-size:15px;
     z-index:5;
     opacity:0;
@@ -754,7 +756,7 @@
   body.at-market #mood{display:none;}
   #boon{
     position:fixed;
-    top:calc(204px + env(safe-area-inset-top,0px)); left:14px;
+    top:calc(52px + env(safe-area-inset-top,0px)); left:12px;
     padding:3px 9px; font-size:12px; font-style:italic;
     opacity:0; transition:opacity .4s; pointer-events:none;
   }
@@ -811,6 +813,8 @@
   .mk-name{font-size:11px; font-weight:bold; line-height:1.1; text-align:center; pointer-events:none;}
   .mk-val{display:flex; align-items:center; gap:2px; font-size:11.5px; line-height:1; pointer-events:none;}
   .coin{width:11px; height:11px; display:inline-block; vertical-align:-1px;}
+  #mk-text.nudge{font-weight:bold; animation:talkNudge .12s 3;}
+  .mk-unit.out{opacity:.35; box-shadow:none; border-style:dotted; cursor:not-allowed;}   /* bought today: out of stock till tomorrow */
   .mk-unit.moved{border-style:dashed; box-shadow:none; background-image:radial-gradient(var(--ink) 0.6px, transparent 0.8px); background-size:3px 3px;}
   .mk-unit.lifted{opacity:.3;}
   .mk-unit.ghost{position:fixed; z-index:30; pointer-events:none; transform:scale(1.15) rotate(-4deg); box-shadow:4px 4px 0 var(--ink);}
@@ -2346,7 +2350,7 @@
     if(elList.classList.contains('open')) renderList();
   }
   function resetOrders(){
-    for(const v of VILLAGES){ v.done = false; v.giftGot = false; for(const d of v.dishes) d.boughtEver = false; }
+    for(const v of VILLAGES){ v.done = false; v.giftGot = false; v.soldDay = {}; for(const d of v.dishes) d.boughtEver = false; }
     for(const k in dishHold) delete dishHold[k];
     satisfaction = SAT_START; freshLines.clear();
     newOrder(1);
@@ -2703,11 +2707,11 @@
     for(let tries=0; tries<600; tries++){
       const [x, y] = west ? westPoint() : [rand(0, WORLD.w), rand(0, WORLD.h)];
       const dg = danger(x,y);
-      if(wdist(x,y,START.x,START.y) < SAFE_R + 170) continue;        // not in home waters (pull ring included)
       if(SPECIALS.some(v=>wdist(x,y,v.isl.x,v.isl.y) < 460)) continue;
       if(!west && Math.random() > Math.pow(dg,1.5)*(0.3 + 1.4*(1 - archipelago(x,y)))) continue;   // far out, and mostly in open seas (in the West: anywhere)
-      const r = rand(120, 155);            // outer edge of the pull ring (wide)
+      const r = rand(120, 155)*WHIRL_OUTER;   // outer edge of the pull ring (wide)
       const core = rand(30, 40);           // where the boat gets caught and spun
+      if(wdist(x,y,START.x,START.y) < SAFE_R + r + 15) continue;     // not in home waters (pull ring included)
       if(avoidBoat && wdist(x,y,boat.x,boat.y) < r+260) continue;   // never right under the boat
       if(onLand(x,y,core+50)) continue;
       // rocks may sit in the pull ring, never in the core
@@ -2790,52 +2794,78 @@
   }
 
   // ---------- Sharks ----------
-  // Rarely (SHARK_CHANCE a minute at sea, out of home waters), a shark finds her: it comes in from out of sight,
-  // swimming in long S-curves, follows her (SHARK_SPEED), and when it reaches the hull it bites (SHARK_DAMAGE), then
-  // makes off fast and is gone out of sight. It gives up after SHARK_GIVE_UP s, or if she gets back into home waters.
+  // Now and then (SHARK_CHANCE a minute at sea, out of home waters) a shark finds her. It belongs to an area: the map
+  // square she was in, plus CREATURE_AREA of a square on each side (creatureArea). First the water ripples for
+  // CREATURE_WARN s where it will come up, 140–220 px from her; then it hunts her, swimming in long S-curves
+  // (SHARK_SPEED), bites the hull (SHARK_DAMAGE), swims off a moment (SHARK_BITE_BACK) and comes again, as long as she
+  // stays in its area: it makes off only when she sails out of it (or into home waters, or ties up). Caught in a net,
+  // another one comes after CREATURE_AGAIN s if she's still there.
   // Seen from above: a dark silhouette under the water and the dorsal fin cutting the surface with a little foam
-  let shark = null, sharkCool = 30;
-  function resetShark(){ shark = null; sharkCool = 30; }
+  let shark = null, sharkCool = 30, sharkArea = null;
+  function resetShark(){ shark = null; sharkCool = 30; sharkArea = null; }
+  // the area a creature keeps to: the map square (as in the logbook, home in the middle one) holding (x, y), grown a little
+  function creatureArea(x, y){
+    const cw = WORLD.w/ROOM_N, ch = WORLD.h/ROOM_N;
+    const i = Math.floor((wdx(x, START.x) + WORLD.w/2)/cw), j = Math.floor((wdy(y, START.y) + WORLD.h/2)/ch);
+    return {x: wrapX(START.x - WORLD.w/2 + (i + 0.5)*cw), y: wrapY(START.y - WORLD.h/2 + (j + 0.5)*ch),
+            hw: cw*(0.5 + CREATURE_AREA), hh: ch*(0.5 + CREATURE_AREA)};
+  }
+  const inArea = (a, x, y)=> !!a && Math.abs(wdx(x, a.x)) < a.hw && Math.abs(wdy(y, a.y)) < a.hh;
+  // a spot of open water in the area, between d0 and d1 px from her
+  function creatureSpot(area, d0, d1, m){
+    for(let k=0;k<24;k++){
+      const a = rand(0, TAU), d = rand(d0, d1), x = wrapX(boat.x + Math.cos(a)*d), y = wrapY(boat.y + Math.sin(a)*d);
+      if(inArea(area, x, y) && !onLand(x, y, m)) return [x, y, a];
+    }
+    return null;
+  }
+  // may a new creature turn up now? (cool: its countdown; area: where the last one was, if she's still in it)
+  const creatureMayCome = ()=> !moor && !boat.whirl && wdist(boat.x, boat.y, START.x, START.y) >= SAFE_R &&
+    (!CREATURE_SIDES.length || CREATURE_SIDES.includes(sectorAt(boat.x, boat.y)));
   function updateShark(dt){
     if(!SHARK_ON || !playing) return;
     const home = wdist(boat.x, boat.y, START.x, START.y) < SAFE_R;
     if(!shark){
       sharkCool -= dt;
-      if(sharkCool > 0 || home || moor || boat.whirl) return;
-      if(CREATURE_SIDES.length && !CREATURE_SIDES.includes(sectorAt(boat.x, boat.y))) return;   // (only east and west of home, for now)
-      if(Math.random() > SHARK_CHANCE*dt/60) return;
-      const a = rand(0, Math.PI*2), d = 330;
-      const x = wrapX(boat.x + Math.cos(a)*d), y = wrapY(boat.y + Math.sin(a)*d);
-      if(onLand(x, y, 20)) return;
-      shark = {x, y, hd: a + Math.PI, t: 0, mode: 'hunt', vis: 0, seen: false, wig: rand(0, 6.3), sz: rand(1.15, 1.4)};
+      if(sharkCool > 0 || !creatureMayCome()) return;
+      const again = inArea(sharkArea, boat.x, boat.y);                // still in the last one's area: it comes for sure
+      if(!again && Math.random() > SHARK_CHANCE*dt/60) return;
+      const area = again ? sharkArea : creatureArea(boat.x, boat.y);
+      const sp = creatureSpot(area, 140, 220, 20); if(!sp) return;
+      sharkArea = area;
+      shark = {x: sp[0], y: sp[1], hd: sp[2] + Math.PI, t: 0, mode: 'warn', vis: 0, seen: false, wig: rand(0, 6.3), sz: rand(1.15, 1.4), area};
       return;
     }
     const sh = shark;
     sh.t += dt;
     const dx = wdx(boat.x, sh.x), dy = wdy(boat.y, sh.y), d = Math.hypot(dx, dy);
-    if(sh.mode === 'weak'){                                         // weakened: it drifts slowly, harmless, then recovers and makes off
-      sh.weakT -= dt; sh.hd += Math.sin(sh.t*0.9 + sh.wig)*dt*0.8; sh.v = SHARK_SPEED*0.22;
-      if(sh.weakT <= 0){ sh.mode = 'flee'; popups.push({x: sh.x, y: sh.y - 16, text: TEXT.popups.recovered, life: 1.4, max: 1.4}); }
+    const gone = home || moor || !inArea(sh.area, boat.x, boat.y);   // she left its area: it makes off
+    if(sh.mode === 'warn'){                                           // ripples where it will come up
+      if(gone){ shark = null; sharkCool = SHARK_COOLDOWN; return; }
+      if(sh.t < CREATURE_WARN) return;
+      sh.mode = 'hunt'; sh.t = 0; sh.hd = Math.atan2(dy, dx); Sfx.splash();
     }
-    if(sh.mode === 'hunt' && sh.recoil > 0){                        // just hit: it turns away for a moment
+    if(sh.mode === 'weak'){                                         // weakened: it drifts slowly, harmless, then gets its strength back
+      sh.weakT -= dt; sh.hd += Math.sin(sh.t*0.9 + sh.wig)*dt*0.8; sh.v = SHARK_SPEED*0.22;
+      if(sh.weakT <= 0){ sh.mode = 'hunt'; sh.hp = SHARK_HP; sh.recoil = 1; popups.push({x: sh.x, y: sh.y - 16, text: TEXT.popups.recovered, life: 1.4, max: 1.4}); }
+    }
+    if(sh.mode === 'hunt' && gone) sh.mode = 'flee';
+    if(sh.mode === 'hunt' && sh.recoil > 0){                        // just hit, or just bitten: it turns away for a moment
       sh.recoil -= dt; sh.hd += norm(Math.atan2(-dy, -dx) - sh.hd)*Math.min(1, dt*3); sh.v = SHARK_SPEED*1.2;
     }
     else if(sh.mode === 'hunt'){
-      if(sh.t > SHARK_GIVE_UP || home || moor){ sh.mode = 'flee'; }
-      else {
-        // aim a little ahead of her, and weave in long S-curves (less as it closes in)
-        const lead = Math.min(1.2, d/60), tx = dx + Math.cos(boat.angle)*boat.speed*lead, ty = dy + Math.sin(boat.angle)*boat.speed*lead;
-        const to = Math.atan2(ty, tx) + Math.sin(sh.t*1.3 + sh.wig)*0.5*Math.min(1, d/120);
-        sh.hd += norm(to - sh.hd)*Math.min(1, dt*2.2);
-        sh.v = SHARK_SPEED*(d < 70 ? 1.25 : 1);
-        if(d < 16 + 6*sh.sz){                                            // it reaches the hull: a bite
-          boat.health = Math.max(0, boat.health - SHARK_DAMAGE);
-          hurtFlash = 0.35; shake = 0.12; showHealth(); Sfx.crash(0.45);
-          boat.rock = Math.min(2.5, (boat.rock||0) + 0.9);
-          buzz([40, 30, 70]);
-          popups.push({x: boat.x, y: boat.y - 26, text: fmt(TEXT.popups.sharkBite, {damage: SHARK_DAMAGE}), life: 1.6, max: 1.6});
-          sh.mode = 'flee'; sh.hd = Math.atan2(-dy, -dx) + rand(-0.5, 0.5);
-        }
+      // aim a little ahead of her, and weave in long S-curves (less as it closes in)
+      const lead = Math.min(1.2, d/60), tx = dx + Math.cos(boat.angle)*boat.speed*lead, ty = dy + Math.sin(boat.angle)*boat.speed*lead;
+      const to = Math.atan2(ty, tx) + Math.sin(sh.t*1.3 + sh.wig)*0.5*Math.min(1, d/120);
+      sh.hd += norm(to - sh.hd)*Math.min(1, dt*2.2);
+      sh.v = SHARK_SPEED*(d < 70 ? 1.25 : 1);
+      if(d < 16 + 6*sh.sz){                                            // it reaches the hull: a bite
+        boat.health = Math.max(0, boat.health - SHARK_DAMAGE);
+        hurtFlash = 0.35; shake = 0.12; showHealth(); Sfx.crash(0.45);
+        boat.rock = Math.min(2.5, (boat.rock||0) + 0.9);
+        buzz([40, 30, 70]);
+        popups.push({x: boat.x, y: boat.y - 26, text: fmt(TEXT.popups.sharkBite, {damage: SHARK_DAMAGE}), life: 1.6, max: 1.6});
+        sh.recoil = SHARK_BITE_BACK; sh.hd = Math.atan2(-dy, -dx) + rand(-0.5, 0.5);   // off a moment, then again
       }
       if(!sh.seen && d < 230){ sh.seen = true; popups.push({x: sh.x, y: sh.y - 14, text: TEXT.popups.sharkSeen, life: 1.4, max: 1.4}); buzz([15]); }
     }
@@ -2849,20 +2879,25 @@
     sh.vis = Math.min(1, sh.vis + dt/1.2);
     if(sh.mode === 'flee' && d > 420){ shark = null; sharkCool = SHARK_COOLDOWN; }
   }
-  // ---------- Sea imps ----------
-  // Now and then (ZORA_CHANCE a minute at sea, out of home waters) a sea imp, like Zelda's Zora, turns up: ripples
-  // ZORA_DIST from her, it rises out of the water, stares, spits a fireball at her (ZORA_BALL_SPEED, ZORA_DAMAGE if it
-  // hits), ducks under and pops up somewhere else, ZORA_POPS times, then it's gone. A slingshot stone sends it off.
-  let zora = null, zoraCool = 20;
-  const fireballs = [];
-  function resetZora(){ zora = null; zoraCool = 20; fireballs.length = 0; }
-  function zoraSpot(){
-    for(let k=0;k<20;k++){
-      const a = rand(0, TAU), d = rand(ZORA_DIST[0], ZORA_DIST[1]), x = wrapX(boat.x + Math.cos(a)*d), y = wrapY(boat.y + Math.sin(a)*d);
-      if(!onLand(x, y, 14)) return [x, y];
+  // ripples on the water where a creature is about to come up (q 0..1: how near it is), rings spreading out
+  function warnRipples(x, y, t, q, S){
+    ctx.strokeStyle = INKC; ctx.lineWidth = 1 + q;
+    for(let k=0;k<3;k++){
+      const f = ((t*0.8 + k/3) % 1), r = (5 + 14*f)*S;
+      ctx.globalAlpha = (1 - f)*(0.45 + 0.55*q);
+      ctx.beginPath(); ctx.ellipse(x, y, r, r*0.55, 0, 0, TAU); ctx.stroke();
     }
-    return null;
+    ctx.globalAlpha = 1;
   }
+  // ---------- Sea imps ----------
+  // Now and then (ZORA_CHANCE a minute at sea, out of home waters) a sea imp, like Zelda's Zora, turns up. Like the
+  // shark it belongs to an area (creatureArea) and keeps coming while she's in it: each time the water ripples for
+  // CREATURE_WARN s at a spot ZORA_DIST from her (in the area), it rises out of the water, stares, spits a fireball at
+  // her (ZORA_BALL_SPEED, ZORA_DAMAGE if it hits), ducks under and comes up somewhere else. It leaves only when she
+  // sails out of its area (or into home waters, or ties up). Stones hit it (ZORA_HP), a net catches it dazed.
+  let zora = null, zoraCool = 20, zoraArea = null;
+  const fireballs = [];
+  function resetZora(){ zora = null; zoraCool = 20; zoraArea = null; fireballs.length = 0; }
   function updateZora(dt){
     // the fireballs fly on whatever the imp does
     for(let i=fireballs.length-1;i>=0;i--){
@@ -2881,24 +2916,25 @@
     const home = wdist(boat.x, boat.y, START.x, START.y) < SAFE_R;
     if(!zora){
       zoraCool -= dt;
-      if(zoraCool > 0 || home || moor || boat.whirl) return;
-      if(CREATURE_SIDES.length && !CREATURE_SIDES.includes(sectorAt(boat.x, boat.y))) return;
-      if(Math.random() > ZORA_CHANCE*dt/60) return;
-      zora = {pops: ZORA_POPS[0] + Math.floor(Math.random()*(ZORA_POPS[1] - ZORA_POPS[0] + 1)), phase: 'gone', t: 0, wait: 0.3, x: 0, y: 0, seen: false, seed: rand(0, 6.3)};
+      if(zoraCool > 0 || !creatureMayCome()) return;
+      const again = inArea(zoraArea, boat.x, boat.y);
+      if(!again && Math.random() > ZORA_CHANCE*dt/60) return;
+      zoraArea = again ? zoraArea : creatureArea(boat.x, boat.y);
+      zora = {phase: 'gone', t: 0, wait: 0.3, x: 0, y: 0, seen: false, seed: rand(0, 6.3), area: zoraArea};
       return;
     }
     const z = zora; z.t += dt;
-    if((home || moor) && z.phase === 'gone'){ zora = null; zoraCool = ZORA_COOLDOWN; return; }
-    if(z.phase === 'dazed'){                                  // dazed: up, bobbing, harmless; then it dives and leaves
-      if(z.t >= WEAK_TIME){ z.phase = 'sink'; z.t = 0; z.pops = 0; popups.push({x: z.x, y: z.y - 20, text: TEXT.popups.recovered, life: 1.4, max: 1.4}); }
+    const gone = home || moor || !inArea(z.area, boat.x, boat.y);   // she left its area: it leaves too
+    if(gone && (z.phase === 'gone' || z.phase === 'rise')){ zora = null; zoraCool = ZORA_COOLDOWN; return; }
+    if(z.phase === 'dazed'){                                  // dazed: up, bobbing, harmless; then it dives and comes again
+      if(z.t >= WEAK_TIME){ z.phase = 'sink'; z.t = 0; z.hp = ZORA_HP; popups.push({x: z.x, y: z.y - 20, text: TEXT.popups.recovered, life: 1.4, max: 1.4}); }
       return;
     }
     if(z.phase === 'gone'){                                   // under water, swimming to its next spot
       if(z.t < z.wait) return;
-      if(z.pops <= 0){ zora = null; zoraCool = ZORA_COOLDOWN; return; }
-      const sp = zoraSpot(); if(!sp) return;
-      z.x = sp[0]; z.y = sp[1]; z.phase = 'rise'; z.t = 0; z.pops--; z.shot = false;
-    } else if(z.phase === 'rise' && z.t >= 0.6){
+      const sp = creatureSpot(z.area, ZORA_DIST[0], ZORA_DIST[1], 14); if(!sp) return;
+      z.x = sp[0]; z.y = sp[1]; z.phase = 'rise'; z.t = 0; z.shot = false;
+    } else if(z.phase === 'rise' && z.t >= CREATURE_WARN){    // the ripples have warned of it: up it comes
       z.phase = 'aim'; z.t = 0; Sfx.splash();
       if(!z.seen){ z.seen = true; popups.push({x: z.x, y: z.y - 20, text: TEXT.popups.zoraSeen, life: 1.4, max: 1.4}); buzz([15]); }
     } else if(z.phase === 'aim' && z.t >= 0.75 && !z.shot){   // it spits: a fireball at where she'll be
@@ -2913,7 +2949,7 @@
   // last hit (ZORA_HP) dazes it: it stays up, bobbing and harmless, for WEAK_TIME, time to throw a net
   function stoneAtZora(x, y){
     const z = zora;
-    if(!z || z.phase === 'gone' || z.phase === 'dazed' || wdist(x, y, z.x, z.y) > 14*ZORA_SIZE) return false;
+    if(!z || z.phase === 'gone' || z.phase === 'rise' || z.phase === 'dazed' || wdist(x, y, z.x, z.y) > 14*ZORA_SIZE) return false;
     z.hp = (z.hp ?? ZORA_HP) - 1; buzz([20, 30, 20]); Sfx.thunk(0.35);
     if(z.hp <= 0){ z.phase = 'dazed'; z.t = 0; popups.push({x: z.x, y: z.y - 20, text: TEXT.popups.zoraWeak, life: 1.8, max: 1.8}); }
     else { z.phase = 'sink'; z.t = 0; popups.push({x: z.x, y: z.y - 20, text: fmt(TEXT.popups.hit, {n: z.hp}), life: 1.4, max: 1.4}); }
@@ -2923,7 +2959,7 @@
   // drifts slowly, harmless, for WEAK_TIME, time to throw a net, then it gets its strength back and makes off
   function stoneAtShark(x, y){
     const sh = shark;
-    if(!sh || sh.mode === 'flee' || sh.mode === 'weak' || wdist(x, y, sh.x, sh.y) > 14 + 9*sh.sz) return false;
+    if(!sh || sh.mode === 'flee' || sh.mode === 'weak' || sh.mode === 'warn' || wdist(x, y, sh.x, sh.y) > 14 + 9*sh.sz) return false;
     sh.hp = (sh.hp ?? SHARK_HP) - 1; buzz([20, 30, 20]); Sfx.thunk(0.35);
     if(sh.hp <= 0){ sh.mode = 'weak'; sh.weakT = WEAK_TIME; popups.push({x: sh.x, y: sh.y - 16, text: TEXT.popups.sharkWeak, life: 1.8, max: 1.8}); }
     else { sh.recoil = 1.3; popups.push({x: sh.x, y: sh.y - 16, text: fmt(TEXT.popups.hit, {n: sh.hp}), life: 1.4, max: 1.4}); }
@@ -2943,13 +2979,13 @@
     const sh = shark;
     if(sh && wdist(x, y, sh.x, sh.y) < NET_REACH + 10*sh.sz){
       if(sh.mode !== 'weak'){ pop(TEXT.popups.netSlips); buzz(15); return; }
-      if(take('shark')){ shark = null; sharkCool = SHARK_COOLDOWN; }
+      if(take('shark')){ shark = null; sharkCool = CREATURE_AGAIN; }   // (another comes if she stays in its area)
       return;
     }
     const z = zora;
     if(z && z.phase !== 'gone' && wdist(x, y, z.x, z.y) < NET_REACH + 6*ZORA_SIZE){
       if(z.phase !== 'dazed'){ pop(TEXT.popups.netSlips); buzz(15); return; }
-      if(take('zora')){ zora = null; zoraCool = ZORA_COOLDOWN; }
+      if(take('zora')){ zora = null; zoraCool = CREATURE_AGAIN; }
       return;
     }
     const b = banks.find(b=> b.state === 'live' && wdist(x, y, b.x, b.y) < b.r + NET_REACH*0.5);
@@ -2969,9 +3005,10 @@
       ctx.fillStyle = PAPERC; ctx.beginPath(); ctx.arc(f.x, f.y, 2.6*fl, 0, TAU); ctx.fill();
     }
     if(!z || z.phase === 'gone' || !inView(z.x, z.y, 60)) return;
-    const up = z.phase === 'rise' ? Math.max(0, (z.t - 0.25)/0.35) : z.phase === 'sink' ? 1 - z.t/0.5 : 1;
+    const up = z.phase === 'rise' ? 0 : z.phase === 'sink' ? 1 - z.t/0.5 : 1;
     const e = up*up*(3 - 2*up), bob = z.phase === 'aim' ? Math.sin(z.t*6)*0.6 : z.phase === 'dazed' ? Math.sin(z.t*2.2)*1.4 : 0, h = 10*e + bob;   // how far out of the water
-    // ripples (before it shows, they warn of it)
+    // ripples: for CREATURE_WARN s before it shows they warn of it, stronger as it nears; then a softer pair round it
+    if(z.phase === 'rise'){ warnRipples(z.x, z.y, z.t, Math.min(1, z.t/CREATURE_WARN), ZORA_SIZE); return; }
     ctx.strokeStyle = INKC; ctx.lineWidth = 1;
     for(let k=0;k<2;k++){ const q = ((z.t*0.9 + k*0.5) % 1); ctx.globalAlpha = (1 - q)*0.8; ctx.beginPath(); ctx.ellipse(z.x, z.y, (6 + 12*q)*ZORA_SIZE, (6 + 12*q)*0.55*ZORA_SIZE, 0, 0, TAU); ctx.stroke(); }
     ctx.globalAlpha = 1;
@@ -2998,6 +3035,7 @@
   function drawShark(){
     const sh = shark;
     if(!sh || !inView(sh.x, sh.y, 60)) return;
+    if(sh.mode === 'warn'){ warnRipples(sh.x, sh.y, sh.t, Math.min(1, sh.t/CREATURE_WARN), 1.6); return; }   // where it will come up
     const k = sh.sz, wag = Math.sin(sh.t*(sh.mode === 'flee' ? 14 : 8))*0.28;   // the tail beats, faster when it makes off
     ctx.save(); ctx.translate(sh.x, sh.y); ctx.rotate(sh.hd); ctx.scale(k, k);
     // the body under the water: a dark, soft-edged torpedo, pectoral fins, the tail swinging
@@ -5424,7 +5462,7 @@
     const gen = document.getElementById('wg-gen'), reset = document.getElementById('wg-reset');
     gen.textContent = T.generate; reset.textContent = T.reset;
     // the dangers: the sharks' and whirlpools' knobs, the same kind of fields in their own section
-    const DK = {SHARK_ON, SHARK_CHANCE, SHARK_COOLDOWN, SHARK_SPEED, SHARK_DAMAGE, SHARK_GIVE_UP, WHIRL_FOLLOW, WHIRL_FOLLOW_SPEED, STORM_ON, STORM_SHARE, STORM_WARN, STORM_AIM, STORM_HIT_R, STORM_DAMAGE, ZORA_ON, ZORA_CHANCE, ZORA_DAMAGE, BOIL_ON, BOIL_DELAY, BOIL_DAMAGE};
+    const DK = {SHARK_ON, SHARK_CHANCE, SHARK_COOLDOWN, SHARK_SPEED, SHARK_DAMAGE, WHIRL_FOLLOW, WHIRL_FOLLOW_SPEED, STORM_ON, STORM_SHARE, STORM_WARN, STORM_AIM, STORM_HIT_R, STORM_DAMAGE, ZORA_ON, ZORA_CHANCE, ZORA_DAMAGE, BOIL_ON, BOIL_DELAY, BOIL_DAMAGE};
     const dbox = document.getElementById('wg-dknobs'), dapply = document.getElementById('wg-dapply');
     document.getElementById('wg-sum-dangers').textContent = T.dangersTitle; dapply.textContent = T.dangersApply;
     const fields = (K, box)=>{ for(const [k, v] of Object.entries(K)){
@@ -5499,7 +5537,7 @@
   // ---------- UI refs ----------
   const elHint = document.getElementById('hint');
   const elStatus = document.getElementById('status');
-  // hull meter is hidden; it pops up for a few seconds on damage or repair
+  // the hull meter: always shown top left while she sails (a blink on damage or repair)
   const HEALTH_SHOW = 3;
   let healthShowT = 0;
   const elWood = document.getElementById('wood');
@@ -6486,6 +6524,14 @@
   }
   // the stones in flight (a shadow on the water under each) and the splashes where they land
   function drawStones(){
+    // while she pulls the sling: a dashed ring (paper over ink) where the shot would land, its size what it can hit
+    if(slingDrag && slingPull > 0.12 && slingReload <= 0 && ammoLeft() > 0){
+      const ca = Math.cos(boat.angle), sa = Math.sin(boat.angle), d = SLING_RANGE[0] + (SLING_RANGE[1] - SLING_RANGE[0])*slingPull;
+      const x = boat.x + ca*(16 + d), y = boat.y + sa*(16 + d), r = slingAmmo === 'net' ? NET_REACH : 14;
+      ctx.setLineDash([4, 4]); ctx.lineWidth = 3; ctx.strokeStyle = PAPERC; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.stroke();
+      ctx.lineWidth = 1.4; ctx.strokeStyle = INKC; ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = INKC; ctx.beginPath(); ctx.arc(x, y, 1.6, 0, TAU); ctx.fill();
+    }
     for(const s of stones){
       const q = s.t/s.dur, x = s.x0 + (s.x1 - s.x0)*q, y = s.y0 + (s.y1 - s.y0)*q, z = 4*s.h*q*(1 - q);
       if(!inView(x, y, 60)) continue;
@@ -6633,7 +6679,7 @@
   });
   const fishValue = (v, k)=> k===v.own ? COIN_LOCAL : COIN_FOREIGN;
   const fishWorth = (v)=> FISH_KEYS.reduce((a,k)=> a + counts[k]*fishValue(v,k), 0);   // the whole hold, sold here
-  const mkState = (v)=> v.store ? ['store', ...FISH_KEYS.map(k=> counts[k] + ':' + (homeStore.fish[k]||0)), ...ALL_DISHES.map(d=> (dishHold[d.icon]||0) + ':' + (homeStore.dish[d.icon]||0)), bottleHold.length, homeStore.bottles.length, sailsInHold().join(','), homeStore.sails.join(','), catches.shark, catches.zora, homeStore.catches.shark, homeStore.catches.zora].join('|') : [v.name, ...v.dishes.map(d=> dishHold[d.icon]||0), coins, charges, nets, catches.shark, catches.zora, ...FISH_KEYS.map(k=>counts[k])].join('|');
+  const mkState = (v)=> v.store ? ['store', ...FISH_KEYS.map(k=> counts[k] + ':' + (homeStore.fish[k]||0)), ...ALL_DISHES.map(d=> (dishHold[d.icon]||0) + ':' + (homeStore.dish[d.icon]||0)), bottleHold.length, homeStore.bottles.length, sailsInHold().join(','), homeStore.sails.join(','), catches.shark, catches.zora, homeStore.catches.shark, homeStore.catches.zora].join('|') : [v.name, dayNo, ...v.dishes.map(d=> dishHold[d.icon]||0), coins, charges, nets, catches.shark, catches.zora, ...FISH_KEYS.map(k=>counts[k])].join('|');
   function openMarket(v){
     marketV = v; elMk.classList.remove('hidden');
     document.body.classList.add('at-market');
@@ -6659,9 +6705,11 @@
     for(const k of FISH_KEYS) for(let n=0;n<counts[k];n++) mkItems.push({kind:'fish', key:k, origin:'you', side:'you', value: fishValue(v,k)});
     for(const d of ALL_DISHES) for(let n=0;n<(dishHold[d.icon]||0);n++) mkItems.push({kind:'food', icon:d.icon, name:d.name, origin:'you', side:'you', value: DISH_RESALE});
     for(const k of ['shark', 'zora']) for(let n=0;n<catches[k];n++) mkItems.push({kind:'catch', key:k, origin:'you', side:'you', value: k === 'shark' ? SHARK_PRICE : ZORA_PRICE});   // what the nets caught sells too   // dishes aboard: any stall takes them back
-    v.dishes.forEach((dsh,i)=> mkItems.push({kind:'food', dish:i, icon:dsh.icon, name:dsh.name, origin:'them', side:'them', value: dsh.price}));   // both, every visit
-    if(SLING_CHARGES) mkItems.push({kind:'charges', name: fmt(TEXT.oars.pack, {n: CHARGE_PACK}), origin:'them', side:'them', value: CHARGE_PRICE});
-    mkItems.push({kind:'nets', name: fmt(TEXT.oars.netPack, {n: NET_PACK}), origin:'them', side:'them', value: NET_PRICE});   // and a pack of nets for it   // every stall sells the sling's charges, a pack at a time
+    // the stall's goods: one of each a day; bought today, it stays on the stall greyed out (out of stock till tomorrow)
+    const out = (k)=> !!(v.soldDay && v.soldDay[k] === dayNo);
+    v.dishes.forEach((dsh,i)=> mkItems.push({kind:'food', dish:i, stock:'dish'+i, out: out('dish'+i), icon:dsh.icon, name:dsh.name, origin:'them', side:'them', value: dsh.price}));
+    if(SLING_CHARGES) mkItems.push({kind:'charges', stock:'charges', out: out('charges'), name: fmt(TEXT.oars.pack, {n: CHARGE_PACK}), origin:'them', side:'them', value: CHARGE_PRICE});
+    mkItems.push({kind:'nets', stock:'nets', out: out('nets'), name: fmt(TEXT.oars.netPack, {n: NET_PACK}), origin:'them', side:'them', value: NET_PRICE});   // and a pack of nets for it   // every stall sells the sling's charges, a pack at a time
     mkItems.forEach((it,i)=> it.id = i);
   }
   // called every frame while docked: only redraws when something changed
@@ -6731,7 +6779,7 @@
     const name = it.kind==='catch' ? TEXT.oars[it.key] : it.kind==='sail' ? TEXT.sails[it.rig] : it.kind==='food' || it.kind==='charges' || it.kind==='nets' ? it.name : it.kind==='bottle' ? TEXT.bottles.name : FISH_NAME[it.key].one;
     const label = it.kind==='food' || it.kind==='charges' || it.kind==='nets' || it.kind==='catch' ? '<span class="mk-name">'+name+'</span>' : '';
     const priced = it.value !== null;                     // (the storehouse has no prices)
-    return '<div class="mk-unit '+(it.kind==='bottle' || it.kind==='sail' || it.kind==='charges' || it.kind==='nets' || it.kind==='catch' ? 'food' : it.kind)+(it.side!==it.origin ? ' moved' : '')+'" data-id="'+it.id+'" data-kind="'+it.kind+'" data-origin="'+it.origin+'" role="button" aria-label="'+name+(priced ? ', '+it.value+(it.value===1 ? ' coin' : ' coins') : '')+'">'
+    return '<div class="mk-unit '+(it.kind==='bottle' || it.kind==='sail' || it.kind==='charges' || it.kind==='nets' || it.kind==='catch' ? 'food' : it.kind)+(it.side!==it.origin ? ' moved' : '')+(it.out ? ' out' : '')+'" data-id="'+it.id+'" data-kind="'+it.kind+'" data-origin="'+it.origin+'" role="button" aria-label="'+name+(priced ? ', '+it.value+(it.value===1 ? ' coin' : ' coins') : '')+'">'
       + ico + label + (priced ? '<span class="mk-val">'+it.value+COIN_SVG+'</span>' : '') + '</div>';
   }
   function drawTable(){
@@ -6756,7 +6804,7 @@
     }
     elMkTitle.textContent = fmt(TEXT.market.title, {village: v.name});
     // at the top, how to trade (the merchants' flavour lines stay in VILLAGES, unused for now)
-    elMkText.textContent = TEXT.market.tip;
+    elMkText.textContent = TEXT.market.tip; elMkText.classList.remove('nudge');
     // the goods sit on the side they're on now; the ones that crossed go first
     const order = (a,b)=> (b.side!==b.origin) - (a.side!==a.origin) || (a.kind==='food' ? -1 : 0) - (b.kind==='food' ? -1 : 0) || a.id - b.id;
     const on = side=> mkItems.filter(it=>it.side===side).sort(order).map(unitHTML).join('');
@@ -6793,6 +6841,10 @@
   elMk.addEventListener('pointerdown', ev=>{
     const u = ev.target.closest('.mk-unit'); if(!u || !marketV) return;
     ev.preventDefault();
+    if(mkItems[+u.dataset.id] && mkItems[+u.dataset.id].out){            // bought today: out of stock
+      elMkText.textContent = TEXT.market.soldOut; elMkText.classList.remove('nudge'); void elMkText.offsetWidth; elMkText.classList.add('nudge');
+      Sfx.init(); Sfx.tick(0.4, 0.7); buzz([12, 30, 12]); return;
+    }
     u.setPointerCapture(ev.pointerId);
     mkDrag = {id: +u.dataset.id, el: u, x0: ev.clientX, y0: ev.clientY, ghost: null, ptr: ev.pointerId};
     Sfx.init(); buzz(5);
@@ -6857,8 +6909,10 @@
     const bal = mkBalance();
     if(!mkItems.some(it=>it.side!==it.origin) || coins + bal < 0) return;
     const got = [];
+    v.soldDay = v.soldDay || {};
     for(const it of mkItems){
       if(it.side === it.origin) continue;
+      if(it.stock) v.soldDay[it.stock] = dayNo;                          // out of stock till tomorrow
       if(it.origin==='you'){ if(it.kind==='fish') counts[it.key]--; else if(it.kind==='catch') catches[it.key]--; else dishHold[it.icon]--; }   // sold
       else if(it.kind === 'charges'){ charges += CHARGE_PACK; got.push(it.name); }
       else if(it.kind === 'nets'){ nets += NET_PACK; got.push(it.name); }   // the sling's charges, into the hold
@@ -8259,7 +8313,7 @@
       if(satPulse > 0){ if(!elMood.classList.contains('pulse')) elMood.classList.add('pulse'); satPulse -= dt; if(satPulse <= 0) elMood.classList.remove('pulse'); }
     }
     healthShowT = Math.max(0, healthShowT-dt);
-    elStatus.classList.toggle('show', healthShowT>0);
+    { const sh = playing && !marketV && !document.body.classList.contains('talking'); if(sh !== elStatus.classList.contains('show')) elStatus.classList.toggle('show', sh); }
     elWood.classList.add('show');                                   // always visible
     if(playing) markRoom();
     refreshList();
