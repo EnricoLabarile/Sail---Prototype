@@ -288,7 +288,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   **Every bank looks alike** (`BANK_LOOK` in Tuning: 4–5 big dark fish going round over the darker water, the old sea
   bream's look), so what's in it is only known when the net comes up.
   Fishing: **only at anchor** (`NETS_AT_ANCHOR_ONLY` true in Tuning, `canNet`; bottles too): drop anchor on a bank and the nets go over after 0.25 s (with it off, as before: stopping on a bank for 2 s also does); the net
-  hauls in by itself. **The reel** (a Stardew-style minigame, **off by default**: `REEL_DEFAULT` false in Tuning; a
+  hauls in by itself. **The reel** (a Stardew-style minigame, **switched off for now** (Enrico: fishing is automatic): `REEL_ON` false in Tuning forces `reelOn` false, ignores `vv.reel` and hides its Settings row; when on, it's **off by default**: `REEL_DEFAULT` false in Tuning; a
   checkbox "Fishing minigame" in the first screen's Settings, `#wg-reel`, `TEXT.worldGen.reel`, switches it, `reelOn`,
   `setReel`, kept in `localStorage` as `vv.reel`; with it on, a bank is fished only at anchor;
   `updateFishing` phase 'game', `fishing.game`, `updateReel`, `catchFish`): after a bite (`FISH_TIME_MIN–MAX` s, popup
@@ -717,7 +717,7 @@ Cloud shadows (clouds) · Ambient life: gulls
 pip install playwright && playwright install chromium
 python tests/smoke.py
 ```
-The smoke test checks there are no JS errors (it switches the fishing minigame on for one step: a catch and a fish
+The smoke test checks there are no JS errors (it switches the fishing minigame on for one step, only when `REEL_ON`: a catch and a fish
 that gets away, then off again; skipped when the world has no fish banks, as on the drawn map now; the temple and
 bottle steps are skipped likewise when there are none) (the market and the storehouse are opened from the quay badge,
 `press_dock`). With the orders off (now): the fair wind locked, a visit to the Temple of

@@ -188,6 +188,7 @@
   const FISH_TIME_MIN = 2, FISH_TIME_MAX = 4;   // seconds with the nets out before the haul (with the reel: before the bite)
   // the reel (a Stardew-style minigame): anchored on a bank, a bite, then a ring round the anchor hub is the reel: turned
   // round clockwise it lifts the band up the bar on the right, let alone it sinks; keep the fish in the band to fill the meter
+  const REEL_ON = false;             // the fishing minigame (the reel) exists at all: off for now, fishing is automatic (drop anchor on a bank, the net hauls it in); its switch in Settings is hidden
   const REEL_DEFAULT = false;        // the minigame on a first visit (off: the old passive nets, stop on a bank and they haul it in by themselves); the switch in the first screen's Settings changes it (and it's remembered)
   const REEL_ZONE = 0.28;            // the band's height, a share of the bar
   const REEL_PULL = 0.75;            // the band's lift per rad/s the reel turns (half a turn a second about holds it still)
@@ -377,6 +378,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Fishing is automatic: the reel minigame is switched off (and its setting is gone); drop anchor on a bank and the net hauls it in',
+    ]},
+    {build: '2026-10-10 17:17', items: [
       'Slingshot: straight ahead only again (no left/right aim)',
       'Paddles quieter (half as loud)',
       'A voyage starts with 5 stones and 5 nets for the slingshot',
@@ -392,18 +396,8 @@
       'Stalls: what you buy stays on the stall, greyed out; tap it and the merchant says it is out of stock until tomorrow',
       'Whirlpools: the outer ring (the pull) is twice as wide',
     ]},
-    {build: '2026-10-10 15:34', items: [
-      'Sharks and sea imps caught in a net can be sold at any stall (shark 12 coins, sea imp 15) or left in the storehouse at home',
-      'Sharks and sea imps are back, but only east and west of home (where Estolia and Westa are)',
-    ]},
-    {build: '2026-10-10 15:22', items: [
-      'Nets for the slingshot: every stall sells a pack of 3 for 9 coins; they stack in one slot of the Cargo, like the stones',
-      'Tap the stones or the nets in the Cargo to load them in the slingshot (the loaded one is outlined; a dotted bundle in the pouch means nets)',
-      'A net on a fish bank catches its fish; on a shark or a sea imp it slips off, unless it is weakened: 3 stone hits first (it gets dizzy, little stars over it), then the net catches it and it goes in the hold',
-      'Sharks and sea imps are still off on the drawn map: turn them on in the first screen, Dangers (SHARK_ON, ZORA_ON)',
-    ]},
   ];
-  const BUILD = '2026-10-10 17:17';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-10 17:18';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -3504,9 +3498,9 @@
   // The Vibration API has no strength, so it scales how long each pulse lasts (×1.6 at full; at 0 none at all)
   let haptics = HAPTICS_DEFAULT;
   try{ const v = localStorage.getItem('vv.haptics'); if(v !== null && isFinite(+v)) haptics = Math.max(0, Math.min(1, +v)); }catch(e){}
-  let reelOn = REEL_DEFAULT;                         // the fishing minigame (the switch in Settings), remembered as vv.reel
-  try{ const v = localStorage.getItem('vv.reel'); if(v === '1' || v === '0') reelOn = v === '1'; }catch(e){}
-  function setReel(on){ reelOn = !!on; try{ localStorage.setItem('vv.reel', reelOn ? '1' : '0'); }catch(e){} }
+  let reelOn = REEL_ON && REEL_DEFAULT;              // the fishing minigame (the switch in Settings), remembered as vv.reel; never with REEL_ON off
+  try{ const v = localStorage.getItem('vv.reel'); if(REEL_ON && (v === '1' || v === '0')) reelOn = v === '1'; }catch(e){}
+  function setReel(on){ if(!REEL_ON){ reelOn = false; return; } reelOn = !!on; try{ localStorage.setItem('vv.reel', reelOn ? '1' : '0'); }catch(e){} }
   function setHaptics(v){ haptics = Math.max(0, Math.min(1, v)); try{ localStorage.setItem('vv.haptics', String(haptics)); }catch(e){} }
   function buzz(pattern, minGap){
     if(!canBuzz || haptics <= 0) return;
@@ -5465,6 +5459,7 @@
     const rs = document.getElementById('wg-reel');                 // the fishing minigame: on or off
     document.getElementById('wg-reel-label').textContent = T.reel;
     rs.checked = reelOn; rs.addEventListener('change', ()=> setReel(rs.checked));
+    if(!REEL_ON) rs.closest('.wg-setting').style.display = 'none';   // (the minigame is off for now: no switch)
     sailEditor(T);
     audioEditor(T);
     const gen = document.getElementById('wg-gen'), reset = document.getElementById('wg-reset');
