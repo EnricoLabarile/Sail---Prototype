@@ -110,19 +110,27 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   open patches (a smooth noise of four crossing waves, new per island).
 - **The drawn map** (`MAP_DRAWN` in Tuning, world, a field in the generator's World; 1 = on, the default): the land is
   the sea map Enrico drew on the Supernote template (`tools/map-template/`: `make_template.py` makes the page,
-  `import_map.py drawing.jpg --write` reads it back: the ink lines inside the frame, the sea flooded in from home's square,
-  everything it can't reach is land, home's own islet and small marks (letters, the house) dropped; it writes
-  `DRAWN_LAND` between the `// DRAWN_LAND >>>` markers in index.html: rings of world points, filled evenodd). The first
-  drawing: land all round the edge (inlets in D1/H1, a step in H4–H6, a tongue up into E7, points in B2 and C6), a long
-  island C2–C5 and one in D3–E4. Section "Drawn map": painted into a grid of `DRAWN_CELL` (4 px), the village and
+  `import_map.py drawing.jpg --write [--frame=x0,y0,x1,y1]` reads it back: the ink lines and the grey shading inside
+  the frame (an opening wipes the template's thin grid), the open sea = the biggest stretch of paper left, everything
+  else is land; home's own islet and small marks (letters, the house) dropped; filled dots (also drawn as rings) are
+  printed with their squares, for `DRAWN_PLACES`; when the shading hides the frame's lines, `--frame` gives it
+  (Supernote screenshot 1080 wide: `--frame=85.5,688,1039.5,1642`); it writes `DRAWN_LAND` between the
+  `// DRAWN_LAND >>>` markers in index.html: rings of world points, filled evenodd). **The second drawing (now)**: land
+  all round the edge (a tongue down into E1–E2, a peninsula up into E7–E9, a bulge in A4–B6), islands shaded grey: a
+  long one bending from C3/D2 down to D5 with an arm west to C5, one in B3–C3, F2–F3, H2, a small one in G3, a C-shape in
+  H3–H4 with a little one inside it, the big C-shape in F4–H6, small ones in D6, E6, C7, four close together in
+  B7–C8, one in G8. (The first drawing, a ring of land with two islands, is gone.) Section "Drawn map": painted into a grid of `DRAWN_CELL` (4 px), the village and
   temple islands added to it and their harbours dug out (`finishDrawnLand`, a 160 px wide channel from the bay past
   the pier head), then a signed distance to the coast per cell (`drawnSD`, exact EDT `edt2` + a light blur; ~0.25–0.35 s
   at load) read through `drawnDist(x,y)` (+ at sea, − on land, bilinear) and `drawnNormal`: `onLand` checks it first,
   the boat is pushed back out along its slope (collision block), cicadas sing by its coasts. Villages and the temple
   go where `DRAWN_PLACES` (Tuning) says, `{W, E, S, N}` in world px, each slid toward home until its harbour is open
-  water (`drawnPlace`): Westa on the hooked point in B2 and Estolia in E3 (Enrico's dots; the E3 one is unnamed, Estolia
-  is my pick); keys `S`, `N`, `temple` for Sudia, Nordania, the Temple of Eolus: a place not listed isn't in the world
-  (`VILLAGES` filtered by `drawnKey`, the temple left out of `RUINS`, so no fair wind for now). **Only what's drawn**:
+  water (`drawnPlace`: of 32 ways round the dot, the one needing the shortest slide to open water, nearer home's way on
+  a tie; it returns the pier's way too, `v.pierDir` / `pierDir`, which `makeVillageIsland` / `makeRuinIsland` use
+  instead of facing home): the four unnamed dots of the second drawing, each given the village of its side of home
+  (my pick): Nordania E3, Estolia H4, Sudia G8, Westa C5 (Nordania is back on the drawn map: the `EOLUS_ON` filter
+  only applies off it); key `temple` for the Temple of Eolus: a place not listed isn't in the world (`VILLAGES`
+  filtered by `drawnKey`, the temple left out of `RUINS`, so no fair wind for now). **Only what's drawn**:
   with `MAP_DRAWN` on, the map features of the template's legend default to none (each a knob, so still switchable
   from the first screen): `WHIRL_COUNT`, `BANK_COUNT`, `HOME_BANKS`, `BOTTLE_COUNT` (so no wreck), `OPEN_ROCK_TRIES`,
   `STORM_SHARE`, `WEST_STORM_CLOUDS`, `WEST_WHIRLS`, `BOIL_ON` all 0; no random wild islands (`genIslands` places 0).

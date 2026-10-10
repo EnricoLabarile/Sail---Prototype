@@ -3,11 +3,13 @@
     pip install numpy opencv-python-headless
     python tools/map-template/import_map.py drawing.jpg [--write]
 
-The drawing: coasts as closed ink lines on the 9x9 squares. Land is whatever
-the sea can't reach from home's square (E5), so a line round the whole map
-makes a land border and a closed loop in the sea makes an island. Home's own
-islet (the loop round E5) is left out: the game draws its own. Small marks
-(letters, the house) are dropped; filled dots are listed as villages.
+The drawing: coasts as closed ink lines on the 9x9 squares, land shaded or
+not. Land is whatever the open sea (the biggest stretch of paper) can't reach,
+so a line round the whole map makes a land border and a closed loop in the sea
+makes an island. Home's own islet (the one on E5's middle) is left out: the
+game draws its own. Small marks (letters, the house) are dropped; filled dots
+(villages) are listed with their squares, to put in DRAWN_PLACES by hand.
+If shading hides the frame's lines: --frame=x0,y0,x1,y1 (picture pixels).
 
 It prints the land as rings of world points (evenodd: the world's square, the
 sea's outline, each island) and, with --write, puts them into index.html
@@ -20,11 +22,9 @@ src = sys.argv[1]
 im = cv2.imread(src, cv2.IMREAD_GRAYSCALE)
 if im is None: sys.exit('cannot read ' + src)
 
-# the grid's frame: the long, dark lines
+# the grid's frame: the long, dark lines (or --frame x0,y0,x1,y1 in the picture's pixels, when shading hides them)
 dark = im < 100
 H, W = im.shape
-cols = [i for i in range(W) if dark[:, i].sum() > 0.35*W]
-rows = [j for j in range(H) if dark[j, :].sum() > 0.35*W]
 def runs(v):                                  # centres of runs of neighbouring indices
     out, cur = [], [v[0]]
     for a in v[1:]:
@@ -32,42 +32,57 @@ def runs(v):                                  # centres of runs of neighbouring 
         else: out.append(cur); cur = [a]
     out.append(cur)
     return [sum(r)/len(r) for r in out]
-cx, cy = runs(cols), runs(rows)
-x0, x1, y0, y1 = min(cx), max(cx), min(cy), max(cy)
+fr = next((a.split('=', 1)[1] for a in sys.argv if a.startswith('--frame=')), None)
+if fr: x0, y0, x1, y1 = map(float, fr.split(','))
+else:
+    cols = [i for i in range(W) if dark[:, i].sum() > 0.35*W]
+    rows = [j for j in range(H) if dark[j, :].sum() > 0.35*W]
+    cx, cy = runs(cols), runs(rows)
+    x0, x1, y0, y1 = min(cx), max(cx), min(cy), max(cy)
+    if x1 - x0 < 0.5*W or y1 - y0 < 0.5*W or abs((x1 - x0) - (y1 - y0)) > 0.03*W:
+        sys.exit('the frame is hidden (shading over it?): give it with --frame=x0,y0,x1,y1 (a Supernote screenshot at 1080 wide: --frame=85.5,688,1039.5,1642)')
 print(f'frame x {x0:.1f}..{x1:.1f}  y {y0:.1f}..{y1:.1f}', file=sys.stderr)
 
-# inside the frame only; ink = the dark strokes (the template's grey grid is lighter)
+# inside the frame only
 pad = 5
 gx0, gx1, gy0, gy1 = int(x0)+pad, int(x1)-pad+1, int(y0)+pad, int(y1)-pad+1
-ink = (im[gy0:gy1, gx0:gx1] < 105).astype(np.uint8)
-h, w = ink.shape
+g = im[gy0:gy1, gx0:gx1]
+h, w = g.shape
 sx, sy = WORLD/(x1 - x0), WORLD/(y1 - y0)
 def world(px, py): return ((px + gx0 - x0)*sx, (py + gy0 - y0)*sy)
 def pix(wx, wy): return (wx/sx + x0 - gx0, wy/sy + y0 - gy0)
-
-# small marks: letters, the house; filled blobs among them are village dots
-n, lab, st, cen = cv2.connectedComponentsWithStats(ink, 8)
-dots = []
 cell = w/9
+
+# village dots: round blobs of solid ink, bigger than a line is thick (found by wearing the lines away)
+solid = cv2.morphologyEx((g < 70).astype(np.uint8), cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)))   # (a dot drawn as a ring too)
+core = cv2.erode(solid, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (11, 11)))
+n, lab, st, cen = cv2.connectedComponentsWithStats(core, 8)
+dots = []
+for k in range(1, n):
+    if st[k][4] < 4 or max(st[k][2], st[k][3]) > 0.3*cell: continue
+    p = world(*cen[k])
+    if all(np.hypot(p[0] - q[0], p[1] - q[1]) > 150 for q in dots): dots.append(p)   # (one dot worn into two pieces)
+# ink = the dark strokes and the shading (the template's grid and dots are lighter and thin: an opening takes them away)
+ink = (g < 105).astype(np.uint8)
+shade = cv2.morphologyEx((g < 200).astype(np.uint8), cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
+ink |= shade
+# small marks: letters, the house (alone in the sea)
+n, lab, st, cen = cv2.connectedComponentsWithStats(ink, 8)
 for k in range(1, n):
     x, y, bw, bh, area = st[k]
-    if max(bw, bh) < 0.4*cell:
-        if area > 0.45*bw*bh and min(bw, bh) > 8: dots.append(world(*cen[k]))
-        ink[lab == k] = 0
-# close small gaps in the lines, then let the sea in from home's square
+    if max(bw, bh) < 0.4*cell: ink[lab == k] = 0
+# close small gaps in the lines; the sea is the biggest stretch of water left
 inkd = cv2.dilate(ink, np.ones((5, 5), np.uint8))
-sea = np.zeros((h+2, w+2), np.uint8)
-hx, hy = pix(WORLD/2, WORLD/2 + WORLD/9*0.8)  # (a little south of home: open water)
-land = (inkd > 0).astype(np.uint8)
-cv2.floodFill(land, sea, (int(hx), int(hy)), 2)
-sea = (land == 2).astype(np.uint8)
+n, lab, st, cen = cv2.connectedComponentsWithStats((1 - inkd).astype(np.uint8), 4)
+seak = 1 + int(np.argmax(st[1:, 4]))
+sea = (lab == seak).astype(np.uint8)
 sea = cv2.dilate(sea, np.ones((5, 5), np.uint8))   # the coast runs along the middle of the line
 landm = (1 - sea).astype(np.uint8)
 # home's islet goes (the game has its own)
 n, lab, st, cen = cv2.connectedComponentsWithStats(landm, 8)
 hxp, hyp = pix(WORLD/2, WORLD/2)
 k = lab[int(hyp), int(hxp)]
-if k: landm[lab == k] = 0
+if k and st[k][4] < 2*cell*cell: landm[lab == k] = 0
 # lumps smaller than a speck go too
 n, lab, st, cen = cv2.connectedComponentsWithStats(landm, 8)
 for k in range(1, n):
