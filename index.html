@@ -68,6 +68,8 @@
   const CRANK_VOL = 1;               // loudness of the crank's gears as it winds (a tick a tooth, a heavier step each quarter turn; 0 = silent)
   const SLING_ON = true;             // the slingshot on the right: drag its pouch down and let go, a stone flies off ahead of the bow
   const SLING_RANGE = [20, 80];      // px the stone flies ahead: a short pull, a full pull (was [25, 115], before that [40, 230]); while pulling, a dashed ring shows where it will land
+  const SLING_AIM_DEG = 10;          // sliding the thumb left or right while pulling aims the shot up to this many degrees off the bow, each way (the ring on the sea follows)
+  const SLING_AIM_SPAN = 22;         // how far sideways (in the sling's drawing, 64 wide) the thumb slides for the full SLING_AIM_DEG
   const SLING_RELOAD = 0.9;          // seconds before the next stone is in the pouch
   const SPRING_SPEED = 39.2;         // px/s the wheels give her (the spring rests while the sail drives her faster than this; was 19.6, doubled)
   const OAR_START = 0.2;             // power the first press gives (0..1): she starts rowing, slowly
@@ -377,6 +379,10 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Slingshot: slide your thumb left or right while you pull to aim up to 10° off the bow; the ring on the sea (and a dotted line to it) shows where it goes',
+      'Where a stone hits the water: a burst of spray and a wide ring of churned foam',
+    ]},
+    {build: '2026-10-10 16:47', items: [
       'Sharks and sea imps: 3 seconds of rippling water show where one is about to come up',
       'They no longer leave after a few attacks: each keeps to its map square (and a bit round it) and comes again and again while you stay there; sail out of the area to lose it',
       'Hull bar always shown, top left',
@@ -395,7 +401,7 @@
       'Sharks and sea imps are still off on the drawn map: turn them on in the first screen, Dangers (SHARK_ON, ZORA_ON)',
     ]},
   ];
-  const BUILD = '2026-10-10 16:47';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-10 17:06';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -6469,27 +6475,34 @@
   const elSling = document.getElementById('sling'), elSlingBand = elSling.querySelectorAll('.band, .band-bg'), elSlingPull = elSling.querySelector('.pull');
   elSling.setAttribute('aria-label', TEXT.oars.sling); elSling.title = TEXT.oars.sling;
   const SLING_MAX = 48;                                      // the pouch's travel in the drawing (viewBox units), a full pull
-  let slingDrag = null, slingPull = 0, slingReload = 0, slingStep = 0, slingKey = '';
+  let slingDrag = null, slingPull = 0, slingAim = 0, slingReload = 0, slingStep = 0, slingKey = '';
   const stones = [], stoneSplash = [];
   const slingY = ev=>{ const r = elSling.getBoundingClientRect(); return (ev.clientY - r.top)*80/r.height; };
+  const slingX = ev=>{ const r = elSling.getBoundingClientRect(); return (ev.clientX - r.left)*64/r.width; };
+  // where a shot with this pull and aim lands (-1..1: left..right of the bow, up to SLING_AIM_DEG)
+  function slingTarget(k, aim){
+    const a = boat.angle + aim*SLING_AIM_DEG*Math.PI/180, d = SLING_RANGE[0] + (SLING_RANGE[1] - SLING_RANGE[0])*k;
+    const x0 = boat.x + Math.cos(boat.angle)*16, y0 = boat.y + Math.sin(boat.angle)*16;
+    return [x0, y0, x0 + Math.cos(a)*d, y0 + Math.sin(a)*d];
+  }
   const ammoLeft = ()=> slingAmmo === 'net' ? nets : SLING_CHARGES ? charges : Infinity;
   const noCharge = ()=>{ if(ammoLeft() > 0) return false; popups.push({x:boat.x, y:boat.y-26, text: slingAmmo === 'net' ? TEXT.oars.noNets : TEXT.oars.noCharges, life:1.4, max:1.4}); buzz(25); Sfx.tick(0.3, 0.5); return true; };
   elSling.addEventListener('pointerdown', ev=>{ ev.preventDefault(); Sfx.init(); if(slingReload > 0 || noCharge()) return;
-    slingDrag = {id: ev.pointerId, y0: slingY(ev)}; slingStep = 0; try{ elSling.setPointerCapture(ev.pointerId); }catch(e){} });
+    slingDrag = {id: ev.pointerId, y0: slingY(ev), x0: slingX(ev)}; slingStep = 0; slingAim = 0; try{ elSling.setPointerCapture(ev.pointerId); }catch(e){} });
   elSling.addEventListener('pointermove', ev=>{
     const d = slingDrag; if(!d || ev.pointerId !== d.id) return;
     slingPull = Math.max(0, Math.min(1, (slingY(ev) - d.y0)/SLING_MAX));
+    slingAim = Math.max(-1, Math.min(1, (slingX(ev) - d.x0)/SLING_AIM_SPAN));   // the thumb slid left or right: aim off the bow
     const st = Math.floor(slingPull*4);                      // the bands creak as they stretch
     if(st > slingStep){ slingStep = st; Sfx.tick(0.25, 0.6 + 0.15*st); buzz(5); }
   });
-  const slingUp = ev=>{ if(!slingDrag || ev.pointerId !== slingDrag.id) return; slingDrag = null; if(slingPull > 0.12) shootStone(slingPull); slingPull = 0; };
+  const slingUp = ev=>{ if(!slingDrag || ev.pointerId !== slingDrag.id) return; slingDrag = null; if(slingPull > 0.12) shootStone(slingPull, slingAim); slingPull = 0; slingAim = 0; };
   elSling.addEventListener('pointerup', slingUp); elSling.addEventListener('pointercancel', slingUp);
   elSling.addEventListener('keydown', ev=>{ if(ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); ev.stopPropagation(); if(slingReload <= 0 && !noCharge()) shootStone(1); } });
-  function shootStone(k){
-    const ca = Math.cos(boat.angle), sa = Math.sin(boat.angle), d = SLING_RANGE[0] + (SLING_RANGE[1] - SLING_RANGE[0])*k;
-    const x0 = boat.x + ca*16, y0 = boat.y + sa*16;
+  function shootStone(k, aim = 0){
+    const [x0, y0, x1, y1] = slingTarget(k, aim);
     const net = slingAmmo === 'net';
-    stones.push({x0, y0, x1: x0 + ca*d, y1: y0 + sa*d, t: 0, dur: 0.45 + 0.5*k, h: 14 + 30*k, net});
+    stones.push({x0, y0, x1, y1, t: 0, dur: 0.45 + 0.5*k, h: 14 + 30*k, net});
     if(net) nets = Math.max(0, nets - 1); else if(SLING_CHARGES) charges = Math.max(0, charges - 1);   // a shot spent
     if(elList.classList.contains('open')) renderList();
     slingReload = SLING_RELOAD; Sfx.thunk(0.35); buzz([10, 20, 25]);
@@ -6512,12 +6525,12 @@
     }
     for(let i=stoneSplash.length-1;i>=0;i--){ stoneSplash[i].t += dt; if(stoneSplash[i].t > 1.3) stoneSplash.splice(i, 1); }
     if(!show) return;
-    const pull = slingDrag ? slingPull : 0, key = pull.toFixed(3) + '|' + (slingReload > 0) + '|' + ammoLeft() + '|' + slingAmmo;
+    const pull = slingDrag ? slingPull : 0, ax = slingDrag ? slingAim*8 : 0, key = pull.toFixed(3) + '|' + ax.toFixed(2) + '|' + (slingReload > 0) + '|' + ammoLeft() + '|' + slingAmmo;
     if(key === slingKey) return;
     slingKey = key;
     const py = 18 + pull*SLING_MAX;                           // the bands from the prongs' tips to the pouch
-    for(const b of elSlingBand) b.setAttribute('d', 'M11 16 L' + (29 - 2*pull) + ' ' + py + ' M53 16 L' + (35 + 2*pull) + ' ' + py);
-    elSlingPull.setAttribute('transform', 'translate(0 ' + (pull*SLING_MAX).toFixed(1) + ')');
+    for(const b of elSlingBand) b.setAttribute('d', 'M11 16 L' + (29 - 2*pull + ax) + ' ' + py + ' M53 16 L' + (35 + 2*pull + ax) + ' ' + py);
+    elSlingPull.setAttribute('transform', 'translate(' + ax.toFixed(1) + ' ' + (pull*SLING_MAX).toFixed(1) + ')');   // the pouch follows the thumb sideways too
     elSling.classList.toggle('empty', slingReload > 0 || ammoLeft() <= 0);
     elSling.classList.toggle('nocharge', ammoLeft() <= 0);
     elSling.classList.toggle('net', slingAmmo === 'net');
@@ -6526,8 +6539,9 @@
   function drawStones(){
     // while she pulls the sling: a dashed ring (paper over ink) where the shot would land, its size what it can hit
     if(slingDrag && slingPull > 0.12 && slingReload <= 0 && ammoLeft() > 0){
-      const ca = Math.cos(boat.angle), sa = Math.sin(boat.angle), d = SLING_RANGE[0] + (SLING_RANGE[1] - SLING_RANGE[0])*slingPull;
-      const x = boat.x + ca*(16 + d), y = boat.y + sa*(16 + d), r = slingAmmo === 'net' ? NET_REACH : 14;
+      const [x0, y0, x, y] = slingTarget(slingPull, slingAim), r = slingAmmo === 'net' ? NET_REACH : 14;
+      const dl = Math.hypot(x - x0, y - y0), ux = (x - x0)/dl, uy = (y - y0)/dl;   // a dotted line from the bow to the ring: the aim
+      ctx.fillStyle = INKC; for(let t=6; t<dl - r; t+=6){ ctx.fillRect(x0 + ux*t - 1, y0 + uy*t - 1, 2, 2); }
       ctx.setLineDash([4, 4]); ctx.lineWidth = 3; ctx.strokeStyle = PAPERC; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.stroke();
       ctx.lineWidth = 1.4; ctx.strokeStyle = INKC; ctx.stroke(); ctx.setLineDash([]);
       ctx.fillStyle = INKC; ctx.beginPath(); ctx.arc(x, y, 1.6, 0, TAU); ctx.fill();
@@ -6558,8 +6572,19 @@
       ctx.stroke(); ctx.globalAlpha = 1;
     }
     for(const sp of stoneSplash){                           // a big splash: a white crown of water thrown up, drops falling back, rings spreading
-      if(!inView(sp.x, sp.y, 50)) continue;
+      if(!inView(sp.x, sp.y, 60)) continue;
       const k = sp.t/1.3;
+      if(k < 0.3){                                          // the hit: a burst of streaks flying out and a flash of foam
+        const b = k/0.3, ri = 6 + 22*b, ro = ri + 9*(1 - b);
+        ctx.globalAlpha = 1 - b; ctx.lineCap = 'round';
+        ctx.strokeStyle = PAPERC; ctx.lineWidth = 3.4; ctx.beginPath();
+        for(let m=0;m<12;m++){ const a = m*TAU/12 + sp.seed*0.7; ctx.moveTo(sp.x + Math.cos(a)*ri, sp.y + Math.sin(a)*ri*0.7); ctx.lineTo(sp.x + Math.cos(a)*ro, sp.y + Math.sin(a)*ro*0.7); }
+        ctx.stroke(); ctx.strokeStyle = INKC; ctx.lineWidth = 1.4; ctx.stroke();
+        ctx.fillStyle = PAPERC; ctx.globalAlpha = (1 - b)*0.9; ctx.beginPath(); ctx.ellipse(sp.x, sp.y, 9*(1 - b) + 3, (9*(1 - b) + 3)*0.7, 0, 0, TAU); ctx.fill();
+        ctx.lineCap = 'butt';
+      }
+      ctx.globalAlpha = Math.max(0, 0.8 - k); ctx.setLineDash([2, 4]); ctx.strokeStyle = INKC; ctx.lineWidth = 2;   // a wide ring of churned foam spreading on
+      ctx.beginPath(); ctx.ellipse(sp.x, sp.y, 12 + 44*k, (12 + 44*k)*0.7, 0, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
       ctx.strokeStyle = INKC;
       ctx.globalAlpha = 1 - k; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(sp.x, sp.y, 5 + 30*k, 0, Math.PI*2); ctx.stroke();
       if(k > 0.15){ ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(sp.x, sp.y, 3 + 18*(k - 0.15), 0, Math.PI*2); ctx.stroke(); }
