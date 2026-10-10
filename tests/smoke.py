@@ -198,7 +198,7 @@ def trip(pg):
     press_dock(pg); pg.wait_for_timeout(300)
     pg.click('#mk-you-items .mk-unit[data-kind=fish]'); pg.wait_for_timeout(50)
     lateen_home = pg.evaluate('__d.homeStore.sails.length')        # the lateen starts in the storehouse: taken aboard
-    if lateen_home: pg.click('#mk-them-items .mk-unit[data-kind=sail]'); pg.wait_for_timeout(50)
+    for _ in range(lateen_home): pg.click('#mk-them-items .mk-unit[data-kind=sail][data-origin=them]:not(.moved)'); pg.wait_for_timeout(50)   # (every sail waiting at home)
     pg.click('#mk-deal'); pg.wait_for_timeout(200)
     assert pg.evaluate('__d.homeStore.sails.length') == 0, 'the sail was not taken aboard from the storehouse'
     assert pg.evaluate('Object.values(__d.counts).reduce((a,n)=>a+n,0)') == fish0 - 1, 'nothing went into the storehouse'

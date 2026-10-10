@@ -377,8 +377,8 @@
   const MAST_H = 26;                 // the square sail's mast height (the yard just under its top); the lateen's yard climbs to about this
   const SAIL_TONE = 0.72;            // the sail's cloth when drawing well (1 = paper white, 0 = ink); slack or reefed it's a little darker
   const SPARE_SAIL = true;           // both sails ride in the hold (a slot each, the one not rigged); a tap on one in the logbook rigs it
-  const START_RIG = 'square';        // the sail rigged at the start: 'square' or 'lateen' = that one (the other rides in the hold, or waits at home: START_STORED_SAILS); null = none, she sets out on the oars
-  const START_STORED_SAILS = ['lateen'];   // sails waiting in the home storehouse when a voyage starts (not aboard: no slot in the hold); [] = all aboard
+  const START_RIG = null;            // the sail rigged at the start: 'square' or 'lateen' = that one (the other rides in the hold, or waits at home: START_STORED_SAILS); null = none, she goes on the crank (now: both sails wait at home; was 'square')
+  const START_STORED_SAILS = ['square', 'lateen'];   // sails waiting in the home storehouse when a voyage starts (not aboard: no slot in the hold); [] = all aboard (was ['lateen'])
   const TREE_KIND = 'olive';         // the islands' trees: 'olive' (Enrico's sketch: a twisted trunk, a wide crown of spiky leaf sprays) or 'pine' (the old stone pines)
   const PINE_MODELS = 4;             // tree shapes, reused (each also mirrored) all over the map (world)
   // draw the scene on the processor (true) or on the graphics card (false): the frame is tiny, and Firefox
@@ -391,6 +391,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'No sail at the start: both sails wait in the storehouse at home; you get about with the crank (the paddle wheels)',
+    ]},
+    {build: '2026-10-10 20:27', items: [
       'The paddles are 20% louder',
     ]},
     {build: '2026-10-10 20:09', items: [
@@ -403,15 +406,8 @@
       'Nets for the slingshot: a pack of 3 now costs 5 coins',
       'Fish sell for 2 coins (local kind) to 4 (from other waters)',
     ]},
-    {build: '2026-10-10 19:17', items: [
-      'New map (your fourth drawing): new coasts, same four villages',
-      'Driftwood jams (the hatched bars) block 7 channels: 3 slingshot shots break one up and the way is open',
-      'The two whirlpools you drew (D2, B3) are there, always open and still',
-      'The boiling sea is back: past the dashed line, south-east (Sudia keeps its cool water)',
-      'Sharks and sea imps now turn up only in the Mare Monstrum (squares A6–D9)',
-    ]},
   ];
-  const BUILD = '2026-10-10 20:27';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-10 21:41';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
