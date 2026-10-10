@@ -61,7 +61,7 @@
   const SPRING_PADDLES = true;       // the paddle wheels run off a wound spring: turn the crank (clockwise) to charge it, then they drive her on their own until it runs down; false = the old rhythmic oar button
   const SPRING_TURNS = 1;            // full turns of the crank, in one go, that wind the spring right up (let go before and the winding is lost: start again)
   const SPRING_TIME = 15;            // seconds the wheels can drive her on a full spring (it only runs down while they're driving; was 30)
-  const PADDLE_VOL = 1.56;           // loudness of the paddles dipping into the water as the spring drives the wheels (one low, soft splash a paddle; 0 = silent; was 1.3, before that 1.8, 3.6); freewheeling under sail is × PADDLE_FREE_VOL of it
+  const PADDLE_VOL = 2.03;           // loudness of the paddles dipping into the water as the spring drives the wheels (one low, soft splash a paddle; 0 = silent; was 1.56, before that 1.3, 1.8, 3.6); freewheeling under sail is × PADDLE_FREE_VOL of it
   const STEAM_ON = true;             // steam puffing from a little funnel amidships: thick while the spring drives the paddle wheels, a faint wisp while they only freewheel under way
   const STEAM_RATE = 9;              // puffs a second while the wheels drive her (× how hard they drive)
   const STEAM_IDLE = 0.18;           // …while she moves and the wheels only freewheel: this share of the puffs…
@@ -393,6 +393,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The paddles are 30% louder',
+    ]},
+    {build: '2026-10-10 21:52', items: [
       'No sail rigged: no mast either',
       'The steam is see-through and its plume shorter',
       'Top left, under the hull bar: the paddles\' charge (the crank\'s spring)',
@@ -403,13 +406,8 @@
     {build: '2026-10-10 20:27', items: [
       'The paddles are 20% louder',
     ]},
-    {build: '2026-10-10 20:09', items: [
-      'A voyage starts with 20 stones and 20 nets for the slingshot',
-      'The driftwood jams are gone for now: the channels are open',
-      'The paddles\' patter is softer, lower and a little quieter',
-    ]},
   ];
-  const BUILD = '2026-10-10 21:52';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-10 21:57';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
