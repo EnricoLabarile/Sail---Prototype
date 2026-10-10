@@ -67,7 +67,11 @@
   const CRANK_BACK_PITCH = 0.6;      // pitch of the ticks as the crank springs back on its own (1 = the winding's clicks; lower = less tinny)
   const CRANK_VOL = 1;               // loudness of the crank's gears as it winds (a tick a tooth, a heavier step each quarter turn; 0 = silent)
   const SLING_ON = true;             // the slingshot on the right: drag its pouch down and let go, a stone flies off ahead of the bow
-  const SLING_RANGE = [20, 80];      // px the stone flies ahead: a short pull, a full pull (was [25, 115], before that [40, 230]); while pulling, a dashed ring shows where it will land
+  const SLING_RANGE = [20, 80];      // px ahead of the bow the shot's cone covers: nearest, furthest (the pull no longer sets the distance)
+  const SLING_CONE_DEG = 50;         // how wide the cone of stones spreads in front of the bow (degrees, all of it; half each side)
+  const SLING_PELLETS = 6;           // stones a shot scatters over the cone (one charge a shot)
+  const SLING_FIRE_PULL = 0.7;       // pull the pouch down this far (0..1) and it shoots by itself; let go before and nothing happens
+  const SLING_NET_DIST = 55;         // px ahead of the bow a net lands (in the middle of the cone)
   const SLING_RELOAD = 0.9;          // seconds before the next stone is in the pouch
   const SPRING_SPEED = 39.2;         // px/s the wheels give her (the spring rests while the sail drives her faster than this; was 19.6, doubled)
   const OAR_START = 0.2;             // power the first press gives (0..1): she starts rowing, slowly
@@ -378,6 +382,11 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Slingshot: a shot now scatters 6 stones over a cone in front of the bow (one charge); a net lands in the middle of it',
+      'Pull the pouch down far enough and it shoots by itself; let go before and nothing happens. The pull no longer sets the distance',
+      'While you pull, the cone (or the net\'s ring) shows on the sea, firmer as you near the shot',
+    ]},
+    {build: '2026-10-10 17:18', items: [
       'Fishing is automatic: the reel minigame is switched off (and its setting is gone); drop anchor on a bank and the net hauls it in',
     ]},
     {build: '2026-10-10 17:17', items: [
@@ -388,16 +397,8 @@
     {build: '2026-10-10 17:06', items: [
       'Where a stone hits the water: a burst of spray and a wide ring of churned foam',
     ]},
-    {build: '2026-10-10 16:47', items: [
-      'Sharks and sea imps: 3 seconds of rippling water show where one is about to come up',
-      'They no longer leave after a few attacks: each keeps to its map square (and a bit round it) and comes again and again while you stay there; sail out of the area to lose it',
-      'Hull bar always shown, top left',
-      'Slingshot: shorter range; while you pull, a dashed ring on the sea shows where the shot will land',
-      'Stalls: what you buy stays on the stall, greyed out; tap it and the merchant says it is out of stock until tomorrow',
-      'Whirlpools: the outer ring (the pull) is twice as wide',
-    ]},
   ];
-  const BUILD = '2026-10-10 17:18';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-10 18:57';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -6475,9 +6476,9 @@
   let slingDrag = null, slingPull = 0, slingReload = 0, slingStep = 0, slingKey = '';
   const stones = [], stoneSplash = [];
   const slingY = ev=>{ const r = elSling.getBoundingClientRect(); return (ev.clientY - r.top)*80/r.height; };
-  // where a shot with this pull lands: straight ahead of the bow (a sideways aim was tried and dropped)
-  function slingTarget(k){
-    const a = boat.angle, d = SLING_RANGE[0] + (SLING_RANGE[1] - SLING_RANGE[0])*k;
+  // a point in the cone ahead of the bow: off (-1..1 of its half-width) and at d px from the bow
+  function slingPoint(off, d){
+    const a = boat.angle + off*SLING_CONE_DEG*Math.PI/360;
     const x0 = boat.x + Math.cos(boat.angle)*16, y0 = boat.y + Math.sin(boat.angle)*16;
     return [x0, y0, x0 + Math.cos(a)*d, y0 + Math.sin(a)*d];
   }
@@ -6490,14 +6491,23 @@
     slingPull = Math.max(0, Math.min(1, (slingY(ev) - d.y0)/SLING_MAX));
     const st = Math.floor(slingPull*4);                      // the bands creak as they stretch
     if(st > slingStep){ slingStep = st; Sfx.tick(0.25, 0.6 + 0.15*st); buzz(5); }
+    if(slingPull >= SLING_FIRE_PULL){ slingDrag = null; slingPull = 0; shootStone(); }   // pulled far enough: it shoots by itself
   });
-  const slingUp = ev=>{ if(!slingDrag || ev.pointerId !== slingDrag.id) return; slingDrag = null; if(slingPull > 0.12) shootStone(slingPull); slingPull = 0; };
+  const slingUp = ev=>{ if(!slingDrag || ev.pointerId !== slingDrag.id) return; slingDrag = null; slingPull = 0; };   // let go too soon: the pouch springs back
   elSling.addEventListener('pointerup', slingUp); elSling.addEventListener('pointercancel', slingUp);
-  elSling.addEventListener('keydown', ev=>{ if(ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); ev.stopPropagation(); if(slingReload <= 0 && !noCharge()) shootStone(1); } });
-  function shootStone(k){
-    const [x0, y0, x1, y1] = slingTarget(k);
+  elSling.addEventListener('keydown', ev=>{ if(ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); ev.stopPropagation(); if(slingReload <= 0 && !noCharge()) shootStone(); } });
+  // a shot: stones scattered over the cone ahead of the bow (spread evenly across it, each at a random distance), or one net
+  function shootStone(){
     const net = slingAmmo === 'net';
-    stones.push({x0, y0, x1, y1, t: 0, dur: 0.45 + 0.5*k, h: 14 + 30*k, net});
+    if(net){ const [x0, y0, x1, y1] = slingPoint(0, SLING_NET_DIST); stones.push({x0, y0, x1, y1, t: 0, dur: 0.7, h: 30, net}); }
+    else {
+      const shot = {splashed: false, zora: false, shark: false};       // (a shot hits a creature once, however many stones land on it)
+      for(let i=0;i<SLING_PELLETS;i++){
+        const off = SLING_PELLETS > 1 ? -1 + 2*(i + rand(0.15, 0.85))/SLING_PELLETS : 0, d = rand(SLING_RANGE[0], SLING_RANGE[1]);
+        const [x0, y0, x1, y1] = slingPoint(off, d), k = (d - SLING_RANGE[0])/(SLING_RANGE[1] - SLING_RANGE[0] || 1);
+        stones.push({x0, y0, x1, y1, t: 0, dur: 0.4 + 0.45*k + rand(0, 0.08), h: 12 + 26*k, net, shot, pellet: true});
+      }
+    }
     if(net) nets = Math.max(0, nets - 1); else if(SLING_CHARGES) charges = Math.max(0, charges - 1);   // a shot spent
     if(elList.classList.contains('open')) renderList();
     slingReload = SLING_RELOAD; Sfx.thunk(0.35); buzz([10, 20, 25]);
@@ -6514,9 +6524,10 @@
       const x = wrapX(s.x1), y = wrapY(s.y1);
       if(onLand(x, y, 2)){ Sfx.tick(0.4, 0.5); continue; }   // on a shore: a clack on the stones
       if(s.net){ netLands(x, y); continue; }
-      stoneSplash.push({x, y, t: 0, seed: rand(0, 6.3)}); Sfx.splash(); Sfx.thunk(0.25);   // a heavy plunge
-      stoneAtZora(x, y);
-      stoneAtShark(x, y);
+      stoneSplash.push({x, y, t: 0, seed: rand(0, 6.3), s: 0.6});        // a plunge (smaller: one of a handful)
+      const sh = s.shot; if(!sh.splashed){ sh.splashed = true; Sfx.splash(); Sfx.thunk(0.25); }
+      if(!sh.zora && stoneAtZora(x, y)) sh.zora = true;
+      if(!sh.shark && stoneAtShark(x, y)) sh.shark = true;
     }
     for(let i=stoneSplash.length-1;i>=0;i--){ stoneSplash[i].t += dt; if(stoneSplash[i].t > 1.3) stoneSplash.splice(i, 1); }
     if(!show) return;
@@ -6532,19 +6543,23 @@
   }
   // the stones in flight (a shadow on the water under each) and the splashes where they land
   function drawStones(){
-    // while she pulls the sling: a dashed ring (paper over ink) where the shot would land, its size what it can hit
-    if(slingDrag && slingPull > 0.12 && slingReload <= 0 && ammoLeft() > 0){
-      const [x0, y0, x, y] = slingTarget(slingPull), r = slingAmmo === 'net' ? NET_REACH : 14;
-      const dl = Math.hypot(x - x0, y - y0), ux = (x - x0)/dl, uy = (y - y0)/dl;   // a dotted line from the bow to the ring: the aim
-      ctx.fillStyle = INKC; for(let t=6; t<dl - r; t+=6){ ctx.fillRect(x0 + ux*t - 1, y0 + uy*t - 1, 2, 2); }
-      ctx.setLineDash([4, 4]); ctx.lineWidth = 3; ctx.strokeStyle = PAPERC; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.stroke();
-      ctx.lineWidth = 1.4; ctx.strokeStyle = INKC; ctx.stroke(); ctx.setLineDash([]);
-      ctx.fillStyle = INKC; ctx.beginPath(); ctx.arc(x, y, 1.6, 0, TAU); ctx.fill();
+    // while she pulls the sling: where the shot will land, dashed (paper under ink), firmer as the pull nears the shot:
+    // the cone of stones ahead of the bow, or the ring of the net
+    if(slingDrag && slingPull > 0.05 && slingReload <= 0 && ammoLeft() > 0){
+      const q = Math.min(1, slingPull/SLING_FIRE_PULL), path = new Path2D();
+      if(slingAmmo === 'net'){ const [, , x, y] = slingPoint(0, SLING_NET_DIST); path.arc(x, y, NET_REACH, 0, TAU); }
+      else {
+        const a0 = boat.angle - SLING_CONE_DEG*Math.PI/360, a1 = boat.angle + SLING_CONE_DEG*Math.PI/360, [x0, y0] = slingPoint(0, 0);
+        path.arc(x0, y0, SLING_RANGE[1], a0, a1); path.arc(x0, y0, SLING_RANGE[0], a1, a0, true); path.closePath();
+      }
+      ctx.globalAlpha = 0.12 + 0.18*q; ctx.fillStyle = INKC; ctx.fill(path);
+      ctx.globalAlpha = 0.5 + 0.5*q; ctx.setLineDash([4, 4]); ctx.lineWidth = 3; ctx.strokeStyle = PAPERC; ctx.stroke(path);
+      ctx.lineWidth = 1.4; ctx.strokeStyle = INKC; ctx.stroke(path); ctx.setLineDash([]); ctx.globalAlpha = 1;
     }
     for(const s of stones){
       const q = s.t/s.dur, x = s.x0 + (s.x1 - s.x0)*q, y = s.y0 + (s.y1 - s.y0)*q, z = 4*s.h*q*(1 - q);
       if(!inView(x, y, 60)) continue;
-      const sy = y - z*BOAT_TILT*2, r = 5.5;               // a big round stone, a glint on it, its shadow on the water
+      const sy = y - z*BOAT_TILT*2, r = s.pellet ? 3.4 : 5.5;   // a round stone, a glint on it, its shadow on the water
       if(s.net){                                            // a net: opening as it flies, a dotted mesh in an ink ring
         const rr = 4 + 8*q;
         ctx.fillStyle = INKC; ctx.globalAlpha = 0.25; ctx.beginPath(); ctx.ellipse(x, y, rr, rr*0.6, 0, 0, TAU); ctx.fill();
@@ -6568,7 +6583,8 @@
     }
     for(const sp of stoneSplash){                           // a big splash: a white crown of water thrown up, drops falling back, rings spreading
       if(!inView(sp.x, sp.y, 60)) continue;
-      const k = sp.t/1.3;
+      const k = sp.t/1.3, sc = sp.s || 1;
+      ctx.save(); ctx.translate(sp.x*(1 - sc), sp.y*(1 - sc)); ctx.scale(sc, sc);   // (a smaller splash for each of a shot's stones)
       if(k < 0.3){                                          // the hit: a burst of streaks flying out and a flash of foam
         const b = k/0.3, ri = 6 + 22*b, ro = ri + 9*(1 - b);
         ctx.globalAlpha = 1 - b; ctx.lineCap = 'round';
@@ -6592,6 +6608,7 @@
       ctx.fillStyle = INKC; ctx.globalAlpha = Math.max(0, 1 - k*1.4);   // drops thrown out in an arc and falling back
       for(let m=0;m<10;m++){ const a = m*TAU/10 + sp.seed*1.7, r = 6 + 26*k*(0.6 + 0.4*((m*7)%3)/2), h = Math.sin(Math.min(1, k*1.6)*Math.PI)*14;
         ctx.fillRect(sp.x + Math.cos(a)*r - 1, sp.y + Math.sin(a)*r*0.7 - h - 1, 2, 2); }
+      ctx.restore();
     }
     ctx.globalAlpha = 1;
   }
