@@ -194,7 +194,13 @@
   const REEL_START = 0.35;           // the meter at the bite
   const REEL_FISH = {sarde: 0.6, sgombri: 0.8, triglie: 1, orate: 1.3};   // how wild each kind is (1 = middling): darts quicker and farther
   const COIN_LOCAL = 1;              // a village pays this for its own kind of fish
-  const COIN_FOREIGN = 3;            // …and this for fish from other waters
+  const COIN_FOREIGN = 2;            // …and this for fish from other waters (a fish sells for 1 to 2 coins; was 3)
+  const BANKS_PER_TILE = 2;          // drawn map: fish banks in each square of the map (A1…I9), anywhere at sea in it, at most (world)
+  const BANK_REGEN_DAYS = 2;         // drawn map: the banks fished come back every this many days, at first light (2 = every other day)
+  const SLING_CHARGES = true;        // the slingshot needs a charge for each shot (they stack in the hold: one slot whatever the number)
+  const CHARGE_PACK = 5;             // charges in a pack, as every stall sells them
+  const CHARGE_PRICE = 5;            // coins a pack
+  const START_CHARGES = 0;           // charges aboard when a voyage starts
   const DISH_PRICE = 6;              // coins per specialty dish
   const DISH_RESALE = 3;             // coins a stall gives for a dish from your hold (any stall takes any dish)
 
@@ -357,6 +363,11 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Fish banks are back: up to 2 in every square of the map, anywhere at sea; a bank you fish is gone until they come back, every other day at first light',
+      'Fish sell for 1 coin in their own waters, 2 elsewhere (it was 3)',
+      'The slingshot needs charges: every stall sells a pack of 5 for 5 coins; they take one slot in the Cargo however many (the number is on the slot); with none the sling is greyed and says so',
+    ]},
+    {build: '2026-10-10 10:27', items: [
       'Map from your latest drawing: the gap in the land border at H9 opens onto the one at H1, so you can sail out at the bottom and come back in at the top',
       'New from the drawing: the islands in H1–H2, F7, F7–G8 and the two small ones in H7–H8, the triangle in G5, and the tiny one in G3',
     ]},
@@ -367,11 +378,8 @@
     {build: '2026-10-10 00:24', items: [
       'Logbook map: no more dots on the sea not seen yet; only the dotted line round what you have seen marks it',
     ]},
-    {build: '2026-10-10 00:22', items: [
-      'Logbook map: the sea you have seen is clean paper with a dotted line round its edge; the sea not seen yet has only a few scattered dots',
-    ]},
   ];
-  const BUILD = '2026-10-10 10:27';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-10 12:05';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -507,6 +515,9 @@
       label: 'Oars: press to row, then press again each time the pointer comes round to the mark',
       locked: 'Oars shipped: the sail drives her fast enough',
       sling: 'The slingshot: drag the pouch down and let go to throw a stone ahead',
+      pack: 'Sling charges ×{n}',                // a pack on the stall
+      noCharges: 'no charges!',                  // a popup, pulling the sling with none aboard
+      chargesLeft: '{n} sling charges',          // the count, on the slot in the Cargo
       crank: 'The spring: turn the crank round clockwise to wind it; the paddle wheels then drive her until it runs down',
       helm:  'Helm: drag round to steer. Centre: hold to drop or weigh anchor',
       reel:  'The reel: turn it round clockwise to lift the band, keep the fish inside it',
@@ -830,6 +841,9 @@
   #sling .pouch{fill:url(#crank-dots); stroke:var(--ink); stroke-width:2;}
   #sling .stone{fill:var(--ink);}
   #sling.empty .stone{display:none;}
+  #sling.nocharge{opacity:.5;}                     /* no charges aboard: greyed (a pull says so) */
+  #shoplist .slot.charges{position:relative; color:var(--ink);}
+  #shoplist .slot.charges .n{position:absolute; right:2px; bottom:0; font:bold 11px Georgia, serif; background:var(--paper); padding:0 1px; line-height:1.1;}
   #sling.hidden, body.at-market #sling, body.talking #sling{display:none;}
   /* the reel (fishing): a ring round the anchor hub, where the wheel was (its middle left open: the hub still weighs anchor) */
   #reel{position:fixed; left:calc(50% - 100px); bottom:calc(17px + env(safe-area-inset-bottom,0px)); width:200px; height:200px;
@@ -2957,16 +2971,21 @@
     const side = rand(-1, 1)*ROUTE_BANK_SPREAD;
     return [wrapX(START.x + a[0] + dx*f - dy/len*side), wrapY(START.y + a[1] + dy*f + dx/len*side)];
   }
-  function spawnBank(away, home){
-    const onRoute = !home && Math.random() < ROUTE_BANK_SHARE;
+  function spawnBank(away, home, tile){
+    const onRoute = !home && tile === undefined && Math.random() < ROUTE_BANK_SHARE;
     for(let tries=0; tries<900; tries++){
       let x, y;
-      if(home){ const a = rand(0,Math.PI*2), d = rand(260, HOME_WATERS); x = wrapX(START.x+Math.cos(a)*d); y = wrapY(START.y+Math.sin(a)*d); }
+      if(tile !== undefined){                          // (the drawn map: anywhere at sea in this square of the map)
+        const TW = WORLD.w/ROOM_N, ti = tile % ROOM_N, tj = (tile/ROOM_N)|0;
+        x = wrapX(START.x - WORLD.w/2 + (ti + Math.random())*TW); y = wrapY(START.y - WORLD.h/2 + (tj + Math.random())*TW);
+        if(wdist(x,y,START.x,START.y) < 260 || wdist(x,y,boat.x,boat.y) < 160) continue;
+      }
+      else if(home){ const a = rand(0,Math.PI*2), d = rand(260, HOME_WATERS); x = wrapX(START.x+Math.cos(a)*d); y = wrapY(START.y+Math.sin(a)*d); }
       else if(onRoute){ [x, y] = routeSpot(); if(wdist(x,y,START.x,START.y) < HOME_WATERS) continue; }
       else { x = rand(0,WORLD.w); y = rand(0,WORLD.h); if(wdist(x,y,START.x,START.y) < HOME_WATERS) continue; }
       if(wdist(x,y,START.x,START.y) < 260) continue;
       if(away && wdist(x,y,boat.x,boat.y) < 900) continue;
-      if(!home && !onRoute && Math.random() > 0.12 + 0.88*Math.pow(danger(x,y),1.3)) continue;     // richer the farther out
+      if(tile === undefined && !home && !onRoute && Math.random() > 0.12 + 0.88*Math.pow(danger(x,y),1.3)) continue;     // richer the farther out
       const r = rand(36,46);
       if(!spotIsClear(x,y,r)) continue;
       const sec = home ? ['nord','est','sud','ovest'][Math.floor(Math.random()*4)] : sectorAt(x,y);
@@ -2978,8 +2997,17 @@
                                       ph:rand(0,6.3), wob:rand(0.15,0.35), size:LOOK[2]*rand(0.9,1.1)});
       const blobs = [];                               // soft, lumpy patch of disturbed water
       for(let k=0;k<5;k++){ const a=rand(0,6.3), d=rand(0,0.35)*r; blobs.push([Math.cos(a)*d, Math.sin(a)*d, r*rand(0.6,0.85)]); }
-      banks.push({x, y, r, sec, home: !!home, fish, blobs, state:'live', t:0, rot:rand(0,6.3), jumpT:rand(1,4)});
+      banks.push({x, y, r, sec, home: !!home, tile, fish, blobs, state:'live', t:0, rot:rand(0,6.3), jumpT:rand(1,4)});
       return;
+    }
+  }
+  // the drawn map: every square of the map gets up to BANKS_PER_TILE banks, anywhere at sea in it; a bank fished is
+  // gone until the next refill (at first light, every BANK_REGEN_DAYS days)
+  function fillBankTiles(){
+    if(!MAP_DRAWN) return;
+    for(let k=0; k<ROOM_N*ROOM_N; k++){
+      const have = banks.filter(b=> b.tile === k && b.state !== 'scatter').length;
+      for(let n=have; n<BANKS_PER_TILE; n++) spawnBank(false, false, k);
     }
   }
 
@@ -3008,6 +3036,7 @@
   const bowSpray=[]; let bowAcc=0;
   const steam=[]; let steamAcc=0;            // steam from the funnel: {x, y (world, under the puff), z (height), r, a (strength), life, max}          // bow foam: bits of white water peeling off the stem
   for(let k=0;k<BANK_COUNT;k++) spawnBank(false, false);
+  fillBankTiles();
 
   // ---------- Trade routes and the boats that sail them ----------
   // Sea lanes are found once, when the world is made: an A* search over a
@@ -5348,7 +5377,7 @@
     boonWindT = 0; boonFish = 0; for(const r of RUINS) r.readyAt = 0;
     rollers.length = 0; rollerT = 6; boat.surfT = 0;
     windAngle = rand(0, Math.PI*2); shiftDur = 0; windTimer = rand(28,36); guideWind = false;
-    explored.fill(0); fogVer++; rooms.fill(0); roomsVer++; resetBottles(); resetStore(); resetShark(); resetZora(); spring = 0; windProg = 0; crankBack = 0; crankLocked = false; document.getElementById('crank').classList.remove('locked');
+    explored.fill(0); fogVer++; rooms.fill(0); roomsVer++; charges = START_CHARGES; fillBankTiles(); resetBottles(); resetStore(); resetShark(); resetZora(); spring = 0; windProg = 0; crankBack = 0; crankLocked = false; document.getElementById('crank').classList.remove('locked');
     wake.length = 0; bowSpray.length = 0; steam.length = 0; popups.length = 0;
     voyageTime = 0; hurtFlash = 0; shake = 0;
     gameover.classList.add('hidden');
@@ -5529,7 +5558,9 @@
   const SAILS = ['square', 'lateen'];
   const sailsInHold = ()=> SPARE_SAIL ? SAILS.filter(r=> r !== boat.rig && !homeStore.sails.includes(r)) : [];   // (a sail left in the storehouse is not aboard)
   const spareSlots = ()=> sailsInHold().length;                      // the sails not rigged take a slot each
-  const slotsUsed = ()=> fishAboard() + dishesAboard() + spareSlots() + bottleHold.length;   // the hold's HOLD_MAX slots: a fish, a dish, the spare sail or a bottle each (gifts are kept apart)
+  let charges = START_CHARGES;                                       // the sling's charges aboard (they stack: one slot)
+  const chargeSlots = ()=> SLING_CHARGES && charges > 0 ? 1 : 0;
+  const slotsUsed = ()=> fishAboard() + dishesAboard() + spareSlots() + bottleHold.length + chargeSlots();   // the hold's HOLD_MAX slots: a fish, a dish, the spare sail or a bottle each (gifts are kept apart)
   const holdFull = ()=> slotsUsed() >= HOLD_MAX;
   let fullSaid = null;                                   // the bank we've already said "the hold is full" over
   function bankUnderBoat(){
@@ -5546,7 +5577,7 @@
       b.jumpT -= dt;
       if(b.jumpT<=0){ b.jumpT = rand(1.5,4.5); b.jump = {a:rand(0,6.3), d:rand(0.2,0.7)*b.r, t:0}; }
       if(b.jump){ b.jump.t += dt; if(b.jump.t>0.9) b.jump = null; }
-      if(b.state==='scatter' && b.t > 1.8){ banks.splice(k,1); spawnBank(true, b.home); }
+      if(b.state==='scatter' && b.t > 1.8){ banks.splice(k,1); if(b.tile === undefined) spawnBank(true, b.home); }   // (a square's bank waits for the next refill)
     }
     updateBottles(dt);
     if(moor || boat.whirl){ fishing = null; settleT = 0; return; }
@@ -6297,7 +6328,8 @@
   let slingDrag = null, slingPull = 0, slingReload = 0, slingStep = 0, slingKey = '';
   const stones = [], stoneSplash = [];
   const slingY = ev=>{ const r = elSling.getBoundingClientRect(); return (ev.clientY - r.top)*80/r.height; };
-  elSling.addEventListener('pointerdown', ev=>{ ev.preventDefault(); Sfx.init(); if(slingReload > 0) return;
+  const noCharge = ()=>{ if(!SLING_CHARGES || charges > 0) return false; popups.push({x:boat.x, y:boat.y-26, text:TEXT.oars.noCharges, life:1.4, max:1.4}); buzz(25); Sfx.tick(0.3, 0.5); return true; };
+  elSling.addEventListener('pointerdown', ev=>{ ev.preventDefault(); Sfx.init(); if(slingReload > 0 || noCharge()) return;
     slingDrag = {id: ev.pointerId, y0: slingY(ev)}; slingStep = 0; try{ elSling.setPointerCapture(ev.pointerId); }catch(e){} });
   elSling.addEventListener('pointermove', ev=>{
     const d = slingDrag; if(!d || ev.pointerId !== d.id) return;
@@ -6307,11 +6339,12 @@
   });
   const slingUp = ev=>{ if(!slingDrag || ev.pointerId !== slingDrag.id) return; slingDrag = null; if(slingPull > 0.12) shootStone(slingPull); slingPull = 0; };
   elSling.addEventListener('pointerup', slingUp); elSling.addEventListener('pointercancel', slingUp);
-  elSling.addEventListener('keydown', ev=>{ if(ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); ev.stopPropagation(); if(slingReload <= 0) shootStone(1); } });
+  elSling.addEventListener('keydown', ev=>{ if(ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); ev.stopPropagation(); if(slingReload <= 0 && !noCharge()) shootStone(1); } });
   function shootStone(k){
     const ca = Math.cos(boat.angle), sa = Math.sin(boat.angle), d = SLING_RANGE[0] + (SLING_RANGE[1] - SLING_RANGE[0])*k;
     const x0 = boat.x + ca*16, y0 = boat.y + sa*16;
     stones.push({x0, y0, x1: x0 + ca*d, y1: y0 + sa*d, t: 0, dur: 0.45 + 0.5*k, h: 14 + 30*k});
+    if(SLING_CHARGES){ charges = Math.max(0, charges - 1); if(elList.classList.contains('open')) renderList(); }   // a charge spent
     slingReload = SLING_RELOAD; Sfx.thunk(0.35); buzz([10, 20, 25]);
   }
   function updateSling(dt){
@@ -6334,13 +6367,14 @@
     }
     for(let i=stoneSplash.length-1;i>=0;i--){ stoneSplash[i].t += dt; if(stoneSplash[i].t > 1.3) stoneSplash.splice(i, 1); }
     if(!show) return;
-    const pull = slingDrag ? slingPull : 0, key = pull.toFixed(3) + '|' + (slingReload > 0);
+    const pull = slingDrag ? slingPull : 0, key = pull.toFixed(3) + '|' + (slingReload > 0) + '|' + (SLING_CHARGES && charges <= 0);
     if(key === slingKey) return;
     slingKey = key;
     const py = 18 + pull*SLING_MAX;                           // the bands from the prongs' tips to the pouch
     for(const b of elSlingBand) b.setAttribute('d', 'M11 16 L' + (29 - 2*pull) + ' ' + py + ' M53 16 L' + (35 + 2*pull) + ' ' + py);
     elSlingPull.setAttribute('transform', 'translate(0 ' + (pull*SLING_MAX).toFixed(1) + ')');
-    elSling.classList.toggle('empty', slingReload > 0);
+    elSling.classList.toggle('empty', slingReload > 0 || (SLING_CHARGES && charges <= 0));
+    elSling.classList.toggle('nocharge', SLING_CHARGES && charges <= 0);
   }
   // the stones in flight (a shadow on the water under each) and the splashes where they land
   function drawStones(){
@@ -6474,7 +6508,7 @@
   });
   const fishValue = (v, k)=> k===v.own ? COIN_LOCAL : COIN_FOREIGN;
   const fishWorth = (v)=> FISH_KEYS.reduce((a,k)=> a + counts[k]*fishValue(v,k), 0);   // the whole hold, sold here
-  const mkState = (v)=> v.store ? ['store', ...FISH_KEYS.map(k=> counts[k] + ':' + (homeStore.fish[k]||0)), ...ALL_DISHES.map(d=> (dishHold[d.icon]||0) + ':' + (homeStore.dish[d.icon]||0)), bottleHold.length, homeStore.bottles.length, sailsInHold().join(','), homeStore.sails.join(',')].join('|') : [v.name, ...v.dishes.map(d=> dishHold[d.icon]||0), coins, ...FISH_KEYS.map(k=>counts[k])].join('|');
+  const mkState = (v)=> v.store ? ['store', ...FISH_KEYS.map(k=> counts[k] + ':' + (homeStore.fish[k]||0)), ...ALL_DISHES.map(d=> (dishHold[d.icon]||0) + ':' + (homeStore.dish[d.icon]||0)), bottleHold.length, homeStore.bottles.length, sailsInHold().join(','), homeStore.sails.join(',')].join('|') : [v.name, ...v.dishes.map(d=> dishHold[d.icon]||0), coins, charges, ...FISH_KEYS.map(k=>counts[k])].join('|');
   function openMarket(v){
     marketV = v; elMk.classList.remove('hidden');
     document.body.classList.add('at-market');
@@ -6499,6 +6533,7 @@
     for(const k of FISH_KEYS) for(let n=0;n<counts[k];n++) mkItems.push({kind:'fish', key:k, origin:'you', side:'you', value: fishValue(v,k)});
     for(const d of ALL_DISHES) for(let n=0;n<(dishHold[d.icon]||0);n++) mkItems.push({kind:'food', icon:d.icon, name:d.name, origin:'you', side:'you', value: DISH_RESALE});   // dishes aboard: any stall takes them back
     v.dishes.forEach((dsh,i)=> mkItems.push({kind:'food', dish:i, icon:dsh.icon, name:dsh.name, origin:'them', side:'them', value: dsh.price}));   // both, every visit
+    if(SLING_CHARGES) mkItems.push({kind:'charges', name: fmt(TEXT.oars.pack, {n: CHARGE_PACK}), origin:'them', side:'them', value: CHARGE_PRICE});   // every stall sells the sling's charges, a pack at a time
     mkItems.forEach((it,i)=> it.id = i);
   }
   // called every frame while docked: only redraws when something changed
@@ -6510,7 +6545,8 @@
     mkKey = key; stockTable(marketV); drawTable();
   }
   const mkBalance = ()=> mkItems.reduce((a,it)=> a + (it.side===it.origin ? 0 : it.origin==='you' ? it.value : -it.value), 0);
-  const mkSlotsAfter = ()=> mkItems.filter(it=> it.side === 'you').length + (marketV && marketV.store ? 0 : spareSlots() + bottleHold.length);   // (at the storehouse the bottles and sails are on the table too)   // what the hold would carry after the trade (the spare sail stays aboard)
+  const mkSlotsAfter = ()=> mkItems.filter(it=> it.side === 'you' && it.kind !== 'charges').length + (marketV && marketV.store ? 0 : spareSlots() + bottleHold.length
+    + (SLING_CHARGES && (charges > 0 || mkItems.some(it=> it.kind === 'charges' && it.side === 'you')) ? 1 : 0));   // (the charges stack: one slot)   // (at the storehouse the bottles and sails are on the table too)   // what the hold would carry after the trade (the spare sail stays aboard)
   const COIN_SVG = '<svg class="coin" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="var(--paper)" stroke="currentColor" stroke-width="1.4"/><circle cx="6" cy="6" r="2.4" fill="none" stroke="currentColor" stroke-width="1"/></svg>';
   const FOOD_SVG = '<svg viewBox="0 0 30 22" aria-hidden="true"><path d="M3 9 H27 L24 20 H6 Z" fill="var(--paper)" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7 9 Q15 -1 23 9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 12 H22 M9 15.5 H21" stroke="currentColor" stroke-width="1.1"/><circle cx="12" cy="7" r="2.6" fill="currentColor"/><circle cx="18" cy="6.5" r="2.2" fill="url(#sh-mid)" stroke="currentColor" stroke-width="0.8"/></svg>';
   // one small icon per dish and gift (24×24, ink on paper), so the cargo in
@@ -6544,6 +6580,8 @@
     // a pale bottle and a lemon with its leaf
     // the sails, as the spare in the hold: a square sail on its yard, a lateen triangle on its slanted yard
     // a corked bottle with a rolled note inside
+    // the sling's charges: three round stones in a little heap
+    'Charges': ICO('<circle cx="8" cy="15.5" r="4.6" '+M+'/><circle cx="16.5" cy="15.8" r="4.3" '+L+'/><circle cx="12.2" cy="8.4" r="4.4" '+P+'/><path d="M10.5 6.8 Q11.5 5.8 13 6.1" '+N+' stroke-width="0.9"/>'),
     'Message in a bottle': ICO('<path d="M3.5 13.5 Q3.5 10.5 6.5 10.5 H13 Q15 10.5 15.8 12 H19 V15 H15.8 Q15 16.5 13 16.5 H6.5 Q3.5 16.5 3.5 13.5 Z" '+L+'/><rect x="6" y="12" width="6.5" height="3" '+P+' stroke-width="0.9"/><path d="M19 12.3 H21.2 V14.7 H19" '+M+' stroke-width="1.1"/><path d="M6 11.6 H12" '+N+' stroke="var(--paper)" stroke-width="0.8"/>'),
     // Eolus' fair wind: a medallion with a gust blowing across it
     'Fair wind': ICO('<circle cx="12" cy="12" r="10" '+M+'/><circle cx="12" cy="12" r="7.6" '+N+' stroke-width="0.8" stroke-dasharray="1.5 1.5"/><path d="M5 9.5 H13.5 A2.2 2.2 0 1 0 11.4 6.8 M5 13 H16 A2.4 2.4 0 1 1 13.7 16 M6.5 16.4 H10.5" '+N+' stroke-width="1.7"/>'),
@@ -6554,11 +6592,11 @@
   })();
   const itemIcon = (name)=> ITEM_ICONS[name] || FOOD_SVG;
   function unitHTML(it){
-    const ico = it.kind==='sail' ? itemIcon(SAIL_ICON[it.rig]) : it.kind==='food' ? itemIcon(it.icon) : it.kind==='bottle' ? itemIcon('Message in a bottle') : document.querySelector('#wood .fish-'+it.key+' svg').outerHTML;
-    const name = it.kind==='sail' ? TEXT.sails[it.rig] : it.kind==='food' ? it.name : it.kind==='bottle' ? TEXT.bottles.name : FISH_NAME[it.key].one;
-    const label = it.kind==='food' ? '<span class="mk-name">'+name+'</span>' : '';
+    const ico = it.kind==='sail' ? itemIcon(SAIL_ICON[it.rig]) : it.kind==='charges' ? itemIcon('Charges') : it.kind==='food' ? itemIcon(it.icon) : it.kind==='bottle' ? itemIcon('Message in a bottle') : document.querySelector('#wood .fish-'+it.key+' svg').outerHTML;
+    const name = it.kind==='sail' ? TEXT.sails[it.rig] : it.kind==='food' || it.kind==='charges' ? it.name : it.kind==='bottle' ? TEXT.bottles.name : FISH_NAME[it.key].one;
+    const label = it.kind==='food' || it.kind==='charges' ? '<span class="mk-name">'+name+'</span>' : '';
     const priced = it.value !== null;                     // (the storehouse has no prices)
-    return '<div class="mk-unit '+(it.kind==='bottle' || it.kind==='sail' ? 'food' : it.kind)+(it.side!==it.origin ? ' moved' : '')+'" data-id="'+it.id+'" data-kind="'+it.kind+'" data-origin="'+it.origin+'" role="button" aria-label="'+name+(priced ? ', '+it.value+(it.value===1 ? ' coin' : ' coins') : '')+'">'
+    return '<div class="mk-unit '+(it.kind==='bottle' || it.kind==='sail' || it.kind==='charges' ? 'food' : it.kind)+(it.side!==it.origin ? ' moved' : '')+'" data-id="'+it.id+'" data-kind="'+it.kind+'" data-origin="'+it.origin+'" role="button" aria-label="'+name+(priced ? ', '+it.value+(it.value===1 ? ' coin' : ' coins') : '')+'">'
       + ico + label + (priced ? '<span class="mk-val">'+it.value+COIN_SVG+'</span>' : '') + '</div>';
   }
   function drawTable(){
@@ -6686,6 +6724,7 @@
     for(const it of mkItems){
       if(it.side === it.origin) continue;
       if(it.origin==='you'){ if(it.kind==='fish') counts[it.key]--; else dishHold[it.icon]--; }   // sold
+      else if(it.kind === 'charges'){ charges += CHARGE_PACK; got.push(it.name); }   // the sling's charges, into the hold
       else { const d = v.dishes[it.dish]; dishHold[d.icon] = (dishHold[d.icon]||0) + 1; d.boughtEver = true; v.done = true; got.push(it.name); }   // into the hold, for an order
     }
     coins += bal;
@@ -6925,13 +6964,14 @@
   let cargoSel = null;                                   // picked in the Cargo, to throw overboard: {kind:'fish'|'dish'|'bottle', key}
   function holdHTML(){
     // HOLD_MAX slots in a grid: the spare sail, fish, then dishes, the rest empty; the gifts are kept apart, below
-    const items = [...sailsInHold().map(r=> ({sail: r})), ...bottleHold.map((b,i)=> ({bottle: i})), ...FISH_KEYS.flatMap(k=> Array(counts[k]).fill({name: FISH_NAME[k].one, svg: document.querySelector('#wood .fish-'+k+' svg').outerHTML, fish:true, kind:'fish', key:k})),
+    const items = [...sailsInHold().map(r=> ({sail: r})), ...(chargeSlots() ? [{charges: true}] : []), ...bottleHold.map((b,i)=> ({bottle: i})), ...FISH_KEYS.flatMap(k=> Array(counts[k]).fill({name: FISH_NAME[k].one, svg: document.querySelector('#wood .fish-'+k+' svg').outerHTML, fish:true, kind:'fish', key:k})),
                    ...ALL_DISHES.flatMap(d=> Array(dishHold[d.icon]||0).fill({name: d.name, svg: itemIcon(d.icon), kind:'dish', key:d.icon}))];
     if(cargoSel && !items.some(it=> selIs(it))) cargoSel = null;      // (what was picked is gone)
     let selShown = false;
     const selCls = it=>{ if(selShown || !selIs(it)) return ''; selShown = true; return ' sel'; };
     const gifts = VILLAGES.filter(v=> v.giftGot).map(v=> ({name: v.gift, icon: v.giftIcon}));
-    const slot = k=> { const it = items[k]; if(it && it.sail) return spareHTML(it.sail); if(it && it.bottle !== undefined) return bottleSlotHTML(it.bottle, selCls(it)); return it ? '<button type="button" class="slot item'+(it.fish?' fish':'')+selCls(it)+'" data-item="'+it.kind+'|'+it.key+'" title="'+it.name+'" aria-label="'+it.name+'">'+it.svg+'</button>' : '<span class="slot empty"></span>'; };
+    const slot = k=> { const it = items[k]; if(it && it.sail) return spareHTML(it.sail);
+      if(it && it.charges){ const nm = fmt(TEXT.oars.chargesLeft, {n: charges}); return '<span class="slot charges" title="'+nm+'" role="img" aria-label="'+nm+'">'+itemIcon('Charges')+'<span class="n">'+charges+'</span></span>'; } if(it && it.bottle !== undefined) return bottleSlotHTML(it.bottle, selCls(it)); return it ? '<button type="button" class="slot item'+(it.fish?' fish':'')+selCls(it)+'" data-item="'+it.kind+'|'+it.key+'" title="'+it.name+'" aria-label="'+it.name+'">'+it.svg+'</button>' : '<span class="slot empty"></span>'; };
     return '<div class="hold-head"><h3>'+TEXT.logbook.cargo+'</h3><span class="hold-count">'+fmt(TEXT.logbook.holdCount, {n: items.length, max: HOLD_MAX})+'</span><span class="purse" aria-label="Purse: '+coins+' coins">'+COIN_SVG+coins+'</span></div>'
       + '<div class="hold-slots">'+Array.from({length: Math.max(HOLD_MAX, items.length)}, (_,k)=> slot(k)).join('')+'</div>'
       + (cargoSel ? '<button type="button" class="throw" data-throw="1">'+TEXT.logbook.throwAway+'</button>' : '')
@@ -7019,7 +7059,7 @@
     e.stopPropagation(); Sfx.init(); swapSail(b.dataset.swap);
   });
   let listKey = '';
-  const holdKey = ()=> [dayNo, coins, boat.rig, cargoSel ? cargoSel.kind + cargoSel.key : '', bottleHold.map(b=> b.read ? 'r' : 'u').join(''), ...FISH_KEYS.map(k=>counts[k]), ...ALL_DISHES.map(d=> dishHold[d.icon]||0), ...VILLAGES.map(v=> v.giftGot?'g':''), powerOwned, powerLeft, Math.ceil(boonWindT), powerLeft < POWER_USES ? Math.ceil(powerT) : 0,
+  const holdKey = ()=> [dayNo, coins, charges, boat.rig, cargoSel ? cargoSel.kind + cargoSel.key : '', bottleHold.map(b=> b.read ? 'r' : 'u').join(''), ...FISH_KEYS.map(k=>counts[k]), ...ALL_DISHES.map(d=> dishHold[d.icon]||0), ...VILLAGES.map(v=> v.giftGot?'g':''), powerOwned, powerLeft, Math.ceil(boonWindT), powerLeft < POWER_USES ? Math.ceil(powerT) : 0,
                         order ? order.items.map(it=> it.got).join(',') + order.closed : ''].join('|');
   // while the list is open, keep the hold up to date (a catch, a repair)
   // ---- the logbook's map: the world cut into ROOM_N × ROOM_N squares round home (named A1…I9), over a chart of what
@@ -7621,6 +7661,7 @@
       if(ORDERS_ON && before < dinnerT && dayT >= dinnerT) serveDinner();  // dinner time: the order is judged
       if(dayT >= 1){                                                       // first light: a new day, a new order
         dayT -= 1; dayNo++;
+        if((dayNo - 1) % BANK_REGEN_DAYS === 0) fillBankTiles();          // the fished banks come back (drawn map)
         if(ORDERS_ON){
           if(order && !order.closed) serveDinner();
           newOrder(dayNo); freshLines.clear();

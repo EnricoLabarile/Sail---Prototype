@@ -19,7 +19,7 @@ HOOK = ('requestAnimationFrame(loop);\n})();',
         'get dayT(){return dayT},set dayT(v){dayT=v},'
         'dinnerT:(DINNER_HOUR-DAWN_HOUR)/24,ordersOn:ORDERS_ON,get dayNo(){return dayNo},'
         'RUINS,get powerOwned(){return powerOwned},get rig(){return boat.rig},bottles,bottleHold,marks,homeStore,banks,get fishing(){return fishing},get reelOn(){return reelOn},setReel,REEL_ZONE,'
-        'unmoor(){moor=null;moorLock=null;}};'
+        'get charges(){return charges},coinsAdd(n){coins+=n},unmoor(){moor=null;moorLock=null;}};'
         'tutSet("done");'                  # skip the tutorial: the test drives the controls directly
         'requestAnimationFrame(loop);\n})();')
 
@@ -58,12 +58,12 @@ def main():
 ORDERS = None
 
 def buy_dish(pg, k, name, icon):
-    # four foreign fish to pay with (3 coins each, a dish costs 6)
+    # four foreign fish to pay with (2 coins each, a dish costs 6: three of them)
     pg.evaluate(f"""()=>{{const v=__d.VILLAGES[{k}]; const other=['sarde','sgombri','triglie','orate'].find(x=>x!==v.own); __d.counts[other]+=4;}}""")
     dock_at(pg, f'd.VILLAGES[{k}].pier')
     press_dock(pg); pg.wait_for_timeout(300)               # the coins badge over the quay opens the market
-    for _ in range(2):
-        pg.click('#mk-you-items .mk-unit[data-origin=you]'); pg.wait_for_timeout(50)
+    for _ in range(3):                                     # (foreign fish: a catch of the local kind is worth less)
+        pg.click('#mk-you-items .mk-unit[data-kind=fish][aria-label$=", 2 coins"]'); pg.wait_for_timeout(50)
     pg.click(f'#mk-them-items .mk-unit[data-kind=food][aria-label^="{name},"]'); pg.wait_for_timeout(50)
     pg.click('#mk-deal'); pg.wait_for_timeout(200)
     assert pg.evaluate(f"__d.dishHold[{icon!r}]") >= 1, f"{name} not in the hold"
@@ -131,6 +131,19 @@ def reel(pg):
     leave(pg)
     pg.evaluate('__d.setReel(false)')
 
+def charges(pg):
+    # the sling needs charges: none at first (a pull does nothing), a pack of 5 bought at the stall, one spent a shot
+    assert pg.evaluate('__d.charges') == 0, 'charges aboard at the start'
+    pg.evaluate("__d.coinsAdd(5)")
+    dock_at(pg, 'd.VILLAGES[0].pier')
+    press_dock(pg); pg.wait_for_timeout(300)
+    pg.click('#mk-them-items .mk-unit[data-kind=charges]'); pg.wait_for_timeout(50)
+    pg.click('#mk-deal'); pg.wait_for_timeout(200)
+    assert pg.evaluate('__d.charges') == 5, 'the pack of charges was not bought'
+    leave(pg)
+    pg.focus('#sling'); pg.keyboard.press('Enter'); pg.wait_for_timeout(300)
+    assert pg.evaluate('__d.charges') == 4, 'a shot did not spend a charge'
+
 def trip(pg):
     global ORDERS; ORDERS = False
     leave(pg)
@@ -140,6 +153,7 @@ def trip(pg):
     bottle(pg)
     d = pg.evaluate('__d.VILLAGES[0].dishes[0]')
     buy_dish(pg, 0, d['name'], d['icon'])
+    charges(pg)
     dock_at(pg, 'd.PIER')
     assert pg.evaluate('__d.moor && __d.moor.pier === __d.PIER'), 'did not tie up at home'
     # the crate badge opens the storehouse: a fish goes into it

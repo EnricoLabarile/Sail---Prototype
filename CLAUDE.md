@@ -138,7 +138,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   only applies off it); key `temple` for the Temple of Eolus: a place not listed isn't in the world (`VILLAGES`
   filtered by `drawnKey`, the temple left out of `RUINS`, so no fair wind for now). **Only what's drawn**:
   with `MAP_DRAWN` on, the map features of the template's legend default to none (each a knob, so still switchable
-  from the first screen): `WHIRL_COUNT`, `BANK_COUNT`, `HOME_BANKS`, `BOTTLE_COUNT` (so no wreck), `OPEN_ROCK_TRIES`,
+  from the first screen): `WHIRL_COUNT`, `BANK_COUNT`, `HOME_BANKS` (but see the banks per square below), `BOTTLE_COUNT` (so no wreck), `OPEN_ROCK_TRIES`,
   `STORM_SHARE`, `WEST_STORM_CLOUDS`, `WEST_WHIRLS`, `BOIL_ON` all 0; no random wild islands (`genIslands` places 0).
   Also off for now, until Enrico decides where they appear: rain clouds (`RAIN_CLOUD_EVERY` 0), traders
   (`TRADERS_HOME`, `TRADERS_VILLAGES` 0), big waves (`ROLLER_RATE` 0, `SURF_WAVE_CHANCE` 0), sharks (`SHARK_ON` 0) and sea
@@ -274,7 +274,12 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   so they don't repeat until all have come up. A new voyage clears them all (`resetBottles`).
 - **Ruins** on the diagonals (the temples): **off for now** (`RUINS_ON` = false in Tuning: `RUINS` is empty). When on: dock there for
   a random power (friendly wind 60 s, blessed nets ×3, full hull).
-- **Fish:** sardines (N), mackerel (E), red mullet (S), sea bream (W). Banks denser far from home; half the open-sea banks
+- **Fish:** sardines (N), mackerel (E), red mullet (S), sea bream (W). **On the drawn map** (Enrico's rules: fish
+  anywhere, no need to draw them): every square of the map (A1…I9) gets up to `BANKS_PER_TILE` (2) banks anywhere at
+  sea in it (`fillBankTiles`, `spawnBank(away, home, tile)`, `b.tile`; not within 260 px of home or 160 of the boat;
+  the kind from `sectorAt` as before); a bank fished (scattered) is gone, not replaced, until the refill at first light
+  every `BANK_REGEN_DAYS` (2) days (`(dayNo − 1) % BANK_REGEN_DAYS === 0`, so day 3, 5, …; also at a new voyage); about
+  150 banks in 78 squares. Off it, the old rules below. Banks denser far from home; half the open-sea banks
   (`ROUTE_BANK_SHARE`) lie along the sea roads, home to each village and village to village, within `ROUTE_BANK_SPREAD` of
   the straight line (`routeSpot`), so the fish lead from place to place; home waters have all kinds and plenty of banks (`HOME_BANKS` = 9 in the smaller world, same density as 18 before; refilled as they are fished).
   **Every bank looks alike** (`BANK_LOOK` in Tuning: 4–5 big dark fish going round over the darker water, the old sea
@@ -307,7 +312,13 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   middle (24–46 px from the boat, flying out in a small arc as it opens; `netPos`) and hauled back to the boat.
   **Market = barter table** (left: your hold, every fish and dish a unit; right: the stall: both dishes, every visit; no fish for sale).
   The top of the market panel shows how to trade (`TEXT.market.tip`), not the merchant's flavour line.
-  Drag or tap units across; balance = fish sold − goods taken. Fish sell for coins: 3 if from other waters (`COIN_FOREIGN`), 1 if local (`COIN_LOCAL`): 4 foreign fish buy both dishes of a village.
+  Drag or tap units across; balance = fish sold − goods taken. Fish sell for coins: 2 if from other waters (`COIN_FOREIGN`, was 3), 1 if local (`COIN_LOCAL`): 3 foreign fish buy a dish (Enrico: a fish sells for 1 to 2).
+  **Sling charges** (`SLING_CHARGES`; texts `TEXT.oars.pack/noCharges/chargesLeft`): every stall also has a pack of
+  `CHARGE_PACK` (5) charges for `CHARGE_PRICE` (5) coins (a `kind:'charges'` unit, icon `ITEM_ICONS.Charges`: three stones);
+  bought, `charges` += 5. They stack: one hold slot whatever the number (`chargeSlots`, in `slotsUsed` and
+  `mkSlotsAfter`), shown in the Cargo after the spare sail with the number on it (`.slot.charges .n`); not sold back, not
+  thrown away. A voyage starts with `START_CHARGES` (0). Each shot of the slingshot spends one (`shootStone`); with none
+  the sling is greyed (`.nocharge`, its stone gone) and a pull (or Enter) only pops "no charges!" (`noCharge`).
   "Trade" is disabled if the purse can't cover a negative balance; a positive balance goes to the purse.
   Repairs are free and automatic at any pier (+15 hull every half second, the hold is never touched); making them a
   cost the player has to think about is planned for later (see the TickTick list "Vento e Vele: playtest suggestions").
@@ -666,7 +677,7 @@ that gets away, then off again; skipped when the world has no fish banks, as on 
 bottle steps are skipped likewise when there are none) (the market and the storehouse are opened from the quay badge,
 `press_dock`). With the orders off (now): the fair wind locked, a visit to the Temple of
 Eolus (its spirit's talk tapped through) that gives it, then a trip to a village to buy a dish with foreign
-fish (after fishing up a message in a bottle, the other copies gone, reading it: a cross on the chart, and throwing it overboard), back home
+fish (three foreign ones; then the sling's charges: none at first, a pack bought there, a shot spends one) (after fishing up a message in a bottle, the other copies gone, reading it: a cross on the chart, and throwing it overboard), back home
 (a fish left in the storehouse), a new day, the
 logbook shows it, and a tap on the spare sail rigs it. With `ORDERS_ON`: two days of orders (day 1: 3 fish home before
 dinner; day 2: the ordered dish bought at its village, everything brought home and delivered).
