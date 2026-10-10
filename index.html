@@ -130,13 +130,13 @@
   const WHIRL_PULL = 22;             // px/s pull at the edge of the core…
   const WHIRL_CURVE = 4;             // …rising exponentially from ~0 at the rim
   const WHIRL_FADE = 3;              // seconds for a whirlpool to open up / die down
-  const SHARK_ON = knob('SHARK_ON', MAP_DRAWN ? 0 : 1);   // 1 = on, 0 = off (off on the drawn map for now). Sharks: now and then one finds her at sea, follows her, bites the hull and makes off
+  const SHARK_ON = knob('SHARK_ON', 1);   // 1 = on, 0 = off (only on the sides of home in CREATURE_SIDES). Sharks: now and then one finds her at sea, follows her, bites the hull and makes off
   const SHARK_CHANCE = knob('SHARK_CHANCE', 0.6); // the chance of an encounter in each minute she spends at sea, out of home waters (was 0.25)
   const SHARK_COOLDOWN = knob('SHARK_COOLDOWN', 45); // seconds at least between one encounter and the next
   const SHARK_SPEED = knob('SHARK_SPEED', 26); // how fast it swims after her (px/s; was 38; under sail or the wheels she outruns it)
   const SHARK_DAMAGE = knob('SHARK_DAMAGE', 8); // hull damage from a bite
   // the sea imp (like Zelda's Zora): pops out of the water near her, spits a fireball at her, ducks under and pops up elsewhere
-  const ZORA_ON = knob('ZORA_ON', MAP_DRAWN ? 0 : 1);   // 1 = sea imps about, 0 = none (none on the drawn map for now)
+  const ZORA_ON = knob('ZORA_ON', 1);   // 1 = sea imps about, 0 = none (only on the sides of home in CREATURE_SIDES)
   const ZORA_CHANCE = knob('ZORA_CHANCE', 0.5); // the chance of one turning up in each minute at sea, out of home waters
   const ZORA_COOLDOWN = 40;          // seconds at least between one sea imp and the next
   const ZORA_POPS = [3, 5];          // how many times it pops up before it leaves (fewest, most)
@@ -208,6 +208,9 @@
   const SHARK_HP = 3;                // stone hits that weaken a shark; weakened, a net catches it
   const ZORA_HP = 3;                 // stone hits that daze a sea imp; dazed, a net catches it
   const WEAK_TIME = 8;               // seconds a weakened shark (or a dazed imp) stays so, then it makes off
+  const SHARK_PRICE = 12;            // coins any stall pays for a shark caught in a net
+  const ZORA_PRICE = 15;             // …and for a sea imp
+  const CREATURE_SIDES = ['est', 'ovest'];   // where sharks and sea imps turn up: the sides of home (east, west, north 'nord', south 'sud', as the fish); [] = anywhere (world)
   const DISH_PRICE = 6;              // coins per specialty dish
   const DISH_RESALE = 3;             // coins a stall gives for a dish from your hold (any stall takes any dish)
 
@@ -371,6 +374,10 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Sharks and sea imps caught in a net can be sold at any stall (shark 12 coins, sea imp 15) or left in the storehouse at home',
+      'Sharks and sea imps are back, but only east and west of home (where Estolia and Westa are)',
+    ]},
+    {build: '2026-10-10 15:22', items: [
       'Nets for the slingshot: every stall sells a pack of 3 for 9 coins; they stack in one slot of the Cargo, like the stones',
       'Tap the stones or the nets in the Cargo to load them in the slingshot (the loaded one is outlined; a dotted bundle in the pouch means nets)',
       'A net on a fish bank catches its fish; on a shark or a sea imp it slips off, unless it is weakened: 3 stone hits first (it gets dizzy, little stars over it), then the net catches it and it goes in the hold',
@@ -386,11 +393,8 @@
       'Pages 3–4: the day and the Cargo, with bigger slots; your keepsakes (gifts, the fair wind) on page 4 once you have one',
       'Then the wind card, then home\'s look',
     ]},
-    {build: '2026-10-10 12:20', items: [
-      'Fishing: the nets go over only when you drop anchor on a bank (or on a bottle); just stopping on it no longer does',
-    ]},
   ];
-  const BUILD = '2026-10-10 15:22';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-10 15:34';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -2798,6 +2802,7 @@
     if(!shark){
       sharkCool -= dt;
       if(sharkCool > 0 || home || moor || boat.whirl) return;
+      if(CREATURE_SIDES.length && !CREATURE_SIDES.includes(sectorAt(boat.x, boat.y))) return;   // (only east and west of home, for now)
       if(Math.random() > SHARK_CHANCE*dt/60) return;
       const a = rand(0, Math.PI*2), d = 330;
       const x = wrapX(boat.x + Math.cos(a)*d), y = wrapY(boat.y + Math.sin(a)*d);
@@ -2877,6 +2882,7 @@
     if(!zora){
       zoraCool -= dt;
       if(zoraCool > 0 || home || moor || boat.whirl) return;
+      if(CREATURE_SIDES.length && !CREATURE_SIDES.includes(sectorAt(boat.x, boat.y))) return;
       if(Math.random() > ZORA_CHANCE*dt/60) return;
       zora = {pops: ZORA_POPS[0] + Math.floor(Math.random()*(ZORA_POPS[1] - ZORA_POPS[0] + 1)), phase: 'gone', t: 0, wait: 0.3, x: 0, y: 0, seen: false, seed: rand(0, 6.3)};
       return;
@@ -6345,9 +6351,9 @@
   let marketV = null, mkItems = [], mkKey = '';
   // home's storehouse (the same table: the hold on the left, the store on the right; nothing is paid)
   const STORE = {store: true};
-  const homeStore = {fish: {}, dish: {}, bottles: [], sails: START_STORED_SAILS.filter(r=> r !== START_RIG)};
+  const homeStore = {fish: {}, dish: {}, bottles: [], sails: START_STORED_SAILS.filter(r=> r !== START_RIG), catches: {shark: 0, zora: 0}};
   const storeCount = ()=> Object.values(homeStore.fish).reduce((a,n)=> a+n, 0) + Object.values(homeStore.dish).reduce((a,n)=> a+n, 0) + homeStore.bottles.length + homeStore.sails.length;
-  function resetStore(){ homeStore.fish = {}; homeStore.dish = {}; homeStore.bottles = []; homeStore.sails = START_STORED_SAILS.filter(r=> r !== START_RIG); }
+  function resetStore(){ homeStore.fish = {}; homeStore.dish = {}; homeStore.bottles = []; homeStore.sails = START_STORED_SAILS.filter(r=> r !== START_RIG); homeStore.catches = {shark: 0, zora: 0}; }
   function openStore(){ openMarket(STORE); }
   // ---- rowing by hand: the oar button on the right, pressed in rhythm ----
   // Like grinding berries: the first press sets her rowing, slowly (power
@@ -6627,7 +6633,7 @@
   });
   const fishValue = (v, k)=> k===v.own ? COIN_LOCAL : COIN_FOREIGN;
   const fishWorth = (v)=> FISH_KEYS.reduce((a,k)=> a + counts[k]*fishValue(v,k), 0);   // the whole hold, sold here
-  const mkState = (v)=> v.store ? ['store', ...FISH_KEYS.map(k=> counts[k] + ':' + (homeStore.fish[k]||0)), ...ALL_DISHES.map(d=> (dishHold[d.icon]||0) + ':' + (homeStore.dish[d.icon]||0)), bottleHold.length, homeStore.bottles.length, sailsInHold().join(','), homeStore.sails.join(',')].join('|') : [v.name, ...v.dishes.map(d=> dishHold[d.icon]||0), coins, charges, nets, ...FISH_KEYS.map(k=>counts[k])].join('|');
+  const mkState = (v)=> v.store ? ['store', ...FISH_KEYS.map(k=> counts[k] + ':' + (homeStore.fish[k]||0)), ...ALL_DISHES.map(d=> (dishHold[d.icon]||0) + ':' + (homeStore.dish[d.icon]||0)), bottleHold.length, homeStore.bottles.length, sailsInHold().join(','), homeStore.sails.join(','), catches.shark, catches.zora, homeStore.catches.shark, homeStore.catches.zora].join('|') : [v.name, ...v.dishes.map(d=> dishHold[d.icon]||0), coins, charges, nets, catches.shark, catches.zora, ...FISH_KEYS.map(k=>counts[k])].join('|');
   function openMarket(v){
     marketV = v; elMk.classList.remove('hidden');
     document.body.classList.add('at-market');
@@ -6646,11 +6652,13 @@
       homeStore.bottles.forEach((b,i)=> mkItems.push({kind:'bottle', b, ...side('them')}));
       sailsInHold().forEach(rig=> mkItems.push({kind:'sail', rig, ...side('you')}));       // sails can be left here (never sold at a stall)
       homeStore.sails.forEach(rig=> mkItems.push({kind:'sail', rig, ...side('them')}));
+      for(const k of ['shark', 'zora']){ for(let n=0;n<catches[k];n++) mkItems.push({kind:'catch', key:k, ...side('you')}); for(let n=0;n<homeStore.catches[k];n++) mkItems.push({kind:'catch', key:k, ...side('them')}); }
       mkItems.forEach((it,i)=> it.id = i);
       return;
     }
     for(const k of FISH_KEYS) for(let n=0;n<counts[k];n++) mkItems.push({kind:'fish', key:k, origin:'you', side:'you', value: fishValue(v,k)});
-    for(const d of ALL_DISHES) for(let n=0;n<(dishHold[d.icon]||0);n++) mkItems.push({kind:'food', icon:d.icon, name:d.name, origin:'you', side:'you', value: DISH_RESALE});   // dishes aboard: any stall takes them back
+    for(const d of ALL_DISHES) for(let n=0;n<(dishHold[d.icon]||0);n++) mkItems.push({kind:'food', icon:d.icon, name:d.name, origin:'you', side:'you', value: DISH_RESALE});
+    for(const k of ['shark', 'zora']) for(let n=0;n<catches[k];n++) mkItems.push({kind:'catch', key:k, origin:'you', side:'you', value: k === 'shark' ? SHARK_PRICE : ZORA_PRICE});   // what the nets caught sells too   // dishes aboard: any stall takes them back
     v.dishes.forEach((dsh,i)=> mkItems.push({kind:'food', dish:i, icon:dsh.icon, name:dsh.name, origin:'them', side:'them', value: dsh.price}));   // both, every visit
     if(SLING_CHARGES) mkItems.push({kind:'charges', name: fmt(TEXT.oars.pack, {n: CHARGE_PACK}), origin:'them', side:'them', value: CHARGE_PRICE});
     mkItems.push({kind:'nets', name: fmt(TEXT.oars.netPack, {n: NET_PACK}), origin:'them', side:'them', value: NET_PRICE});   // and a pack of nets for it   // every stall sells the sling's charges, a pack at a time
@@ -6665,7 +6673,7 @@
     mkKey = key; stockTable(marketV); drawTable();
   }
   const mkBalance = ()=> mkItems.reduce((a,it)=> a + (it.side===it.origin ? 0 : it.origin==='you' ? it.value : -it.value), 0);
-  const mkSlotsAfter = ()=> mkItems.filter(it=> it.side === 'you' && it.kind !== 'charges' && it.kind !== 'nets').length + (marketV && marketV.store ? 0 : spareSlots() + bottleHold.length + catches.shark + catches.zora
+  const mkSlotsAfter = ()=> mkItems.filter(it=> it.side === 'you' && it.kind !== 'charges' && it.kind !== 'nets').length + (marketV && marketV.store ? 0 : spareSlots() + bottleHold.length
     + (SLING_CHARGES && (charges > 0 || mkItems.some(it=> it.kind === 'charges' && it.side === 'you')) ? 1 : 0)
     + (nets > 0 || mkItems.some(it=> it.kind === 'nets' && it.side === 'you') ? 1 : 0));   // (the charges stack: one slot)   // (at the storehouse the bottles and sails are on the table too)   // what the hold would carry after the trade (the spare sail stays aboard)
   const COIN_SVG = '<svg class="coin" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="var(--paper)" stroke="currentColor" stroke-width="1.4"/><circle cx="6" cy="6" r="2.4" fill="none" stroke="currentColor" stroke-width="1"/></svg>';
@@ -6719,11 +6727,11 @@
   })();
   const itemIcon = (name)=> ITEM_ICONS[name] || FOOD_SVG;
   function unitHTML(it){
-    const ico = it.kind==='sail' ? itemIcon(SAIL_ICON[it.rig]) : it.kind==='charges' ? itemIcon('Charges') : it.kind==='nets' ? itemIcon('Nets') : it.kind==='food' ? itemIcon(it.icon) : it.kind==='bottle' ? itemIcon('Message in a bottle') : document.querySelector('#wood .fish-'+it.key+' svg').outerHTML;
-    const name = it.kind==='sail' ? TEXT.sails[it.rig] : it.kind==='food' || it.kind==='charges' || it.kind==='nets' ? it.name : it.kind==='bottle' ? TEXT.bottles.name : FISH_NAME[it.key].one;
-    const label = it.kind==='food' || it.kind==='charges' || it.kind==='nets' ? '<span class="mk-name">'+name+'</span>' : '';
+    const ico = it.kind==='catch' ? itemIcon(it.key === 'shark' ? 'Shark' : 'Sea imp') : it.kind==='sail' ? itemIcon(SAIL_ICON[it.rig]) : it.kind==='charges' ? itemIcon('Charges') : it.kind==='nets' ? itemIcon('Nets') : it.kind==='food' ? itemIcon(it.icon) : it.kind==='bottle' ? itemIcon('Message in a bottle') : document.querySelector('#wood .fish-'+it.key+' svg').outerHTML;
+    const name = it.kind==='catch' ? TEXT.oars[it.key] : it.kind==='sail' ? TEXT.sails[it.rig] : it.kind==='food' || it.kind==='charges' || it.kind==='nets' ? it.name : it.kind==='bottle' ? TEXT.bottles.name : FISH_NAME[it.key].one;
+    const label = it.kind==='food' || it.kind==='charges' || it.kind==='nets' || it.kind==='catch' ? '<span class="mk-name">'+name+'</span>' : '';
     const priced = it.value !== null;                     // (the storehouse has no prices)
-    return '<div class="mk-unit '+(it.kind==='bottle' || it.kind==='sail' || it.kind==='charges' || it.kind==='nets' ? 'food' : it.kind)+(it.side!==it.origin ? ' moved' : '')+'" data-id="'+it.id+'" data-kind="'+it.kind+'" data-origin="'+it.origin+'" role="button" aria-label="'+name+(priced ? ', '+it.value+(it.value===1 ? ' coin' : ' coins') : '')+'">'
+    return '<div class="mk-unit '+(it.kind==='bottle' || it.kind==='sail' || it.kind==='charges' || it.kind==='nets' || it.kind==='catch' ? 'food' : it.kind)+(it.side!==it.origin ? ' moved' : '')+'" data-id="'+it.id+'" data-kind="'+it.kind+'" data-origin="'+it.origin+'" role="button" aria-label="'+name+(priced ? ', '+it.value+(it.value===1 ? ' coin' : ' coins') : '')+'">'
       + ico + label + (priced ? '<span class="mk-val">'+it.value+COIN_SVG+'</span>' : '') + '</div>';
   }
   function drawTable(){
@@ -6830,6 +6838,7 @@
         if(toStore) stored++; else taken++;
         if(it.kind === 'fish'){ counts[it.key] += toStore ? -1 : 1; homeStore.fish[it.key] = (homeStore.fish[it.key]||0) + (toStore ? 1 : -1); }
         else if(it.kind === 'food'){ dishHold[it.icon] = (dishHold[it.icon]||0) + (toStore ? -1 : 1); homeStore.dish[it.icon] = (homeStore.dish[it.icon]||0) + (toStore ? 1 : -1); }
+        else if(it.kind === 'catch'){ catches[it.key] += toStore ? -1 : 1; homeStore.catches[it.key] += toStore ? 1 : -1; }
         else if(it.kind === 'sail'){ if(toStore) homeStore.sails.push(it.rig); else homeStore.sails.splice(homeStore.sails.indexOf(it.rig), 1); }
         else (toStore ? keep : fetch).push(it.b);
       }
@@ -6850,7 +6859,7 @@
     const got = [];
     for(const it of mkItems){
       if(it.side === it.origin) continue;
-      if(it.origin==='you'){ if(it.kind==='fish') counts[it.key]--; else dishHold[it.icon]--; }   // sold
+      if(it.origin==='you'){ if(it.kind==='fish') counts[it.key]--; else if(it.kind==='catch') catches[it.key]--; else dishHold[it.icon]--; }   // sold
       else if(it.kind === 'charges'){ charges += CHARGE_PACK; got.push(it.name); }
       else if(it.kind === 'nets'){ nets += NET_PACK; got.push(it.name); }   // the sling's charges, into the hold
       else { const d = v.dishes[it.dish]; dishHold[d.icon] = (dishHold[d.icon]||0) + 1; d.boughtEver = true; v.done = true; got.push(it.name); }   // into the hold, for an order

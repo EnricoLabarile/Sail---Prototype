@@ -141,8 +141,9 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   from the first screen): `WHIRL_COUNT`, `BANK_COUNT`, `HOME_BANKS` (but see the banks per square below), `BOTTLE_COUNT` (so no wreck), `OPEN_ROCK_TRIES`,
   `STORM_SHARE`, `WEST_STORM_CLOUDS`, `WEST_WHIRLS`, `BOIL_ON` all 0; no random wild islands (`genIslands` places 0).
   Also off for now, until Enrico decides where they appear: rain clouds (`RAIN_CLOUD_EVERY` 0), traders
-  (`TRADERS_HOME`, `TRADERS_VILLAGES` 0), big waves (`ROLLER_RATE` 0, `SURF_WAVE_CHANCE` 0), sharks (`SHARK_ON` 0) and sea
-  imps (`ZORA_ON` 0). Still there: gulls and plain clouds (only a look; gulls stay for good). Drawn like an island (`drawnIsl`, baked in `ISL_TILE` tiles over the whole
+  (`TRADERS_HOME`, `TRADERS_VILLAGES` 0) and big waves (`ROLLER_RATE` 0, `SURF_WAVE_CHANCE` 0). Sharks and sea imps
+  are on again (`SHARK_ON`, `ZORA_ON` 1) but only east and west of home (`CREATURE_SIDES` ['est', 'ovest'] in Tuning,
+  world: a new one turns up only while she is in one of those `sectorAt` sides; [] = anywhere). Still there: gulls and plain clouds (only a look; gulls stay for good). Drawn like an island (`drawnIsl`, baked in `ISL_TILE` tiles over the whole
   world, `drawDrawnStatic`): water tiles pixel by pixel from the distance (two pale rings of shallows, the shadow
   down-right, a static dashed surf line), land tiles (coast in ink, sand with specks, the scrub's inked edge, scrub with
   darker thickets and pale clearings from a smooth noise, `drawnNoise`) then spurge, trees and tufts made per tile-sized
@@ -326,7 +327,9 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   bundle when nets are loaded (`#sling.net`); `ammoLeft` / `noCharge` follow the loaded kind ("no nets!"). A net flies
   like a stone but drawn as an opening mesh; where it lands (`netLands`, within `NET_REACH` 24 px): a **weakened**
   shark or a **dazed** imp is caught (into the hold, `catches.shark/zora`, a slot each, icons `Shark` / `Sea imp`,
-  thrown overboard like a fish = let go; no room: "no room in the hold for it"); a strong one: "the net slips off"; a
+  thrown overboard like a fish = let go; no room: "no room in the hold for it"; **sold** at any stall, `SHARK_PRICE` 12 /
+  `ZORA_PRICE` 15 coins, as `kind:'catch'` units on the hold's side; **stored** at home like the rest,
+  `homeStore.catches`); a strong one: "the net slips off"; a
   live fish bank: its fish (`catchFish`, the bank scatters); else "the net sinks empty"; a mesh lies spread on the water
   a moment (`NET_SPLASH`). **Health**: a stone hit (`stoneAtShark`, within 14 + 9 × size; `stoneAtZora`) takes one of
   `SHARK_HP` / `ZORA_HP` (3): the shark turns away for 1.3 s (`recoil`) and comes again, the imp ducks under and pops up
