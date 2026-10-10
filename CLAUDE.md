@@ -320,7 +320,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   `CHARGE_PACK` (5) charges for `CHARGE_PRICE` (5) coins (a `kind:'charges'` unit, icon `ITEM_ICONS.Charges`: three stones);
   bought, `charges` += 5. They stack: one hold slot whatever the number (`chargeSlots`, in `slotsUsed` and
   `mkSlotsAfter`), shown in the Cargo after the spare sail with the number on it (`.slot.charges .n`); not sold back, not
-  thrown away. A voyage starts with `START_CHARGES` (0). Each shot of the slingshot spends one (`shootStone`); with none
+  thrown away. A voyage starts with `START_CHARGES` (5). Each shot of the slingshot spends one (`shootStone`); with none
   the sling is greyed (`.nocharge`, its stone gone) and a pull (or Enter) only pops "no charges!" (`noCharge`).
   **Sling nets** (Enrico's idea): a second kind of shot. Every stall also sells a pack of `NET_PACK` (3) for `NET_PRICE`
   (9) coins (`kind:'nets'`, icon `ITEM_ICONS.Nets`); `nets` stack in one slot like the stones (`chargeSlots` counts both
@@ -338,7 +338,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   elsewhere (popup "hit! n more"); the last hit weakens the shark (`mode` 'weak': drifting at 0.22 × speed, no bite) or
   dazes the imp (`phase` 'dazed': up, bobbing, no fireball) for `WEAK_TIME` (8 s), three little stars going round over
   it (`dizzy`), then it recovers and makes off. (The old near-miss scare of the shark, `SLING_SCARE_R`, and the imp
-  diving away for good at one stone are gone.) A new voyage: `START_NETS` (0), stones loaded, no catches.
+  diving away for good at one stone are gone.) A new voyage: `START_NETS` (5), stones loaded, no catches.
   "Trade" is disabled if the purse can't cover a negative balance; a positive balance goes to the purse.
   Repairs are free and automatic at any pier (+15 hull every half second, the hold is never touched); making them a
   cost the player has to think about is planned for later (see the TickTick list "Vento e Vele: playtest suggestions").
@@ -513,13 +513,13 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   surges or kicks), and the spring runs down over `SPRING_TIME` (15 s; was 30) of driving; otherwise it rests. `updateSpring`
   (called by `updateOarCtl`) also turns the wheels (`oarRate`, 1.4 × `OAR_RATE` × `SPRING_SPEED`/14); the steady churn (`Sfx.rowBed`) is
   silent in this mode: instead `drawBoat` plays `Sfx.paddle` (a low lowpassed splash and a 105→62 Hz thud, loudness
-  `PADDLE_VOL` 3.6 × `oarSpin`) every other paddle that comes round (four a turn of `B.wheelA`; it was eight), so the sound follows the wheels; freewheeling under sail (no spring drive, her speed > 3 px/s, and not while the crank is being turned, so its clicks always sound the same) the same splash plays at half the volume, same pitch (`PADDLE_FREE_VOL` 0.5 × `PADDLE_VOL`, `PADDLE_FREE_PITCH` 1, Tuning; it was 0.22 × a fade-in with her speed and 0.7 pitch, too faint to hear);
+  `PADDLE_VOL` 1.8 × `oarSpin` (was 3.6)) every other paddle that comes round (four a turn of `B.wheelA`; it was eight), so the sound follows the wheels; freewheeling under sail (no spring drive, her speed > 3 px/s, and not while the crank is being turned, so its clicks always sound the same) the same splash plays at half the volume, same pitch (`PADDLE_FREE_VOL` 0.5 × `PADDLE_VOL`, `PADDLE_FREE_PITCH` 1, Tuning; it was 0.22 × a fade-in with her speed and 0.7 pitch, too faint to hear);
   when the spring runs down `Sfx.springOff` (the gear's last links slowing, a slack clunk). A new voyage starts with it empty.
   **The slingshot** (`SLING_ON`, `#sling`, section in the code before `updateSpring`; text `TEXT.oars.sling`): a wooden
   Y fork on the right, above the crank (64×80, `bottom` 100 px; it was 150 tall), its bands (ink over a paper edge, so they read over the
   wood) from the prongs' tips to a dotted pouch with a stone; dragging the pouch down stretches them (`slingPull` 0..1 over
   `SLING_MAX` 48 drawing units; a tick and a buzz each quarter); let go (pull > 0.12; Enter/Space a full shot) and
-  `shootStone` throws a big stone (5.5 px) from the bow straight ahead, `SLING_RANGE` [20, 80] px (was [25, 115], before that [40, 230]) by the pull; **while pulling, a dashed ring** (paper under ink, a dot in the middle) on the sea where it will land, as wide as what it can hit (14 px for a stone, `NET_REACH` for a net; drawn in `drawStones`, with a dotted line to it from the bow); **sideways aim**: sliding the thumb left or right while pulling turns the shot up to `SLING_AIM_DEG` (10°) off the bow either way (`slingAim` −1..1 over `SLING_AIM_SPAN` 22 drawing units; `slingTarget(k, aim)` gives both the ring and the shot; the pouch and bands follow the thumb sideways); **impact**: where a stone hits the water, a burst of twelve paper-and-ink streaks and a flash of foam (first 0.4 s) and a wide dashed ring of churned foam spreading out, on top of the old splash (`stoneSplash`, in `drawStones`), flying 0.45–0.95 s in an
+  `shootStone` throws a big stone (5.5 px) from the bow straight ahead, `SLING_RANGE` [20, 80] px (was [25, 115], before that [40, 230]) by the pull; **while pulling, a dashed ring** (paper under ink, a dot in the middle) on the sea where it will land, as wide as what it can hit (14 px for a stone, `NET_REACH` for a net; drawn in `drawStones`, with a dotted line to it from the bow); a sideways aim (thumb left/right, ±10°) was tried and dropped: shots go straight ahead; **impact**: where a stone hits the water, a burst of twelve paper-and-ink streaks and a flash of foam (first 0.4 s) and a wide dashed ring of churned foam spreading out, on top of the old splash (`stoneSplash`, in `drawStones`), flying 0.45–0.95 s in an
   arc (`stones`, drawn by `drawStones` with a shadow on the water), a thunk and a buzz; it lands with a big splash, a crown of paper lumps thrown up, ten drops arcing out and
   falling back, two wide rings, 1.3 s (`stoneSplash`, `Sfx.splash` + a thunk) or a clack on a shore; one within `SLING_SCARE_R` (60) of the shark sends it off
   (`mode` 'flee', popup `TEXT.popups.sharkScared`). The pouch is empty for `SLING_RELOAD` (0.9 s). Hidden at the market,

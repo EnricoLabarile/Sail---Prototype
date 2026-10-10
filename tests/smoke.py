@@ -134,26 +134,26 @@ def reel(pg):
     pg.evaluate('__d.setReel(false)')
 
 def charges(pg):
-    # the sling needs charges: none at first (a pull does nothing), a pack of 5 bought at the stall, one spent a shot
-    assert pg.evaluate('__d.charges') == 0, 'charges aboard at the start'
+    # the sling needs charges: 5 stones and 5 nets at first, a pack of 5 bought at the stall, one spent a shot
+    assert pg.evaluate('__d.charges') == 5 and pg.evaluate('__d.nets') == 5, 'not 5 stones and 5 nets at the start'
     pg.evaluate("__d.coinsAdd(14)")
     dock_at(pg, 'd.VILLAGES[0].pier')
     press_dock(pg); pg.wait_for_timeout(300)
     pg.click('#mk-them-items .mk-unit[data-kind=charges]'); pg.wait_for_timeout(50)
     pg.click('#mk-them-items .mk-unit[data-kind=nets]'); pg.wait_for_timeout(50)       # and a pack of nets
     pg.click('#mk-deal'); pg.wait_for_timeout(200)
-    assert pg.evaluate('__d.charges') == 5, 'the pack of charges was not bought'
-    assert pg.evaluate('__d.nets') == 3, 'the pack of nets was not bought'
+    assert pg.evaluate('__d.charges') == 10, 'the pack of charges was not bought'
+    assert pg.evaluate('__d.nets') == 8, 'the pack of nets was not bought'
     # bought today: still on the stall, greyed out; a tap says it's out of stock
     press_dock(pg); pg.wait_for_timeout(300)
     assert pg.evaluate("document.querySelector('#mk-them-items .mk-unit[data-kind=charges]').classList.contains('out')"), 'the charges bought are not out of stock'
     pg.click('#mk-them-items .mk-unit[data-kind=charges]'); pg.wait_for_timeout(50)
     assert 'out of stock' in pg.inner_text('#mk-text'), 'no out-of-stock note'
-    assert pg.evaluate("[...document.querySelectorAll('#mk-them-items .mk-unit[data-kind=charges]')].every(u=>u.dataset.origin==='them')") and pg.evaluate('__d.charges') == 5
+    assert pg.evaluate("[...document.querySelectorAll('#mk-them-items .mk-unit[data-kind=charges]')].every(u=>u.dataset.origin==='them')") and pg.evaluate('__d.charges') == 10
     pg.click('#mk-quit'); pg.wait_for_timeout(200)
     leave(pg)
     pg.focus('#sling'); pg.keyboard.press('Enter'); pg.wait_for_timeout(1100)
-    assert pg.evaluate('__d.charges') == 4, 'a shot did not spend a charge'
+    assert pg.evaluate('__d.charges') == 9, 'a shot did not spend a charge'
     # a tap on the nets in the Cargo loads them in the slingshot; a shot then spends a net
     pg.click('#btn-list', force=True); pg.wait_for_timeout(900)
     pg.evaluate('__d.toSpread(1)'); pg.wait_for_timeout(600)
@@ -161,7 +161,7 @@ def charges(pg):
     assert pg.evaluate('__d.ammo') == 'net', 'the nets were not loaded'
     pg.click('#btn-list', force=True); pg.wait_for_timeout(700)
     pg.focus('#sling'); pg.keyboard.press('Enter'); pg.wait_for_timeout(1100)
-    assert pg.evaluate('__d.nets') == 2 and pg.evaluate('__d.charges') == 4, 'a net shot did not spend a net'
+    assert pg.evaluate('__d.nets') == 7 and pg.evaluate('__d.charges') == 9, 'a net shot did not spend a net'
 
 def creatures(pg):
     # a sea imp: 3 s of ripples where it will come up, then it shows; it leaves only when she sails out of its area
