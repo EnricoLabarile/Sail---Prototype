@@ -42,6 +42,7 @@
   const DRAWN_BOIL = [[2581, 3443], [2781, 3269], [2992, 3132], [3192, 3022], [4245, 3016], [4772, 3080], [5040, 3080], [5040, 5040], [2581, 5040]];
   // destructible obstacles (the hatched bars on the map): driftwood jammed across a channel, from shore to shore (x0, y0, x1, y1); a few slingshot shots break them up (world)
   const DRAWN_DEBRIS = {H1: [4124, 76, 4282, 76], C3: [1717, 1204, 1911, 1135], B5: [937, 2295, 1116, 2374], D5: [2233, 2363, 2391, 2426], E5: [2707, 2542, 2960, 2542], F4: [3350, 1715, 3350, 1952], H2: [4098, 1030, 4098, 1257]};
+  const DEBRIS_ON = false;          // the driftwood jams (DRAWN_DEBRIS) are in the world: off for now (the channels are open)
   const DEBRIS_W = 80;               // how thick a driftwood jam is (px across the channel's way)
   const DEBRIS_HP = 3;               // slingshot shots to break one up (a shot counts once, however many of its stones land on it)
   const MONSTER_SQUARES = ['A6', 'B6', 'C6', 'D6', 'A7', 'B7', 'C7', 'D7', 'A8', 'B8', 'C8', 'D8', 'A9', 'B9', 'C9', 'D9'];   // "Mare Monstrum" on the drawn map: sharks and sea imps turn up only in these squares (instead of CREATURE_SIDES) (world)
@@ -60,7 +61,7 @@
   const SPRING_PADDLES = true;       // the paddle wheels run off a wound spring: turn the crank (clockwise) to charge it, then they drive her on their own until it runs down; false = the old rhythmic oar button
   const SPRING_TURNS = 1;            // full turns of the crank, in one go, that wind the spring right up (let go before and the winding is lost: start again)
   const SPRING_TIME = 15;            // seconds the wheels can drive her on a full spring (it only runs down while they're driving; was 30)
-  const PADDLE_VOL = 1.8;            // loudness of the paddles slapping into the water as the spring drives the wheels (one low splash a paddle; 0 = silent; was 3.6, before that 1.8); freewheeling under sail is × PADDLE_FREE_VOL of it
+  const PADDLE_VOL = 1.3;            // loudness of the paddles dipping into the water as the spring drives the wheels (one low, soft splash a paddle; 0 = silent; was 1.8, before that 3.6); freewheeling under sail is × PADDLE_FREE_VOL of it
   const STEAM_ON = true;             // steam puffing from a little funnel amidships: thick while the spring drives the paddle wheels, a faint wisp while they only freewheel under way
   const STEAM_RATE = 9;              // puffs a second while the wheels drive her (× how hard they drive)
   const STEAM_IDLE = 0.18;           // …while she moves and the wheels only freewheel: this share of the puffs…
@@ -216,10 +217,10 @@
   const SLING_CHARGES = true;        // the slingshot needs a charge for each shot (they stack in the hold: one slot whatever the number)
   const CHARGE_PACK = 5;             // charges in a pack, as every stall sells them
   const CHARGE_PRICE = 5;            // coins a pack
-  const START_CHARGES = 5;           // charges (stones) aboard when a voyage starts (was 0)
+  const START_CHARGES = 20;          // charges (stones) aboard when a voyage starts (was 5)
   const NET_PACK = 3;                // net shots for the slingshot in a pack, as every stall sells them (a net catches what it lands on)
   const NET_PRICE = 5;               // coins a pack of nets (was 9)
-  const START_NETS = 5;              // nets aboard when a voyage starts (was 0)
+  const START_NETS = 20;             // nets aboard when a voyage starts (was 5)
   const NET_REACH = 24;              // px round the spot where a net lands that it catches in
   const SHARK_HP = 3;                // stone hits that weaken a shark; weakened, a net catches it
   const ZORA_HP = 3;                 // stone hits that daze a sea imp; dazed, a net catches it
@@ -390,6 +391,11 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'A voyage starts with 20 stones and 20 nets for the slingshot',
+      'The driftwood jams are gone for now: the channels are open',
+      'The paddles\' patter is softer, lower and a little quieter',
+    ]},
+    {build: '2026-10-10 19:56', items: [
       'Whirlpools pull twice as hard',
       'Nets for the slingshot: a pack of 3 now costs 5 coins',
       'Fish sell for 2 coins (local kind) to 4 (from other waters)',
@@ -406,11 +412,8 @@
       'Pull the pouch down far enough and it shoots by itself; let go before and nothing happens. The pull no longer sets the distance',
       'While you pull, the cone (or the net\'s ring) shows on the sea, firmer as you near the shot',
     ]},
-    {build: '2026-10-10 17:18', items: [
-      'Fishing is automatic: the reel minigame is switched off (and its setting is gone); drop anchor on a bank and the net hauls it in',
-    ]},
   ];
-  const BUILD = '2026-10-10 19:56';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-10 20:09';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -3383,7 +3386,7 @@
   function makeDebris(){
     for(const d of debris) for(const o of d.solid){ rockGrid.remove(o); const k = rocks.indexOf(o); if(k >= 0) rocks.splice(k, 1); }
     debris.length = 0;
-    if(!MAP_DRAWN) return;
+    if(!MAP_DRAWN || !DEBRIS_ON) return;
     for(const key in DRAWN_DEBRIS){
       const [x0, y0, x1, y1] = DRAWN_DEBRIS[key], L = Math.hypot(x1 - x0, y1 - y0), ux = (x1 - x0)/L, uy = (y1 - y0)/L;
       const d = {key, x: (x0 + x1)/2, y: (y0 + y1)/2, a: Math.atan2(uy, ux), L: L + 40, hp: DEBRIS_HP, gone: false, fade: 0, shake: 0, seen: false, solid: [], logs: []};
@@ -4215,17 +4218,18 @@
       const og = ac.createGain(); og.gain.setValueAtTime(0.0001, at); og.gain.exponentialRampToValueAtTime(0.025*k, at+0.002); og.gain.exponentialRampToValueAtTime(0.0001, at+0.03);
       o.connect(og); og.connect(master); o.start(at); o.stop(at+0.04);
     }
-    // a paddle of the wheels slapping into the water: a low, short splash and a soft thud (all low: no bright spray)
+    // a paddle of the wheels dipping into the water: a low, soft splash and a soft thud (all low: no bright spray; softer
+    // and lower than before: slower attacks, the splash low-passed at 340→120 Hz, the thud 75→48 Hz)
     function paddle(k, pitch = 1){
       if(!ac || ac.state!=='running' || !(k > 0)) return;
       const t0 = ac.currentTime;
       const s1 = ac.createBufferSource(); s1.buffer = noise;
-      const lp = ac.createBiquadFilter(); lp.type='lowpass'; lp.frequency.setValueAtTime(520*pitch*(0.9 + Math.random()*0.2), t0); lp.frequency.exponentialRampToValueAtTime(180*pitch, t0+0.14);
-      const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.13*k, t0+0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0+0.16);
+      const lp = ac.createBiquadFilter(); lp.type='lowpass'; lp.frequency.setValueAtTime(340*pitch*(0.9 + Math.random()*0.2), t0); lp.frequency.exponentialRampToValueAtTime(120*pitch, t0+0.16);
+      const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.13*k, t0+0.035); g.gain.exponentialRampToValueAtTime(0.0001, t0+0.2);
       s1.connect(lp); lp.connect(g); g.connect(master); s1.start(t0, Math.random()*0.5, 0.18);
-      const o = ac.createOscillator(); o.type='sine'; o.frequency.setValueAtTime(105*pitch, t0); o.frequency.exponentialRampToValueAtTime(62*pitch, t0+0.09);
-      const og = ac.createGain(); og.gain.setValueAtTime(0.0001, t0); og.gain.exponentialRampToValueAtTime(0.07*k, t0+0.006); og.gain.exponentialRampToValueAtTime(0.0001, t0+0.1);
-      o.connect(og); og.connect(master); o.start(t0); o.stop(t0+0.11);
+      const o = ac.createOscillator(); o.type='sine'; o.frequency.setValueAtTime(75*pitch, t0); o.frequency.exponentialRampToValueAtTime(48*pitch, t0+0.11);
+      const og = ac.createGain(); og.gain.setValueAtTime(0.0001, t0); og.gain.exponentialRampToValueAtTime(0.06*k, t0+0.025); og.gain.exponentialRampToValueAtTime(0.0001, t0+0.14);
+      o.connect(og); og.connect(master); o.start(t0); o.stop(t0+0.15);
     }
     // the spring run down: the wheels let go, a slack clunk of the gear and a short, falling whirr of the last turns
     function springOff(k){
