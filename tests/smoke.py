@@ -59,12 +59,12 @@ def main():
 ORDERS = None
 
 def buy_dish(pg, k, name, icon):
-    # four foreign fish to pay with (2 coins each, a dish costs 6: three of them)
+    # four foreign fish to pay with (4 coins each, a dish costs 6: three of them)
     pg.evaluate(f"""()=>{{const v=__d.VILLAGES[{k}]; const other=['sarde','sgombri','triglie','orate'].find(x=>x!==v.own); __d.counts[other]+=4;}}""")
     dock_at(pg, f'd.VILLAGES[{k}].pier')
     press_dock(pg); pg.wait_for_timeout(300)               # the coins badge over the quay opens the market
     for _ in range(3):                                     # (foreign fish: a catch of the local kind is worth less)
-        pg.click('#mk-you-items .mk-unit[data-kind=fish][aria-label$=", 2 coins"]'); pg.wait_for_timeout(50)
+        pg.click('#mk-you-items .mk-unit[data-kind=fish][aria-label$=", 4 coins"]'); pg.wait_for_timeout(50)
     pg.click(f'#mk-them-items .mk-unit[data-kind=food][aria-label^="{name},"]'); pg.wait_for_timeout(50)
     pg.click('#mk-deal'); pg.wait_for_timeout(200)
     assert pg.evaluate(f"__d.dishHold[{icon!r}]") >= 1, f"{name} not in the hold"

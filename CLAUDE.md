@@ -332,7 +332,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   middle (24–46 px from the boat, flying out in a small arc as it opens; `netPos`) and hauled back to the boat.
   **Market = barter table** (left: your hold, every fish and dish a unit; right: the stall: both dishes, every visit; no fish for sale).
   The top of the market panel shows how to trade (`TEXT.market.tip`), not the merchant's flavour line.
-  Drag or tap units across; balance = fish sold − goods taken. Fish sell for coins: 2 if from other waters (`COIN_FOREIGN`, was 3), 1 if local (`COIN_LOCAL`): 3 foreign fish buy a dish (Enrico: a fish sells for 1 to 2).
+  Drag or tap units across; balance = fish sold − goods taken. Fish sell for coins: 4 if from other waters (`COIN_FOREIGN`, was 2, before that 3), 2 if local (`COIN_LOCAL`, was 1) (Enrico: a fish sells for 2 to 4).
   **Sling charges** (`SLING_CHARGES`; texts `TEXT.oars.pack/noCharges/chargesLeft`): every stall also has a pack of
   `CHARGE_PACK` (5) charges for `CHARGE_PRICE` (5) coins (a `kind:'charges'` unit, icon `ITEM_ICONS.Charges`: three stones);
   bought, `charges` += 5. They stack: one hold slot whatever the number (`chargeSlots`, in `slotsUsed` and
@@ -340,7 +340,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   thrown away. A voyage starts with `START_CHARGES` (5). Each shot of the slingshot spends one (`shootStone`); with none
   the sling is greyed (`.nocharge`, its stone gone) and a pull (or Enter) only pops "no charges!" (`noCharge`).
   **Sling nets** (Enrico's idea): a second kind of shot. Every stall also sells a pack of `NET_PACK` (3) for `NET_PRICE`
-  (9) coins (`kind:'nets'`, icon `ITEM_ICONS.Nets`); `nets` stack in one slot like the stones (`chargeSlots` counts both
+  (5; was 9) coins (`kind:'nets'`, icon `ITEM_ICONS.Nets`); `nets` stack in one slot like the stones (`chargeSlots` counts both
   stacks). **Which is loaded**: `slingAmmo` 'stone' / 'net', set by tapping its slot in the Cargo (`data-ammo`, the
   loaded one outlined, `.slot.loaded`; a toast `TEXT.oars.loadedStones/loadedNets`); the sling's pouch shows a dotted
   bundle when nets are loaded (`#sling.net`); `ammoLeft` / `noCharge` follow the loaded kind ("no nets!"). A net flies
@@ -642,7 +642,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   least `ROCK_GAP` 64 px of water between them, about twice the boat's length, so she never gets stuck in a slot:
   `tooTight`, `shoreTight` in `tryRock`; this left ~555
   rocks instead of ~760 and no tight pairs instead of ~930. **Sizes** vary: `rockSize`, a share `ROCK_BIG` 0.4 drawn
-  bigger, up to `ROCK_BIG_MAX` 2.2 ×), whirlpools (appear/disappear/wander; outer ring 120–155 px × `WHIRL_OUTER` (2: doubled), the core 30–40; from day 1, `WHIRL_FROM_DAY` = 1; **they creep after her** while she's within `WHIRL_FOLLOW` (2) × their radius, at `WHIRL_FOLLOW_SPEED` (7 px/s), never out of open water (`whirlWaterOK`); **once one catches her** in its core it's set to fade out (`phase` 'out', held until she's flung); drawn as flowing water (`drawWhirlpool`): `WP_ARMS` broad pale arms winding in and curved foam streaks along a tighter spiral (C 1.6), each a smooth curve in three segments swelling in the middle, wobbling a little; **slingshot**:
+  bigger, up to `ROCK_BIG_MAX` 2.2 ×), whirlpools (pull toward the eye `WHIRL_PULL` 44 px/s at the core's edge, doubled from 22; appear/disappear/wander; outer ring 120–155 px × `WHIRL_OUTER` (2: doubled), the core 30–40; from day 1, `WHIRL_FROM_DAY` = 1; **they creep after her** while she's within `WHIRL_FOLLOW` (2) × their radius, at `WHIRL_FOLLOW_SPEED` (7 px/s), never out of open water (`whirlWaterOK`); **once one catches her** in its core it's set to fade out (`phase` 'out', held until she's flung); drawn as flowing water (`drawWhirlpool`): `WP_ARMS` broad pale arms winding in and curved foam streaks along a tighter spiral (C 1.6), each a smooth curve in three segments swelling in the middle, wobbling a little; **slingshot**:
   running round a whirlpool's outer ring with its swirl, heading within ~37° of the way it turns (`WHIRL_FLING_COS`),
   she gains speed, `WHIRL_FLING` px/s² × how well she follows it × how deep in she is (0.35 at the rim → 1 at the core),
   up to `WHIRL_FLING_MAX` above her normal speed, fading once she's out; once a pass a whoosh, a buzz and a "flung!"

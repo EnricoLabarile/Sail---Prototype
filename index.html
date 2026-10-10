@@ -139,7 +139,7 @@
   const WHIRL_COUNT = knob('WHIRL_COUNT', MAP_DRAWN ? 0 : Math.round(200*WK2));   // whirlpools in the world (none on the drawn map) (world)
   const WHIRL_FROM_DAY = 1;          // whirlpools start opening from this day (1 = from the start; was 2, a calm first day)
   const WHIRL_DAMAGE = 10;           // hull damage when caught in a whirlpool's core
-  const WHIRL_PULL = 22;             // px/s pull at the edge of the core…
+  const WHIRL_PULL = 44;             // px/s pull at the edge of the core (was 22: doubled)…
   const WHIRL_CURVE = 4;             // …rising exponentially from ~0 at the rim
   const WHIRL_FADE = 3;              // seconds for a whirlpool to open up / die down
   const WHIRL_OUTER = 2;             // the outer ring (the pull) of every whirlpool, × its old radius of 120–155 px (was 1); the core where she's caught stays 30–40
@@ -209,8 +209,8 @@
   const REEL_DRAIN = 0.15;           // …and lost per second with it out (empty: it gets away)
   const REEL_START = 0.35;           // the meter at the bite
   const REEL_FISH = {sarde: 0.6, sgombri: 0.8, triglie: 1, orate: 1.3};   // how wild each kind is (1 = middling): darts quicker and farther
-  const COIN_LOCAL = 1;              // a village pays this for its own kind of fish
-  const COIN_FOREIGN = 2;            // …and this for fish from other waters (a fish sells for 1 to 2 coins; was 3)
+  const COIN_LOCAL = 2;              // a village pays this for its own kind of fish (was 1)
+  const COIN_FOREIGN = 4;            // …and this for fish from other waters (a fish sells for 2 to 4 coins; was 2, before that 3)
   const BANKS_PER_TILE = 1;          // drawn map: fish banks in each square of the map (A1…I9), anywhere at sea in it (world; was 2)
   const BANK_REGEN_DAYS = 2;         // drawn map: the banks fished come back every this many days, at first light (2 = every other day)
   const SLING_CHARGES = true;        // the slingshot needs a charge for each shot (they stack in the hold: one slot whatever the number)
@@ -218,7 +218,7 @@
   const CHARGE_PRICE = 5;            // coins a pack
   const START_CHARGES = 5;           // charges (stones) aboard when a voyage starts (was 0)
   const NET_PACK = 3;                // net shots for the slingshot in a pack, as every stall sells them (a net catches what it lands on)
-  const NET_PRICE = 9;               // coins a pack of nets (dearer than stones: 3 a shot against 1)
+  const NET_PRICE = 5;               // coins a pack of nets (was 9)
   const START_NETS = 5;              // nets aboard when a voyage starts (was 0)
   const NET_REACH = 24;              // px round the spot where a net lands that it catches in
   const SHARK_HP = 3;                // stone hits that weaken a shark; weakened, a net catches it
@@ -390,6 +390,11 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Whirlpools pull twice as hard',
+      'Nets for the slingshot: a pack of 3 now costs 5 coins',
+      'Fish sell for 2 coins (local kind) to 4 (from other waters)',
+    ]},
+    {build: '2026-10-10 19:17', items: [
       'New map (your fourth drawing): new coasts, same four villages',
       'Driftwood jams (the hatched bars) block 7 channels: 3 slingshot shots break one up and the way is open',
       'The two whirlpools you drew (D2, B3) are there, always open and still',
@@ -404,13 +409,8 @@
     {build: '2026-10-10 17:18', items: [
       'Fishing is automatic: the reel minigame is switched off (and its setting is gone); drop anchor on a bank and the net hauls it in',
     ]},
-    {build: '2026-10-10 17:17', items: [
-      'Slingshot: straight ahead only again (no left/right aim)',
-      'Paddles quieter (half as loud)',
-      'A voyage starts with 5 stones and 5 nets for the slingshot',
-    ]},
   ];
-  const BUILD = '2026-10-10 19:17';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-10 19:56';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
