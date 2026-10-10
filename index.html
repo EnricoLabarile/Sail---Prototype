@@ -65,6 +65,8 @@
   const STEAM_ON = true;             // steam puffing from a little funnel amidships: thick while the spring drives the paddle wheels, a faint wisp while they only freewheel under way
   const STEAM_RATE = 9;              // puffs a second while the wheels drive her (× how hard they drive)
   const STEAM_IDLE = 0.18;           // …while she moves and the wheels only freewheel: this share of the puffs…
+  const STEAM_ALPHA = 0.45;          // how see-through the steam is (1 = solid; was 1)
+  const STEAM_LIFE = 0.55;           // how long a puff lasts, so how long the plume trails (× the old 2–2.8 s; was 1)
   const STEAM_LIGHT = 0.45;          // …each this much as big and as white (1 = like the driving steam)
   const PADDLE_FREE_VOL = 0.5;       // …and when they only freewheel under sail (dragged round by the water): the same splash at this share of it (× PADDLE_VOL; was 0.22, fading in with her speed)…
   const PADDLE_FREE_PITCH = 1;       // …and this pitch (1 = the same as when driven; was 0.7)
@@ -391,6 +393,11 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'No sail rigged: no mast either',
+      'The steam is see-through and its plume shorter',
+      'Top left, under the hull bar: the paddles\' charge (the crank\'s spring)',
+    ]},
+    {build: '2026-10-10 21:41', items: [
       'No sail at the start: both sails wait in the storehouse at home; you get about with the crank (the paddle wheels)',
     ]},
     {build: '2026-10-10 20:27', items: [
@@ -401,13 +408,8 @@
       'The driftwood jams are gone for now: the channels are open',
       'The paddles\' patter is softer, lower and a little quieter',
     ]},
-    {build: '2026-10-10 19:56', items: [
-      'Whirlpools pull twice as hard',
-      'Nets for the slingshot: a pack of 3 now costs 5 coins',
-      'Fish sell for 2 coins (local kind) to 4 (from other waters)',
-    ]},
   ];
-  const BUILD = '2026-10-10 21:41';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-10 21:52';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -679,7 +681,7 @@
       stats: 'You sailed for {min} min {sec} s and caught {fish} fish.',
     },
     restart: 'Set sail again',
-    hud: { hull: 'Hull' },
+    hud: { hull: 'Hull', spring: 'Paddles' },   // the bars top left: the hull, the paddles' charge (the crank's spring)
   };
   // fill the {braces} of a text
   const fmt = (s, o)=> s.replace(/\{(\w+)\}/g, (m, k)=> (o && k in o) ? o[k] : m);
@@ -745,9 +747,9 @@
     position:fixed;
     top:calc(12px + env(safe-area-inset-top,0px));
     left:12px;
-    display:flex;
-    align-items:center;
-    gap:14px;
+    display:flex; flex-direction:column;
+    align-items:stretch;
+    gap:3px;
     padding:4px 9px;
     font-size:15px;
     z-index:5;
@@ -999,7 +1001,9 @@
   .hp-fill{height:100%; width:100%; background:var(--ink);}
   #status.low .hp-fill{animation:blink .6s steps(2) infinite;}
   @keyframes blink{50%{opacity:0;}}
-  #hp-num{min-width:24px; text-align:right; font-variant-numeric:tabular-nums;}
+  .hp .hp-label{min-width:52px;}   /* (the two bars line up) */
+  #sp-fill{width:0;}
+  #hp-num, #sp-num{min-width:24px; text-align:right; font-variant-numeric:tabular-nums;}
   .res-item{display:flex; align-items:center; gap:6px;}
   .log-ico{width:22px; height:12px;}
 
@@ -1393,6 +1397,11 @@
       <div class="hp-track"><div class="hp-fill" id="hp-fill"></div></div>
       <span id="hp-num">100</span>
     </div>
+    <div class="hp sp" role="meter" aria-label="Paddles' charge" aria-valuemin="0" aria-valuemax="100" id="sp-meter">
+      <span class="hp-label sp-label">Paddles</span>
+      <div class="hp-track"><div class="hp-fill" id="sp-fill"></div></div>
+      <span id="sp-num">0</span>
+    </div>
   </div>
 
   <div id="mood" class="panel" role="meter" aria-label="Guests' mood" aria-valuemin="0" aria-valuemax="100">
@@ -1548,7 +1557,7 @@
     set('#intro-lead', TEXT.intro.lead); set('#intro-after', TEXT.intro.after); set('#start-btn', TEXT.intro.start);
     const ul = document.getElementById('intro-courses'); if(ul) ul.remove();     // (the orders change every day: no fixed list)
     set('#restart-btn', TEXT.restart); set('#mk-you-label', TEXT.market.yourHold); set('#mk-them-label', TEXT.market.stall);
-    set('#mk-quit', TEXT.market.quit); set('#mk-deal', TEXT.market.trade); set('.hp-label', TEXT.hud.hull);
+    set('#mk-quit', TEXT.market.quit); set('#mk-deal', TEXT.market.trade); set('.hp-label', TEXT.hud.hull); set('.sp-label', TEXT.hud.spring);
   })();
 
 
@@ -5639,6 +5648,8 @@
   let moodShown = -1;
   function showHealth(){ healthShowT = HEALTH_SHOW; }
   const elHpFill = document.getElementById('hp-fill');
+  const elSpFill = document.getElementById('sp-fill'), elSpNum = document.getElementById('sp-num'), elSpMeter = document.getElementById('sp-meter');
+  let lastSp = -1;
   const elHpNum = document.getElementById('hp-num');
   const elHpMeter = document.getElementById('hp-meter');
 
@@ -8316,7 +8327,7 @@
       while(steamAcc > 1){
         steamAcc -= 1;
         steam.push({x: boat.x - ca*4 + rand(-0.6, 0.6), y: boat.y - sa*4 + rand(-0.6, 0.6), z: 10, vz: rand(12, 18)*(0.6 + 0.4*k),
-                    r: rand(1.4, 2)*(0.5 + 0.8*k), a: Math.min(1, 0.35 + 0.75*k), life: 0, max: rand(2, 2.8)*(0.55 + 0.6*k), seed: Math.random()*6.3});
+                    r: rand(1.4, 2)*(0.5 + 0.8*k), a: Math.min(1, 0.35 + 0.75*k), life: 0, max: rand(2, 2.8)*(0.55 + 0.6*k)*STEAM_LIFE, seed: Math.random()*6.3});
       }
       const dw = windAngle + boat.windOff + Math.PI, wx = Math.cos(dw)*windStrength*14, wy = Math.sin(dw)*windStrength*14;
       for(let i=steam.length-1;i>=0;i--){
@@ -8434,6 +8445,8 @@
       elStatus.classList.toggle('low', hp<=25);
       elHpMeter.setAttribute('aria-valuenow', hp);
     }
+    // the paddles' charge (the crank's spring), under the hull bar
+    { const sp = Math.ceil(spring*100); if(sp !== lastSp){ lastSp = sp; elSpFill.style.width = sp + '%'; elSpNum.textContent = sp; elSpMeter.setAttribute('aria-valuenow', sp); } }
     elStatus.classList.toggle('hurt', hurtFlash>0);
     // the guests' mood bar: written only when it changes
     {
@@ -10341,10 +10354,10 @@
       else for(let m=0;m<3;m++){ const a = f.seed + m*2.1, d = r*0.7, rr = r*0.45*(1 - q)/0.38 + 0.4;
         wisps.moveTo(f.x + Math.cos(a)*d + rr, y + Math.sin(a)*d); wisps.arc(f.x + Math.cos(a)*d, y + Math.sin(a)*d, rr, 0, Math.PI*2); }
     }
-    ctx.globalAlpha = 0.8; ctx.fillStyle = V(0.6); ctx.fill(wisps);                       // dissolving: dotted grey wisps
+    ctx.globalAlpha = 0.8*STEAM_ALPHA; ctx.fillStyle = V(0.6); ctx.fill(wisps);           // dissolving: dotted grey wisps
     for(const [path, n, al] of groups){
       if(!n) continue;
-      ctx.globalAlpha = al; ctx.strokeStyle = INKC; ctx.lineWidth = 1.6; ctx.stroke(path);   // the outline round the whole plume
+      ctx.globalAlpha = al*STEAM_ALPHA; ctx.strokeStyle = INKC; ctx.lineWidth = 1.6; ctx.stroke(path);   // the outline round the whole plume
       ctx.fillStyle = PAPERC; ctx.fill(path);
     }
     ctx.globalAlpha = 1;
@@ -10591,8 +10604,7 @@
       ctx.strokeStyle = INKC; ctx.lineCap = 'round'; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
       ctx.fillStyle = INKC; ctx.beginPath(); ctx.arc(x0, y0, 1.8, 0, Math.PI*2); ctx.fill(); };
     if(B.rig === 'lateen'){ drawLateenSail(B, P, L, base, FB, mast); ctx.restore(); ctx.restore(); return; }
-    if(B.rig === null){                                   // no sail rigged: just the bare mast
-      mast(2, MAST_H*0.85);
+    if(B.rig === null){                                   // no sail rigged: no mast either (it's stepped with the sail)
       ctx.restore(); ctx.restore(); return;
     }
     // --- square sail on a yard, pivoting at the mast (centre) ---

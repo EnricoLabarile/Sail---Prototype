@@ -469,7 +469,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   paper), darker when slack or reefed. At anchor (and moored) the cloth is drawn gathered up to the yard (`boat.furl`,
   eased; a look only: the sail stays set as far as the physics goes), and it spreads again as the anchor comes up.
   **Two sails** (`SPARE_SAIL` in Tuning): **she sets out with no sail** (Enrico, for now: `START_RIG` null and both sails in the storehouse, `START_STORED_SAILS` ['square', 'lateen']: she gets about on the crank's paddle wheels; before: the square rigged, `START_RIG` = 'square'; with
-  null, `boat.rig` null: the wind gives her nothing, `speedFactor` is 0, only the bare mast is drawn; she goes on the
+  null, `boat.rig` null: the wind gives her nothing, `speedFactor` is 0, no mast is drawn either; she goes on the
   oars) and **the other sail waits in the home storehouse** (`START_STORED_SAILS` ['lateen'] in Tuning: `homeStore.sails` at the start and at `resetStore`; it takes no slot until it's taken aboard there; with [] it rides in the hold as before): every sail not rigged takes one of the `HOLD_MAX` slots (`sailsInHold`, `spareSlots`, counted in
   `slotsUsed` and at the market in `mkSlotsAfter`), first in the Cargo grid, a tappable slot with its own icon in
   `ITEM_ICONS` (`spareHTML(rig)`); a tap on one rigs it (`swapSail(rig)`: toast "… rigged", a thunk and a buzz, the
@@ -540,7 +540,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   falling back, two wide rings, 1.3 s (`stoneSplash`, `Sfx.splash` + a thunk) or a clack on a shore; one within `SLING_SCARE_R` (60) of the shark sends it off
   (`mode` 'flee', popup `TEXT.popups.sharkScared`). The pouch is empty for `SLING_RELOAD` (0.9 s). Hidden at the market,
   while someone talks and while the fishing bar is up.
-  **Steam** (`STEAM_ON`, `STEAM_RATE` 9 puffs/s × `oarSpin` while the spring drives, `STEAM_IDLE` 0.18 of that and
+  **Steam** (`STEAM_ON`, see-through at `STEAM_ALPHA` 0.45, puffs living `STEAM_LIFE` 0.55 × as long, so a shorter plume, `STEAM_RATE` 9 puffs/s × `oarSpin` while the spring drives, `STEAM_IDLE` 0.18 of that and
   `STEAM_LIGHT` 0.45 the size/whiteness while she moves (> 3 px/s) with the wheels only freewheeling; none moored or
   still): a short dark funnel amidships (x −4, `FB` to `FB`+7, in `drawBoat`, every boat) and puffs from its top
   (`steam`, updated with the bow spray, drawn by `drawSteam` right after the boat): each rises (`z`, shown as a shift up
@@ -636,7 +636,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   Opening/closing it plays `Sfx.book(open)`: paper flutter, and the cover's thump on closing. The list also shows the day of the voyage
   (`dayNo`, +1 at each dawn). A tiny faint frame-rate counter (`#fps`, refreshed twice a second while the logbook is open) sits on the
   paper, in the bottom right corner of the right page. Keyboard: arrows, Space = anchor.
-- **Hull bar** (`#status`, `#hp-meter`): always shown top left while she sails (hidden at the market and in a talk);
+- **Hull bar** (`#status`, `#hp-meter`): always shown top left while she sails (hidden at the market and in a talk); under it the **paddles' charge** (`#sp-meter`, `TEXT.hud.spring`, the crank's `spring` 0..100, written only when it changes, `lastSp`);
   it was shown only for a few seconds after damage. The fair-wind badge `#boon` sits under it.
 - **Hazards:** rocks (the faraglioni, tall rock columns off the cliffs, were removed; **spacing**, Tuning, world: two rocks, or a rock and the shore, either touch or have at
   least `ROCK_GAP` 64 px of water between them, about twice the boat's length, so she never gets stuck in a slot:
