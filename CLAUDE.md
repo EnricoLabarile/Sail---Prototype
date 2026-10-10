@@ -109,7 +109,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   island's box), never along the ISL_N spokes, which on big islands showed as lines; the spurge thins out in irregular
   open patches (a smooth noise of four crossing waves, new per island).
 - **The drawn map** (`MAP_DRAWN` in Tuning, world, a field in the generator's World; 1 = on, the default): the land is
-  the sea map Enrico drew on the Supernote template (`tools/map-template/`: `make_template.py` makes the page,
+  the sea map Enrico drew on the Supernote template (`tools/map-template/`: `make_template.py` makes the page (`--no-marks`: the same page without the legend of marks, `supernote_sea_map_9x9_no_marks.png`; the grid in the same place),
   `import_map.py drawing.jpg --write [--frame=x0,y0,x1,y1]` reads it back: the ink lines and the grey shading inside
   the frame (an opening wipes the template's thin grid), the open sea = the biggest stretch of paper left, everything
   else is land; home's own islet and small marks (letters, the house) dropped; filled dots (also drawn as rings) are
