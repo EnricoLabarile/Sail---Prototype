@@ -115,7 +115,13 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   else is land; home's own islet and small marks (letters, the house) dropped; filled dots (also drawn as rings) are
   printed with their squares, for `DRAWN_PLACES`; when the shading hides the frame's lines, `--frame` gives it
   (Supernote screenshot 1080 wide: `--frame=85.5,688,1039.5,1642`); it writes `DRAWN_LAND` between the
-  `// DRAWN_LAND >>>` markers in index.html: rings of world points, filled evenodd). **The second drawing (now)**: land
+  `// DRAWN_LAND >>>` markers in index.html: rings of world points, filled evenodd). Sea left open up to the frame is
+  carried on to the world's edge (ring points within 2 px of the crop snap to 0 / `WORLD`), so a **gap in the land
+  border** is a passage through the wrapped edge: the third drawing (now) has one at H9 lining up with one at H1
+  (clearance ≥ ~53 px all the way, x ≈ 4195). Small marks are dropped only if they hold no shading (a small shaded
+  island stays). The third drawing (screenshot 1080×1107: `--frame=84.2,77.2,1040.8,1033.8`) is the second plus the
+  gap, islands in H1–H2, F7, F7–G8, two small ones in H7–H8, a triangle in G5 (taken as an island, not a temple: it's
+  shaded) and a tiny one in G3; the same four dots. **The second drawing**: land
   all round the edge (a tongue down into E1–E2, a peninsula up into E7–E9, a bulge in A4–B6), islands shaded grey: a
   long one bending from C3/D2 down to D5 with an arm west to C5, one in B3–C3, F2–F3, H2, a small one in G3, a C-shape in
   H3–H4 with a little one inside it, the big C-shape in F4–H6, small ones in D6, E6, C7, four close together in

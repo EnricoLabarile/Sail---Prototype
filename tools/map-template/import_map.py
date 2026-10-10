@@ -10,6 +10,8 @@ makes an island. Home's own islet (the one on E5's middle) is left out: the
 game draws its own. Small marks (letters, the house) are dropped; filled dots
 (villages) are listed with their squares, to put in DRAWN_PLACES by hand.
 If shading hides the frame's lines: --frame=x0,y0,x1,y1 (picture pixels).
+Sea left open up to the frame (a gap in the land border) runs on to the world's edge: the world wraps, so the
+boat sails through and comes out on the far side, where the drawing should have a gap too.
 
 It prints the land as rings of world points (evenodd: the world's square, the
 sea's outline, each island) and, with --write, puts them into index.html
@@ -65,12 +67,13 @@ for k in range(1, n):
 # ink = the dark strokes and the shading (the template's grid and dots are lighter and thin: an opening takes them away)
 ink = (g < 105).astype(np.uint8)
 shade = cv2.morphologyEx((g < 200).astype(np.uint8), cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
-ink |= shade
-# small marks: letters, the house (alone in the sea)
-n, lab, st, cen = cv2.connectedComponentsWithStats(ink, 8)
+# small marks alone in the sea (letters, the house): small bits of line with no shading in them (a small shaded
+# island stays)
+n, lab, st, cen = cv2.connectedComponentsWithStats(ink | shade, 8)
 for k in range(1, n):
     x, y, bw, bh, area = st[k]
-    if max(bw, bh) < 0.4*cell: ink[lab == k] = 0
+    if max(bw, bh) < 0.4*cell and (shade[lab == k] > 0).sum() < 0.25*area: ink[lab == k] = 0; shade[lab == k] = 0
+ink |= shade
 # close small gaps in the lines; the sea is the biggest stretch of water left
 inkd = cv2.dilate(ink, np.ones((5, 5), np.uint8))
 n, lab, st, cen = cv2.connectedComponentsWithStats((1 - inkd).astype(np.uint8), 4)
@@ -97,7 +100,13 @@ for c in cs:
     a = cv2.approxPolyDP(c, 0.9, True).reshape(-1, 2) - 1
     if a[:, 0].min() <= 0 and a[:, 1].min() <= 0 and a[:, 0].max() >= w-1 and a[:, 1].max() >= h-1: continue   # the padded frame
     ring = []
-    for px, py in a: ring += [round(v) for v in world(px + 0.5, py + 0.5)]
+    for px, py in a:
+        wx, wy = world(px + 0.5, py + 0.5)
+        if px <= 1: wx = 0                        # sea that reaches the frame goes on to the world's edge, so a gap in the
+        if px >= w - 2: wx = WORLD                # land border lets the boat through to the far side (the world wraps)
+        if py <= 1: wy = 0
+        if py >= h - 2: wy = WORLD
+        ring += [round(wx), round(wy)]
     rings.append(ring)
 print(f'{len(rings)} rings, {sum(len(r) for r in rings)//2} points; dots at ' +
       ', '.join(f'({x:.0f},{y:.0f}) {"ABCDEFGHI"[int(x//(WORLD/9))]}{int(y//(WORLD/9))+1}' for x, y in dots), file=sys.stderr)
