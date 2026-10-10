@@ -319,6 +319,21 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   `mkSlotsAfter`), shown in the Cargo after the spare sail with the number on it (`.slot.charges .n`); not sold back, not
   thrown away. A voyage starts with `START_CHARGES` (0). Each shot of the slingshot spends one (`shootStone`); with none
   the sling is greyed (`.nocharge`, its stone gone) and a pull (or Enter) only pops "no charges!" (`noCharge`).
+  **Sling nets** (Enrico's idea): a second kind of shot. Every stall also sells a pack of `NET_PACK` (3) for `NET_PRICE`
+  (9) coins (`kind:'nets'`, icon `ITEM_ICONS.Nets`); `nets` stack in one slot like the stones (`chargeSlots` counts both
+  stacks). **Which is loaded**: `slingAmmo` 'stone' / 'net', set by tapping its slot in the Cargo (`data-ammo`, the
+  loaded one outlined, `.slot.loaded`; a toast `TEXT.oars.loadedStones/loadedNets`); the sling's pouch shows a dotted
+  bundle when nets are loaded (`#sling.net`); `ammoLeft` / `noCharge` follow the loaded kind ("no nets!"). A net flies
+  like a stone but drawn as an opening mesh; where it lands (`netLands`, within `NET_REACH` 24 px): a **weakened**
+  shark or a **dazed** imp is caught (into the hold, `catches.shark/zora`, a slot each, icons `Shark` / `Sea imp`,
+  thrown overboard like a fish = let go; no room: "no room in the hold for it"); a strong one: "the net slips off"; a
+  live fish bank: its fish (`catchFish`, the bank scatters); else "the net sinks empty"; a mesh lies spread on the water
+  a moment (`NET_SPLASH`). **Health**: a stone hit (`stoneAtShark`, within 14 + 9 × size; `stoneAtZora`) takes one of
+  `SHARK_HP` / `ZORA_HP` (3): the shark turns away for 1.3 s (`recoil`) and comes again, the imp ducks under and pops up
+  elsewhere (popup "hit! n more"); the last hit weakens the shark (`mode` 'weak': drifting at 0.22 × speed, no bite) or
+  dazes the imp (`phase` 'dazed': up, bobbing, no fireball) for `WEAK_TIME` (8 s), three little stars going round over
+  it (`dizzy`), then it recovers and makes off. (The old near-miss scare of the shark, `SLING_SCARE_R`, and the imp
+  diving away for good at one stone are gone.) A new voyage: `START_NETS` (0), stones loaded, no catches.
   "Trade" is disabled if the purse can't cover a negative balance; a positive balance goes to the purse.
   Repairs are free and automatic at any pier (+15 hull every half second, the hold is never touched); making them a
   cost the player has to think about is planned for later (see the TickTick list "Vento e Vele: playtest suggestions").

@@ -19,7 +19,7 @@ HOOK = ('requestAnimationFrame(loop);\n})();',
         'get dayT(){return dayT},set dayT(v){dayT=v},'
         'dinnerT:(DINNER_HOUR-DAWN_HOUR)/24,ordersOn:ORDERS_ON,get dayNo(){return dayNo},'
         'RUINS,get powerOwned(){return powerOwned},get rig(){return boat.rig},bottles,bottleHold,marks,homeStore,banks,get fishing(){return fishing},get reelOn(){return reelOn},setReel,REEL_ZONE,'
-        'get charges(){return charges},toSpread(n){while(logSpread!==n){turning=false;turnPage(n>logSpread?1:-1);}},coinsAdd(n){coins+=n},unmoor(){moor=null;moorLock=null;}};'
+        'get charges(){return charges},get nets(){return nets},get ammo(){return slingAmmo},toSpread(n){while(logSpread!==n){turning=false;turnPage(n>logSpread?1:-1);}},coinsAdd(n){coins+=n},unmoor(){moor=null;moorLock=null;}};'
         'tutSet("done");'                  # skip the tutorial: the test drives the controls directly
         'requestAnimationFrame(loop);\n})();')
 
@@ -135,15 +135,25 @@ def reel(pg):
 def charges(pg):
     # the sling needs charges: none at first (a pull does nothing), a pack of 5 bought at the stall, one spent a shot
     assert pg.evaluate('__d.charges') == 0, 'charges aboard at the start'
-    pg.evaluate("__d.coinsAdd(5)")
+    pg.evaluate("__d.coinsAdd(14)")
     dock_at(pg, 'd.VILLAGES[0].pier')
     press_dock(pg); pg.wait_for_timeout(300)
     pg.click('#mk-them-items .mk-unit[data-kind=charges]'); pg.wait_for_timeout(50)
+    pg.click('#mk-them-items .mk-unit[data-kind=nets]'); pg.wait_for_timeout(50)       # and a pack of nets
     pg.click('#mk-deal'); pg.wait_for_timeout(200)
     assert pg.evaluate('__d.charges') == 5, 'the pack of charges was not bought'
+    assert pg.evaluate('__d.nets') == 3, 'the pack of nets was not bought'
     leave(pg)
-    pg.focus('#sling'); pg.keyboard.press('Enter'); pg.wait_for_timeout(300)
+    pg.focus('#sling'); pg.keyboard.press('Enter'); pg.wait_for_timeout(1100)
     assert pg.evaluate('__d.charges') == 4, 'a shot did not spend a charge'
+    # a tap on the nets in the Cargo loads them in the slingshot; a shot then spends a net
+    pg.click('#btn-list', force=True); pg.wait_for_timeout(900)
+    pg.evaluate('__d.toSpread(1)'); pg.wait_for_timeout(600)
+    pg.click('[data-ammo=net]'); pg.wait_for_timeout(200)
+    assert pg.evaluate('__d.ammo') == 'net', 'the nets were not loaded'
+    pg.click('#btn-list', force=True); pg.wait_for_timeout(700)
+    pg.focus('#sling'); pg.keyboard.press('Enter'); pg.wait_for_timeout(1100)
+    assert pg.evaluate('__d.nets') == 2 and pg.evaluate('__d.charges') == 4, 'a net shot did not spend a net'
 
 def trip(pg):
     global ORDERS; ORDERS = False
