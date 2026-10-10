@@ -195,7 +195,7 @@
   const REEL_FISH = {sarde: 0.6, sgombri: 0.8, triglie: 1, orate: 1.3};   // how wild each kind is (1 = middling): darts quicker and farther
   const COIN_LOCAL = 1;              // a village pays this for its own kind of fish
   const COIN_FOREIGN = 2;            // …and this for fish from other waters (a fish sells for 1 to 2 coins; was 3)
-  const BANKS_PER_TILE = 2;          // drawn map: fish banks in each square of the map (A1…I9), anywhere at sea in it, at most (world)
+  const BANKS_PER_TILE = 1;          // drawn map: fish banks in each square of the map (A1…I9), anywhere at sea in it (world; was 2)
   const BANK_REGEN_DAYS = 2;         // drawn map: the banks fished come back every this many days, at first light (2 = every other day)
   const SLING_CHARGES = true;        // the slingshot needs a charge for each shot (they stack in the hold: one slot whatever the number)
   const CHARGE_PACK = 5;             // charges in a pack, as every stall sells them
@@ -350,7 +350,8 @@
   const MAST_H = 26;                 // the square sail's mast height (the yard just under its top); the lateen's yard climbs to about this
   const SAIL_TONE = 0.72;            // the sail's cloth when drawing well (1 = paper white, 0 = ink); slack or reefed it's a little darker
   const SPARE_SAIL = true;           // both sails ride in the hold (a slot each, the one not rigged); a tap on one in the logbook rigs it
-  const START_RIG = 'square';        // the sail rigged at the start: 'square' or 'lateen' = that one (the other rides in the hold); null = none, she sets out on the oars
+  const START_RIG = 'square';        // the sail rigged at the start: 'square' or 'lateen' = that one (the other rides in the hold, or waits at home: START_STORED_SAILS); null = none, she sets out on the oars
+  const START_STORED_SAILS = ['lateen'];   // sails waiting in the home storehouse when a voyage starts (not aboard: no slot in the hold); [] = all aboard
   const TREE_KIND = 'olive';         // the islands' trees: 'olive' (Enrico's sketch: a twisted trunk, a wide crown of spiky leaf sprays) or 'pine' (the old stone pines)
   const PINE_MODELS = 4;             // tree shapes, reused (each also mirrored) all over the map (world)
   // draw the scene on the processor (true) or on the graphics card (false): the frame is tiny, and Firefox
@@ -363,6 +364,10 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Fish banks: one per square of the map now (was two)',
+      'The lateen sail starts in the storehouse at home, not in the hold: take it aboard from the storehouse when you want it',
+    ]},
+    {build: '2026-10-10 12:05', items: [
       'Fish banks are back: up to 2 in every square of the map, anywhere at sea; a bank you fish is gone until they come back, every other day at first light',
       'Fish sell for 1 coin in their own waters, 2 elsewhere (it was 3)',
       'The slingshot needs charges: every stall sells a pack of 5 for 5 coins; they take one slot in the Cargo however many (the number is on the slot); with none the sling is greyed and says so',
@@ -375,11 +380,8 @@
       'New map from your drawing: the land border, the long island bending from D2 down to D5, the big C-shaped island in F4–H6, the islands in F2, H2, H3–H4, the little ones round home, the group of four in B7–C8 and the one in G8',
       'Four villages on your four dots (their names are my pick, by the side of home each lies on): Nordania E3, Estolia H4, Sudia G8, Westa C5; each harbour opens on the nearest sea by its dot',
     ]},
-    {build: '2026-10-10 00:24', items: [
-      'Logbook map: no more dots on the sea not seen yet; only the dotted line round what you have seen marks it',
-    ]},
   ];
-  const BUILD = '2026-10-10 12:05';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-10 12:13';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -6245,9 +6247,9 @@
   let marketV = null, mkItems = [], mkKey = '';
   // home's storehouse (the same table: the hold on the left, the store on the right; nothing is paid)
   const STORE = {store: true};
-  const homeStore = {fish: {}, dish: {}, bottles: [], sails: []};
+  const homeStore = {fish: {}, dish: {}, bottles: [], sails: START_STORED_SAILS.filter(r=> r !== START_RIG)};
   const storeCount = ()=> Object.values(homeStore.fish).reduce((a,n)=> a+n, 0) + Object.values(homeStore.dish).reduce((a,n)=> a+n, 0) + homeStore.bottles.length + homeStore.sails.length;
-  function resetStore(){ homeStore.fish = {}; homeStore.dish = {}; homeStore.bottles = []; homeStore.sails = []; }
+  function resetStore(){ homeStore.fish = {}; homeStore.dish = {}; homeStore.bottles = []; homeStore.sails = START_STORED_SAILS.filter(r=> r !== START_RIG); }
   function openStore(){ openMarket(STORE); }
   // ---- rowing by hand: the oar button on the right, pressed in rhythm ----
   // Like grinding berries: the first press sets her rowing, slowly (power

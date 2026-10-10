@@ -156,11 +156,14 @@ def trip(pg):
     charges(pg)
     dock_at(pg, 'd.PIER')
     assert pg.evaluate('__d.moor && __d.moor.pier === __d.PIER'), 'did not tie up at home'
-    # the crate badge opens the storehouse: a fish goes into it
+    # the crate badge opens the storehouse: a fish goes into it, the lateen comes out of it
     fish0 = pg.evaluate('Object.values(__d.counts).reduce((a,n)=>a+n,0)')
     press_dock(pg); pg.wait_for_timeout(300)
     pg.click('#mk-you-items .mk-unit[data-kind=fish]'); pg.wait_for_timeout(50)
+    lateen_home = pg.evaluate('__d.homeStore.sails.length')        # the lateen starts in the storehouse: taken aboard
+    if lateen_home: pg.click('#mk-them-items .mk-unit[data-kind=sail]'); pg.wait_for_timeout(50)
     pg.click('#mk-deal'); pg.wait_for_timeout(200)
+    assert pg.evaluate('__d.homeStore.sails.length') == 0, 'the sail was not taken aboard from the storehouse'
     assert pg.evaluate('Object.values(__d.counts).reduce((a,n)=>a+n,0)') == fish0 - 1, 'nothing went into the storehouse'
     assert pg.evaluate('Object.values(__d.homeStore.fish).reduce((a,n)=>a+n,0)') == 1, 'the storehouse is empty'
     pg.evaluate('()=>{__d.dayT = 0.9995}'); pg.wait_for_timeout(1500)

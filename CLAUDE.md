@@ -275,11 +275,11 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
 - **Ruins** on the diagonals (the temples): **off for now** (`RUINS_ON` = false in Tuning: `RUINS` is empty). When on: dock there for
   a random power (friendly wind 60 s, blessed nets ×3, full hull).
 - **Fish:** sardines (N), mackerel (E), red mullet (S), sea bream (W). **On the drawn map** (Enrico's rules: fish
-  anywhere, no need to draw them): every square of the map (A1…I9) gets up to `BANKS_PER_TILE` (2) banks anywhere at
+  anywhere, no need to draw them): every square of the map (A1…I9) gets `BANKS_PER_TILE` (1; was 2) bank anywhere at
   sea in it (`fillBankTiles`, `spawnBank(away, home, tile)`, `b.tile`; not within 260 px of home or 160 of the boat;
   the kind from `sectorAt` as before); a bank fished (scattered) is gone, not replaced, until the refill at first light
   every `BANK_REGEN_DAYS` (2) days (`(dayNo − 1) % BANK_REGEN_DAYS === 0`, so day 3, 5, …; also at a new voyage); about
-  150 banks in 78 squares. Off it, the old rules below. Banks denser far from home; half the open-sea banks
+  78 banks in 78 squares (at 1). Off it, the old rules below. Banks denser far from home; half the open-sea banks
   (`ROUTE_BANK_SHARE`) lie along the sea roads, home to each village and village to village, within `ROUTE_BANK_SPREAD` of
   the straight line (`routeSpot`), so the fish lead from place to place; home waters have all kinds and plenty of banks (`HOME_BANKS` = 9 in the smaller world, same density as 18 before; refilled as they are fished).
   **Every bank looks alike** (`BANK_LOOK` in Tuning: 4–5 big dark fish going round over the darker water, the old sea
@@ -433,7 +433,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   eased; a look only: the sail stays set as far as the physics goes), and it spreads again as the anchor comes up.
   **Two sails** (`SPARE_SAIL` in Tuning): **she sets out with the square sail rigged** (`START_RIG` = 'square'; with
   null, `boat.rig` null: the wind gives her nothing, `speedFactor` is 0, only the bare mast is drawn; she goes on the
-  oars) and **the other sail rides in the hold**: every sail not rigged takes one of the `HOLD_MAX` slots (`sailsInHold`, `spareSlots`, counted in
+  oars) and **the other sail waits in the home storehouse** (`START_STORED_SAILS` ['lateen'] in Tuning: `homeStore.sails` at the start and at `resetStore`; it takes no slot until it's taken aboard there; with [] it rides in the hold as before): every sail not rigged takes one of the `HOLD_MAX` slots (`sailsInHold`, `spareSlots`, counted in
   `slotsUsed` and at the market in `mkSlotsAfter`), first in the Cargo grid, a tappable slot with its own icon in
   `ITEM_ICONS` (`spareHTML(rig)`); a tap on one rigs it (`swapSail(rig)`: toast "… rigged", a thunk and a buzz, the
   new sail bent on furled and spreading) and the one she carried (if any) goes into the hold in its place. Each sail has its own speed curve, in Tuning
@@ -679,6 +679,6 @@ bottle steps are skipped likewise when there are none) (the market and the store
 Eolus (its spirit's talk tapped through) that gives it, then a trip to a village to buy a dish with foreign
 fish (three foreign ones; then the sling's charges: none at first, a pack bought there, a shot spends one) (after fishing up a message in a bottle, the other copies gone, reading it: a cross on the chart, and throwing it overboard), back home
 (a fish left in the storehouse), a new day, the
-logbook shows it, and a tap on the spare sail rigs it. With `ORDERS_ON`: two days of orders (day 1: 3 fish home before
+logbook shows it, and a tap on the spare sail rigs it (the lateen, taken aboard from the storehouse first). With `ORDERS_ON`: two days of orders (day 1: 3 fish home before
 dinner; day 2: the ordered dish bought at its village, everything brought home and delivered).
 For quick manual testing on the phone: `python -m http.server 8000` and open `http://<pc-ip>:8000` on the same Wi-Fi.
