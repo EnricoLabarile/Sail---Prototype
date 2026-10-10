@@ -574,8 +574,9 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   crossed off since the book was last opened), a crease, and the **Cargo** on the
   right page (`holdHTML`: purse, every fish as a small icon, then every dish aboard and gift as an icon only, name on
   hover; the book grows to fit). Each dish and gift has its own 24×24 ink icon (`ITEM_ICONS`, `itemIcon(name)`), used at the market stall too.
-  **The book's size is fixed** (Enrico): `#shoplist` `height:min(480px, calc(var(--fh) − 96px))` (twice the old height,
-  it may cover the boat), the pages fill it (`.pages` flex 1, `.page` overflow hidden). **Four spreads** now
+  **The book's size is fixed** (Enrico): `#shoplist` `height:min(390px, calc(var(--fh) − 96px))` (was 480, then
+  lowered; it may cover the boat); the crease is 10 px with faint dots and a 45% hairline, and on the map's spread only 4 px
+  with a 25% hairline and no padding beside it (the middle squares show); the page turn's spine follows its width, the pages fill it (`.pages` flex 1, `.page` overflow hidden). **Four spreads** now
   (`elList.dataset.spread` = `logSpread`, CSS `#shoplist[data-spread="n"]`; the old `on-map` / `on-base` classes are
   gone): **0, pages 1–2: the map** (the room map with its chart), one square drawing across both pages, its left half on
   the left page and its right half on the right one either side of the crease (`.map-half` > `.map-full` 200% wide; the

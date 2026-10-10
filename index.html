@@ -365,6 +365,10 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Logbook: lower than last time (still a fixed size)',
+      'The crease in the middle is lighter and narrower; over the map it is only a faint hairline, so the middle squares show',
+    ]},
+    {build: '2026-10-10 12:40', items: [
       'Logbook: twice as tall and always the same size (it may cover the boat)',
       'Pages 1–2: the map, big, across both pages (half each side of the crease), "You are in …" under it',
       'Pages 3–4: the day and the Cargo, with bigger slots; your keepsakes (gifts, the fair wind) on page 4 once you have one',
@@ -377,13 +381,8 @@
       'Fish banks: one per square of the map now (was two)',
       'The lateen sail starts in the storehouse at home, not in the hold: take it aboard from the storehouse when you want it',
     ]},
-    {build: '2026-10-10 12:05', items: [
-      'Fish banks are back: up to 2 in every square of the map, anywhere at sea; a bank you fish is gone until they come back, every other day at first light',
-      'Fish sell for 1 coin in their own waters, 2 elsewhere (it was 3)',
-      'The slingshot needs charges: every stall sells a pack of 5 for 5 coins; they take one slot in the Cargo however many (the number is on the slot); with none the sling is greyed and says so',
-    ]},
   ];
-  const BUILD = '2026-10-10 12:40';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-10 15:06';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -1014,7 +1013,7 @@
   #shoplist{
     position:fixed; left:50%; top:calc(8px + env(safe-area-inset-top,0px)); z-index:9;
     width:min(420px, calc(var(--fw) - 14px));
-    height:min(480px, calc(var(--fh) - 96px)); box-sizing:border-box; display:flex; flex-direction:column;   /* a fixed size (twice the old height; it may cover the boat) */
+    height:min(390px, calc(var(--fh) - 96px)); box-sizing:border-box; display:flex; flex-direction:column;   /* a fixed size (twice the old height; it may cover the boat) */
     /* closed: only the right half shows (the book shut, cover up), centred and above the screen */
     transform:translate(-75%, calc(-100% - 30px)); clip-path:inset(-12px -12px -12px 50%);
     transition:transform .28s cubic-bezier(.2,.8,.2,1), clip-path .34s cubic-bezier(.4,.1,.3,1);
@@ -1052,13 +1051,15 @@
   #shoplist .page.right{border-radius:0 6px 6px 0;
     box-shadow:2px 2px 0 var(--paper), 3px 3px 0 var(--ink), 5px 5px 0 var(--paper), 6px 6px 0 var(--ink);}
   #shoplist .crease{                    /* the gutter: the pages curve down into it */
-    flex:none; width:16px; position:relative; background-color:var(--paper);
+    flex:none; width:10px; position:relative; background-color:var(--paper);
     /* dotted shade in the middle only: plain paper strips over the dots at each side */
     background-image:linear-gradient(90deg, var(--paper) 0 3px, transparent 3px calc(100% - 3px), var(--paper) calc(100% - 3px)),
-      radial-gradient(var(--ink) 0.7px, transparent 0.9px);
-    background-size:100% 100%, 3px 3px;
+      radial-gradient(rgba(27,26,23,.45) 0.6px, transparent 0.8px);
+    background-size:100% 100%, 4px 4px;
   }
-  #shoplist .crease::after{content:""; position:absolute; left:50%; top:0; bottom:0; width:2px; margin-left:-1px; background:var(--ink);}
+  #shoplist .crease::after{content:""; position:absolute; left:50%; top:0; bottom:0; width:1px; margin-left:-.5px; background:var(--ink); opacity:.45;}
+  #shoplist[data-spread="0"] .crease{width:4px; background-image:none;}                       /* over the map: a faint hairline, so the middle squares show */
+  #shoplist[data-spread="0"] .crease::after{opacity:.25;}
   /* the second spread: the sea chart, drawn across both pages and the crease */
   #shoplist{touch-action:none;}
   /* the third spread: home's look, three to choose from (a preview) */
@@ -1068,7 +1069,7 @@
   #shoplist[data-spread="0"] .map-half, #shoplist[data-spread="0"] #rooms-here{display:block;}
   #shoplist[data-spread="1"] #shoplist-body, #shoplist[data-spread="1"] #hold-page{display:block;}
   #shoplist[data-spread="3"] #base-l, #shoplist[data-spread="3"] #base-r{display:block;}
-  #shoplist[data-spread="0"] .page.left{padding-right:3px;} #shoplist[data-spread="0"] .page.right{padding-left:3px;}   /* the map runs up to the crease */
+  #shoplist[data-spread="0"] .page.left{padding-right:0;} #shoplist[data-spread="0"] .page.right{padding-left:0;}   /* the map runs up to the crease */
   #base-l h2{margin:0 0 6px;}
   #base-l .base-hint{font-size:12px; font-style:italic; margin:0 0 8px; opacity:.85;}
   #base-l .base-pick{display:flex; align-items:center; gap:8px; width:100%; margin:0 0 6px; padding:3px 6px 3px 3px; font:inherit; font-size:13px;
@@ -7413,7 +7414,8 @@
     const front = fwd ? oldR : oldL, back = snapPage(fwd ? elPageL : elPageR);
     back.classList.add('back');
     turn.append(front, back);
-    turn.style.transformOrigin = fwd ? '-8px 50%' : 'calc(100% + 8px) 50%';   // the spine, in the middle of the crease
+    const half = elList.querySelector('.crease').offsetWidth/2;
+    turn.style.transformOrigin = fwd ? -half+'px 50%' : 'calc(100% + '+half+'px) 50%';   // the spine, in the middle of the crease
     turn.style.transition = 'transform '+PAGE_TURN+'ms cubic-bezier(.45,.05,.35,1)';
     elPages.append(under, turn);
     turn.getBoundingClientRect();                                        // (start the swing from flat)
