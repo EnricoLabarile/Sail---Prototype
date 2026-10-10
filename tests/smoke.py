@@ -19,7 +19,7 @@ HOOK = ('requestAnimationFrame(loop);\n})();',
         'get dayT(){return dayT},set dayT(v){dayT=v},'
         'dinnerT:(DINNER_HOUR-DAWN_HOUR)/24,ordersOn:ORDERS_ON,get dayNo(){return dayNo},'
         'RUINS,get powerOwned(){return powerOwned},get rig(){return boat.rig},bottles,bottleHold,marks,homeStore,banks,get fishing(){return fishing},get reelOn(){return reelOn},setReel,REEL_ZONE,'
-        'get charges(){return charges},coinsAdd(n){coins+=n},unmoor(){moor=null;moorLock=null;}};'
+        'get charges(){return charges},toSpread(n){while(logSpread!==n){turning=false;turnPage(n>logSpread?1:-1);}},coinsAdd(n){coins+=n},unmoor(){moor=null;moorLock=null;}};'
         'tutSet("done");'                  # skip the tutorial: the test drives the controls directly
         'requestAnimationFrame(loop);\n})();')
 
@@ -91,6 +91,7 @@ def bottle(pg):
     assert pg.evaluate('__d.bottleHold.length') == 1, 'the bottle was not fished up'
     assert pg.evaluate('__d.bottles.length') == 0, 'the other copies of the message are still at sea'
     pg.click('#btn-list', force=True); pg.wait_for_timeout(900)
+    pg.evaluate('__d.toSpread(1)'); pg.wait_for_timeout(600)                  # (the cargo: pages 3–4)
     pg.click('.slot.bottle'); pg.wait_for_timeout(300)
     assert pg.evaluate('__d.marks.length') == 1, 'reading the message put no cross on the chart'
     pg.click('#letter')
@@ -169,6 +170,8 @@ def trip(pg):
     pg.evaluate('()=>{__d.dayT = 0.9995}'); pg.wait_for_timeout(1500)
     assert pg.evaluate('__d.dayNo') == 2, 'no new day at first light'
     pg.click('#btn-list', force=True); pg.wait_for_timeout(900)
+    assert pg.evaluate("document.querySelector('#rooms .lbl') !== null"), 'the map is not on the first pages'
+    pg.evaluate('__d.toSpread(1)'); pg.wait_for_timeout(600)                  # (the cargo: pages 3–4)
     assert 'Day 2' in pg.inner_text('#shoplist-body'), 'the logbook does not show the day'
     # the spare sail in the hold: a tap rigs it, the old one goes in its place
     if pg.query_selector('.spare-sail'):

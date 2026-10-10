@@ -302,7 +302,7 @@
   const UI_TINT = 0.7;               // how much the interface takes on the day/night colours (0 = never, 1 = like the world)
   const CLOUD_ALPHA = 0.45, CLOUD_CORE = 0.88;   // clouds: see-through at the rim, denser in the middle
   const CLOUD_MODELS = 4;            // cloud shapes, shared by all the clouds in the sky (world)
-  const MAP_RES = 280;               // the sea chart in the logbook: its pixels a side (fewer = coarser)
+  const MAP_RES = 480;               // the sea chart in the logbook: its pixels a side (fewer = coarser)
   const ROOM_SEAMS = 0.3;            // the room map's seams dotted on the sea itself too: how dark (0 = not drawn)
   const ROOM_N = 9;                  // the room map in the logbook (Zelda 1 style): rooms a side, the world cut into ROOM_N × ROOM_N squares, home in the middle one
   const SAIL_SIZE = 1.15;             // size of the boat's sail (1 = the old one: a yard 30 px wide)
@@ -365,6 +365,12 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Logbook: twice as tall and always the same size (it may cover the boat)',
+      'Pages 1–2: the map, big, across both pages (half each side of the crease), "You are in …" under it',
+      'Pages 3–4: the day and the Cargo, with bigger slots; your keepsakes (gifts, the fair wind) on page 4 once you have one',
+      'Then the wind card, then home\'s look',
+    ]},
+    {build: '2026-10-10 12:20', items: [
       'Fishing: the nets go over only when you drop anchor on a bank (or on a bottle); just stopping on it no longer does',
     ]},
     {build: '2026-10-10 12:13', items: [
@@ -376,12 +382,8 @@
       'Fish sell for 1 coin in their own waters, 2 elsewhere (it was 3)',
       'The slingshot needs charges: every stall sells a pack of 5 for 5 coins; they take one slot in the Cargo however many (the number is on the slot); with none the sling is greyed and says so',
     ]},
-    {build: '2026-10-10 10:27', items: [
-      'Map from your latest drawing: the gap in the land border at H9 opens onto the one at H1, so you can sail out at the bottom and come back in at the top',
-      'New from the drawing: the islands in H1–H2, F7, F7–G8 and the two small ones in H7–H8, the triangle in G5, and the tiny one in G3',
-    ]},
   ];
-  const BUILD = '2026-10-10 12:20';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-10 12:40';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -586,6 +588,7 @@
       served:  'Dinner was served. A new order comes at first light.',
       short:   'Dinner was served without everything. A new order comes at first light.',
       cargo:   'Cargo',
+      keepsakes: 'Keepsakes',              // page 4, over the gifts and the fair wind (shown only once there is one)
       throwAway: 'Throw overboard',
       holdCount: '{n}/{max}',
       rooms:     'Map of the seas sailed',          // the room map's label (for screen readers and on hover)
@@ -1011,6 +1014,7 @@
   #shoplist{
     position:fixed; left:50%; top:calc(8px + env(safe-area-inset-top,0px)); z-index:9;
     width:min(420px, calc(var(--fw) - 14px));
+    height:min(480px, calc(var(--fh) - 96px)); box-sizing:border-box; display:flex; flex-direction:column;   /* a fixed size (twice the old height; it may cover the boat) */
     /* closed: only the right half shows (the book shut, cover up), centred and above the screen */
     transform:translate(-75%, calc(-100% - 30px)); clip-path:inset(-12px -12px -12px 50%);
     transition:transform .28s cubic-bezier(.2,.8,.2,1), clip-path .34s cubic-bezier(.4,.1,.3,1);
@@ -1032,7 +1036,7 @@
   #shoplist .corner.tr{right:-3px; top:-3px; transform:scaleX(-1);}
   #shoplist .corner.bl{left:-3px; bottom:-3px; transform:scaleY(-1);}
   #shoplist .corner.br{right:-3px; bottom:-3px; transform:scale(-1,-1);}
-  #shoplist .pages{position:relative; display:flex; align-items:stretch; perspective:1100px;}
+  #shoplist .pages{position:relative; display:flex; align-items:stretch; perspective:1100px; flex:1; min-height:0;}
   /* the front cover swings on the spine (the middle of the crease): folded it lies over the
      right page showing its leather; open, its inside is the left page */
   #shoplist .leaf{flex:1; min-width:0; display:flex; position:relative; z-index:2; transform-style:preserve-3d;
@@ -1043,7 +1047,7 @@
     display:flex; align-items:center; justify-content:center; border-radius:0 7px 7px 0; border:2px solid var(--ink);
     background-color:var(--ink); background-image:radial-gradient(rgba(235,231,220,.38) 0.7px, transparent 0.95px); background-size:3px 3px;}
   #shoplist .leaf-back svg{width:64px; height:64px;}
-  #shoplist .page{flex:1; min-width:0; background:var(--paper); padding:10px 10px 12px; position:relative; min-height:150px;}
+  #shoplist .page{flex:1; min-width:0; background:var(--paper); padding:10px 10px 12px; position:relative; min-height:0; overflow:hidden;}
   #shoplist .page.left{border-radius:6px 0 0 6px; box-shadow:-2px 2px 0 var(--paper), -3px 3px 0 var(--ink), -5px 5px 0 var(--paper), -6px 6px 0 var(--ink);}   /* the edges of the pages beneath */
   #shoplist .page.right{border-radius:0 6px 6px 0;
     box-shadow:2px 2px 0 var(--paper), 3px 3px 0 var(--ink), 5px 5px 0 var(--paper), 6px 6px 0 var(--ink);}
@@ -1059,8 +1063,12 @@
   #shoplist{touch-action:none;}
   /* the third spread: home's look, three to choose from (a preview) */
   #base-l, #base-r{display:none;}
-  #shoplist.on-base #base-l, #shoplist.on-base #base-r{display:block;}
-  #shoplist.on-base #shoplist-body, #shoplist.on-base #hold-page{display:none;}
+  /* the spreads (data-spread): 0 the map across pages 1–2, 1 the cargo on 3–4, 2 the wind card, 3 home's look */
+  #shoplist #shoplist-body, #shoplist #hold-page, #shoplist #cmp-slot, #shoplist .map-half, #shoplist #rooms-here{display:none;}
+  #shoplist[data-spread="0"] .map-half, #shoplist[data-spread="0"] #rooms-here{display:block;}
+  #shoplist[data-spread="1"] #shoplist-body, #shoplist[data-spread="1"] #hold-page{display:block;}
+  #shoplist[data-spread="3"] #base-l, #shoplist[data-spread="3"] #base-r{display:block;}
+  #shoplist[data-spread="0"] .page.left{padding-right:3px;} #shoplist[data-spread="0"] .page.right{padding-left:3px;}   /* the map runs up to the crease */
   #base-l h2{margin:0 0 6px;}
   #base-l .base-hint{font-size:12px; font-style:italic; margin:0 0 8px; opacity:.85;}
   #base-l .base-pick{display:flex; align-items:center; gap:8px; width:100%; margin:0 0 6px; padding:3px 6px 3px 3px; font:inherit; font-size:13px;
@@ -1069,19 +1077,22 @@
   #base-l .base-pick svg{width:34px; height:34px; flex:none;}
   #base-r canvas{width:100%; display:block; image-rendering:pixelated; border:1.5px solid var(--ink); border-radius:2px;}
   #base-name{margin:6px 0 14px; text-align:center; font-weight:bold; font-style:italic;}
-  #shoplist.on-map #shoplist-body, #shoplist.on-map #hold-page, #shoplist.on-map #cmp-slot{display:none;}
-  #wind-page{display:none;} #shoplist.on-map #wind-page{display:block;}   /* the wind card, on the chart's facing page */
-  #shoplist.on-base #cmp-slot{display:none;}
-  #cmp-slot #compass{display:none;}                    /* the room map has its place for now (the compass's code stays) */
-  #rooms-box{position:relative; margin:10px auto 0; width:min(100%, 150px);}
-  #rooms{position:relative; display:block; width:100%; height:auto; color:var(--ink);}
-  #rooms-chart{position:absolute; left:8%; top:8%; width:90%; height:90%; image-rendering:pixelated;}   /* the coasts she has seen, under the grid (8..98 of the map's 100 units) */
-  #rooms .frame{fill:none; stroke:var(--ink); stroke-width:1.2;}
-  #rooms .seam{stroke:var(--ink); stroke-width:.4; stroke-dasharray:.6 1.4; opacity:.55;}   /* the borders between the squares, dotted */
-  #rooms .lbl{fill:var(--ink); font:bold 4.2px Georgia, serif; opacity:.8;}
-  #rooms-here{margin:4px 0 0; text-align:center; font-size:12px; font-style:italic;}
-  #shoplist.on-map #rooms-here, #shoplist.on-base #rooms-here{display:none;}
-  #rooms .you{fill:var(--paper); stroke:var(--ink); stroke-width:.6; animation:roomBlink .8s steps(1) infinite;}
+  #wind-page{display:none;} #shoplist[data-spread="2"] #wind-page{display:block;}   /* the wind card */
+  #cmp-slot #compass{display:none;}                    /* (the compass's code stays; it has no place in the book for now) */
+  /* the map, across pages 1–2: one square drawing, its left half on the left page and its right half on the right one,
+     either side of the crease (a copy on the right page shows that half: syncRoomsCopy); sized by layoutMap */
+  #shoplist .map-half{position:relative; overflow:hidden;}
+  #shoplist .page.left .map-half{margin-left:auto;}
+  #shoplist .map-full{position:absolute; top:0; left:0; width:200%; height:100%;}
+  #shoplist .page.right .map-full{left:-100%;}
+  #rooms-box, .rooms-box{position:relative; width:100%;}
+  .rooms-svg{position:relative; display:block; width:100%; height:auto; color:var(--ink);}
+  .rooms-chart{position:absolute; left:8%; top:8%; width:90%; height:90%; image-rendering:pixelated;}   /* the coasts she has seen, under the grid (8..98 of the map's 100 units) */
+  .rooms-svg .frame{fill:none; stroke:var(--ink); stroke-width:.6;}
+  .rooms-svg .seam{stroke:var(--ink); stroke-width:.25; stroke-dasharray:.5 1; opacity:.55;}   /* the borders between the squares, dotted */
+  .rooms-svg .lbl{fill:var(--ink); font:bold 3.2px Georgia, serif; opacity:.8;}
+  #rooms-here{margin:6px 0 0; text-align:right; font-size:13px; font-style:italic;}
+  .rooms-svg .you{fill:var(--paper); stroke:var(--ink); stroke-width:.4; animation:roomBlink .8s steps(1) infinite;}
   @keyframes roomBlink{50%{opacity:0;}}
   /* a page being turned: a sheet swinging on the spine, the page it leaves on its front and the new one on its back */
   #shoplist .turn{position:absolute; z-index:4; transform-style:preserve-3d; pointer-events:none;}
@@ -1139,11 +1150,11 @@
   #shoplist .hold-fish{display:flex; flex-wrap:wrap; gap:2px 3px; margin-bottom:6px;}
   #shoplist .hold-fish svg{width:24px; height:13px; display:block;}
   #shoplist .hold-empty{font-size:12px; font-style:italic; margin:2px 0 6px;}
-  #shoplist .hold-slots{display:grid; grid-template-columns:repeat(3, 38px); gap:4px; margin:4px 0 8px;}
-  #shoplist .slot{width:38px; height:38px; box-sizing:border-box; border:1.5px solid var(--ink); border-radius:3px; display:flex; align-items:center; justify-content:center;}
+  #shoplist .hold-slots{display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:6px; margin:8px 0 10px; max-width:180px;}   /* (as wide as the page allows, now the cargo has its own spread) */
+  #shoplist .slot{width:auto; height:auto; aspect-ratio:1; box-sizing:border-box; border:1.5px solid var(--ink); border-radius:3px; display:flex; align-items:center; justify-content:center;}
   #shoplist .slot.empty{border-style:dashed; opacity:.45;}
-  #shoplist .slot svg{width:28px; height:28px; display:block;}
-  #shoplist .slot.fish svg{width:30px; height:16px;}
+  #shoplist .slot svg{width:72%; height:72%; display:block;}
+  #shoplist .slot.fish svg{width:82%; height:44%;}
   #shoplist .hold-goods{display:flex; flex-wrap:wrap; gap:4px; padding-top:6px; border-top:1.5px dashed var(--ink);}
   #shoplist .hold-goods svg{width:26px; height:26px; display:block;}
   #shoplist .power{padding:1px 4px 1px 1px; background:none; color:var(--ink); border:1.5px solid var(--ink); border-radius:14px; cursor:pointer;
@@ -1359,11 +1370,11 @@
     <div class="pages">
       <!-- the front cover: its inside is the left page; folded shut it lies over the right page, leather side up -->
       <div class="leaf">
-        <div class="page left"><div id="shoplist-body"></div><div id="base-l"></div></div>
+        <div class="page left"><div class="map-half"><div class="map-full"><div id="rooms-box"><canvas id="rooms-chart" class="rooms-chart" aria-hidden="true"></canvas><svg id="rooms" class="rooms-svg" role="img"></svg></div></div></div><p id="rooms-here"></p><div id="shoplist-body"></div><div id="base-l"></div></div>
         <div class="leaf-back" aria-hidden="true"><svg viewBox="0 0 24 24"><g fill="var(--paper)"><path d="M12 1.5 L13.6 9.2 L21 12 L13.6 14.8 L12 22.5 L10.4 14.8 L3 12 L10.4 9.2 Z"/><path d="M12 6 L13 11 L18 12 L13 13 L12 18 L11 13 L6 12 L11 11 Z" transform="rotate(45 12 12)" opacity=".7"/></g><circle cx="12" cy="12" r="6.6" fill="none" stroke="var(--paper)" stroke-width="0.9"/><circle cx="12" cy="12" r="1.2" fill="var(--ink)"/></svg></div>
       </div>
       <div class="crease" aria-hidden="true"></div>
-      <div class="page right"><div id="hold-page"></div><div id="cmp-slot"><div id="rooms-box"><canvas id="rooms-chart" aria-hidden="true"></canvas><svg id="rooms" role="img"></svg></div><p id="rooms-here"></p></div><div id="wind-page"></div><div id="base-r"><canvas id="base-prev"></canvas><p id="base-name"></p></div></div>
+      <div class="page right"><div class="map-half" aria-hidden="true"><div class="map-full"><div class="rooms-box"><canvas id="rooms-chart-r" class="rooms-chart"></canvas><svg id="rooms-r" class="rooms-svg"></svg></div></div></div><div id="hold-page"></div><div id="cmp-slot"></div><div id="wind-page"></div><div id="base-r"><canvas id="base-prev"></canvas><p id="base-name"></p></div></div>
     </div>
   </div>
   <!-- the compass, top centre of the main view (not interactive; the open logbook may cover it) -->
@@ -6911,7 +6922,7 @@
   function renderList(){
     if(!ORDERS_ON){                                // no orders: the day and the cargo on the left page, a blank page on the right
       elListBody.innerHTML = '<div class="list-head"><h2>'+fmt(TEXT.logbook.day, {n: dayNo})+'</h2></div>' + holdHTML();
-      elHoldPage.innerHTML = '';                                   // (the right page: the compass)
+      elHoldPage.innerHTML = holdGoodsHTML();                      // (page 4: the gifts and the fair wind)
       listKey = holdKey();
       return;
     }
@@ -6972,13 +6983,19 @@
     if(cargoSel && !items.some(it=> selIs(it))) cargoSel = null;      // (what was picked is gone)
     let selShown = false;
     const selCls = it=>{ if(selShown || !selIs(it)) return ''; selShown = true; return ' sel'; };
-    const gifts = VILLAGES.filter(v=> v.giftGot).map(v=> ({name: v.gift, icon: v.giftIcon}));
     const slot = k=> { const it = items[k]; if(it && it.sail) return spareHTML(it.sail);
       if(it && it.charges){ const nm = fmt(TEXT.oars.chargesLeft, {n: charges}); return '<span class="slot charges" title="'+nm+'" role="img" aria-label="'+nm+'">'+itemIcon('Charges')+'<span class="n">'+charges+'</span></span>'; } if(it && it.bottle !== undefined) return bottleSlotHTML(it.bottle, selCls(it)); return it ? '<button type="button" class="slot item'+(it.fish?' fish':'')+selCls(it)+'" data-item="'+it.kind+'|'+it.key+'" title="'+it.name+'" aria-label="'+it.name+'">'+it.svg+'</button>' : '<span class="slot empty"></span>'; };
     return '<div class="hold-head"><h3>'+TEXT.logbook.cargo+'</h3><span class="hold-count">'+fmt(TEXT.logbook.holdCount, {n: items.length, max: HOLD_MAX})+'</span><span class="purse" aria-label="Purse: '+coins+' coins">'+COIN_SVG+coins+'</span></div>'
       + '<div class="hold-slots">'+Array.from({length: Math.max(HOLD_MAX, items.length)}, (_,k)=> slot(k)).join('')+'</div>'
       + (cargoSel ? '<button type="button" class="throw" data-throw="1">'+TEXT.logbook.throwAway+'</button>' : '')
-      + (gifts.length || powerOwned ? '<div class="hold-goods">'+powerHTML()+gifts.map(g=> '<span title="'+g.name+'" role="img" aria-label="'+g.name+'">'+itemIcon(g.icon)+'</span>').join('')+'</div>' : '');
+      + (ORDERS_ON ? holdGoodsHTML() : '');                 // (without orders the cargo has two pages: the keepsakes go on the second)
+  }
+  // the gifts and the fair wind: kept apart from the hold (no slot); nothing at all until there's one
+  function holdGoodsHTML(){
+    const gifts = VILLAGES.filter(v=> v.giftGot).map(v=> ({name: v.gift, icon: v.giftIcon}));
+    if(!gifts.length && !powerOwned) return '';
+    return (ORDERS_ON ? '' : '<h3>'+TEXT.logbook.keepsakes+'</h3>')
+      + '<div class="hold-goods">'+powerHTML()+gifts.map(g=> '<span title="'+g.name+'" role="img" aria-label="'+g.name+'">'+itemIcon(g.icon)+'</span>').join('')+'</div>';
   }
   // the spare sail, in a slot of its own among the others: a tap on it rigs
   // it, and the sail she carried goes into the hold in its place
@@ -7047,6 +7064,10 @@
     Sfx.splash(); buzz([10,30,20]);
     renderList();
   }
+  elHoldPage.addEventListener('click', e=>{                  // page 4: the fair wind among the keepsakes
+    const pw = e.target.closest('[data-power]');
+    if(pw && playing && !ORDERS_ON){ e.stopPropagation(); usePower(); }
+  });
   elListBody.addEventListener('click', e=>{
     const pw = e.target.closest('[data-power]');
     if(pw && playing){ e.stopPropagation(); usePower(); return; }
@@ -7091,21 +7112,36 @@
       h += '<text class="lbl" x="'+(LM - 1.2)+'" y="'+(RP + i*RS + RS/2 + 1.5)+'" text-anchor="end">'+(i + 1)+'</text>';
       if(i) h += '<line class="seam" x1="'+(RP + i*RS)+'" y1="'+RP+'" x2="'+(RP + i*RS)+'" y2="'+(RP + ROOM_N*RS)+'"/><line class="seam" x1="'+RP+'" y1="'+(RP + i*RS)+'" x2="'+(RP + ROOM_N*RS)+'" y2="'+(RP + i*RS)+'"/>';
     }
-    h += '<circle class="you" r="1.4"/>';
+    h += '<circle class="you" r="1"/>';
     elRooms.innerHTML = h;
+    layoutMap();
     paintRoomsChart();
     placeRoomDot();
+    syncRoomsCopy();
   }
   const elRoomsChart = document.getElementById('rooms-chart');
   let chartFog = -1, chartT = 0;
   function paintRoomsChart(){                              // (again when more sea has been seen, at most twice a second)
     chartFog = fogVer; chartT = performance.now();
     paintChart(elRoomsChart, Math.round((elRoomsChart.clientWidth || 135)*Math.min(2, window.devicePixelRatio || 1)));
+    const c = document.getElementById('rooms-chart-r');     // the right page's half shows the same chart
+    c.width = elRoomsChart.width; c.height = elRoomsChart.height; c.getContext('2d').drawImage(elRoomsChart, 0, 0);
+  }
+  // the map is one square drawing across pages 1–2: as big as the pages allow, half of it each side of the crease
+  const elRoomsR = document.getElementById('rooms-r');
+  function syncRoomsCopy(){ elRoomsR.setAttribute('viewBox', elRooms.getAttribute('viewBox')); elRoomsR.innerHTML = elRooms.innerHTML; }
+  function layoutMap(){
+    const pl = elList.querySelector('.page.left'), cs = getComputedStyle(pl);
+    const w = pl.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const h = pl.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - 26;   // (room for "You are in …")
+    const half = Math.max(40, Math.floor(Math.min(w, h/2)));
+    for(const el of elList.querySelectorAll('.map-half')){ el.style.width = half + 'px'; el.style.height = 2*half + 'px'; }
   }
   function placeRoomDot(){                                 // where she is, to the pixel: blinking in its room
     const dot = elRooms.querySelector('.you'); if(!dot) return;
     const x = RP + (wdx(boat.x, START.x) + WORLD.w/2)/ROOM_W*RS, y = RP + (wdy(boat.y, START.y) + WORLD.h/2)/ROOM_H*RS;
     dot.setAttribute('cx', x.toFixed(1)); dot.setAttribute('cy', y.toFixed(1));
+    const dr = elRoomsR.querySelector('.you'); if(dr){ dr.setAttribute('cx', x.toFixed(1)); dr.setAttribute('cy', y.toFixed(1)); }
     const here = fmt(TEXT.logbook.roomHere, {cell: cellName(...roomOf(boat.x, boat.y))});
     if(here !== roomHereShown){ roomHereShown = here; elRoomsHere.textContent = here; }
   }
@@ -7116,7 +7152,7 @@
       if(chartFog !== fogVer && performance.now() - chartT > 500) paintRoomsChart();
     }
     if(holdKey() !== listKey) renderList();
-    else if(logSpread === 1 && windCardKey() !== windKey){                 // the wind card follows her heading live
+    else if(logSpread === 2 && windCardKey() !== windKey){                 // the wind card follows her heading live
       windKey = windCardKey(); const el = document.getElementById('wind-card'); if(el) el.innerHTML = windHTML();
     }
   }
@@ -7197,7 +7233,7 @@
     Sfx.init();
     if(on){
       renderList(); elListBtn.classList.remove('news');                        // seen: stop the shimmer
-      if(logSpread === 1) renderMap(); else if(logSpread === 2) renderBase(); else freshLines.clear();   // (a line crossed off waits for the list page)
+      if(logSpread === 0) roomsShown = -1; else if(logSpread === 2) renderMap(); else if(logSpread === 3) renderBase(); else freshLines.clear();   // (a line crossed off waits for the list page)
       if(tut === 'book' || tut === 'intro') tutBookSeen = true;   // (opened while the scroll was still flying in counts too)
       elList.classList.add('open');
       bookT = setTimeout(()=>{ elList.classList.add('unfold'); Sfx.book(true); buzz([6,40,4]); }, BOOK_DROP);   // landed: open it
@@ -7339,6 +7375,7 @@
   // swipe across the open book turns the page (left: forward, right: back);
   // the book remembers the spread it was left on.
   let logSpread = 0, turning = false;
+  elList.dataset.spread = 0;
   const PAGE_TURN = 460;                       // ms for a page to swing over
   const elPages = elList.querySelector('.pages'), elPageL = elList.querySelector('.page.left'), elPageR = elList.querySelector('.page.right');
   // a copy of a page as it looks now, canvases included; what shows and the
@@ -7361,13 +7398,12 @@
   }
   function turnPage(dir){                       // +1: forward, -1: back
     const to = logSpread + dir;
-    if(turning || to < 0 || to > 2 || !elList.classList.contains('unfold')) return;
+    if(turning || to < 0 || to > 3 || !elList.classList.contains('unfold')) return;
     turning = true;
     const fwd = dir > 0, oldL = snapPage(elPageL), oldR = snapPage(elPageR);
     logSpread = to;
-    elList.classList.toggle('on-map', to === 1);
-    elList.classList.toggle('on-base', to === 2);
-    if(to === 1) renderMap(); else if(to === 2) renderBase(); else { renderList(); freshLines.clear(); }
+    elList.dataset.spread = to;
+    if(to === 0) renderRooms(); else if(to === 2) renderMap(); else if(to === 3) renderBase(); else { renderList(); freshLines.clear(); }
     const base = elPages.getBoundingClientRect();
     // the page that stays put until the turning sheet lands on it
     const under = fwd ? oldL : oldR; under.classList.add('under'); placeAt(under, fwd ? elPageL : elPageR, base);

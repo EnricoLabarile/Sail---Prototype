@@ -574,7 +574,19 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   crossed off since the book was last opened), a crease, and the **Cargo** on the
   right page (`holdHTML`: purse, every fish as a small icon, then every dish aboard and gift as an icon only, name on
   hover; the book grows to fit). Each dish and gift has its own 24×24 ink icon (`ITEM_ICONS`, `itemIcon(name)`), used at the market stall too.
-  **Three spreads**: a sideways swipe across the open book turns the page (left = forward: the list and cargo, the
+  **The book's size is fixed** (Enrico): `#shoplist` `height:min(480px, calc(var(--fh) − 96px))` (twice the old height,
+  it may cover the boat), the pages fill it (`.pages` flex 1, `.page` overflow hidden). **Four spreads** now
+  (`elList.dataset.spread` = `logSpread`, CSS `#shoplist[data-spread="n"]`; the old `on-map` / `on-base` classes are
+  gone): **0, pages 1–2: the map** (the room map with its chart), one square drawing across both pages, its left half on
+  the left page and its right half on the right one either side of the crease (`.map-half` > `.map-full` 200% wide; the
+  right page holds a copy, `#rooms-r` / `#rooms-chart-r`, kept in step by `syncRoomsCopy`, `paintRoomsChart` and
+  `placeRoomDot`), as big as the pages allow (`layoutMap`: the half is min(page width, (page height − 26)/2)),
+  "You are in …" under it (`MAP_RES` 480 now); **1, pages 3–4: the cargo** (page 3 `#shoplist-body`: the day, the Cargo
+  with bigger slots, `repeat(3, minmax(0, 1fr))` up to 180 px; page 4 `#hold-page`: the keepsakes, `holdGoodsHTML`,
+  heading `TEXT.logbook.keepsakes`, nothing until there's a gift or the fair wind; its own click handler for the fair
+  wind); **2: the wind card** (right page); **3: home's look**. The compass's `#cmp-slot` stays, hidden. The smoke
+  test turns to the cargo with `__d.toSpread(1)`. (Older notes below describe three spreads.)
+  **Three spreads** (before): a sideways swipe across the open book turns the page (left = forward: the list and cargo, the
   **sea chart**, then **home's look**; right = back; `turnPage`, `logSpread` 0..2): a sheet swings over on the spine (copies of the pages, `snapPage`), with
   `Sfx.pageTurn()` and a buzz; the book remembers the spread it was left on and opens there. The second spread is the
   **wind card** alone on its right page (`renderMap` now only fills it; its left page is empty: the sea chart that was
