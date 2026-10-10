@@ -178,7 +178,8 @@
   const BOTTLE_TIME = 1.2;           // seconds with the net out before a bottle is hauled in (fish take FISH_TIME_MIN–MAX)
   const HOLD_MAX = 9;                // slots in the hold: each fish or dish takes one; when it's full the nets stay aboard
   const FISH_REACH = 1.35;           // a bank counts out to this × its radius (a little past its circle)
-  const FISH_STOP = 12;              // px/s: slow enough to count as stopped on a bank
+  const NETS_AT_ANCHOR_ONLY = true;  // the nets go over only when she drops anchor on a bank (or a bottle); false = also when she just stops on it
+  const FISH_STOP = 12;              // px/s: slow enough to count as stopped on a bank (with NETS_AT_ANCHOR_ONLY off)
   const FISH_SETTLE = 2;             // seconds stopped on a bank before the nets go over
   const BANK_LOOK = [4, 5, 1.45];    // every fish bank looks alike, whatever it holds: [fewest fish, most fish, their size] (dark, going round)
   const FISH_ANCHOR_SETTLE = 0.25;   // …or this long after dropping anchor on a bank
@@ -364,6 +365,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Fishing: the nets go over only when you drop anchor on a bank (or on a bottle); just stopping on it no longer does',
+    ]},
+    {build: '2026-10-10 12:13', items: [
       'Fish banks: one per square of the map now (was two)',
       'The lateen sail starts in the storehouse at home, not in the hold: take it aboard from the storehouse when you want it',
     ]},
@@ -376,12 +380,8 @@
       'Map from your latest drawing: the gap in the land border at H9 opens onto the one at H1, so you can sail out at the bottom and come back in at the top',
       'New from the drawing: the islands in H1–H2, F7, F7–G8 and the two small ones in H7–H8, the triangle in G5, and the tiny one in G3',
     ]},
-    {build: '2026-10-10 10:17', items: [
-      'New map from your drawing: the land border, the long island bending from D2 down to D5, the big C-shaped island in F4–H6, the islands in F2, H2, H3–H4, the little ones round home, the group of four in B7–C8 and the one in G8',
-      'Four villages on your four dots (their names are my pick, by the side of home each lies on): Nordania E3, Estolia H4, Sudia G8, Westa C5; each harbour opens on the nearest sea by its dot',
-    ]},
   ];
-  const BUILD = '2026-10-10 12:13';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-10 12:20';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -5587,13 +5587,14 @@
     if(!fishing){
       const fb = bankUnderBoat(), bo = fb ? null : bottleUnderBoat(), b = fb || bo;   // a fish bank, or else a bottle
       const atAnchor = anchored && weighT <= 0;             // anchor down on a bank: nets over almost at once
+      const canNet = atAnchor || (!NETS_AT_ANCHOR_ONLY && !(reelOn && fb) && boat.speed < FISH_STOP);   // (only at anchor: NETS_AT_ANCHOR_ONLY; with the reel too)
       if(b !== fullSaid) fullSaid = null;
       if(b && holdFull()){                                // no room: the nets stay aboard (said once per bank)
         settleT = 0;
-        if(!fullSaid && (atAnchor || (!(reelOn && fb) && boat.speed < FISH_STOP))){ fullSaid = b; popups.push({x:boat.x, y:boat.y-24, text:TEXT.popups.holdFull, life:1.6, max:1.6}); buzz(20); }
+        if(!fullSaid && canNet){ fullSaid = b; popups.push({x:boat.x, y:boat.y-24, text:TEXT.popups.holdFull, life:1.6, max:1.6}); buzz(20); }
         return;
       }
-      if(b && (atAnchor || (!(reelOn && fb) && boat.speed < FISH_STOP))){   // (with the reel a bank is fished only at anchor)
+      if(b && canNet){
         settleT += dt;
         if(settleT >= (atAnchor ? FISH_ANCHOR_SETTLE : FISH_SETTLE)){
           // the net is thrown at the fish: toward the bank's middle (a side if right on top of it)

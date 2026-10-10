@@ -284,7 +284,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   the straight line (`routeSpot`), so the fish lead from place to place; home waters have all kinds and plenty of banks (`HOME_BANKS` = 9 in the smaller world, same density as 18 before; refilled as they are fished).
   **Every bank looks alike** (`BANK_LOOK` in Tuning: 4–5 big dark fish going round over the darker water, the old sea
   bream's look), so what's in it is only known when the net comes up.
-  Fishing: stop on a bank for 2 s and the nets go over; drop anchor on a bank and they go over after 0.25 s; the net
+  Fishing: **only at anchor** (`NETS_AT_ANCHOR_ONLY` true in Tuning, `canNet`; bottles too): drop anchor on a bank and the nets go over after 0.25 s (with it off, as before: stopping on a bank for 2 s also does); the net
   hauls in by itself. **The reel** (a Stardew-style minigame, **off by default**: `REEL_DEFAULT` false in Tuning; a
   checkbox "Fishing minigame" in the first screen's Settings, `#wg-reel`, `TEXT.worldGen.reel`, switches it, `reelOn`,
   `setReel`, kept in `localStorage` as `vv.reel`; with it on, a bank is fished only at anchor;
