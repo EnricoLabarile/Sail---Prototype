@@ -472,7 +472,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   drawn like the compass, in greys then dithered: a light brass bezel (lit top left) with four rivets round a shaded
   face with a glint; sailing, a light face with an ink anchor; at anchor, a dark face, one light rim and a paper anchor (same size both ways). Over a fish bank (not fishing, not
   at anchor) the anchor on the hub turns into a little fish (ink silhouette, paper eye) to point at its use there.
-  **The long bow and the cannon** (Enrico): the bow reaches `BOW_EXT` (10 px) further forward than the old gozzo's
+  **The long bow and the cannon** (Enrico): the bow reaches `BOW_EXT` (5 px; was 10, halved by Enrico) further forward than the old gozzo's
   (`BX` = 21 + `BOW_EXT`, the fore half of `hullPath` stretched by `FX`), the pivot (boat.x/y) where it was, so she turns
   as before; the foredeck, stem post, bow foam, spray and anchor rode moved with it; on the foredeck a **cannon**
   (drawn in `drawBoat`, the player's boat only: a dark carriage on two wheels, the barrel from x 14 to `BX` − 2.5, a

@@ -391,7 +391,7 @@
   const BOAT_TILT = 0.45;            // the boat in 3D: how much the view looks at her from the south (0 = straight down; height then shows only through her roll and pitch)
   const BOAT_HEEL = 0.3;             // how far she heels to leeward with the sail full of wind (radians at full drive, the wind on the beam)
   const BOAT_SEA_MOTION = 1;         // how much the swell rolls and pitches her (1 = as tuned)
-  const BOW_EXT = 10;                // px the bow reaches further forward than the old gozzo's (room for the bow cannon); she still turns where she did
+  const BOW_EXT = 5;                 // px the bow reaches further forward than the old gozzo's (room for the bow cannon; was 10, halved); she still turns where she did
   const MAST_H = 26;                 // the square sail's mast height (the yard just under its top); the lateen's yard climbs to about this
   const SAIL_TONE = 0.72;            // the sail's cloth when drawing well (1 = paper white, 0 = ink); slack or reefed it's a little darker
   const SPARE_SAIL = true;           // both sails ride in the hold (a slot each, the one not rigged); a tap on one in the logbook rigs it
@@ -409,6 +409,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The bow is half as long as in the last build (halfway between the old boat and the long one)',
+    ]},
+    {build: '2026-10-11 13:39', items: [
       'She sets out with the square sail rigged (the lateen and the Marconi wait in the storehouse)',
       'The square sail now sails well with the wind on the beam too (still poor close to the wind)',
       'The funnel\'s steam streams off downwind, more strongly',
@@ -421,11 +424,8 @@
     {build: '2026-10-11 11:23', items: [
       'A weakened shark or a dazed sea imp can be caught like fish: drop anchor near it and the nets go over (the sling\'s nets still work too)',
     ]},
-    {build: '2026-10-11 11:09', items: [
-      'On the paddles the boat turns a little slower (still quicker than under sail)',
-    ]},
   ];
-  const BUILD = '2026-10-11 13:39';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-11 13:57';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
