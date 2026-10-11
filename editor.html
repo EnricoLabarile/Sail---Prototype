@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Vento e Vele: map editor</title>
+<style>
+  :root { --paper:#ebe7dc; --ink:#1b1a17; --land:#cdc5b3; --pale:#d9d3c5; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; background:var(--paper); color:var(--ink); font:14px/1.3 Georgia, 'Times New Roman', serif; overflow:hidden; }
+  #app { display:flex; flex-direction:column; height:100%; }
+  #top { display:flex; gap:6px; align-items:center; padding:6px 8px; border-bottom:2px solid var(--ink); flex-wrap:wrap; }
+  #top h1 { font-size:15px; margin:0 6px 0 0; font-style:italic; }
+  #status { flex:1; min-width:160px; font-size:12px; opacity:.85; }
+  #status b.warn { background:var(--ink); color:var(--paper); padding:0 4px; }
+  #view { flex:1; position:relative; touch-action:none; }
+  #cv { position:absolute; inset:0; width:100%; height:100%; display:block; cursor:crosshair; }
+  #tools { display:flex; flex-wrap:wrap; gap:5px; padding:6px 8px; border-top:2px solid var(--ink); }
+  button, select { font:inherit; font-size:13px; color:var(--ink); background:var(--paper); border:1.5px solid var(--ink); border-radius:6px; padding:6px 9px; cursor:pointer; }
+  button.on { background:var(--ink); color:var(--paper); }
+  button:disabled { opacity:.35; cursor:default; }
+  .sep { width:1px; background:var(--ink); opacity:.3; margin:0 2px; }
+  #out { position:fixed; inset:0; background:rgba(27,26,23,.55); display:none; align-items:center; justify-content:center; padding:16px; }
+  #out.show { display:flex; }
+  #out .box { background:var(--paper); border:2px solid var(--ink); border-radius:8px; padding:12px; max-width:720px; width:100%; max-height:90%; display:flex; flex-direction:column; gap:8px; }
+  #out textarea { width:100%; flex:1; min-height:240px; font:12px/1.35 ui-monospace, Menlo, Consolas, monospace; background:#f4f1ea; color:var(--ink); border:1px solid var(--ink); padding:6px; }
+  #out p { margin:0; font-size:13px; }
+  #err { padding:20px; display:none; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="top"><h1>Map editor</h1><span id="status">Loading the map from index.html…</span></div>
+  <div id="view"><canvas id="cv"></canvas></div>
+  <div id="tools">
+    <button data-tool="select" class="on" title="Drag things about; drag the sea to move the view; pinch or wheel to zoom">Move</button>
+    <span class="sep"></span>
+    <button data-tool="treasure" title="Tap the sea to add a sunken treasure">+ Treasure</button>
+    <button data-tool="whirl" title="Tap the sea to add a whirlpool; select one to drag its radius handle">+ Whirlpool</button>
+    <button data-tool="storm" title="Tap to add a storm cloud">+ Storm</button>
+    <button data-tool="castaway" title="Tap to put the castaway there (there's only one)">Castaway</button>
+    <button data-tool="village" title="Tap to put the chosen village there">Village:</button>
+    <select id="vkey" title="Which village (a place not set isn't in the world)">
+      <option value="N">Nordania</option><option value="E">Estolia</option><option value="S">Sudia</option><option value="W">Westa</option><option value="temple">Temple of Eolus</option>
+    </select>
+    <button data-tool="monster" title="Tap squares to switch the sea monsters on or off there">Monster squares</button>
+    <button data-tool="boil" title="Drag the corners of the boiling sea; tap near an edge to add a corner">Boiling sea</button>
+    <span class="sep"></span>
+    <button id="del" disabled title="Remove the selected thing">Delete</button>
+    <button id="undo" disabled>Undo</button>
+    <button id="reset" title="Back to the layout in index.html">Reset</button>
+    <span class="sep"></span>
+    <button id="try" title="Open the game with this layout (in this browser)">Try it in the game</button>
+    <button id="copy" title="The layout to paste into index.html">Copy layout</button>
+  </div>
+</div>
+<div id="out"><div class="box">
+  <p><b>The layout.</b> Paste it in <code>index.html</code> in place of the lines between <code>// MAP_LAYOUT &gt;&gt;&gt;</code> and <code>// &lt;&lt;&lt; MAP_LAYOUT</code> (or send it to Claude).</p>
+  <p id="copied"></p>
+  <textarea id="outText" spellcheck="false"></textarea>
+  <div><button id="outClose">Close</button></div>
+</div></div>
+<div id="err"></div>
+<script>
+(async function(){
+  // ---------- read the map and the layout out of the game itself ----------
+  const W = 5040, SQ = W/9, HOME = [W/2, W/2];
+  const NAMES = {N: 'Nordania', E: 'Estolia', S: 'Sudia', W: 'Westa', temple: 'Temple of Eolus'};
+  const $ = id => document.getElementById(id);
+  let src;
+  try { src = await (await fetch('index.html', {cache: 'no-store'})).text(); }
+  catch(e){ $('status').textContent = 'Could not read index.html (open the editor from the same place as the game: GitHub Pages or a local server).'; return; }
+  const between = (a, b)=>{ const i = src.indexOf(a), j = src.indexOf(b, i); if(i < 0 || j < 0) throw new Error('markers ' + a + ' not found'); return src.slice(i + a.length, j); };
+  const literal = (block, name)=>{ const i = block.indexOf('const ' + name + ' ='); const body = block.slice(block.indexOf('=', i) + 1).trim().replace(/;\s*$/, ''); return Function('return (' + body + ')')(); };
+  let LAND, FILE;
+  try {
+    LAND = literal(between('// DRAWN_LAND >>>', '// <<< DRAWN_LAND'), 'DRAWN_LAND');
+    FILE = literal(between('// MAP_LAYOUT >>>', '// <<< MAP_LAYOUT'), 'MAP_LAYOUT_FILE');
+  } catch(e){ $('status').textContent = 'Could not read the map out of index.html: ' + e.message; return; }
+  const clone = o => JSON.parse(JSON.stringify(o));
+  const KEY = 'vv.editorLayout', KEYF = 'vv.editorLayoutFrom';
+  let L = clone(FILE);
+  try {                                                      // carry on from the last edit, unless index.html's layout changed since
+    const saved = JSON.parse(localStorage.getItem(KEY)), from = localStorage.getItem(KEYF);
+    if(saved && from === JSON.stringify(FILE)) L = Object.assign(clone(FILE), saved);
+  } catch(e){}
+  for(const k of Object.keys(FILE)) if(L[k] === undefined) L[k] = clone(FILE[k]);
+  const save = ()=>{ try { localStorage.setItem(KEY, JSON.stringify(L)); localStorage.setItem(KEYF, JSON.stringify(FILE)); } catch(e){} };
+
+  // the land: one evenodd path in world px; a canvas with no transform answers "is it land?"
+  const land = new Path2D();
+  for(const r of LAND){ land.moveTo(r[0], r[1]); for(let i = 2; i < r.length; i += 2) land.lineTo(r[i], r[i+1]); land.closePath(); }
+  const probe = document.createElement('canvas').getContext('2d');
+  const onLand = (x, y)=> probe.isPointInPath(land, x, y, 'evenodd');
+  const sqName = (x, y)=> 'ABCDEFGHI'[Math.max(0, Math.min(8, Math.floor(x/SQ)))] + (Math.max(0, Math.min(8, Math.floor(y/SQ))) + 1);
+
+  // ---------- view ----------
+  const cv = $('cv'), ctx = cv.getContext('2d');
+  let dpr = 1, vw = 0, vh = 0, cam = {x: W/2, y: W/2, s: 0.1};   // cam: the world point in the middle, screen px per world px
+  function resize(){
+    dpr = window.devicePixelRatio || 1; const r = cv.getBoundingClientRect(); vw = r.width; vh = r.height;
+    cv.width = Math.round(vw*dpr); cv.height = Math.round(vh*dpr);
+    if(!resize.done){ resize.done = true; cam.s = Math.min(vw, vh)/(W*1.04); }
+    draw();
+  }
+  const toScreen = (x, y)=> [(x - cam.x)*cam.s + vw/2, (y - cam.y)*cam.s + vh/2];
+  const toWorld = (sx, sy)=> [(sx - vw/2)/cam.s + cam.x, (sy - vh/2)/cam.s + cam.y];
+
+  // ---------- state ----------
+  let tool = 'select', sel = null, undoStack = [];
+  const remember = ()=>{ undoStack.push(JSON.stringify(L)); if(undoStack.length > 80) undoStack.shift(); $('undo').disabled = false; };
+  const changed = ()=>{ save(); refreshStatus(); draw(); };
+
+  // every draggable thing, for hit tests: {type, key, x, y, set(x, y)}
+  function things(){
+    const out = [];
+    L.treasures.forEach((p, i)=> out.push({type: 'treasure', key: i, x: p[0], y: p[1], set: (x, y)=>{ p[0] = x; p[1] = y; }}));
+    L.storms.forEach((p, i)=> out.push({type: 'storm', key: i, x: p[0], y: p[1], set: (x, y)=>{ p[0] = x; p[1] = y; }}));
+    L.whirlpools.forEach((p, i)=>{
+      out.push({type: 'whirl', key: i, x: p[0], y: p[1], set: (x, y)=>{ p[0] = x; p[1] = y; }});
+      if(sel && sel.type === 'whirl' && sel.key === i) out.push({type: 'whirlR', key: i, x: p[0] + p[2], y: p[1], set: (x, y)=>{ p[2] = Math.max(40, Math.round(Math.hypot(x - p[0], y - p[1]))); }, keepSel: true});
+    });
+    if(L.castaway) out.push({type: 'castaway', key: 0, x: L.castaway[0], y: L.castaway[1], set: (x, y)=>{ L.castaway[0] = x; L.castaway[1] = y; }});
+    for(const k in L.villages){ const p = L.villages[k]; out.push({type: 'village', key: k, x: p[0], y: p[1], set: (x, y)=>{ p[0] = x; p[1] = y; }}); }
+    for(const k in L.debris){ const d = L.debris[k];
+      out.push({type: 'debris', key: k, end: 0, x: d[0], y: d[1], set: (x, y)=>{ d[0] = x; d[1] = y; }});
+      out.push({type: 'debris', key: k, end: 1, x: d[2], y: d[3], set: (x, y)=>{ d[2] = x; d[3] = y; }}); }
+    if(tool === 'boil') L.boil.forEach((p, i)=> out.push({type: 'boil', key: i, x: p[0], y: p[1], set: (x, y)=>{ p[0] = Math.max(0, Math.min(W, x)); p[1] = Math.max(0, Math.min(W, y)); }}));
+    return out;
+  }
+  function hit(sx, sy){
+    let best = null, bd = 18;
+    for(const t of things()){ const [px, py] = toScreen(t.x, t.y), d = Math.hypot(px - sx, py - sy); if(d <= bd){ bd = d; best = t; } }
+    return best;
+  }
+  const sameSel = (a, b)=> a && b && a.type === b.type && a.key === b.key;
+
+  // ---------- drawing ----------
+  const INK = '#1b1a17', PAPER = '#ebe7dc';
+  function draw(){
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = PAPER; ctx.fillRect(0, 0, vw, vh);
+    ctx.save(); ctx.translate(vw/2, vh/2); ctx.scale(cam.s, cam.s); ctx.translate(-cam.x, -cam.y);
+    const px = 1/cam.s;                                     // one screen px in world px
+    // the boiling sea
+    ctx.beginPath(); L.boil.forEach((p, i)=> i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath();
+    ctx.fillStyle = 'rgba(27,26,23,0.13)'; ctx.fill();
+    ctx.setLineDash([8*px, 6*px]); ctx.lineWidth = 1.5*px; ctx.strokeStyle = INK; ctx.stroke(); ctx.setLineDash([]);
+    // monster squares: hatched
+    for(const q of L.monsterSquares){
+      const c = 'ABCDEFGHI'.indexOf(q[0]), r = +q.slice(1) - 1; if(c < 0 || !(r >= 0)) continue;
+      ctx.save(); ctx.beginPath(); ctx.rect(c*SQ, r*SQ, SQ, SQ); ctx.clip();
+      ctx.strokeStyle = 'rgba(27,26,23,0.28)'; ctx.lineWidth = 2*px; ctx.beginPath();
+      for(let k = -SQ; k < SQ; k += 14*px){ ctx.moveTo(c*SQ + k, r*SQ); ctx.lineTo(c*SQ + k + SQ, r*SQ + SQ); }
+      ctx.stroke(); ctx.restore();
+      label('sea monsters', c*SQ + SQ/2, r*SQ + 14*px, 10, 0.75);
+    }
+    // the land
+    ctx.fillStyle = '#cdc5b3'; ctx.fill(land, 'evenodd'); ctx.lineWidth = 1.6*px; ctx.strokeStyle = INK; ctx.stroke(land);
+    // the squares
+    ctx.strokeStyle = 'rgba(27,26,23,0.35)'; ctx.lineWidth = px; ctx.setLineDash([3*px, 5*px]); ctx.beginPath();
+    for(let k = 0; k <= 9; k++){ ctx.moveTo(k*SQ, 0); ctx.lineTo(k*SQ, W); ctx.moveTo(0, k*SQ); ctx.lineTo(W, k*SQ); }
+    ctx.stroke(); ctx.setLineDash([]);
+    ctx.lineWidth = 2*px; ctx.strokeStyle = INK; ctx.strokeRect(0, 0, W, W);
+    for(let k = 0; k < 9; k++){ label('ABCDEFGHI'[k], k*SQ + SQ/2, -10*px, 13, 1); label(String(k+1), -12*px, k*SQ + SQ/2 + 4*px, 13, 1); }
+    // home
+    { const [x, y] = HOME, r = 9*px; ctx.fillStyle = PAPER; ctx.strokeStyle = INK; ctx.lineWidth = 2*px; ctx.fillRect(x - r, y - r, 2*r, 2*r); ctx.strokeRect(x - r, y - r, 2*r, 2*r); label('home', x, y + r + 12*px, 11, 1); }
+    // the debris
+    for(const k in L.debris){ const d = L.debris[k]; ctx.strokeStyle = INK; ctx.lineWidth = 7*px; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(d[0], d[1]); ctx.lineTo(d[2], d[3]); ctx.stroke(); label('driftwood ' + k, (d[0]+d[2])/2, (d[1]+d[3])/2 - 10*px, 10, 1); }
+    // the whirlpools
+    L.whirlpools.forEach((p, i)=>{
+      const [x, y, r] = p, s = sameSel(sel, {type: 'whirl', key: i});
+      ctx.setLineDash([5*px, 4*px]); ctx.lineWidth = (s ? 2 : 1.2)*px; ctx.strokeStyle = INK; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
+      icon(x, y, s, (c, u)=>{ c.beginPath(); for(let a = 0; a < 3.3*Math.PI; a += 0.2){ const rr = u*0.18*a; c.lineTo(x + Math.cos(a)*rr, y + Math.sin(a)*rr); } c.stroke(); });
+      if(s){ const hx = x + r; ctx.fillStyle = INK; ctx.fillRect(hx - 5*px, y - 5*px, 10*px, 10*px); }
+    });
+    // the storm clouds
+    L.storms.forEach((p, i)=> icon(p[0], p[1], sameSel(sel, {type: 'storm', key: i}), (c, u, x, y)=>{
+      c.beginPath(); c.moveTo(x + 0.15*u, y - 0.9*u); c.lineTo(x - 0.35*u, y + 0.1*u); c.lineTo(x + 0.05*u, y + 0.1*u); c.lineTo(x - 0.2*u, y + 0.9*u); c.lineTo(x + 0.4*u, y - 0.2*u); c.lineTo(x, y - 0.2*u); c.closePath(); c.fillStyle = INK; c.fill(); }));
+    // the treasures
+    L.treasures.forEach((p, i)=> icon(p[0], p[1], sameSel(sel, {type: 'treasure', key: i}), (c, u, x, y)=>{
+      c.lineWidth = 3*px; c.beginPath(); c.moveTo(x - 0.55*u, y - 0.55*u); c.lineTo(x + 0.55*u, y + 0.55*u); c.moveTo(x + 0.55*u, y - 0.55*u); c.lineTo(x - 0.55*u, y + 0.55*u); c.stroke(); }));
+    // the castaway
+    if(L.castaway) icon(L.castaway[0], L.castaway[1], sameSel(sel, {type: 'castaway', key: 0}), (c, u, x, y)=>{
+      c.fillStyle = INK; c.beginPath(); c.arc(x, y - 0.55*u, 0.22*u, 0, Math.PI*2); c.fill();
+      c.lineWidth = 2.5*px; c.beginPath(); c.moveTo(x, y - 0.3*u); c.lineTo(x, y + 0.25*u); c.moveTo(x - 0.4*u, y + 0.75*u); c.lineTo(x, y + 0.25*u); c.lineTo(x + 0.4*u, y + 0.75*u);
+      c.moveTo(x - 0.55*u, y - 0.6*u); c.lineTo(x, y - 0.1*u); c.lineTo(x + 0.55*u, y - 0.6*u); c.stroke(); }, 'castaway');
+    // the villages
+    for(const k in L.villages){ const p = L.villages[k];
+      icon(p[0], p[1], sameSel(sel, {type: 'village', key: k}), (c, u, x, y)=>{ c.fillStyle = INK; c.beginPath(); c.arc(x, y, 0.45*u, 0, Math.PI*2); c.fill(); }, NAMES[k] || k); }
+    // the boiling sea's corners, while editing it
+    if(tool === 'boil') L.boil.forEach((p, i)=>{ const s = sameSel(sel, {type: 'boil', key: i}); ctx.fillStyle = s ? INK : PAPER; ctx.strokeStyle = INK; ctx.lineWidth = 2*px;
+      ctx.beginPath(); ctx.arc(p[0], p[1], 6*px, 0, Math.PI*2); ctx.fill(); ctx.stroke(); });
+    ctx.restore();
+
+    function label(text, x, y, size, alpha){
+      ctx.save(); ctx.globalAlpha = alpha; ctx.font = (size*px) + 'px Georgia, serif'; ctx.textAlign = 'center';
+      ctx.lineWidth = 3*px; ctx.strokeStyle = PAPER; ctx.strokeText(text, x, y); ctx.fillStyle = INK; ctx.fillText(text, x, y); ctx.restore();
+    }
+    // a thing's marker: a paper disc (inked when selected) with its drawing, a label under it, and a warning when it's on land
+    function icon(x, y, selected, paint, name){
+      const u = 11*px, bad = onLand(x, y) && name !== 'castaway' && !(name in invNames);
+      ctx.fillStyle = PAPER; ctx.strokeStyle = INK; ctx.lineWidth = (selected ? 3 : 1.5)*px;
+      ctx.beginPath(); ctx.arc(x, y, u*1.25, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+      if(bad){ ctx.setLineDash([3*px, 3*px]); ctx.beginPath(); ctx.arc(x, y, u*1.75, 0, Math.PI*2); ctx.stroke(); ctx.setLineDash([]); }
+      ctx.strokeStyle = INK; ctx.lineWidth = 2*px; ctx.lineCap = 'round'; paint(ctx, u, x, y);
+      if(name) label(name, x, y + u*1.25 + 12*px, 11, 1);
+    }
+  }
+  const invNames = Object.fromEntries(Object.values(NAMES).map(n=> [n, 1]));   // (villages stand on their dots by the coast: no warning)
+
+  function refreshStatus(){
+    const T = {select: 'Drag things about; drag the sea to move, pinch or wheel to zoom.', treasure: 'Tap the sea to add a treasure.',
+      whirl: 'Tap the sea to add a whirlpool (drag the black square to change its size).', storm: 'Tap to add a storm cloud.',
+      castaway: 'Tap an island to put the castaway there.', village: 'Tap a coast to put ' + NAMES[$('vkey').value] + ' there (it is moved to the nearest open water in the game).',
+      monster: 'Tap squares to switch the sea monsters on or off there.', boil: 'Drag the corners; tap near an edge to add one; select one and Delete to remove it.'}[tool];
+    let s = T;
+    if(sel){
+      const t = things().find(o=> sameSel(o, sel) && (sel.end === undefined || o.end === sel.end));
+      if(t){
+        const what = {treasure: 'Treasure', storm: 'Storm cloud', whirl: 'Whirlpool', castaway: 'Castaway', village: NAMES[sel.key] || sel.key, boil: 'Boiling sea corner', debris: 'Driftwood'}[sel.type] || sel.type;
+        s = what + ' at ' + Math.round(t.x) + ', ' + Math.round(t.y) + ' (' + sqName(t.x, t.y) + ')' + (sel.type === 'whirl' ? ', radius ' + L.whirlpools[sel.key][2] : '');
+        if(onLand(t.x, t.y) && !['castaway', 'village', 'boil'].includes(sel.type)) s += ' — <b class="warn">on land!</b>';
+      }
+    }
+    $('status').innerHTML = s;
+    $('del').disabled = !sel;
+  }
+
+  // ---------- adding and removing ----------
+  function add(x, y){
+    x = Math.round(x); y = Math.round(y);
+    if(x < 0 || y < 0 || x > W || y > W) return;
+    remember();
+    if(tool === 'treasure'){ L.treasures.push([x, y]); sel = {type: 'treasure', key: L.treasures.length - 1}; }
+    else if(tool === 'storm'){ L.storms.push([x, y]); sel = {type: 'storm', key: L.storms.length - 1}; }
+    else if(tool === 'whirl'){ L.whirlpools.push([x, y, 120]); sel = {type: 'whirl', key: L.whirlpools.length - 1}; }
+    else if(tool === 'castaway'){ L.castaway = [x, y]; sel = {type: 'castaway', key: 0}; }
+    else if(tool === 'village'){ const k = $('vkey').value; L.villages[k] = [x, y]; sel = {type: 'village', key: k}; }
+    else if(tool === 'monster'){ const q = sqName(x, y), i = L.monsterSquares.indexOf(q); if(i >= 0) L.monsterSquares.splice(i, 1); else L.monsterSquares.push(q); sel = null; }
+    else if(tool === 'boil'){                                 // a new corner on the nearest edge
+      let best = -1, bd = 22/cam.s;
+      for(let i = 0; i < L.boil.length; i++){
+        const a = L.boil[i], b = L.boil[(i + 1) % L.boil.length], dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx*dx + dy*dy || 1;
+        const t = Math.max(0, Math.min(1, ((x - a[0])*dx + (y - a[1])*dy)/l2)), d = Math.hypot(a[0] + dx*t - x, a[1] + dy*t - y);
+        if(d < bd){ bd = d; best = i; }
+      }
+      if(best < 0){ undoStack.pop(); $('undo').disabled = !undoStack.length; return; }
+      L.boil.splice(best + 1, 0, [x, y]); sel = {type: 'boil', key: best + 1};
+    }
+    else { undoStack.pop(); $('undo').disabled = !undoStack.length; return; }
+    changed();
+  }
+  function del(){
+    if(!sel) return;
+    remember();
+    const {type, key} = sel;
+    if(type === 'treasure') L.treasures.splice(key, 1);
+    else if(type === 'storm') L.storms.splice(key, 1);
+    else if(type === 'whirl' || type === 'whirlR') L.whirlpools.splice(key, 1);
+    else if(type === 'castaway') L.castaway = null;
+    else if(type === 'village') delete L.villages[key];
+    else if(type === 'debris') delete L.debris[key];
+    else if(type === 'boil'){ if(L.boil.length > 3) L.boil.splice(key, 1); }
+    sel = null; changed();
+  }
+
+  // ---------- pointers: drag a thing, drag the sea to move, two fingers or the wheel to zoom ----------
+  const ptrs = new Map(); let drag = null, pinch = null;
+  const pos = ev=>{ const r = cv.getBoundingClientRect(); return [ev.clientX - r.left, ev.clientY - r.top]; };
+  cv.addEventListener('pointerdown', ev=>{
+    cv.setPointerCapture(ev.pointerId); const p = pos(ev); ptrs.set(ev.pointerId, p);
+    if(ptrs.size === 2){                                      // two fingers: zoom and move
+      const [a, b] = [...ptrs.values()]; drag = null;
+      pinch = {d: Math.hypot(a[0] - b[0], a[1] - b[1]), s: cam.s, mid: toWorld((a[0] + b[0])/2, (a[1] + b[1])/2)}; return;
+    }
+    const h = tool === 'monster' ? null : hit(p[0], p[1]);
+    if(h){
+      if(!h.keepSel) sel = {type: h.type, key: h.key, end: h.end};
+      drag = {kind: 'thing', t: h, start: p, moved: false, saved: false};
+    } else drag = {kind: 'pan', start: p, cam: {...cam}, moved: false};
+    refreshStatus(); draw();
+  });
+  cv.addEventListener('pointermove', ev=>{
+    if(!ptrs.has(ev.pointerId)) return;
+    const p = pos(ev); ptrs.set(ev.pointerId, p);
+    if(pinch && ptrs.size === 2){
+      const [a, b] = [...ptrs.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+      cam.s = Math.max(0.02, Math.min(3, pinch.s*d/pinch.d));
+      const m = [(a[0] + b[0])/2, (a[1] + b[1])/2];
+      cam.x = pinch.mid[0] - (m[0] - vw/2)/cam.s; cam.y = pinch.mid[1] - (m[1] - vh/2)/cam.s; draw(); return;
+    }
+    if(!drag) return;
+    if(Math.hypot(p[0] - drag.start[0], p[1] - drag.start[1]) > 4) drag.moved = true;
+    if(!drag.moved) return;
+    if(drag.kind === 'pan'){ cam.x = drag.cam.x - (p[0] - drag.start[0])/cam.s; cam.y = drag.cam.y - (p[1] - drag.start[1])/cam.s; draw(); }
+    else {
+      if(!drag.saved){ remember(); drag.saved = true; }
+      const [x, y] = toWorld(p[0], p[1]); drag.t.set(Math.round(x), Math.round(y)); save(); refreshStatus(); draw();
+    }
+  });
+  const up = ev=>{
+    if(!ptrs.has(ev.pointerId)) return;
+    ptrs.delete(ev.pointerId);
+    if(pinch){ if(ptrs.size < 2) pinch = null; drag = null; return; }
+    if(drag && !drag.moved && drag.kind === 'pan'){            // a tap on the sea: add (with an adding tool), or let go of the selection
+      const [x, y] = toWorld(drag.start[0], drag.start[1]);
+      if(tool === 'select'){ sel = null; refreshStatus(); draw(); } else add(x, y);
+    }
+    drag = null;
+  };
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  cv.addEventListener('wheel', ev=>{
+    ev.preventDefault(); const p = pos(ev), w = toWorld(p[0], p[1]);
+    cam.s = Math.max(0.02, Math.min(3, cam.s*Math.exp(-ev.deltaY*0.0015)));
+    cam.x = w[0] - (p[0] - vw/2)/cam.s; cam.y = w[1] - (p[1] - vh/2)/cam.s; draw();
+  }, {passive: false});
+  window.addEventListener('keydown', ev=>{
+    if(ev.key === 'Delete' || ev.key === 'Backspace'){ if(document.activeElement.tagName !== 'TEXTAREA'){ ev.preventDefault(); del(); } }
+    if((ev.ctrlKey || ev.metaKey) && ev.key === 'z'){ ev.preventDefault(); undo(); }
+  });
+
+  // ---------- the buttons ----------
+  document.querySelectorAll('[data-tool]').forEach(b=> b.addEventListener('click', ()=>{
+    tool = b.dataset.tool; document.querySelectorAll('[data-tool]').forEach(o=> o.classList.toggle('on', o === b));
+    if(sel && sel.type === 'boil' && tool !== 'boil') sel = null;
+    refreshStatus(); draw();
+  }));
+  $('vkey').addEventListener('change', ()=>{ document.querySelector('[data-tool=village]').click(); });
+  $('del').addEventListener('click', del);
+  function undo(){ if(!undoStack.length) return; L = JSON.parse(undoStack.pop()); sel = null; $('undo').disabled = !undoStack.length; changed(); }
+  $('undo').addEventListener('click', undo);
+  $('reset').addEventListener('click', ()=>{ if(!confirm('Back to the layout in index.html? (Undo can bring yours back.)')) return; remember(); L = clone(FILE); sel = null; changed(); });
+  $('try').addEventListener('click', ()=>{ save(); window.open('index.html?layout=local', '_blank'); });
+
+  // the layout as the lines between the markers in index.html
+  function layoutText(){
+    const pt = p => '[' + p.join(', ') + ']';
+    const list = (arr, per)=>{ const parts = arr.map(pt), lines = []; for(let i = 0; i < parts.length; i += per) lines.push(parts.slice(i, i + per).join(', ')); return '[' + lines.join(',\n      ') + ']'; };
+    const obj = o => '{' + Object.keys(o).map(k => (/^[A-Za-z_]\w*$/.test(k) ? k : JSON.stringify(k)) + ': ' + pt(o[k])).join(', ') + '}';
+    return ['  const MAP_LAYOUT_FILE = {',
+      '    villages: ' + obj(L.villages) + ',',
+      '    whirlpools: ' + list(L.whirlpools, 6) + ',',
+      '    storms: ' + list(L.storms, 8) + ',',
+      '    treasures: ' + list(L.treasures, 8) + ',',
+      '    castaway: ' + (L.castaway ? pt(L.castaway) : 'null') + ',',
+      '    monsterSquares: [' + L.monsterSquares.map(q => "'" + q + "'").join(', ') + '],',
+      '    boil: ' + list(L.boil, 8) + ',',
+      '    debris: ' + obj(L.debris) + ',',
+      '  };'].join('\n');
+  }
+  $('copy').addEventListener('click', async ()=>{
+    const text = layoutText(); $('outText').value = text; $('out').classList.add('show');
+    try { await navigator.clipboard.writeText(text); $('copied').textContent = 'Copied to the clipboard.'; }
+    catch(e){ $('copied').textContent = 'Select it all and copy it.'; $('outText').select(); }
+  });
+  $('outClose').addEventListener('click', ()=> $('out').classList.remove('show'));
+
+  window.addEventListener('resize', resize);
+  resize(); refreshStatus();
+})();
+</script>
+</body>
+</html>

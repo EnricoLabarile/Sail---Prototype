@@ -51,12 +51,33 @@ def main():
         pg.wait_for_timeout(300)
         if pg.evaluate('__d.ordersOn'): orders(pg)
         else: trip(pg)
+        editor(b, errors)
         b.close()
     if errors:
         print('JS errors:', *errors, sep='\n  '); sys.exit(1)
     print('OK: the voyage plays (orders ' + ('on' if ORDERS else 'off') + '), no JS errors')
 
 ORDERS = None
+
+def editor(b, errors):
+    # the map editor (editor.html) reads index.html over http: served from here, it loads with no errors and its
+    # "Copy layout" of an untouched layout is exactly the block between the MAP_LAYOUT markers
+    import http.server, threading, functools, re
+    root = str(GAME.parent)
+    class Quiet(http.server.SimpleHTTPRequestHandler):
+        def log_message(self, *a): pass
+    srv = http.server.ThreadingHTTPServer(('127.0.0.1', 0), functools.partial(Quiet, directory=root))
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        ctx = b.new_context(viewport={'width': 400, 'height': 800})
+        pg = ctx.new_page(); pg.on('pageerror', lambda e: errors.append('editor: ' + str(e)))
+        pg.goto(f'http://127.0.0.1:{srv.server_address[1]}/editor.html'); pg.wait_for_timeout(1200)
+        pg.click('#copy'); pg.wait_for_timeout(200)
+        block = re.search(r'// MAP_LAYOUT >>>\n(.*?)\n  // <<< MAP_LAYOUT', GAME.read_text(encoding='utf-8'), re.S).group(1)
+        assert pg.input_value('#outText') == block, 'the editor does not write the layout back as it is in index.html'
+        ctx.close()
+    finally:
+        srv.shutdown()
 
 def buy_dish(pg, k, name, icon):
     # four foreign fish to pay with (4 coins each, a dish costs 6: three of them)

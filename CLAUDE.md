@@ -188,6 +188,22 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   stick in a sandy clearing (`drawCastaway`); a toast within 600 px; anchored within `STRANDED_REACH` they come aboard
   (`updateCastaway`, a second figure forward in the boat); tied up at the village nearest home (`castawayTo`, Nordania)
   the reward; `resetCastaway` on a new voyage. The boiling sea leaves cool water within `STRANDED_REACH` + 120 of them (`boilRaw`), so the pick-up doesn't scald.
+  **The map editor** (`editor.html`, next to `index.html`, served by GitHub Pages too; button `#wg-editor` in the first
+  screen's World, `TEXT.worldGen.editor`): everything placed on the drawn map lives in **one block in Tuning**,
+  `MAP_LAYOUT_FILE` between `// MAP_LAYOUT >>>` and `// <<< MAP_LAYOUT` (villages, whirlpools, storms, treasures,
+  castaway, monsterSquares, boil, debris); `DRAWN_PLACES`, `DRAWN_WHIRLS`, `DRAWN_STORMS`, `DRAWN_TREASURES`,
+  `DRAWN_STRANDED`, `DRAWN_BOIL`, `DRAWN_DEBRIS`, `MONSTER_SQUARES` just read it (`MAP_LAYOUT`). The editor fetches
+  `index.html` (so it needs http: Pages or `python -m http.server`, not file://), evaluates the `DRAWN_LAND` and
+  `MAP_LAYOUT_FILE` literals between their markers, and draws the land (evenodd), the 9×9 squares, home and every
+  thing as a marker (paper disc, ink drawing; a dashed ring when a treasure, storm or whirlpool sits on land, and "on
+  land!" in the status line). Tools: Move (drag things; drag the sea to pan; pinch or wheel to zoom), + Treasure,
+  + Whirlpool (a selected one has a square handle for its radius), + Storm, Castaway, Village (a pick of N/E/S/W/temple:
+  a key not set isn't in the world), Monster squares (tap to toggle), Boiling sea (drag corners, tap near an edge to add
+  one); Delete, Undo (80 steps), Reset (to the file's). Edits are kept in `localStorage` `vv.editorLayout` (dropped if
+  the file's layout changes). **Try it in the game** opens `index.html?layout=local`: the game then reads
+  `vv.editorLayout` over the file's (`MAP_LAYOUT`). **Copy layout** writes the block in the file's own format, to paste
+  between the markers (or to send me). The smoke test serves the folder over http and checks the editor loads and
+  writes an untouched layout back identical to the block.
   **Rule for the next drawn maps (Enrico):** put in the world only what he drew or wrote; never add or place things
   of my own (as Sudia and the temple were placed this first time); keep randomness down wherever possible; and wait
   for his go before generating a new map.

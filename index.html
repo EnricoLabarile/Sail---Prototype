@@ -39,23 +39,35 @@
   // left out, each still switchable from the first screen: random wild islands, rocks, whirlpools, fish banks, storm
   // clouds, the boiling sea, the messages in a bottle (and so the wreck), and the villages and temple not placed below
   const MAP_DRAWN = knob('MAP_DRAWN', 1);            // 1 = the drawn map, 0 = the random archipelago of before (world)
-  // where the villages (W, E, S, N: Westa, Estolia, Sudia, Nordania) and the Temple of Eolus (temple) stand on the drawn
-  // map, in world px (A1's corner is 0,0; a square is 560 px), each slid toward home until its harbour opens on the
-  // sea; one not listed isn't in the world (world)
-  const DRAWN_PLACES = {N: [2800, 1234], E: [4308, 2055]};   // the dots of the fifth drawing: Nordania F3 (by home's sea), Estolia H4 (at the end of the long inlet); how many villages, still to be decided
-  const DRAWN_WHIRLS = [[580, 1168, 120], [939, 1211, 120], [1352, 1222, 120], [363, 1434, 120], [1448, 1657, 120], [455, 1724, 120],
-    [917, 1808, 120], [1208, 1901, 120], [626, 2017, 120], [1011, 2161, 120]];   // the whirlpools drawn on the map (the ten spirals of the stormy north-west, A3-C4): x, y, outer radius; always open, they stay where they're drawn (world)
-  const DRAWN_STORMS = [[634, 1504], [1157, 1584], [2479, 3064]];   // the storm clouds drawn on the map (B3, C3, E6): they hang there, swaying a little (world)
-  const DRAWN_TREASURES = [[1493, 354], [3780, 354], [3743, 845], [1635, 2203], [4599, 2531], [922, 3820]];   // the sunken treasures (X) drawn on the map: C1, G1, G2, C4, I5, B7 (instead of TREASURE_COUNT at random) (world)
-  const DRAWN_STRANDED = [3791, 3855];   // the castaway drawn on the island in G7: anchor by him and he comes aboard (world)
-  // the boiling sea: the dashed line on the map (from the tip in E7 up past the little islands of F6-H6 to the east edge in I5) and the sea south-east of it (world)
-  const DRAWN_BOIL = [[2450, 3434], [2586, 3434], [2745, 3260], [2903, 3128], [3009, 3086], [3246, 2969], [3458, 2943], [3670, 2890], [3933, 2853], [4409, 2821], [4752, 2784], [5040, 2758], [5040, 5040], [2450, 5040]];
-  // destructible obstacles (the hatched bars on the map): driftwood jammed across a channel, from shore to shore (x0, y0, x1, y1); a few slingshot shots break them up (world)
-  const DRAWN_DEBRIS = {};          // (none on the fifth drawing; the fourth had seven, e.g. H1: [4124, 76, 4282, 76])
+  // where things stand on the drawn map, in world px (A1's corner is 0,0; a square is 560 px). Written by the map
+  // editor (editor.html, next to the game: drag them about, "Copy layout", and paste it between the two markers) (world)
+  // MAP_LAYOUT >>>
+  const MAP_LAYOUT_FILE = {
+    villages: {N: [2800, 1234], E: [4308, 2055]},
+    whirlpools: [[580, 1168, 120], [939, 1211, 120], [1352, 1222, 120], [363, 1434, 120], [1448, 1657, 120], [455, 1724, 120],
+      [917, 1808, 120], [1208, 1901, 120], [626, 2017, 120], [1011, 2161, 120]],
+    storms: [[634, 1504], [1157, 1584], [2479, 3064]],
+    treasures: [[1493, 354], [3780, 354], [3743, 845], [1635, 2203], [4599, 2531], [922, 3820]],
+    castaway: [3791, 3855],
+    monsterSquares: ['G4', 'D6', 'H9'],
+    boil: [[2450, 3434], [2586, 3434], [2745, 3260], [2903, 3128], [3009, 3086], [3246, 2969], [3458, 2943], [3670, 2890],
+      [3933, 2853], [4409, 2821], [4752, 2784], [5040, 2758], [5040, 5040], [2450, 5040]],
+    debris: {},
+  };
+  // <<< MAP_LAYOUT
+  // ?layout=local in the address: the layout being edited in this browser instead (the editor's "Try it in the game")
+  const MAP_LAYOUT = (()=>{ try{ if(URLP.get('layout') === 'local'){ const L = JSON.parse(localStorage.getItem('vv.editorLayout')); if(L) return Object.assign({}, MAP_LAYOUT_FILE, L); } }catch(e){} return MAP_LAYOUT_FILE; })();
+  const DRAWN_PLACES = MAP_LAYOUT.villages;      // the villages (N, E, S, W: Nordania, Estolia, Sudia, Westa) and the Temple of Eolus (temple), each slid toward home until its harbour opens on the sea; one not listed isn't in the world (now Nordania F3, Estolia H4, the dots of the fifth drawing)
+  const DRAWN_WHIRLS = MAP_LAYOUT.whirlpools;    // the whirlpools: x, y, outer radius; always open, they stay where they are (now the ten spirals of the stormy north-west)
+  const DRAWN_STORMS = MAP_LAYOUT.storms;        // the storm clouds: they hang there, swaying a little
+  const DRAWN_TREASURES = MAP_LAYOUT.treasures;  // the sunken treasures (X) (instead of TREASURE_COUNT at random)
+  const DRAWN_STRANDED = MAP_LAYOUT.castaway;    // the castaway, on an island: anchor by them and they come aboard (null = none)
+  const DRAWN_BOIL = MAP_LAYOUT.boil;            // the boiling sea: inside this outline (now the dashed line from the tip in E7 to the east edge in I5, and the sea south-east of it)
+  const DRAWN_DEBRIS = MAP_LAYOUT.debris;        // driftwood jams across channels, shore to shore (x0, y0, x1, y1); a few slingshot shots break them up (none now; the fourth drawing had seven)
   const DEBRIS_ON = false;          // the driftwood jams (DRAWN_DEBRIS) are in the world: off for now (the channels are open)
   const DEBRIS_W = 80;               // how thick a driftwood jam is (px across the channel's way)
   const DEBRIS_HP = 3;               // slingshot shots to break one up (a shot counts once, however many of its stones land on it)
-  const MONSTER_SQUARES = ['G4', 'D6', 'H9'];   // the sea monsters drawn on the map: sharks and sea imps turn up only in these squares (instead of CREATURE_SIDES) (world)
+  const MONSTER_SQUARES = MAP_LAYOUT.monsterSquares;   // the sea monsters' squares: sharks and sea imps turn up only there on the drawn map (instead of CREATURE_SIDES) (world)
 
   // -- Boat --
   const MAX_SPEED = 50;              // px/s: reference speed (collision damage is scaled by it too)
@@ -422,6 +434,10 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'A map editor (World > Map editor, or editor.html): drag treasures, whirlpools, storms, the castaway and the villages about, switch the monster squares, reshape the boiling sea',
+      'In the editor, Try it in the game opens the game with your layout; Copy layout gives the lines to paste into index.html',
+    ]},
+    {build: '2026-10-11 19:20', items: [
       'She sets out with the Marconi sail (the square and the lateen wait in the storehouse)',
       'The Marconi is now the best with the wind on the side and still good with it from behind',
       'Running before the wind, the Marconi\'s boom swings out square across the boat',
@@ -435,11 +451,8 @@
       'The current shows: bits of foam with a short trail drift downwind across the open sea (none by the shores)',
       'Cool water round the castaway, so picking them up no longer scalds the hull',
     ]},
-    {build: '2026-10-11 18:43', items: [
-      'The current is much stronger: the wind\'s push on the water carries the boat about 2.5 times as far',
-    ]},
   ];
-  const BUILD = '2026-10-11 19:20';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-11 19:35';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -452,6 +465,7 @@
     worldGen: {
       title:    'World',
       generate: 'Generate',
+      editor:   'Map editor',                       // opens editor.html: place treasures, whirlpools, storms, villages… on the drawn map
       reset:    'Defaults',
       changesTitle: 'What\'s new',                   // the heading of the (folded) list of changes
       settings: 'Settings',                         // the heading of the settings (vibration)
@@ -1523,7 +1537,8 @@
     <details class="wg-sec" id="wg-sec-world"><summary id="wg-title"></summary>
     <canvas id="wg-map" aria-label="Preview of the world"></canvas>
     <div id="wg-knobs"></div>
-    <div class="wg-row"><button id="wg-reset" type="button"></button><button id="wg-gen" type="button"></button></div></details>
+    <div class="wg-row"><button id="wg-reset" type="button"></button><button id="wg-gen" type="button"></button></div>
+    <div class="wg-row"><button id="wg-editor" type="button"></button></div></details>
     <button id="start-btn">Set sail</button>
     </div>
    </div>
@@ -5745,6 +5760,8 @@
     audioEditor(T);
     const gen = document.getElementById('wg-gen'), reset = document.getElementById('wg-reset');
     gen.textContent = T.generate; reset.textContent = T.reset;
+    const edBtn = document.getElementById('wg-editor'); edBtn.textContent = T.editor;
+    edBtn.addEventListener('click', ()=> window.open('editor.html', '_blank'));
     // the dangers: the sharks' and whirlpools' knobs, the same kind of fields in their own section
     const DK = {SHARK_ON, SHARK_CHANCE, SHARK_COOLDOWN, SHARK_SPEED, SHARK_DAMAGE, WHIRL_FOLLOW, WHIRL_FOLLOW_SPEED, STORM_ON, STORM_SHARE, STORM_WARN, STORM_AIM, STORM_HIT_R, STORM_DAMAGE, ZORA_ON, ZORA_CHANCE, ZORA_DAMAGE, BOIL_ON, BOIL_DELAY, BOIL_DAMAGE};
     const dbox = document.getElementById('wg-dknobs'), dapply = document.getElementById('wg-dapply');
