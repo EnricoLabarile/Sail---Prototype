@@ -196,13 +196,17 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   ladder, two slits, the parapet on corbels and a terrace with a hatch, drawn in the rocks' layer with height shown
   up the screen × `BOAT_TILT`, a patch of bare ground and a shadow down-right.
   **They fire cannonballs** (Enrico; `updateTowers`, `drawCannon`, `resetTowers` on a new voyage; Tuning `TOWER_FIRE`,
-  `TOWER_RANGE` 300, `TOWER_RELOAD` [4, 6.5] s, `TOWER_FIRST` 1.5 s after she comes within reach, `TOWER_FLIGHT` 1.4 s,
+  `TOWER_RANGE` 200 (was 300), `TOWER_RELOAD` [4, 6.5] s, `TOWER_FIRST` 1.5 s after she comes within reach, `TOWER_FLIGHT` 1.4 s,
   `TOWER_LEAD` 0.8, `TOWER_SPREAD` 14, `TOWER_HIT_R` 16, `TOWER_DAMAGE` 5 = half a heart; not in home waters, not tied
   up): a flash and smoke at the parapet, `Sfx.cannon` (a crack, a deep boom, a rumble; kind `cannon` in `SOUND_VOL`,
   Audio slider "Cannon"), the ball (`cannonballs`) arcing over to where she'll be while a dashed ring (paper under ink)
   tightens where it will fall; within `TOWER_HIT_R` of her: damage, flash, shake, rock, buzz, popup
   `TEXT.popups.cannonHit`; else a splash (`stoneSplash`) or a puff of dust on land. A toast the first time
-  (`TEXT.toasts.towerFire`, once a voyage).
+  (`TEXT.toasts.towerFire`, once a voyage). **They can be brought down** (Enrico): a slingshot stone landing within
+  `TOWER_STONE_R` (24) of one (`stoneAtTower`, checked before the shore's clack; once a shot) takes one of `TOWER_HP` (5),
+  it shakes, dust, popup `TEXT.popups.towerHit`; the last brings it down (`o.down`: a crash, a cloud of dust,
+  `TEXT.popups.towerDown`), drawn as a stump broken off unevenly with rubble round it, and it fires no more; a new
+  voyage stands them up again (`resetTowers`).
   **The map editor** (`editor.html`, next to `index.html`, served by GitHub Pages too; button `#wg-editor` in the first
   screen's World, `TEXT.worldGen.editor`): everything placed on the drawn map lives in **one block in Tuning**,
   `MAP_LAYOUT_FILE` between `// MAP_LAYOUT >>>` and `// <<< MAP_LAYOUT` (villages, whirlpools, storms, treasures,
@@ -600,8 +604,9 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   quarter; it furls along the yard at anchor.
   **The Marconi sail** (Enrico; a third rig, `'marconi'`, `TEXT.sails.marconi`, icon `ITEM_ICONS['Marconi sail']`; it waits
   in the home storehouse with the others, `START_STORED_SAILS`): the modern Bermuda rig, a tall triangle up the mast
-  (`MAST_H` × 1.15 × `MARCONI_SIZE`) with its foot on a boom (18 px × `SAIL_SIZE` × `MARCONI_SIZE`; `MARCONI_SIZE` 1.2, was 1), drawn by `drawMarconiSail` (the
-  leech and foot bellied to leeward, two battens, a mainsheet to the stern; furled, the head comes down to the boom).
+  (`MAST_H` × 1.15 × `MARCONI_SIZE`) with its foot on a boom (18 px × `SAIL_SIZE` × `MARCONI_SIZE`; `MARCONI_SIZE` 1.2, was 1), drawn by `drawMarconiSail` (a surface of
+  horizontal chords from mast to leech, each bellied to leeward, filled as strips over an ink edge so it reads solid however full (a single
+  outline bowed at the leech crossed itself and looked see-through); two battens along the curve, a mainsheet to the stern; furled, the head comes down to the boom).
   Its curve `SAIL_POLAR_MARCONI` (Enrico, after Wind Waker's sail): the best with the wind on the beam (70° 1.10, 90° 1.16, 110° 1.12), still decent running (150° 0.94, 180° 0.86), close-hauled 35° 0.82, 50° 0.98 (before: best close-hauled, 180° 0.5); each `RIG_*` has a `marconi` value (turn 1.35, accel 1.2, retrim 2.5, leeway
   0.05, surf 0.8, wave hit 1.1, broach 1.4). The boom is eased out with the wind (`faceTarget`: 0.12 rad close-hauled up to 90°, square across her, running; the cloth's belly is pushed across the boom, so forward when squared out),
   but it has no bad tack and no slow swing across (`LATEEN_MALA`, `LATEEN_TACK_DRIVE`, `LATEEN_SWING` are the
