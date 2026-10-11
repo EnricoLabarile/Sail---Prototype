@@ -400,6 +400,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The lateen sail looks like Wind Waker\'s now: a tall near-white sail on a yard and a boom, ballooning out, with an ink crest in the middle (it still sails like the lateen)',
+    ]},
+    {build: '2026-10-11 09:51', items: [
       'Tied up at a pier only the anchor stays (the hub of the wheel; the rest of the wheel fades out), with the quay badge and the logbook: the crank, slingshot, sail button and hull bar come back once the anchor is up',
     ]},
     {build: '2026-10-11 09:47', items: [
@@ -408,13 +411,8 @@
     {build: '2026-10-11 09:41', items: [
       'The view is closer to the boat (zoomed in); a Zoom slider in Settings sets how close, from 1 (as before) to 2.5',
     ]},
-    {build: '2026-10-11 09:36', items: [
-      'The anchor is back on the wheel: hold its hub to drop or weigh it',
-      'Sail button on the left, mirroring the slingshot: a tap sets or furls the sail',
-      'At anchor every control stays: the crank can be wound there too',
-    ]},
   ];
-  const BUILD = '2026-10-11 09:51';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-11 10:30';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -10745,58 +10743,70 @@
     ctx.restore();
   }
 
-  // the lateen sail (boat frame, bow at +x): a long slanted yard slung on a
-  // short mast near the bow; the triangle of cloth trails aft from it and is
-  // eased out to leeward (B.boomSigned: the yard's angle off the centreline,
-  // its sign the lee side; it swings across the middle when she tacks or gybes)
+  // the lateen rig, drawn after Wind Waker's sail (boat frame, bow at +x): a tall cloth on a mast a little forward of
+  // amidships, laced to a yard at the top and a boom at the foot, flaring wider toward the foot and ballooning out
+  // like a spinnaker, an emblem on its middle. Both spars cross the mast and swing round together, eased out to
+  // leeward by B.boomSigned (their angle off square), so the cloth mostly faces forward; it swings across when she
+  // tacks or gybes. Only a look: the drive is still the lateen's (its curve and RIG_* values).
   function drawLateenSail(B, P, L, base, FB, mast){
-    const sa = B.boomSigned, lee = sa >= 0 ? 1 : -1, sabs = Math.abs(sa);
-    const mx = 6, my = 0;                                   // the mast
-    const LA = 22*SAIL_SIZE*LATEEN_SIZE, LF = 9*SAIL_SIZE*LATEEN_SIZE;              // yard aft and forward of the mast
-    const ex = -Math.cos(sabs), ey = lee*Math.sin(sabs);    // along the yard, toward its peak
-    const tx = mx - ex*LF, ty = my - ey*LF;                 // tack: the yard's low forward end
-    const px = mx + ex*LA, py = my + ey*LA;                 // peak: its high aft end
+    const S = SAIL_SIZE*LATEEN_SIZE*2;                     // (bigger than the lateen was: Wind Waker's sail is large for its boat)
+    const face = B.boomSigned*1.6;                          // eased out further than the square, so the swing reads
+    const nx = Math.cos(face), ny = Math.sin(face), ux = -ny, uy = nx;
+    const mx = 3, my = 0;                                   // the mast
     const furl = B.furl, open = 1 - furl;
     const p = B.sailPower*open;
     const reef = (0.3 + 0.7*B.sailAmount)*(1 - 0.9*furl);
-    // clew: the sheeted corner, a little further out than the yard; furled, it's drawn up to the yard
-    const ca = sabs + 0.5, CL = 0.62*LA*(1 - 0.75*furl);
-    const cx = mx - Math.cos(ca)*CL, cy = my + lee*Math.sin(ca)*CL;
-    const belly = (1.5 + p*7)*reef*SAIL_SIZE*LATEEN_SIZE;
+    const belly = (2 + p*12)*reef*S;
     const luff = p < 0.25 ? (1 - p/0.25) : 0;
-    const ripple = Math.sin(t*22)*2.2*luff*open;           // (a furled sail doesn't flap)
-    // in 3D: the yard climbs from the tack, low by the bow, to the peak high aft; it hangs from the masthead
-    const zT = FB + 3, zP = MAST_H, zMh = zT + (zP - zT)*LF/(LF + LA), zC = FB + 4 + (zMh - FB - 4)*furl;
-    // the cloth bellies out to leeward, off the leech and the foot
-    const bulge = (x0,y0,x1,y1,amt)=>{
-      let nx = -(y1-y0), ny = x1-x0; const L = Math.hypot(nx,ny) || 1; nx/=L; ny/=L;
-      if(ny*lee < 0){ nx=-nx; ny=-ny; }
-      return [(x0+x1)/2 + nx*amt, (y0+y1)/2 + ny*amt];
+    const ripple = Math.sin(t*22)*2.6*luff*open;           // (a furled sail doesn't flap)
+    const HT = 9*S, HB = 12*S;                              // half-widths at the yard and at the boom
+    const zY = MAST_H + 2, zB = zY - (zY - FB - 4)*(1 - 0.88*furl);   // furled, the boom is hauled up to the yard
+    const k = 1.33;
+    // one horizontal slice of the cloth at height z (f: 0 at the boom, 1 at the yard): its ends and its curve
+    const slice = (f)=>{
+      const h = HB + (HT - HB)*f, bl = belly*(0.55 + 0.45*Math.sin(Math.PI*(0.15 + 0.7*f)));
+      const ax = mx - ux*h, ay = my - uy*h, bx = mx + ux*h, by = my + uy*h, dx = bx - ax, dy = by - ay;
+      return {ax, ay, bx, by, bl, c1x: ax + dx/3 + nx*(bl + ripple)*k, c1y: ay + dy/3 + ny*(bl + ripple)*k,
+              c2x: ax + dx*2/3 + nx*(bl - ripple)*k, c2y: ay + dy*2/3 + ny*(bl - ripple)*k};
     };
-    const [l1x,l1y] = bulge(px,py,cx,cy, belly*0.8 + ripple);
-    const [f1x,f1y] = bulge(cx,cy,tx,ty, belly*1.3 - ripple);
-    const T = P(tx, ty, zT), Pk = P(px, py, zP), C = P(cx, cy, zC), L1 = P(l1x, l1y, (zP + zC)/2), F1 = P(f1x, f1y, (zT + zC)/2), M = P(mx, my, zMh);
-    mast(mx, zMh);
+    const zAt = (f)=> zB + (zY - zB)*f;
+    mast(mx, MAST_H + 4);
+    // the cloth, near white like Wind Waker's: one face from the foot's curve up to the head's (both sampled along
+    // their curves and projected), so the bellied curtain reads as a single billowing sheet, edged in ink
+    const tone = 0.95 - 0.1*(1-p) - 0.08*(1-B.sailAmount) - 0.1*furl;
+    const q0 = slice(0), q1 = slice(1), qm = slice(0.5);
+    const along = (q, u)=>{ const v = 1 - u;                // a point on a slice's curve (cubic Bézier), u 0..1
+      return [v*v*v*q.ax + 3*v*v*u*q.c1x + 3*v*u*u*q.c2x + u*u*u*q.bx, v*v*v*q.ay + 3*v*v*u*q.c1y + 3*v*u*u*q.c2y + u*u*u*q.by]; };
+    const zM = zAt(0.5), M = 10;
+    const foot = [], head = [];
+    for(let i = 0; i <= M; i++){ const u = i/M; foot.push(P(...along(q0, u), zB)); head.push(P(...along(q1, u), zY)); }
+    // the leeches bow out a little through the middle slice's ends
+    const la = P(qm.ax, qm.ay, zM), lb = P(qm.bx, qm.by, zM);
     ctx.setTransform(base);
-    const sailPath=()=>{ ctx.beginPath(); ctx.moveTo(...T); ctx.lineTo(...Pk);
-      ctx.quadraticCurveTo(...L1, ...C); ctx.quadraticCurveTo(...F1, ...T); };
-    const tone = SAIL_TONE - 0.14*(1-p) - 0.1*(1-B.sailAmount) - 0.08*furl;
-    ctx.fillStyle = V(tone);
-    sailPath(); ctx.closePath(); ctx.fill();
-    // one seam from the masthead down to the clew, then the ink edge of the cloth
-    ctx.strokeStyle=INKC; ctx.lineWidth=1;
-    ctx.beginPath(); ctx.moveTo(...M); ctx.quadraticCurveTo((M[0]+C[0])/2 + (L1[0]-(Pk[0]+C[0])/2)*0.5, (M[1]+C[1])/2 + (L1[1]-(Pk[1]+C[1])/2)*0.5, ...C); ctx.stroke();
-    ctx.lineWidth=1.4; sailPath(); ctx.stroke();
-    // the sheet, from the clew to the stern quarter
-    const Q = P(-13, lee*6, FB);
-    ctx.lineWidth=0.8; ctx.globalAlpha=0.8;
-    ctx.beginPath(); ctx.moveTo(...C); ctx.lineTo(...Q); ctx.stroke(); ctx.globalAlpha=1;
-    // the yard
-    ctx.lineWidth=2.2; ctx.lineCap='round';
-    ctx.beginPath(); skSeg(T[0],T[1],Pk[0],Pk[1],1.5); ctx.stroke();
-    ctx.fillStyle=INKC;
-    ctx.beginPath(); ctx.arc(M[0],M[1],1.6,0,Math.PI*2); ctx.fill();
+    const sheet = ()=>{ ctx.beginPath(); ctx.moveTo(...foot[0]); for(const pt of foot) ctx.lineTo(...pt);
+      ctx.quadraticCurveTo(2*lb[0] - (foot[M][0] + head[M][0])/2, 2*lb[1] - (foot[M][1] + head[M][1])/2, ...head[M]);
+      for(let i = M; i >= 0; i--) ctx.lineTo(...head[i]);
+      ctx.quadraticCurveTo(2*la[0] - (foot[0][0] + head[0][0])/2, 2*la[1] - (foot[0][1] + head[0][1])/2, ...foot[0]); ctx.closePath(); };
+    ctx.fillStyle = V(tone); sheet(); ctx.fill();
+    ctx.strokeStyle = INKC; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = 1.2; sheet(); ctx.stroke();
+    // the emblem on the middle of the cloth, where it bellies out most: a bold ink crest (a bird's wings over a point), all
+    // one shape so it still reads at the game's few pixels
+    if(open > 0.45){
+      const f = 0.5, q = slice(f), cxp = mx + nx*q.bl*k*0.78, cyp = my + ny*q.bl*k*0.78;
+      const [ex, ey] = P(cxp, cyp, zAt(f)), r = 3.8*S/1.45*(open - 0.45)/0.55;
+      ctx.setTransform(base);
+      ctx.fillStyle = INKC; ctx.beginPath();
+      ctx.moveTo(ex - r*0.8, ey - r*0.15); ctx.quadraticCurveTo(ex - r*0.3, ey - r*0.55, ex, ey - r*0.1);
+      ctx.quadraticCurveTo(ex + r*0.3, ey - r*0.55, ex + r*0.8, ey - r*0.15);
+      ctx.lineTo(ex, ey + r*0.7); ctx.closePath(); ctx.fill();
+    }
+    // the yard and the boom, and the masthead above them
+    ctx.lineWidth = 2.2;
+    L(zY); ctx.beginPath(); skSeg(q1.ax, q1.ay, q1.bx, q1.by, 1.5); ctx.stroke();
+    L(zB); ctx.lineWidth = 1.8; ctx.beginPath(); skSeg(q0.ax, q0.ay, q0.bx, q0.by, 1.5); ctx.stroke();
+    { const [hx, hy] = P(mx, 0, MAST_H + 4); ctx.setTransform(base); ctx.fillStyle = INKC; ctx.beginPath(); ctx.arc(hx, hy, 1.6, 0, Math.PI*2); ctx.fill(); }
   }
+
 
 
 
