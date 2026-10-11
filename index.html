@@ -58,7 +58,7 @@
   const WIND_BOOST = 0.96;           // how much the wind gives: sets the top speed (~52 px/s dead downwind in full wind)
   const BOAT_ACCEL = 0.7/1.2;        // how quickly she gathers way (higher = quicker); slowing down is separate
   const TURN_RATE = 1.2;             // rad/s at full rudder (was 0.6, before that 0.42: she turns twice as fast)
-  const ROW_TURN_MULT = 2;           // turning is this much quicker on the oars
+  const ROW_TURN_MULT = 1.5;         // turning is this much quicker on the paddles (oars) than under sail (was 2: with TURN_RATE 1.2 that gave 2.4 rad/s, a little too fast)
   const ROW_ENTER = 10;              // px/s: slower than this, with the wind unable to help, and the oars come out (sail brailed up)
   const ROW_EXIT = 16;               // px/s: once the sail could drive her faster than this again, it's set and the oars come in
   const ROW_DELAY = 0.6;             // seconds a condition must hold before switching (no flicker)
@@ -401,6 +401,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'On the paddles the boat turns a little slower (still quicker than under sail)',
+    ]},
+    {build: '2026-10-11 10:58', items: [
       'The boat turns twice as fast',
     ]},
     {build: '2026-10-11 10:50', items: [
@@ -410,11 +413,8 @@
     {build: '2026-10-11 09:51', items: [
       'Tied up at a pier only the anchor stays (the hub of the wheel; the rest of the wheel fades out), with the quay badge and the logbook: the crank, slingshot, sail button and hull bar come back once the anchor is up',
     ]},
-    {build: '2026-10-11 09:47', items: [
-      'Zoom starts at 1.2 (a little closer than before the zoom); the slider now moves in steps of 0.1',
-    ]},
   ];
-  const BUILD = '2026-10-11 10:58';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-11 11:09';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in

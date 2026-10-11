@@ -616,7 +616,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   (head to wind, or nearly), after `ROW_DELAY` the sail is brailed up and the oars come out (`sailLevel` = `SAIL_MIN`:
   rowing pace `ROW_SPEED`, turning `ROW_TURN_MULT` × quicker); once the sail could give more than `ROW_EXIT` it's set
   again and the oars come in. Never because of the anchor: while it's down (or going down) the sail stays up and the oars
-  in; weighing it head to wind, the oars take her. Turning is easier in general (`TURN_RATE` = 1.2; was 0.6, doubled by Enrico). To stop on a fish
+  in; weighing it head to wind, the oars take her. Turning is easier in general (`TURN_RATE` = 1.2; was 0.6, doubled by Enrico); on the paddles × `ROW_TURN_MULT` (1.5; was 2, too fast after the doubling). To stop on a fish
   bank, drop anchor (the nets go over after 0.25 s).
   The boat gathers way slowly (`BOAT_ACCEL` = 0.4/1.2: the speed approaches its target at that rate, so it was divided by 1.2 when the top speed went up 20%, keeping the same push in px/s²; slowing down unchanged).
   Top speed is kept modest (`WIND_BOOST` = 0.96, ~52 px/s dead downwind in full wind; running dead downwind adds only up to +10%, `downwindBonus`).
