@@ -86,6 +86,7 @@
   const CRANK_VOL = 1;               // loudness of the crank's gears as it winds (a tick a tooth, a heavier step each quarter turn; 0 = silent)
   const SLING_ON = true;             // the slingshot on the right: drag its pouch down and let go, a stone flies off ahead of the bow
   const SLING_RANGE = [20, 80];      // px ahead of the bow the shot's cone covers: nearest, furthest (the pull no longer sets the distance)
+  const SLING_DIST = 60;             // px ahead of the bow every stone of a shot lands (all at the same distance, so the fan is even; was a random distance each)
   const SLING_CONE_DEG = 50;         // how wide the cone of stones spreads in front of the bow (degrees, all of it; half each side)
   const SLING_PELLETS = 3;           // stones a shot throws, one charge a shot: three = one straight ahead, one left and one right (was 6 scattered at random)
   const SLING_SIDE = 0.8;            // how far out the side stones fly, as a share of the half-cone (1 = right on the cone's edges)
@@ -200,6 +201,10 @@
   const BOTTLE_COUNT = knob('BOTTLE_COUNT', MAP_DRAWN ? 0 : 6);   // (none on the drawn map) copies of the one message in a bottle floating about the sea (more = easier to come across; once one is fished up the others are gone) (world)
   const BOTTLE_SIZE = 1.8;           // how big a bottle is drawn (1 = true to the boat's scale; bigger reads better)
   const WRECK_LEN = 190;             // px long, the wrecked cruise ship that lies where a message's cross is (in two halves)
+  const TREASURE_COUNT = knob('TREASURE_COUNT', 12);   // dark rippling spots at sea with something down there, like Zelda's chests: drop anchor on one and the net brings it up (random for now) (world)
+  const TREASURE_COINS = [1, 3];     // coins one gives (fewest, most)
+  const TREASURE_TIME = 1.5;         // seconds with the net out before it comes up
+  const TREASURE_R = 22;             // px: how big the dark patch is drawn; she must be within 1.3 × this to net it
   const BOTTLE_TIME = 1.2;           // seconds with the net out before a bottle is hauled in (fish take FISH_TIME_MIN–MAX)
   const HOLD_MAX = 9;                // slots in the hold: each fish or dish takes one; when it's full the nets stay aboard
   const FISH_REACH = 1.35;           // a bank counts out to this × its radius (a little past its circle)
@@ -409,6 +414,10 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Slingshot: the three stones of a shot all land at the same distance and keep the boat\'s way, so the fan no longer looks random',
+      'Treasure spots: 12 dark rippling patches at sea (random for now); drop anchor on one and the net brings up 1 to 3 coins',
+    ]},
+    {build: '2026-10-11 14:07', items: [
       'The boat is the original gozzo again (no longer bow), the cannon stays on its foredeck',
     ]},
     {build: '2026-10-11 13:57', items: [
@@ -420,12 +429,8 @@
       'The funnel\'s steam streams off downwind, more strongly',
       'The boat is longer at the bow, with a cannon on the foredeck: the slingshot\'s shots leave from its muzzle (she still turns about the same point)',
     ]},
-    {build: '2026-10-11 12:36', items: [
-      'A third sail, the Marconi sail (a tall triangle with a boom), waits in the home storehouse: the best close to the wind, quick to change tack, weaker running downwind',
-      'Its speed curve and handling can be tuned in the first screen\'s Sails section, like the other two',
-    ]},
   ];
-  const BUILD = '2026-10-11 14:07';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-11 14:52';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -517,6 +522,7 @@
       recovered: 'it got its strength back',         // weakened too long: it makes off
       netCaught: '{what} in the net!',               // a net catches the shark or the imp
       netSlips: 'the net slips off: weaken it first', // a net on a shark or imp still strong
+      treasure: '+{n} {coins} from the deep!',          // a treasure spot's net comes up
       netEmpty: 'the net sinks empty',               // a net on open water
       netFull: 'no room in the hold for it',
       overboard: '{item} overboard',
@@ -3513,6 +3519,40 @@
       ctx.restore(); ctx.globalAlpha = 1;
     }
   }
+  // ---- treasure spots: dark rippling water with something down there (like Zelda's chests) ----
+  // TREASURE_COUNT of them, at random spots of open sea for now (Enrico will draw them on the map later). Drop
+  // anchor on one and the net goes over; after TREASURE_TIME it comes up with TREASURE_COINS coins and the spot is gone.
+  const treasures = [];
+  function resetTreasures(){
+    treasures.length = 0;
+    for(let k=0, tries=0; k<TREASURE_COUNT && tries<4000; tries++){
+      const x = rand(0, WORLD.w), y = rand(0, WORLD.h);
+      if(wdist(x, y, START.x, START.y) < 400 || onLand(x, y, 60) || pierDist(x, y).d < 150) continue;
+      if(treasures.some(o=> wdist(x, y, o.x, o.y) < 300)) continue;
+      treasures.push({x, y, ph: rand(0, 6.3)}); k++;
+    }
+  }
+  function treasureUnderBoat(){
+    for(const o of treasures) if(wdist(boat.x, boat.y, o.x, o.y) < TREASURE_R*1.3) return o;
+    return null;
+  }
+  function drawTreasure(o){
+    if(!inView(o.x, o.y, TREASURE_R*2)) return;
+    const net = fishing && fishing.treasure === o;
+    stampDot(softDot('treasure', [[0,0.5],[0.5,0.32],[1,0]]), o.x, o.y, TREASURE_R*1.5, 1);   // the water darkens: something down there
+    ctx.save(); ctx.translate(o.x, o.y); ctx.strokeStyle = INKC;
+    for(let i=0;i<3;i++){                                    // rings welling up from it and spreading out
+      const q = ((t*0.45 + o.ph + i/3) % 1), r = TREASURE_R*(0.25 + 1.05*q);
+      ctx.globalAlpha = Math.min(1, 0.9*(1 - q)*(net ? 1.3 : 1)); ctx.lineWidth = 1.6 - 0.6*q;
+      ctx.beginPath(); ctx.ellipse(0, 0, r, r*0.7, 0, 0, TAU); ctx.stroke();
+    }
+    ctx.fillStyle = PAPERC;                                  // now and then a bubble or two breaks the surface
+    for(let i=0;i<3;i++){ const q = (t*0.7 + o.ph*1.7 + i*0.37) % 1.6; if(q > 1) continue;
+      const a = o.ph*3 + i*2.1, d = TREASURE_R*0.35*((i + 1)/3);
+      ctx.globalAlpha = 1 - q; ctx.beginPath(); ctx.arc(Math.cos(a)*d, Math.sin(a)*d*0.7 - q*2, 0.8 + 1.4*q, 0, TAU); ctx.fill(); }
+    ctx.restore(); ctx.globalAlpha = 1;
+  }
+  resetTreasures();
   function resetBottles(){
     clearWrecks();
     bottles.length = 0; bottleHold.length = 0; marks.length = 0;
@@ -5716,7 +5756,7 @@
     boonWindT = 0; boonFish = 0; for(const r of RUINS) r.readyAt = 0;
     rollers.length = 0; rollerT = 6; boat.surfT = 0;
     windAngle = rand(0, Math.PI*2); shiftDur = 0; windTimer = rand(28,36); guideWind = false;
-    explored.fill(0); fogVer++; rooms.fill(0); roomsVer++; charges = START_CHARGES; nets = START_NETS; slingAmmo = 'stone'; catches.shark = catches.zora = 0; fillBankTiles(); resetBottles(); resetStore(); resetShark(); resetZora(); makeDebris(); spring = 0; windProg = 0; crankBack = 0; crankLocked = false; document.getElementById('crank').classList.remove('locked');
+    explored.fill(0); fogVer++; rooms.fill(0); roomsVer++; charges = START_CHARGES; nets = START_NETS; slingAmmo = 'stone'; catches.shark = catches.zora = 0; fillBankTiles(); resetBottles(); resetTreasures(); resetStore(); resetShark(); resetZora(); makeDebris(); spring = 0; windProg = 0; crankBack = 0; crankLocked = false; document.getElementById('crank').classList.remove('locked');
     wake.length = 0; bowSpray.length = 0; steam.length = 0; popups.length = 0;
     voyageTime = 0; hurtFlash = 0; shake = 0;
     gameover.classList.add('hidden');
@@ -5925,11 +5965,11 @@
     if(moor || boat.whirl){ fishing = null; settleT = 0; return; }
     const steering = turnLeft || turnRight || (wheelPointer!==null && Math.abs(wheelAngle) > 0.35);
     if(!fishing){
-      const cr = creatureUnderBoat(), fb = cr ? null : bankUnderBoat(), bo = cr || fb ? null : bottleUnderBoat(), b = cr || fb || bo;   // a weakened creature, a fish bank, or else a bottle
+      const cr = creatureUnderBoat(), tr = cr ? null : treasureUnderBoat(), fb = cr || tr ? null : bankUnderBoat(), bo = cr || tr || fb ? null : bottleUnderBoat(), b = cr || tr || fb || bo;   // a weakened creature, a treasure spot, a fish bank, or else a bottle
       const atAnchor = anchored && weighT <= 0;             // anchor down on a bank: nets over almost at once
       const canNet = atAnchor || (!NETS_AT_ANCHOR_ONLY && !(reelOn && fb) && boat.speed < FISH_STOP);   // (only at anchor: NETS_AT_ANCHOR_ONLY; with the reel too)
       if(b !== fullSaid) fullSaid = null;
-      if(b && holdFull()){                                // no room: the nets stay aboard (said once per bank)
+      if(b && !tr && holdFull()){                         // (a treasure is coins: no room needed)                                // no room: the nets stay aboard (said once per bank)
         settleT = 0;
         if(!fullSaid && canNet){ fullSaid = b; popups.push({x:boat.x, y:boat.y-24, text:TEXT.popups.holdFull, life:1.6, max:1.6}); buzz(20); }
         return;
@@ -5942,8 +5982,8 @@
           const a = d > 4 ? Math.atan2(dy, dx) : boat.angle + (Math.random()<0.5 ? 1 : -1)*Math.PI/2;
           const ux = Math.cos(a), uy = Math.sin(a), thr = Math.max(NET_THROW_MIN, Math.min(NET_THROW_MAX, d));
           const side = (-Math.sin(boat.angle)*ux + Math.cos(boat.angle)*uy) < 0 ? -1 : 1;   // which gunwale it goes over
-          fishing = {bank:fb, bottle:bo, creature:cr, t:0, phase:'drop', side, ux, uy, thr: bo ? Math.max(NET_THROW_MIN*0.6, Math.min(NET_THROW_MAX, d)) : thr,
-                     dur: cr ? CREATURE_NET_TIME : bo ? BOTTLE_TIME : rand(FISH_TIME_MIN, FISH_TIME_MAX)};
+          fishing = {bank:fb, bottle:bo, creature:cr, treasure:tr, t:0, phase:'drop', side, ux, uy, thr: bo ? Math.max(NET_THROW_MIN*0.6, Math.min(NET_THROW_MAX, d)) : thr,
+                     dur: cr ? CREATURE_NET_TIME : tr ? TREASURE_TIME : bo ? BOTTLE_TIME : rand(FISH_TIME_MIN, FISH_TIME_MAX)};
           Sfx.splash();
           buzz(15);
         }
@@ -5999,6 +6039,14 @@
         else if(takeCreature(c.what, c.obj.x, c.obj.y)){
           if(c.what === 'shark'){ shark = null; sharkCool = CREATURE_AGAIN; } else { zora = null; zoraCool = CREATURE_AGAIN; }   // (another comes if she stays in its area)
         }
+      }
+      else if(f.t>=f.dur && f.treasure){                // the net comes up with coins; the spot is gone
+        f.phase='haul'; f.t=0;
+        const n = TREASURE_COINS[0] + Math.floor(Math.random()*(TREASURE_COINS[1] - TREASURE_COINS[0] + 1)), k = treasures.indexOf(f.treasure);
+        if(k >= 0) treasures.splice(k, 1);
+        coins += n; if(elList.classList.contains('open')) renderList();
+        popups.push({x:boat.x, y:boat.y-24, text:fmt(TEXT.popups.treasure, {n, coins: n === 1 ? TEXT.market.coin : TEXT.market.coins}), life:1.8, max:1.8});
+        Sfx.coins(); Sfx.pickup(); buzz([15,50,25]);
       }
       else if(f.t>=f.dur && f.bottle){                  // a bottle in the net: into the hold, and another drifts in elsewhere
         f.phase='haul'; f.t=0;
@@ -6701,16 +6749,21 @@
   const slingUp = ev=>{ if(!slingDrag || ev.pointerId !== slingDrag.id) return; slingDrag = null; slingPull = 0; };   // let go too soon: the pouch springs back
   elSling.addEventListener('pointerup', slingUp); elSling.addEventListener('pointercancel', slingUp);
   elSling.addEventListener('keydown', ev=>{ if(ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); ev.stopPropagation(); if(slingReload <= 0 && !noCharge()) shootStone(); } });
-  // a shot: stones scattered over the cone ahead of the bow (spread evenly across it, each at a random distance), or one net
+  // a shot keeps the boat's own way: it lands where the cone will be when it comes down, not behind her (else it seemed to veer)
+  function carry(s){
+    const vx = Math.cos(boat.angle)*boat.speed + boat.kx + boat.lwx + boat.dfx, vy = Math.sin(boat.angle)*boat.speed + boat.ky + boat.lwy + boat.dfy;
+    s.x1 += (vx || 0)*s.dur; s.y1 += (vy || 0)*s.dur; return s;
+  }
+  // a shot: stones fanned evenly over the cone ahead of the bow, all SLING_DIST away, or one net
   function shootStone(){
     const net = slingAmmo === 'net';
-    if(net){ const [x0, y0, x1, y1] = slingPoint(0, SLING_NET_DIST); stones.push({x0, y0, x1, y1, t: 0, dur: 0.7, h: 30, net}); }
+    if(net){ const [x0, y0, x1, y1] = slingPoint(0, SLING_NET_DIST); stones.push(carry({x0, y0, x1, y1, t: 0, dur: 0.7, h: 30, net})); }
     else {
       const shot = {splashed: false, zora: false, shark: false};       // (a shot hits a creature once, however many stones land on it)
       for(let i=0;i<SLING_PELLETS;i++){
-        const off = SLING_PELLETS > 1 ? SLING_SIDE*(-1 + 2*i/(SLING_PELLETS - 1)) : 0, d = rand(SLING_RANGE[0], SLING_RANGE[1]);   // evenly fanned: left, ahead, right
+        const off = SLING_PELLETS > 1 ? SLING_SIDE*(-1 + 2*i/(SLING_PELLETS - 1)) : 0, d = SLING_DIST;   // evenly fanned: left, ahead, right, all as far
         const [x0, y0, x1, y1] = slingPoint(off, d), k = (d - SLING_RANGE[0])/(SLING_RANGE[1] - SLING_RANGE[0] || 1);
-        stones.push({x0, y0, x1, y1, t: 0, dur: 0.4 + 0.45*k + rand(0, 0.08), h: 12 + 26*k, net, shot, pellet: true});
+        stones.push(carry({x0, y0, x1, y1, t: 0, dur: 0.4 + 0.45*k, h: 12 + 26*k, net, shot, pellet: true}));
       }
     }
     if(net) nets = Math.max(0, nets - 1); else if(SLING_CHARGES) charges = Math.max(0, charges - 1);   // a shot spent
@@ -6777,7 +6830,7 @@
       if(slingAmmo === 'net'){ const [, , x, y] = slingPoint(0, SLING_NET_DIST); path.arc(x, y, NET_REACH, 0, TAU); }
       else {
         const a0 = boat.angle - SLING_CONE_DEG*Math.PI/360, a1 = boat.angle + SLING_CONE_DEG*Math.PI/360, [x0, y0] = slingPoint(0, 0);
-        path.arc(x0, y0, SLING_RANGE[1], a0, a1); path.arc(x0, y0, SLING_RANGE[0], a1, a0, true); path.closePath();
+        path.arc(x0, y0, SLING_DIST + 10, a0, a1); path.arc(x0, y0, SLING_DIST - 10, a1, a0, true); path.closePath();   // the band where the stones land
       }
       ctx.globalAlpha = 0.12 + 0.18*q; ctx.fillStyle = INKC; ctx.fill(path);
       ctx.globalAlpha = 0.5 + 0.5*q; ctx.setLineDash([4, 4]); ctx.lineWidth = 3; ctx.strokeStyle = PAPERC; ctx.stroke(path);
@@ -8522,7 +8575,7 @@
 
     // mooring hint
     if(!moor && !dlg){
-      const b = fishing ? (fishing.bank || fishing.bottle) : (bankUnderBoat() || bottleUnderBoat());
+      const b = fishing ? (fishing.bank || fishing.bottle || fishing.treasure) : (treasureUnderBoat() || bankUnderBoat() || bottleUnderBoat());
       elHint.classList.add('hidden');                   // fishing speaks for itself: nets, fish, splash
       bankHint = !!b && !fishing && !anchored && !holdFull();   // over a bank: the hub of the wheel shows a fish (not with a full hold)
     }
@@ -10943,7 +10996,7 @@
     layer(()=>{ for(const isl of visIslands()) drawIslandLand(isl); if(drawnIsl) drawIslandLand(drawnIsl); }, true);   // (the drawn land over the villages' edges, so they join it)
     layer(()=>{ const vis = []; rockGrid.query(view.x+w/2, view.y+h/2, Math.max(w,h)/2+20, o=>{ if(!o.hidden && inView(o.x,o.y,o.r+6)) vis.push(o); }); drawRocks(vis); drawDebris();
       for(const wk of wrecks) if(inView(wk.x, wk.y, wk.L*0.7)) drawWreck(wk); });
-    layer(()=>{ for(const b of banks) drawBank(b); for(const bo of bottles) drawBottle(bo); });
+    layer(()=>{ for(const b of banks) drawBank(b); for(const bo of bottles) drawBottle(bo); for(const o of treasures) drawTreasure(o); });
     layer(()=>drawShark());
     layer(()=>drawZora());
     layer(()=>{ for(const w of rollers) drawRoller(w); });

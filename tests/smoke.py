@@ -20,7 +20,7 @@ HOOK = ('requestAnimationFrame(loop);\n})();',
         'dinnerT:(DINNER_HOUR-DAWN_HOUR)/24,ordersOn:ORDERS_ON,get dayNo(){return dayNo},'
         'RUINS,get powerOwned(){return powerOwned},get rig(){return boat.rig},bottles,bottleHold,marks,homeStore,banks,get fishing(){return fishing},get reelOn(){return reelOn},setReel,REEL_ZONE,'
         'get charges(){return charges},get nets(){return nets},get ammo(){return slingAmmo},toSpread(n){while(logSpread!==n){turning=false;turnPage(n>logSpread?1:-1);}},coinsAdd(n){coins+=n},unmoor(){moor=null;moorLock=null;},'
-        'get zora(){return zora},get catches(){return catches},onLand,inArea,spawnZora(){zoraArea=creatureArea(boat.x,boat.y);zora={phase:"gone",t:0,wait:0,x:0,y:0,seen:false,seed:0,area:zoraArea};}};'
+        'get zora(){return zora},get catches(){return catches},treasures,get coins(){return coins},onLand,inArea,spawnZora(){zoraArea=creatureArea(boat.x,boat.y);zora={phase:"gone",t:0,wait:0,x:0,y:0,seen:false,seed:0,area:zoraArea};}};'
         'tutSet("done");'                  # skip the tutorial: the test drives the controls directly
         'requestAnimationFrame(loop);\n})();')
 
@@ -186,12 +186,25 @@ def creatures(pg):
     assert pg.evaluate('!__d.zora'), 'the netted imp is still in the sea'
     pg.keyboard.press('Space'); pg.wait_for_timeout(600)
 
+def treasure(pg):
+    # a dark rippling spot: anchored on it, the net brings up 1 to 3 coins and the spot is gone
+    n = pg.evaluate('__d.treasures.length')
+    if not n: return
+    c0 = pg.evaluate('__d.coins')
+    pg.evaluate("()=>{const d=__d; d.unmoor(); const o=d.treasures[0]; d.boat.x=o.x-6; d.boat.y=o.y; d.boat.speed=0;}")
+    pg.keyboard.press('Space'); pg.wait_for_timeout(5000)
+    got = pg.evaluate('__d.coins') - c0
+    assert 1 <= got <= 3, f'the treasure gave {got} coins'
+    assert pg.evaluate('__d.treasures.length') == n - 1, 'the treasure spot is still there'
+    pg.keyboard.press('Space'); pg.wait_for_timeout(1300)
+
 def trip(pg):
     global ORDERS; ORDERS = False
     leave(pg)
     assert not pg.evaluate('!!__d.moor'), 'did not leave the home pier'
     eolus(pg)
     reel(pg)
+    treasure(pg)
     bottle(pg)
     d = pg.evaluate('__d.VILLAGES[0].dishes[0]')
     buy_dish(pg, 0, d['name'], d['icon'])
