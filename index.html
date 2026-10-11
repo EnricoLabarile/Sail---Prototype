@@ -231,7 +231,7 @@
   const NETS_AT_ANCHOR_ONLY = true;  // the nets go over only when she drops anchor on a bank (or a bottle); false = also when she just stops on it
   const FISH_STOP = 12;              // px/s: slow enough to count as stopped on a bank (with NETS_AT_ANCHOR_ONLY off)
   const FISH_SETTLE = 2;             // seconds stopped on a bank before the nets go over
-  const BANK_RIPPLES = true;         // rings welling up and spreading over a fish bank and a treasure alike (the same look), so they can be found
+  const SPOT_R = 22;                 // px: a fish bank and a treasure look alike, the treasures' old look: a dark patch with rings welling up and a bubble or two (this its size)
   const BANK_FISH_SHOWN = false;     // draw the fish going round over a bank (false: only its patch of darker water, the same as a sunken treasure's, so treasures hide among the banks)
   const BANK_LOOK = [4, 5, 1.45];    // every fish bank looks alike, whatever it holds: [fewest fish, most fish, their size] (dark, going round)
   const FISH_ANCHOR_SETTLE = 0.25;   // …or this long after dropping anchor on a bank
@@ -439,6 +439,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Fish banks and treasures now both look like the treasures used to: a smaller dark patch, thinner rings, a bubble now and then',
+    ]},
+    {build: '2026-10-11 21:11', items: [
       'Fish banks and treasures have their ripples back (the same rings on both), so they are easier to spot',
     ]},
     {build: '2026-10-11 21:04', items: [
@@ -447,13 +450,8 @@
     {build: '2026-10-11 20:56', items: [
       'Fixed: a half heart showed as a full one on some phones, so a knock (half a heart) seemed to take nothing',
     ]},
-    {build: '2026-10-11 20:47', items: [
-      'Repairs are no longer free at the piers: every village stall sells a repair kit (8 coins, one a day)',
-      'A repair kit sits in the Cargo; tap it to mend the hull to full',
-      'A sunken treasure now gives one more heart to the hull (and fills it), instead of coins',
-    ]},
   ];
-  const BUILD = '2026-10-11 21:11';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-11 21:16';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -3556,7 +3554,7 @@
   function treasureAt(x, y){
     const r = rand(36, 46), blobs = [];
     for(let k=0;k<5;k++){ const a = rand(0, 6.3), d = rand(0, 0.35)*r; blobs.push([Math.cos(a)*d, Math.sin(a)*d, r*rand(0.6, 0.85)]); }
-    return {x, y, r, blobs, ph: rand(0, 1)};
+    return {x, y, r, blobs, ph: rand(0, 6.3)};
   }
   function resetTreasures(){
     treasures.length = 0;
@@ -3576,17 +3574,23 @@
     if(!inView(o.x, o.y, o.r + 30)) return;
     const fade = o.goneAt === undefined ? 1 : Math.max(0, 1 - (t - o.goneAt)/1.8);   // (fished up: the patch fades like a scattered bank's)
     if(fade <= 0) return;
-    for(const [ox, oy, rr] of o.blobs) stampDot(softDot('bank', [[0,0.13],[0.7,0.07],[1,0]]), o.x + ox, o.y + oy, rr, fade);
-    if(BANK_RIPPLES) drawRipples(o.x, o.y, o.r, o.ph, fade);
+    drawSpot(o.x, o.y, o.ph, fade);
   }
-  // three rings welling up from the middle and spreading out, fading as they go (a fish bank's and a treasure's, alike)
-  function drawRipples(x, y, r, ph, fade){
+  // something down there: the water darkens, rings well up from it and spread out, now and then a bubble breaks the
+  // surface (the treasures' look from before; a fish bank looks the same, so only the net tells them apart)
+  function drawSpot(x, y, ph, fade){
+    if(!inView(x, y, SPOT_R*2)) return;
+    stampDot(softDot('treasure', [[0,0.5],[0.5,0.32],[1,0]]), x, y, SPOT_R*1.5, fade);
     ctx.save(); ctx.translate(x, y); ctx.strokeStyle = INKC;
-    for(let i = 0; i < 3; i++){
-      const q = (t*0.4 + ph + i/3) % 1, rr = r*(0.25 + 1.0*q);
-      ctx.globalAlpha = Math.min(1, 1.3*(1 - q))*fade; ctx.lineWidth = 2.2 - 0.8*q;
-      ctx.beginPath(); ctx.ellipse(0, 0, rr, rr*0.72, 0, 0, TAU); ctx.stroke();
+    for(let i=0;i<3;i++){
+      const q = ((t*0.45 + ph + i/3) % 1), r = SPOT_R*(0.25 + 1.05*q);
+      ctx.globalAlpha = Math.min(1, 0.9*(1 - q))*fade; ctx.lineWidth = 1.6 - 0.6*q;
+      ctx.beginPath(); ctx.ellipse(0, 0, r, r*0.7, 0, 0, TAU); ctx.stroke();
     }
+    ctx.fillStyle = PAPERC;
+    for(let i=0;i<3;i++){ const q = (t*0.7 + ph*1.7 + i*0.37) % 1.6; if(q > 1) continue;
+      const a = ph*3 + i*2.1, d = SPOT_R*0.35*((i + 1)/3);
+      ctx.globalAlpha = (1 - q)*fade; ctx.beginPath(); ctx.arc(Math.cos(a)*d, Math.sin(a)*d*0.7 - q*2, 0.8 + 1.4*q, 0, TAU); ctx.fill(); }
     ctx.restore(); ctx.globalAlpha = 1;
   }
   resetTreasures();
@@ -10558,11 +10562,11 @@
     const fade = 1 - sc;
     // stirred water
     ctx.globalAlpha = fade;
-    for(const [ox,oy,rr] of b.blobs){
+    if(!BANK_FISH_SHOWN) drawSpot(b.x, b.y, b.rot, fade);          // (the treasures' old look, the same on both)
+    else for(const [ox,oy,rr] of b.blobs){
       stampDot(softDot('bank', [[0,0.13],[0.7,0.07],[1,0]]), b.x+ox, b.y+oy, rr, 1);
     }
     // the fish, in the shade of their kind (same as the counter icons)
-    if(BANK_RIPPLES) drawRipples(b.x, b.y, b.r, b.rot, fade);
     if(!BANK_FISH_SHOWN){ ctx.globalAlpha = 1; return; }           // (only the darker water and the ripples: a treasure looks the same)
     const shade = INKC, outline = false;                            // all alike: the kind is only known once hauled in
     const net = fishing && fishing.bank===b ? netAmount() : 0;
