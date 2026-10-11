@@ -358,7 +358,7 @@
   const ROOM_N = 9;                  // the room map in the logbook (Zelda 1 style): rooms a side, the world cut into ROOM_N × ROOM_N squares, home in the middle one
   const SAIL_SIZE = 1.15;             // size of the boat's sail (1 = the old one: a yard 30 px wide)
   const LATEEN_SIZE = 0.6;            // the lateen sail's size, on top of SAIL_SIZE (1 = as it was drawn before)
-  const MARCONI_SIZE = 1;            // the Marconi sail's size, on top of SAIL_SIZE (its mast MAST_H × 1.15, its boom 18 px × this)
+  const MARCONI_SIZE = 1.2;          // the Marconi sail's size, on top of SAIL_SIZE (its mast MAST_H × 1.15 × this, its boom 18 px × this; was 1)
   // the two sails' speed curves: [degrees off the wind, share of top speed], made starker than real life so each
   // sail has its own way to sail. The square sail: the open sea, the wind from astern (and SQUARE_RUN_BONUS on top);
   // almost dead on the wind, weak on the beam. The lateen: the wind on the beam (its best is faster than the square's
@@ -367,7 +367,7 @@
   const SAIL_POLAR_LATEEN = [[0,0.02],[20,0.22],[35,0.60],[50,0.90],[70,1.06],[90,1.10],[110,1.02],[130,0.88],[150,0.72],[170,0.60],[180,0.55]];
   // the Marconi (Bermuda) sail: a tall triangle on a boom, the modern one: the best close to the wind, a little less on the
   // beam than the lateen, the weakest running free; no bad tack, no slow yard to swing across
-  const SAIL_POLAR_MARCONI = [[0,0.04],[20,0.42],[35,0.86],[50,1.00],[70,1.04],[90,1.00],[110,0.92],[130,0.80],[150,0.66],[170,0.55],[180,0.5]];
+  const SAIL_POLAR_MARCONI = [[0,0.04],[20,0.42],[35,0.82],[50,0.98],[70,1.10],[90,1.16],[110,1.12],[130,1.02],[150,0.94],[170,0.88],[180,0.86]];   // the best with the wind on the beam, still decent running (the boom squared out); was best close-hauled and weak running (180° 0.5)
   // (the curves, SQUARE_RUN_BONUS and the RIG_ values below can also be set live on the first screen, section 'Sails')
   const SQUARE_RUN_BONUS = 0.25;     // running downwind (from DOWNWIND_DEG to dead astern) the square sail gains up to this much more (the lateen none)
   // -- how the two sails differ beyond their speed curves: the square sail for the open sea and steady wind, the lateen
@@ -408,8 +408,8 @@
   const MAST_H = 26;                 // the square sail's mast height (the yard just under its top); the lateen's yard climbs to about this
   const SAIL_TONE = 0.72;            // the sail's cloth when drawing well (1 = paper white, 0 = ink); slack or reefed it's a little darker
   const SPARE_SAIL = true;           // both sails ride in the hold (a slot each, the one not rigged); a tap on one in the logbook rigs it
-  const START_RIG = 'square';        // the sail rigged at the start: 'square', 'lateen' or 'marconi' (the others ride in the hold, or wait at home: START_STORED_SAILS); null = none, she goes on the crank (was null for a while)
-  const START_STORED_SAILS = ['lateen', 'marconi'];   // sails waiting in the home storehouse when a voyage starts (not aboard: no slot in the hold); [] = all aboard (was ['lateen'])
+  const START_RIG = 'marconi';       // the sail rigged at the start: 'square', 'lateen' or 'marconi' (the others ride in the hold, or wait at home: START_STORED_SAILS); null = none, she goes on the crank (was null for a while)
+  const START_STORED_SAILS = ['square', 'lateen'];   // sails waiting in the home storehouse when a voyage starts (not aboard: no slot in the hold); [] = all aboard (was ['lateen'])
   const TREE_KIND = 'olive';         // the islands' trees: 'olive' (Enrico's sketch: a twisted trunk, a wide crown of spiky leaf sprays) or 'pine' (the old stone pines)
   const PINE_MODELS = 4;             // tree shapes, reused (each also mirrored) all over the map (world)
   // draw the scene on the processor (true) or on the graphics card (false): the frame is tiny, and Firefox
@@ -422,6 +422,12 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'She sets out with the Marconi sail (the square and the lateen wait in the storehouse)',
+      'The Marconi is now the best with the wind on the side and still good with it from behind',
+      'Running before the wind, the Marconi\'s boom swings out square across the boat',
+      'The Marconi sail is 20% bigger',
+    ]},
+    {build: '2026-10-11 19:03', items: [
       'No more foam bits for the current: the sea\'s little wave crests are darker and drift with the current instead',
     ]},
     {build: '2026-10-11 18:53', items: [
@@ -432,16 +438,8 @@
     {build: '2026-10-11 18:43', items: [
       'The current is much stronger: the wind\'s push on the water carries the boat about 2.5 times as far',
     ]},
-    {build: '2026-10-11 18:25', items: [
-      'The fifth map: new coasts, home on the shore with its pier into Home sea, a long inlet down from H1 to Estolia',
-      'Only two villages for now, where the dots are: Nordania (F3) and Estolia (H4)',
-      'Ten whirlpools and two storm clouds in the stormy north-west, a storm cloud in E6',
-      'The six sunken treasures (X) where they are drawn',
-      'A castaway waves from the island in G7: anchor close by, take them to Nordania for a reward',
-      'Sea monsters only in G4, D6 and H9; the boiling sea starts at the new dashed line',
-    ]},
   ];
-  const BUILD = '2026-10-11 19:03';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-11 19:20';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -8342,7 +8340,8 @@
     // (a lateen yard instead trails aft, eased out to leeward about half the wind's angle off the bow)
     // the yard only sways a little either way (SAIL_SWING_MAX), plus a faint flutter: she has to be turned to the wind
     const sway = Math.sin(t*1.3 + 0.7)*0.03 + Math.sin(t*3.1)*0.015;
-    const faceTarget = boat.rig === 'lateen' || boat.rig === 'marconi' ? boat.sailSide*Math.max(0.12, Math.min(0.12 + SAIL_SWING_MAX, Math.abs(relR)*0.5)) + sway
+    const faceTarget = boat.rig === 'marconi' ? boat.sailSide*(0.12 + (Math.PI/2 - 0.12)*Math.max(0, Math.min(1, (Math.abs(relR) - 0.6)/(Math.PI - 0.6)))) + sway   // (the boom eased out with the wind: square across her, 90°, running)
+                     : boat.rig === 'lateen' ? boat.sailSide*Math.max(0.12, Math.min(0.12 + SAIL_SWING_MAX, Math.abs(relR)*0.5)) + sway
                                               : boat.sailSide*Math.min(Math.abs(faceRaw), MAX_BRACE, SAIL_SWING_MAX) + sway;
     // the lateen's long yard is heavy: when she changes tack it swings across slowly (LATEEN_SWING), then trims as usual
     if(boat.rig === 'lateen' && Math.sign(faceTarget) !== Math.sign(boat.boomSigned) && Math.abs(boat.boomSigned) > 0.05) boat.swingAcross = true;
@@ -10937,7 +10936,7 @@
   // Furled, the cloth comes down the mast and lies gathered along the boom
   function drawMarconiSail(B, P, L, base, FB, mast){
     const sa = B.boomSigned, lee = sa >= 0 ? 1 : -1, sabs = Math.abs(sa);
-    const mx = 3, my = 0, TOP = MAST_H*1.15, BL = 18*SAIL_SIZE*MARCONI_SIZE;
+    const mx = 3, my = 0, TOP = MAST_H*1.15*MARCONI_SIZE, BL = 18*SAIL_SIZE*MARCONI_SIZE;
     const furl = B.furl, open = 1 - furl;
     const p = B.sailPower*open;
     const reef = (0.3 + 0.7*B.sailAmount)*(1 - 0.9*furl);
@@ -10948,8 +10947,9 @@
     const ripple = Math.sin(t*22)*2*luff*open;
     // the leech and the foot belly out to leeward (across the boom), the leech most a little below halfway up
     const H = P(mx, my, zH), T = P(mx, my, zB), C = P(cx, cy, zB);
-    const L1 = P(mx + (cx - mx)*0.55, my + (cy - my)*0.55 + lee*(belly + ripple)*Math.cos(sabs), zB + (zH - zB)*0.45);
-    const F1 = P(mx + (cx - mx)*0.5, my + (cy - my)*0.5 + lee*(belly*0.6 - ripple*0.5)*Math.cos(sabs), zB);
+    const nx = Math.sin(sabs), ny = lee*Math.cos(sabs);            // across the boom, to leeward (forward once it's squared out running)
+    const L1 = P(mx + (cx - mx)*0.55 + nx*(belly + ripple), my + (cy - my)*0.55 + ny*(belly + ripple), zB + (zH - zB)*0.45);
+    const F1 = P(mx + (cx - mx)*0.5 + nx*(belly*0.6 - ripple*0.5), my + (cy - my)*0.5 + ny*(belly*0.6 - ripple*0.5), zB);
     mast(mx, TOP);
     ctx.setTransform(base);
     const sailPath = ()=>{ ctx.beginPath(); ctx.moveTo(...T); ctx.lineTo(...H); ctx.quadraticCurveTo(...L1, ...C); ctx.quadraticCurveTo(...F1, ...T); };
@@ -10957,7 +10957,7 @@
     ctx.fillStyle = V(tone); sailPath(); ctx.closePath(); ctx.fill();
     // two battens across the cloth, then its ink edge
     ctx.strokeStyle = INKC; ctx.lineWidth = 0.8;
-    for(const k of [0.4, 0.7]){ const z = zB + (zH - zB)*k, A = P(mx, my, z), Bp = P(mx + (cx - mx)*(1 - k)*0.9, my + (cy - my)*(1 - k)*0.9 + lee*belly*0.6*Math.cos(sabs), z);
+    for(const k of [0.4, 0.7]){ const z = zB + (zH - zB)*k, A = P(mx, my, z), Bp = P(mx + (cx - mx)*(1 - k)*0.9 + nx*belly*0.6, my + (cy - my)*(1 - k)*0.9 + ny*belly*0.6, z);
       ctx.beginPath(); ctx.moveTo(...A); ctx.lineTo(...Bp); ctx.stroke(); }
     ctx.lineWidth = 1.4; sailPath(); ctx.stroke();
     // the mainsheet, from the boom's end to the stern

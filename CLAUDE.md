@@ -527,7 +527,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   The boat's square sail is drawn `SAIL_SIZE` (1.3) times the old size, its cloth a dotted grey `SAIL_TONE` (0.72; 1 =
   paper), darker when slack or reefed. At anchor (and moored) the cloth is drawn gathered up to the yard (`boat.furl`,
   eased; a look only: the sail stays set as far as the physics goes), and it spreads again as the anchor comes up.
-  **Two sails** (`SPARE_SAIL` in Tuning): **she sets out with the square sail rigged** (`START_RIG` 'square' again; the lateen and the Marconi in the storehouse, `START_STORED_SAILS` ['lateen', 'marconi']; for a while she set out with none, `START_RIG` null; with
+  **Two sails** (`SPARE_SAIL` in Tuning): **she sets out with the Marconi sail rigged** (`START_RIG` 'marconi'; the square and the lateen in the storehouse, `START_STORED_SAILS` ['square', 'lateen']; before that the square; for a while she set out with none, `START_RIG` null; with
   null, `boat.rig` null: the wind gives her nothing, `speedFactor` is 0, no mast is drawn either; she goes on the
   oars) and **the other sail waits in the home storehouse** (`START_STORED_SAILS` ['lateen'] in Tuning: `homeStore.sails` at the start and at `resetStore`; it takes no slot until it's taken aboard there; with [] it rides in the hold as before): every sail not rigged takes one of the `HOLD_MAX` slots (`sailsInHold`, `spareSlots`, counted in
   `slotsUsed` and at the market in `mkSlotsAfter`), first in the Cargo grid, a tappable slot with its own icon in
@@ -563,11 +563,10 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   quarter; it furls along the yard at anchor.
   **The Marconi sail** (Enrico; a third rig, `'marconi'`, `TEXT.sails.marconi`, icon `ITEM_ICONS['Marconi sail']`; it waits
   in the home storehouse with the others, `START_STORED_SAILS`): the modern Bermuda rig, a tall triangle up the mast
-  (`MAST_H` × 1.15) with its foot on a boom (18 px × `SAIL_SIZE` × `MARCONI_SIZE`), drawn by `drawMarconiSail` (the
+  (`MAST_H` × 1.15 × `MARCONI_SIZE`) with its foot on a boom (18 px × `SAIL_SIZE` × `MARCONI_SIZE`; `MARCONI_SIZE` 1.2, was 1), drawn by `drawMarconiSail` (the
   leech and foot bellied to leeward, two battens, a mainsheet to the stern; furled, the head comes down to the boom).
-  Its curve `SAIL_POLAR_MARCONI`: the best close to the wind (35° 0.86, 50° 1.00), a little under the lateen on the
-  beam, the weakest running (180° 0.5); each `RIG_*` has a `marconi` value (turn 1.35, accel 1.2, retrim 2.5, leeway
-  0.05, surf 0.8, wave hit 1.1, broach 1.4). The boom is trimmed like the lateen's yard (fore-and-aft, `boomSigned`),
+  Its curve `SAIL_POLAR_MARCONI` (Enrico, after Wind Waker's sail): the best with the wind on the beam (70° 1.10, 90° 1.16, 110° 1.12), still decent running (150° 0.94, 180° 0.86), close-hauled 35° 0.82, 50° 0.98 (before: best close-hauled, 180° 0.5); each `RIG_*` has a `marconi` value (turn 1.35, accel 1.2, retrim 2.5, leeway
+  0.05, surf 0.8, wave hit 1.1, broach 1.4). The boom is eased out with the wind (`faceTarget`: 0.12 rad close-hauled up to 90°, square across her, running; the cloth's belly is pushed across the boom, so forward when squared out),
   but it has no bad tack and no slow swing across (`LATEEN_MALA`, `LATEEN_TACK_DRIVE`, `LATEEN_SWING` are the
   lateen's only). The Sails editor on the first screen lists every rig in `POLARS` (the others' curves dashed).
   **The yard only sways a little** (`SAIL_SWING_MAX` 0.35 rad, Tuning): the square sail's yard is braced at most that far off
