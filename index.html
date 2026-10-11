@@ -400,6 +400,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Tied up at a pier only the anchor stays (the hub of the wheel; the rest of the wheel fades out), with the quay badge and the logbook: the crank, slingshot, sail button and hull bar come back once the anchor is up',
+    ]},
+    {build: '2026-10-11 09:47', items: [
       'Zoom starts at 1.2 (a little closer than before the zoom); the slider now moves in steps of 0.1',
     ]},
     {build: '2026-10-11 09:41', items: [
@@ -410,12 +413,8 @@
       'Sail button on the left, mirroring the slingshot: a tap sets or furls the sail',
       'At anchor every control stays: the crank can be wound there too',
     ]},
-    {build: '2026-10-11 09:15', items: [
-      'Full screen: the game goes full screen when you tap "Set sail" (a switch in Settings); after leaving it, the little button top right brings it back',
-      'It can be added to the home screen as an app (browser menu, "Add to home screen"): it then opens full screen, with its own icon',
-    ]},
   ];
-  const BUILD = '2026-10-11 09:47';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-11 09:51';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -970,6 +969,8 @@
   #talk .t-btn:active{transform:translate(1px,1px); box-shadow:1px 1px 0 var(--ink);}
   body.talking #wheel, body.talking #crank, body.talking #oar-ctl,
   body.talking #dock-btn, body.talking #btn-list, body.talking #tut-tip{display:none !important;}
+  /* tied up at a pier: only the anchor (the wheel's hub, its spokes fade out), the quay badge and the logbook stay */
+  body.docked #crank, body.docked #oar-ctl, body.docked #sling, body.docked #sail-btn, body.docked #status{display:none !important;}
   #oar-ctl .oar-mark{position:absolute; left:50%; top:0; width:0; height:0; margin-left:-6px; border-left:6px solid transparent; border-right:6px solid transparent;
     border-top:9px solid var(--ink); filter:drop-shadow(0 0 1.5px var(--paper));}   /* the fixed mark: the moment to press */
   #oar-ctl .oar-disc{position:absolute; left:4px; top:12px; width:56px; height:56px; border-radius:50%; background:var(--paper); border:2px solid var(--ink);
@@ -4699,6 +4700,7 @@
     const [x,y] = wheelLocal(ev);
     const onHub = Math.hypot(x,y) < (stowed() ? HUB_R : HUB_SAIL_R)*WH_S*hubScale;   // sailing: just the hub, so the spokes still steer
     if(Math.hypot(x,y) > 84*WH_S) return;      // outside the handles
+    if(moor && !onHub) return;                 // tied up: only the hub (the anchor)
     ev.preventDefault();
     wheelPointer = ev.pointerId;
     wheelCv.setPointerCapture(ev.pointerId);
@@ -4940,11 +4942,11 @@
 
     // at anchor the wheel is put away: it fades out
     // and only the hub stays, to weigh anchor or switch sail
-    wheelVis += (1 - wheelVis) * 0.15;                       // (it no longer fades out at anchor: Enrico)
+    wheelVis += ((moor ? 0 : 1) - wheelVis) * 0.15;          // tied up at a pier the wheel fades out and only the hub (the anchor) stays; at anchor it no longer does (Enrico)
     // skip the redraw (and its dither) while nothing on it moves: same angle,
     // same state, no animation running (a hold, a shake, the bank ring, a tutorial hint)
     {
-      const busy = hubHold || hubShake > 0 || bankHint || Math.abs(wheelVis - 1) > 0.002
+      const busy = hubHold || hubShake > 0 || bankHint || Math.abs(wheelVis - (moor ? 0 : 1)) > 0.002
         || ((tut === 'anchor' || tut === 'drop' || tut === 'wheel') && !tutWait);
       const key = wheelAngle.toFixed(4) + '|' + wheelVis.toFixed(3) + '|' + anchored + '|' + bankHint + '|' + !!hubHold + '|' + uiPalKey;   // (a let-go hold must clear its ring)
       if(!busy && key === wheelKey) return;
@@ -6696,6 +6698,7 @@
   elSailBtn.addEventListener('keydown', ev=>{ if((ev.key === 'Enter' || ev.key === ' ') && !ev.repeat){ ev.preventDefault(); ev.stopPropagation(); toggleSail(); } });
   let sbKey = '';
   function updateSailBtn(){
+    if(!!moor !== document.body.classList.contains('docked')) document.body.classList.toggle('docked', !!moor);   // tied up: only the anchor stays
     const show = playing;
     if(show !== !elSailBtn.classList.contains('hidden')) elSailBtn.classList.toggle('hidden', !show);
     const key = !!boat.sailFurled + '|' + !!boat.rig;
@@ -6705,7 +6708,7 @@
   }
   function updateSling(dt){
     updateSailBtn();
-    const show = SLING_ON && playing && !marketV && !(fishing && fishing.phase === 'game');   // (the fishing bar has its place)
+    const show = SLING_ON && playing && !marketV && !moor && !(fishing && fishing.phase === 'game');   // (the fishing bar has its place)
     if(show !== !elSling.classList.contains('hidden')) elSling.classList.toggle('hidden', !show);
     if(!show && slingDrag){ slingDrag = null; slingPull = 0; }
     slingReload = Math.max(0, slingReload - dt);
@@ -6806,7 +6809,7 @@
     ctx.globalAlpha = 1;
   }
   function updateSpring(dt){
-    const show = MANUAL_OARS && playing && !marketV;      // at the market and while someone talks to you it steps aside (at anchor it stays: wind it up there)
+    const show = MANUAL_OARS && playing && !marketV && !moor;      // at the market and while someone talks to you it steps aside (at anchor it stays: wind it up there)
     if(show !== !elCrank.classList.contains('hidden')) elCrank.classList.toggle('hidden', !show);
     if(!show && crankDrag){ crankDrag = null; if(windProg > 0){ crankBack = windProg*Math.PI*2*SPRING_TURNS; crankTick = crankStep = 0; } }   // let go of it as it goes (a half winding springs back)
     if(!elOar.classList.contains('hidden')) elOar.classList.add('hidden');
