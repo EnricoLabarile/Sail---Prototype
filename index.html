@@ -86,7 +86,8 @@
   const SLING_ON = true;             // the slingshot on the right: drag its pouch down and let go, a stone flies off ahead of the bow
   const SLING_RANGE = [20, 80];      // px ahead of the bow the shot's cone covers: nearest, furthest (the pull no longer sets the distance)
   const SLING_CONE_DEG = 50;         // how wide the cone of stones spreads in front of the bow (degrees, all of it; half each side)
-  const SLING_PELLETS = 6;           // stones a shot scatters over the cone (one charge a shot)
+  const SLING_PELLETS = 3;           // stones a shot throws, one charge a shot: three = one straight ahead, one left and one right (was 6 scattered at random)
+  const SLING_SIDE = 0.8;            // how far out the side stones fly, as a share of the half-cone (1 = right on the cone's edges)
   const SLING_FIRE_PULL = 0.7;       // pull the pouch down this far (0..1) and it shoots by itself; let go before and nothing happens
   const SLING_NET_DIST = 55;         // px ahead of the bow a net lands (in the middle of the cone)
   const SLING_RELOAD = 0.9;          // seconds before the next stone is in the pouch
@@ -400,6 +401,10 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The lateen sail looks as it did before (the Wind Waker look is gone)',
+      'The slingshot throws three stones: one straight ahead, one to the left and one to the right, inside the cone',
+    ]},
+    {build: '2026-10-11 09:51', items: [
       'Tied up at a pier only the anchor stays (the hub of the wheel; the rest of the wheel fades out), with the quay badge and the logbook: the crank, slingshot, sail button and hull bar come back once the anchor is up',
     ]},
     {build: '2026-10-11 09:47', items: [
@@ -408,13 +413,8 @@
     {build: '2026-10-11 09:41', items: [
       'The view is closer to the boat (zoomed in); a Zoom slider in Settings sets how close, from 1 (as before) to 2.5',
     ]},
-    {build: '2026-10-11 09:36', items: [
-      'The anchor is back on the wheel: hold its hub to drop or weigh it',
-      'Sail button on the left, mirroring the slingshot: a tap sets or furls the sail',
-      'At anchor every control stays: the crank can be wound there too',
-    ]},
   ];
-  const BUILD = '2026-10-11 09:51';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-11 10:50';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -6677,7 +6677,7 @@
     else {
       const shot = {splashed: false, zora: false, shark: false};       // (a shot hits a creature once, however many stones land on it)
       for(let i=0;i<SLING_PELLETS;i++){
-        const off = SLING_PELLETS > 1 ? -1 + 2*(i + rand(0.15, 0.85))/SLING_PELLETS : 0, d = rand(SLING_RANGE[0], SLING_RANGE[1]);
+        const off = SLING_PELLETS > 1 ? SLING_SIDE*(-1 + 2*i/(SLING_PELLETS - 1)) : 0, d = rand(SLING_RANGE[0], SLING_RANGE[1]);   // evenly fanned: left, ahead, right
         const [x0, y0, x1, y1] = slingPoint(off, d), k = (d - SLING_RANGE[0])/(SLING_RANGE[1] - SLING_RANGE[0] || 1);
         stones.push({x0, y0, x1, y1, t: 0, dur: 0.4 + 0.45*k + rand(0, 0.08), h: 12 + 26*k, net, shot, pellet: true});
       }
