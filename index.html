@@ -391,7 +391,7 @@
   const BOAT_TILT = 0.45;            // the boat in 3D: how much the view looks at her from the south (0 = straight down; height then shows only through her roll and pitch)
   const BOAT_HEEL = 0.3;             // how far she heels to leeward with the sail full of wind (radians at full drive, the wind on the beam)
   const BOAT_SEA_MOTION = 1;         // how much the swell rolls and pitches her (1 = as tuned)
-  const BOW_EXT = 5;                 // px the bow reaches further forward than the old gozzo's (room for the bow cannon; was 10, halved); she still turns where she did
+  const BOW_EXT = 0;                 // px the bow reaches further forward than the gozzo's own (0 = the original gozzo, the cannon squeezed onto its foredeck; 10 and 5 were tried); she always turns where she did
   const MAST_H = 26;                 // the square sail's mast height (the yard just under its top); the lateen's yard climbs to about this
   const SAIL_TONE = 0.72;            // the sail's cloth when drawing well (1 = paper white, 0 = ink); slack or reefed it's a little darker
   const SPARE_SAIL = true;           // both sails ride in the hold (a slot each, the one not rigged); a tap on one in the logbook rigs it
@@ -409,6 +409,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The boat is the original gozzo again (no longer bow), the cannon stays on its foredeck',
+    ]},
+    {build: '2026-10-11 13:57', items: [
       'The bow is half as long as in the last build (halfway between the old boat and the long one)',
     ]},
     {build: '2026-10-11 13:39', items: [
@@ -421,11 +424,8 @@
       'A third sail, the Marconi sail (a tall triangle with a boom), waits in the home storehouse: the best close to the wind, quick to change tack, weaker running downwind',
       'Its speed curve and handling can be tuned in the first screen\'s Sails section, like the other two',
     ]},
-    {build: '2026-10-11 11:23', items: [
-      'A weakened shark or a dazed sea imp can be caught like fish: drop anchor near it and the nets go over (the sling\'s nets still work too)',
-    ]},
   ];
-  const BUILD = '2026-10-11 13:57';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-11 14:07';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -10634,9 +10634,9 @@
     // the bow cannon on the foredeck (the slingshot's shots leave from its muzzle): a dark wooden carriage on two little
     // wheels, the barrel along the centreline, thick at the breech with a knob, a ring at the muzzle
     if(!g){
-      const cb = 14, cm = BX - 2.5;                          // breech and muzzle (boat frame x)
+      const cb = 14 - Math.max(0, 10 - BOW_EXT)*0.3, cm = BX - 2.5;   // breech and muzzle (boat frame x; on the short original bow it sits a little further aft)
       L(FB); ctx.fillStyle = V(0.3); ctx.strokeStyle = INKC; ctx.lineWidth = 0.8;
-      ctx.beginPath(); ctx.rect(cb - 1, -3, 9, 6); ctx.fill(); ctx.stroke();                     // the carriage
+      ctx.beginPath(); ctx.rect(cb - 1, -3, Math.min(9, cm - cb + 0.5), 6); ctx.fill(); ctx.stroke();   // the carriage
       for(const sy of [-3.6, 3.6]){ ctx.fillStyle = INKC; ctx.beginPath(); ctx.ellipse(cb + 3.5, sy, 2, 0.9, 0, 0, Math.PI*2); ctx.fill(); }   // its wheels
       ctx.setTransform(base); ctx.lineCap = 'round';
       const [k0, k1] = P(cb - 1.6, 0, FB + 2.6), [r0, r1] = P(cb, 0, FB + 2.6), [m0, m1] = P(cm, 0, FB + 3.4);
