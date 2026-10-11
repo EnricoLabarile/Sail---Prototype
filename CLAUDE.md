@@ -522,12 +522,9 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   surfing push and length × `RIG_SURF` (1.35 / 0.7, `boat.surfK`), damage × `RIG_WAVE_HIT` (0.6 / 1.4), the slew round
   × `RIG_BROACH` (0.6 / 2.2). Measured (sail-only target): open sea, square at 150° ~51 px/s, lateen at 70° ~55; among
   the islands both drop (gusts, lulls, lee) and the square most. The lateen is drawn by
-  `drawLateenSail` **after Wind Waker's sail** (Enrico; a look only, it still sails as the lateen): a tall near-white
-  cloth (tone 0.95) on a mast a little forward of amidships (x 3, up to `MAST_H` + 4), laced to a yard at the top and a
-  boom at the foot, flaring wider toward the foot (half-widths 9 / 12 × `SAIL_SIZE` × `LATEEN_SIZE` × 2), ballooning out
-  most through the middle; drawn as one sheet from the foot's curve to the head's (sampled and projected), edged in ink,
-  with a bold ink crest (a bird's wings over a point) where it bellies out most. Both spars cross the mast and swing
-  together, eased out by `boat.boomSigned` × 1.6, so it mostly faces forward; furled, the boom is hauled up to the yard.
+  `drawLateenSail` (`LATEEN_SIZE` 0.6 in Tuning, on top of `SAIL_SIZE`): a long slanted yard on a short mast near the bow, the triangle of cloth trailing aft, eased out
+  to leeward about half the wind's angle off the bow (`boat.boomSigned`), bellied to leeward, a sheet to the stern
+  quarter; it furls along the yard at anchor.
   **The yard only sways a little** (`SAIL_SWING_MAX` 0.35 rad, Tuning): the square sail's yard is braced at most that far off
   square, the lateen's eased out at most 0.12 + that past its rest, plus a faint flutter; it doesn't follow the wind round
   (a look only: the drive is the polar's), so the player turns the boat to the wind.
