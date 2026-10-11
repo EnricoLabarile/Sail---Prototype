@@ -212,14 +212,14 @@ def creatures(pg):
 
 def treasure(pg):
     # a dark rippling spot: anchored on it, the net brings up 1 to 3 coins and the spot is gone
-    n = pg.evaluate('__d.treasures.length')
+    n = pg.evaluate('__d.treasures.filter(o=>o.goneAt===undefined).length')
     if not n: return
     c0 = pg.evaluate('__d.coins')
-    pg.evaluate("()=>{const d=__d; d.unmoor(); const o=d.treasures[0]; d.boat.x=o.x-6; d.boat.y=o.y; d.boat.speed=0;}")
+    pg.evaluate("()=>{const d=__d; d.unmoor(); const o=d.treasures.find(o=>o.goneAt===undefined); d.boat.x=o.x-6; d.boat.y=o.y; d.boat.speed=0;}")
     pg.keyboard.press('Space'); pg.wait_for_timeout(5000)
     got = pg.evaluate('__d.coins') - c0
     assert 1 <= got <= 3, f'the treasure gave {got} coins'
-    assert pg.evaluate('__d.treasures.length') == n - 1, 'the treasure spot is still there'
+    assert pg.evaluate('__d.treasures.filter(o=>o.goneAt===undefined).length') == n - 1, 'the treasure spot is still there'
     pg.keyboard.press('Space'); pg.wait_for_timeout(1300)
 
 def castaway(pg):

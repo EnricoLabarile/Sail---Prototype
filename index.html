@@ -222,13 +222,13 @@
   const STRANDED_REACH = 300;        // px: anchor this close to the castaway (DRAWN_STRANDED) and they come aboard
   const STRANDED_REWARD = 15;        // coins when the castaway is brought to the village nearest home
   const TREASURE_TIME = 1.5;         // seconds with the net out before it comes up
-  const TREASURE_R = 22;             // px: how big the dark patch is drawn; she must be within 1.3 × this to net it
   const BOTTLE_TIME = 1.2;           // seconds with the net out before a bottle is hauled in (fish take FISH_TIME_MIN–MAX)
   const HOLD_MAX = 9;                // slots in the hold: each fish or dish takes one; when it's full the nets stay aboard
   const FISH_REACH = 1.35;           // a bank counts out to this × its radius (a little past its circle)
   const NETS_AT_ANCHOR_ONLY = true;  // the nets go over only when she drops anchor on a bank (or a bottle); false = also when she just stops on it
   const FISH_STOP = 12;              // px/s: slow enough to count as stopped on a bank (with NETS_AT_ANCHOR_ONLY off)
   const FISH_SETTLE = 2;             // seconds stopped on a bank before the nets go over
+  const BANK_FISH_SHOWN = false;     // draw the fish going round over a bank (false: only its patch of darker water, the same as a sunken treasure's, so treasures hide among the banks)
   const BANK_LOOK = [4, 5, 1.45];    // every fish bank looks alike, whatever it holds: [fewest fish, most fish, their size] (dark, going round)
   const FISH_ANCHOR_SETTLE = 0.25;   // …or this long after dropping anchor on a bank
   const FISH_TIME_MIN = 2, FISH_TIME_MAX = 4;   // seconds with the nets out before the haul (with the reel: before the bite)
@@ -434,6 +434,10 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Fish banks no longer show fish going round: only the patch of darker water, the same size as before',
+      'Sunken treasures look just like a fish bank now (no more rings or bubbles), so they hide among them; they are only where the map has an X',
+    ]},
+    {build: '2026-10-11 19:35', items: [
       'A map editor (World > Map editor, or editor.html): drag treasures, whirlpools, storms, the castaway and the villages about, switch the monster squares, reshape the boiling sea',
       'In the editor, Try it in the game opens the game with your layout; Copy layout gives the lines to paste into index.html',
     ]},
@@ -446,13 +450,8 @@
     {build: '2026-10-11 19:03', items: [
       'No more foam bits for the current: the sea\'s little wave crests are darker and drift with the current instead',
     ]},
-    {build: '2026-10-11 18:53', items: [
-      'The boiling sea is darker and heaves in rolling cells: pale wobbling rings round a dark dimple',
-      'The current shows: bits of foam with a short trail drift downwind across the open sea (none by the shores)',
-      'Cool water round the castaway, so picking them up no longer scalds the hull',
-    ]},
   ];
-  const BUILD = '2026-10-11 19:35';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-11 19:49';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -3542,35 +3541,31 @@
   // TREASURE_COUNT of them, at random spots of open sea for now (Enrico will draw them on the map later). Drop
   // anchor on one and the net goes over; after TREASURE_TIME it comes up with TREASURE_COINS coins and the spot is gone.
   const treasures = [];
+  // a treasure spot looks just like a fish bank: a lumpy patch of darker water of a bank's size (see spawnBank)
+  function treasureAt(x, y){
+    const r = rand(36, 46), blobs = [];
+    for(let k=0;k<5;k++){ const a = rand(0, 6.3), d = rand(0, 0.35)*r; blobs.push([Math.cos(a)*d, Math.sin(a)*d, r*rand(0.6, 0.85)]); }
+    return {x, y, r, blobs};
+  }
   function resetTreasures(){
     treasures.length = 0;
-    if(MAP_DRAWN){ for(const [x, y] of DRAWN_TREASURES) treasures.push({x, y, ph: rand(0, 6.3)}); return; }   // (where Enrico drew them)
+    if(MAP_DRAWN){ for(const [x, y] of DRAWN_TREASURES) treasures.push(treasureAt(x, y)); return; }   // (where Enrico drew them)
     for(let k=0, tries=0; k<TREASURE_COUNT && tries<4000; tries++){
       const x = rand(0, WORLD.w), y = rand(0, WORLD.h);
       if(wdist(x, y, START.x, START.y) < 400 || onLand(x, y, 60) || pierDist(x, y).d < 150) continue;
       if(treasures.some(o=> wdist(x, y, o.x, o.y) < 300)) continue;
-      treasures.push({x, y, ph: rand(0, 6.3)}); k++;
+      treasures.push(treasureAt(x, y)); k++;
     }
   }
   function treasureUnderBoat(){
-    for(const o of treasures) if(wdist(boat.x, boat.y, o.x, o.y) < TREASURE_R*1.3) return o;
+    for(const o of treasures) if(o.goneAt === undefined && wdist(boat.x, boat.y, o.x, o.y) < o.r*FISH_REACH) return o;   // (as near as for a fish bank)
     return null;
   }
   function drawTreasure(o){
-    if(!inView(o.x, o.y, TREASURE_R*2)) return;
-    const net = fishing && fishing.treasure === o;
-    stampDot(softDot('treasure', [[0,0.5],[0.5,0.32],[1,0]]), o.x, o.y, TREASURE_R*1.5, 1);   // the water darkens: something down there
-    ctx.save(); ctx.translate(o.x, o.y); ctx.strokeStyle = INKC;
-    for(let i=0;i<3;i++){                                    // rings welling up from it and spreading out
-      const q = ((t*0.45 + o.ph + i/3) % 1), r = TREASURE_R*(0.25 + 1.05*q);
-      ctx.globalAlpha = Math.min(1, 0.9*(1 - q)*(net ? 1.3 : 1)); ctx.lineWidth = 1.6 - 0.6*q;
-      ctx.beginPath(); ctx.ellipse(0, 0, r, r*0.7, 0, 0, TAU); ctx.stroke();
-    }
-    ctx.fillStyle = PAPERC;                                  // now and then a bubble or two breaks the surface
-    for(let i=0;i<3;i++){ const q = (t*0.7 + o.ph*1.7 + i*0.37) % 1.6; if(q > 1) continue;
-      const a = o.ph*3 + i*2.1, d = TREASURE_R*0.35*((i + 1)/3);
-      ctx.globalAlpha = 1 - q; ctx.beginPath(); ctx.arc(Math.cos(a)*d, Math.sin(a)*d*0.7 - q*2, 0.8 + 1.4*q, 0, TAU); ctx.fill(); }
-    ctx.restore(); ctx.globalAlpha = 1;
+    if(!inView(o.x, o.y, o.r + 30)) return;
+    const fade = o.goneAt === undefined ? 1 : Math.max(0, 1 - (t - o.goneAt)/1.8);   // (fished up: the patch fades like a scattered bank's)
+    if(fade <= 0) return;
+    for(const [ox, oy, rr] of o.blobs) stampDot(softDot('bank', [[0,0.13],[0.7,0.07],[1,0]]), o.x + ox, o.y + oy, rr, fade);
   }
   resetTreasures();
   // ---- the castaway (the drawn map's DRAWN_STRANDED): waving on an island; anchor close by and they swim out and
@@ -6026,6 +6021,7 @@
       if(b.state==='scatter' && b.t > 1.8){ banks.splice(k,1); if(b.tile === undefined) spawnBank(true, b.home); }   // (a square's bank waits for the next refill)
     }
     updateBottles(dt);
+    for(let k = treasures.length - 1; k >= 0; k--) if(treasures[k].goneAt !== undefined && t - treasures[k].goneAt > 2) treasures.splice(k, 1);
     if(moor || boat.whirl){ fishing = null; settleT = 0; return; }
     const steering = turnLeft || turnRight || (wheelPointer!==null && Math.abs(wheelAngle) > 0.35);
     if(!fishing){
@@ -6106,8 +6102,8 @@
       }
       else if(f.t>=f.dur && f.treasure){                // the net comes up with coins; the spot is gone
         f.phase='haul'; f.t=0;
-        const n = TREASURE_COINS[0] + Math.floor(Math.random()*(TREASURE_COINS[1] - TREASURE_COINS[0] + 1)), k = treasures.indexOf(f.treasure);
-        if(k >= 0) treasures.splice(k, 1);
+        const n = TREASURE_COINS[0] + Math.floor(Math.random()*(TREASURE_COINS[1] - TREASURE_COINS[0] + 1));
+        f.treasure.goneAt = t;                          // (its patch fades, then it's gone)
         coins += n; if(elList.classList.contains('open')) renderList();
         popups.push({x:boat.x, y:boat.y-24, text:fmt(TEXT.popups.treasure, {n, coins: n === 1 ? TEXT.market.coin : TEXT.market.coins}), life:1.8, max:1.8});
         Sfx.coins(); Sfx.pickup(); buzz([15,50,25]);
@@ -10525,6 +10521,7 @@
       stampDot(softDot('bank', [[0,0.13],[0.7,0.07],[1,0]]), b.x+ox, b.y+oy, rr, 1);
     }
     // the fish, in the shade of their kind (same as the counter icons)
+    if(!BANK_FISH_SHOWN){ ctx.globalAlpha = 1; return; }           // (only the darker water: a treasure looks the same)
     const shade = INKC, outline = false;                            // all alike: the kind is only known once hauled in
     const net = fishing && fishing.bank===b ? netAmount() : 0;
     const pull = fishing && fishing.bank===b && fishing.phase==='wait' ? Math.min(1, fishing.t/fishing.dur) : 0;

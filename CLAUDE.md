@@ -329,8 +329,10 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   (`clearWrecks`, `rockGrid.remove`). 12 messages (`TEXT.bottles.texts`, each a castaway's note hinting vaguely at the sunken cruise ship), one a voyage, dealt in a shuffled order (`msgQueue`)
   so they don't repeat until all have come up. A new voyage clears them all (`resetBottles`).
 - **Treasure spots** (Zelda-chest-like; section "treasure spots" before `resetBottles`; Tuning `TREASURE_COUNT` (12, world),
-  `TREASURE_COINS` [1, 3], `TREASURE_TIME` 1.5 s, `TREASURE_R` 22 px; text `TEXT.popups.treasure`): dark patches of water
-  (`softDot('treasure')`) with three rings welling up and a few bubbles (`drawTreasure`, in the fish banks' layer),
+  `TREASURE_COINS` [1, 3], `TREASURE_TIME` 1.5 s; text `TEXT.popups.treasure`): **they look exactly like a fish bank**
+  (Enrico: so they hide among them; `treasureAt`: a bank's radius 36–46 and its five soft blobs of darker water,
+  `drawTreasure` with the bank's `softDot`; no rings or bubbles any more), fished from as near as a bank
+  (`FISH_REACH` × r); once fished its patch fades over 1.8 s (`goneAt`) and it's dropped;
   on the drawn map where the X are drawn (`DRAWN_TREASURES`), off it at random (`resetTreasures`, at start and on a
   new voyage: open sea, 400 px from home, 60 from land, 150 from piers, 300 apart). Fished at anchor like a bank (`treasureUnderBoat`,
   within 1.3 × `TREASURE_R`; after a creature, before a bank; no hold room needed): the net comes up with 1–3 coins
@@ -345,7 +347,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   78 banks in 78 squares (at 1). Off it, the old rules below. Banks denser far from home; half the open-sea banks
   (`ROUTE_BANK_SHARE`) lie along the sea roads, home to each village and village to village, within `ROUTE_BANK_SPREAD` of
   the straight line (`routeSpot`), so the fish lead from place to place; home waters have all kinds and plenty of banks (`HOME_BANKS` = 9 in the smaller world, same density as 18 before; refilled as they are fished).
-  **Every bank looks alike** (`BANK_LOOK` in Tuning: 4–5 big dark fish going round over the darker water, the old sea
+  **No fish drawn** (`BANK_FISH_SHOWN` false in Tuning, Enrico): a bank is only its patch of darker water, like a treasure. (When shown:) **Every bank looks alike** (`BANK_LOOK` in Tuning: 4–5 big dark fish going round over the darker water, the old sea
   bream's look), so what's in it is only known when the net comes up.
   Fishing: **only at anchor** (`NETS_AT_ANCHOR_ONLY` true in Tuning, `canNet`; bottles too): drop anchor on a bank and the nets go over after 0.25 s (with it off, as before: stopping on a bank for 2 s also does); the net
   hauls in by itself. **The reel** (a Stardew-style minigame, **switched off for now** (Enrico: fishing is automatic): `REEL_ON` false in Tuning forces `reelOn` false, ignores `vv.reel` and hides its Settings row; when on, it's **off by default**: `REEL_DEFAULT` false in Tuning; a
