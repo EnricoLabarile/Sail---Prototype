@@ -20,7 +20,7 @@ HOOK = ('requestAnimationFrame(loop);\n})();',
         'dinnerT:(DINNER_HOUR-DAWN_HOUR)/24,ordersOn:ORDERS_ON,get dayNo(){return dayNo},'
         'RUINS,get powerOwned(){return powerOwned},get rig(){return boat.rig},bottles,bottleHold,marks,homeStore,banks,get fishing(){return fishing},get reelOn(){return reelOn},setReel,REEL_ZONE,'
         'get charges(){return charges},get nets(){return nets},get ammo(){return slingAmmo},toSpread(n){while(logSpread!==n){turning=false;turnPage(n>logSpread?1:-1);}},coinsAdd(n){coins+=n},unmoor(){moor=null;moorLock=null;},'
-        'get zora(){return zora},get catches(){return catches},treasures,get coins(){return coins},onLand,inArea,spawnZora(){zoraArea=creatureArea(boat.x,boat.y);zora={phase:"gone",t:0,wait:0,x:0,y:0,seen:false,seed:0,area:zoraArea};}};'
+        'get zora(){return zora},get catches(){return catches},get castaway(){return castaway},get anchored(){return anchored},treasures,get coins(){return coins},onLand,inArea,spawnZora(){zoraArea=creatureArea(boat.x,boat.y);zora={phase:"gone",t:0,wait:0,x:0,y:0,seen:false,seed:0,area:zoraArea};}};'
         'tutSet("done");'                  # skip the tutorial: the test drives the controls directly
         'requestAnimationFrame(loop);\n})();')
 
@@ -180,8 +180,11 @@ def creatures(pg):
     assert pg.evaluate("!__d.zora"), 'the imp did not leave when she sailed out of its area'
     # a dazed imp next to her at anchor goes into the nets, like a fish bank
     z0 = pg.evaluate('__d.catches.zora')
+    pg.evaluate(f"()=>{{const d=__d; d.boat.x={spot[0]}; d.boat.y={spot[1]}; d.boat.speed=0;}}")   # (back on open sea)
+    pg.evaluate('document.activeElement && document.activeElement.blur()')
+    if pg.evaluate('__d.anchored'): pg.keyboard.press('Space'); pg.wait_for_timeout(800)   # (weighed: the nets come in, whatever they were on)
     pg.evaluate("()=>{const d=__d; d.spawnZora(); const z=d.zora; z.phase='dazed'; z.t=0; z.x=d.boat.x+40; z.y=d.boat.y; z.hp=0;}")
-    pg.wait_for_timeout(2500)
+    pg.keyboard.press('Space'); pg.wait_for_timeout(4000)          # anchor down by it
     assert pg.evaluate('__d.catches.zora') == z0 + 1, 'a dazed imp by the anchored boat was not netted'
     assert pg.evaluate('!__d.zora'), 'the netted imp is still in the sea'
     pg.keyboard.press('Space'); pg.wait_for_timeout(600)
@@ -198,6 +201,21 @@ def treasure(pg):
     assert pg.evaluate('__d.treasures.length') == n - 1, 'the treasure spot is still there'
     pg.keyboard.press('Space'); pg.wait_for_timeout(1300)
 
+def castaway(pg):
+    # the castaway: anchored close to their island they come aboard; tied up at the village nearest home, a reward
+    if not pg.evaluate('!!__d.castaway'): return
+    pg.evaluate('document.activeElement && document.activeElement.blur()')
+    if pg.evaluate('__d.anchored'): pg.keyboard.press('Space'); pg.wait_for_timeout(800)
+    pg.evaluate("()=>{const d=__d, c=d.castaway; d.unmoor(); for(let k=0;k<2000;k++){const a=Math.random()*6.3, r=120+Math.random()*160, x=c.x+Math.cos(a)*r, y=c.y+Math.sin(a)*r; if(!d.onLand(x,y,30)){d.boat.x=x; d.boat.y=y; break;}} d.boat.speed=0;}")
+    pg.keyboard.press('Space'); pg.wait_for_timeout(1500)
+    assert pg.evaluate('__d.castaway.state') == 'aboard', 'the castaway did not come aboard'
+    k = pg.evaluate("(()=>{const d=__d, h=d.PIER.isl; let b=0; d.VILLAGES.forEach((v,i)=>{ if(Math.hypot(v.isl.x-h.x,v.isl.y-h.y) < Math.hypot(d.VILLAGES[b].isl.x-h.x,d.VILLAGES[b].isl.y-h.y)) b=i; }); return b;})()")
+    c0 = pg.evaluate('__d.coins')
+    dock_at(pg, f'd.VILLAGES[{k}].pier')
+    assert pg.evaluate('__d.castaway.state') == 'home', 'the castaway was not brought home'
+    assert pg.evaluate('__d.coins') == c0 + 15, 'no reward for the castaway'
+    leave(pg)
+
 def trip(pg):
     global ORDERS; ORDERS = False
     leave(pg)
@@ -205,6 +223,7 @@ def trip(pg):
     eolus(pg)
     reel(pg)
     treasure(pg)
+    castaway(pg)
     bottle(pg)
     d = pg.evaluate('__d.VILLAGES[0].dishes[0]')
     buy_dish(pg, 0, d['name'], d['icon'])

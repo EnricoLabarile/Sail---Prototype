@@ -9,7 +9,8 @@ so a line round the whole map makes a land border and a closed loop in the sea
 makes an island. Home's own islet (the one on E5's middle) is left out: the
 game draws its own. Small marks (letters, the house) are dropped; filled dots
 (villages) are listed with their squares, to put in DRAWN_PLACES by hand.
-If shading hides the frame's lines: --frame=x0,y0,x1,y1 (picture pixels).
+If shading hides the frame's lines: --frame=x0,y0,x1,y1 (picture pixels). When the land isn't closed in (the
+coasts drawn as lines with land outside them), --seeds=x,y;x,y;... (picture px) says where the sea is.
 Sea left open up to the frame (a gap in the land border) runs on to the world's edge: the world wraps, so the
 boat sails through and comes out on the far side, where the drawing should have a gap too.
 
@@ -58,7 +59,7 @@ cell = w/9
 # village dots: round blobs of solid ink, bigger than a line is thick (found by wearing the lines away)
 solid = cv2.morphologyEx((g < 70).astype(np.uint8), cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)))   # (a dot drawn as a ring too)
 core = cv2.erode(solid, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (11, 11)))
-n, lab, st, cen = cv2.connectedComponentsWithStats(core, 8)
+n, lab, st, cen = cv2.connectedComponentsWithStats(core, connectivity=8)
 dots = []
 for k in range(1, n):
     if st[k][4] < 4 or max(st[k][2], st[k][3]) > 0.3*cell: continue
@@ -69,25 +70,34 @@ ink = (g < 105).astype(np.uint8)
 shade = cv2.morphologyEx((g < 200).astype(np.uint8), cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
 # small marks alone in the sea (letters, the house): small bits of line with no shading in them (a small shaded
 # island stays)
-n, lab, st, cen = cv2.connectedComponentsWithStats(ink | shade, 8)
+n, lab, st, cen = cv2.connectedComponentsWithStats(ink | shade, connectivity=8)
 for k in range(1, n):
     x, y, bw, bh, area = st[k]
     if max(bw, bh) < 0.4*cell and (shade[lab == k] > 0).sum() < 0.25*area: ink[lab == k] = 0; shade[lab == k] = 0
 ink |= shade
 # close small gaps in the lines; the sea is the biggest stretch of water left
 inkd = cv2.dilate(ink, np.ones((5, 5), np.uint8))
-n, lab, st, cen = cv2.connectedComponentsWithStats((1 - inkd).astype(np.uint8), 4)
-seak = 1 + int(np.argmax(st[1:, 4]))
-sea = (lab == seak).astype(np.uint8)
+n, lab, st, cen = cv2.connectedComponentsWithStats((1 - inkd).astype(np.uint8), connectivity=4)
+seeds = next((a.split('=', 1)[1] for a in sys.argv if a.startswith('--seeds=')), None)
+if seeds:                                     # the sea is where these points are (picture px; for a drawing whose land isn't closed in)
+    sea = np.zeros_like(inkd)
+    for sp in seeds.split(';'):
+        px, py = map(float, sp.split(','))
+        k = lab[int(py) - gy0, int(px) - gx0]
+        if not k: sys.exit(f'seed {sp} is on a line')
+        sea |= (lab == k).astype(np.uint8)
+else:
+    seak = 1 + int(np.argmax(st[1:, 4]))
+    sea = (lab == seak).astype(np.uint8)
 sea = cv2.dilate(sea, np.ones((5, 5), np.uint8))   # the coast runs along the middle of the line
 landm = (1 - sea).astype(np.uint8)
 # home's islet goes (the game has its own)
-n, lab, st, cen = cv2.connectedComponentsWithStats(landm, 8)
+n, lab, st, cen = cv2.connectedComponentsWithStats(landm, connectivity=8)
 hxp, hyp = pix(WORLD/2, WORLD/2)
 k = lab[int(hyp), int(hxp)]
 if k and st[k][4] < 2*cell*cell: landm[lab == k] = 0
 # lumps smaller than a speck go too
-n, lab, st, cen = cv2.connectedComponentsWithStats(landm, 8)
+n, lab, st, cen = cv2.connectedComponentsWithStats(landm, connectivity=8)
 for k in range(1, n):
     if st[k][4] < 60: landm[lab == k] = 0
 

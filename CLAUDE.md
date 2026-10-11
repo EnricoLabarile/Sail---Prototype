@@ -168,6 +168,26 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   cool ring, `BOIL_SAFE`). **"Mare Monstrum"** (written in B6–C7): sharks and sea imps turn up only in `MONSTER_SQUARES`
   (A6–D9; `squareAt`), instead of `CREATURE_SIDES` (still used off the drawn map). "Home sea" and "Boiling sea" are
   labels only. The previous (third) drawing's notes follow.
+  **The fifth drawing (now; picture 1080×2340, frame found by itself)**: drawn the other way round: the coasts are
+  lines with the **sea inside** them and land outside, open at the map's edges, so `import_map.py` now takes
+  `--seeds=x,y;…` (picture px: the sea is the stretches of paper holding them; also fixed: its paper was split with
+  8-connectivity, `connectivity=` was passed in the wrong place, so the sea leaked through thin lines diagonally).
+  `tools/map-template/map5_prep.py` wipes the dashed lines (the stormy north-west's border A5–C5, the boiling sea's
+  E7–I5, the dotted D6–E7 that Enrico said to ignore), the labels, the thick marks (X, storm clouds, sea monsters), and
+  seals two breaks in coasts; its docstring has the import line. Home sits on the shore south of "Home sea" (E3–E4),
+  its pier north into it (the mark on the coast): home's island is one of `DRAWN_OWN` (villages, temple, home) whose
+  harbours `finishDrawnLand` digs and whose ground `drawnHole` / `drawnDecor` leave clear. Gaps through the wrapped
+  edge: H1/H9 (the long inlet from the top down to Estolia's dot in H4) and A5/I5 (the passage in row 5; the I5 pocket
+  holds a treasure). Two dots: `DRAWN_PLACES` N F3 (Nordania, by Home sea), E H4 (Estolia); Westa and Sudia are out (how
+  many villages: still to be decided). `DRAWN_WHIRLS` the ten spirals (A3–C4, outer radius 120), `DRAWN_STORMS` the
+  three bolts (B3, C3, E6: storm clouds that hang there, like the stormy West's, `c.west`), `DRAWN_TREASURES` the six X
+  (C1, G1, G2, C4, I5, B7), `MONSTER_SQUARES` G4, D6, H9 (zones), `DRAWN_BOIL` the dashed line from the E7 tip to the
+  I5 edge and the sea south-east of it (the castaway's island is in it), `DRAWN_DEBRIS` empty. **The castaway**
+  (`DRAWN_STRANDED`, the figure on the island in G7; section by the treasure spots; Tuning `STRANDED_REACH` 300,
+  `STRANDED_REWARD` 15; texts `TEXT.toasts.castawaySeen/castawayAboard/castawayHome`): drawn waving with a rag on a
+  stick in a sandy clearing (`drawCastaway`); a toast within 600 px; anchored within `STRANDED_REACH` they come aboard
+  (`updateCastaway`, a second figure forward in the boat); tied up at the village nearest home (`castawayTo`, Nordania)
+  the reward; `resetCastaway` on a new voyage.
   **Rule for the next drawn maps (Enrico):** put in the world only what he drew or wrote; never add or place things
   of my own (as Sudia and the temple were placed this first time); keep randomness down wherever possible; and wait
   for his go before generating a new map.
@@ -295,8 +315,8 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
 - **Treasure spots** (Zelda-chest-like; section "treasure spots" before `resetBottles`; Tuning `TREASURE_COUNT` (12, world),
   `TREASURE_COINS` [1, 3], `TREASURE_TIME` 1.5 s, `TREASURE_R` 22 px; text `TEXT.popups.treasure`): dark patches of water
   (`softDot('treasure')`) with three rings welling up and a few bubbles (`drawTreasure`, in the fish banks' layer),
-  placed at random for now (`resetTreasures`, at start and on a new voyage: open sea, 400 px from home, 60 from land,
-  150 from piers, 300 apart; Enrico will draw them on the map later). Fished at anchor like a bank (`treasureUnderBoat`,
+  on the drawn map where the X are drawn (`DRAWN_TREASURES`), off it at random (`resetTreasures`, at start and on a
+  new voyage: open sea, 400 px from home, 60 from land, 150 from piers, 300 apart). Fished at anchor like a bank (`treasureUnderBoat`,
   within 1.3 × `TREASURE_R`; after a creature, before a bank; no hold room needed): the net comes up with 1–3 coins
   (`Sfx.coins`), the spot is gone.
 - **Ruins** on the diagonals (the temples): **off for now** (`RUINS_ON` = false in Tuning: `RUINS` is empty). When on: dock there for
