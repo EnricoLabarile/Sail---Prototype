@@ -348,7 +348,10 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   shark or a **dazed** imp is caught (into the hold, `catches.shark/zora`, a slot each, icons `Shark` / `Sea imp`,
   thrown overboard like a fish = let go; no room: "no room in the hold for it"; **sold** at any stall, `SHARK_PRICE` 12 /
   `ZORA_PRICE` 15 coins, as `kind:'catch'` units on the hold's side; **stored** at home like the rest,
-  `homeStore.catches`); a strong one: "the net slips off"; a
+  `homeStore.catches`); a strong one: "the net slips off"; **or caught like fish** (Enrico): a weakened shark or a dazed imp within
+  `CREATURE_NET_REACH` (80 px) when the anchor is down gets the boat's nets thrown over it, as a fish bank does
+  (`creatureUnderBoat`, checked first in `updateFishing`, `fishing.creature`), and after `CREATURE_NET_TIME` (1 s) it's
+  hauled in (`takeCreature`, shared with the sling's net) if it's still weak, else "the net slips off"; a
   live fish bank: its fish (`catchFish`, the bank scatters); else "the net sinks empty"; a mesh lies spread on the water
   a moment (`NET_SPLASH`). **Health**: a stone hit (`stoneAtShark`, within 14 + 9 × size; `stoneAtZora`) takes one of
   `SHARK_HP` / `ZORA_HP` (3): the shark turns away for 1.3 s (`recoil`) and comes again, the imp ducks under and pops up
@@ -761,7 +764,7 @@ that gets away, then off again; skipped when the world has no fish banks, as on 
 bottle steps are skipped likewise when there are none) (the market and the storehouse are opened from the quay badge,
 `press_dock`). With the orders off (now): the fair wind locked, a visit to the Temple of
 Eolus (its spirit's talk tapped through) that gives it, then a trip to a village to buy a dish with foreign
-fish (three foreign ones; then the sling's charges: none at first, a pack bought there, then greyed out on the stall with the out-of-stock note, a shot spends one; then a sea imp: 3 s of ripples, it comes up, the hull bar shows, and it leaves once she is out of its area) (after fishing up a message in a bottle, the other copies gone, reading it: a cross on the chart, and throwing it overboard), back home
+fish (three foreign ones; then the sling's charges: none at first, a pack bought there, then greyed out on the stall with the out-of-stock note, a shot spends one; then a sea imp: 3 s of ripples, it comes up, the hull bar shows, and it leaves once she is out of its area; then a dazed imp by the anchored boat is netted) (after fishing up a message in a bottle, the other copies gone, reading it: a cross on the chart, and throwing it overboard), back home
 (a fish left in the storehouse), a new day, the
 logbook shows it, and a tap on the spare sail rigs it (the lateen, taken aboard from the storehouse first). With `ORDERS_ON`: two days of orders (day 1: 3 fish home before
 dinner; day 2: the ordered dish bought at its village, everything brought home and delivered).

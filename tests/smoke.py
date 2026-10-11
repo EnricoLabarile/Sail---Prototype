@@ -20,7 +20,7 @@ HOOK = ('requestAnimationFrame(loop);\n})();',
         'dinnerT:(DINNER_HOUR-DAWN_HOUR)/24,ordersOn:ORDERS_ON,get dayNo(){return dayNo},'
         'RUINS,get powerOwned(){return powerOwned},get rig(){return boat.rig},bottles,bottleHold,marks,homeStore,banks,get fishing(){return fishing},get reelOn(){return reelOn},setReel,REEL_ZONE,'
         'get charges(){return charges},get nets(){return nets},get ammo(){return slingAmmo},toSpread(n){while(logSpread!==n){turning=false;turnPage(n>logSpread?1:-1);}},coinsAdd(n){coins+=n},unmoor(){moor=null;moorLock=null;},'
-        'get zora(){return zora},onLand,inArea,spawnZora(){zoraArea=creatureArea(boat.x,boat.y);zora={phase:"gone",t:0,wait:0,x:0,y:0,seen:false,seed:0,area:zoraArea};}};'
+        'get zora(){return zora},get catches(){return catches},onLand,inArea,spawnZora(){zoraArea=creatureArea(boat.x,boat.y);zora={phase:"gone",t:0,wait:0,x:0,y:0,seen:false,seed:0,area:zoraArea};}};'
         'tutSet("done");'                  # skip the tutorial: the test drives the controls directly
         'requestAnimationFrame(loop);\n})();')
 
@@ -178,6 +178,12 @@ def creatures(pg):
     pg.evaluate("()=>{const d=__d, a=d.zora.area; d.boat.x=a.x+a.hw+300; d.boat.y=a.y;}")
     pg.wait_for_timeout(3500)
     assert pg.evaluate("!__d.zora"), 'the imp did not leave when she sailed out of its area'
+    # a dazed imp next to her at anchor goes into the nets, like a fish bank
+    z0 = pg.evaluate('__d.catches.zora')
+    pg.evaluate("()=>{const d=__d; d.spawnZora(); const z=d.zora; z.phase='dazed'; z.t=0; z.x=d.boat.x+40; z.y=d.boat.y; z.hp=0;}")
+    pg.wait_for_timeout(2500)
+    assert pg.evaluate('__d.catches.zora') == z0 + 1, 'a dazed imp by the anchored boat was not netted'
+    assert pg.evaluate('!__d.zora'), 'the netted imp is still in the sea'
     pg.keyboard.press('Space'); pg.wait_for_timeout(600)
 
 def trip(pg):
