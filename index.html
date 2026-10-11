@@ -380,7 +380,7 @@
   const LATEEN_TACK_DRIVE = 0.35;    // the lateen's drive while its yard swings across the mast on a change of tack
   const LATEEN_MALA = 0.85;          // the lateen's drive on its 'bad' tack ('a la mala': wind from port, the sail pressed against the mast)
   const CURRENT_DRIFT = 18;          // (was 7) px/s the current (the wind's push on the water) carries her downwind at full breeze, sail or no sail: steer to make up for it (none at anchor, moored, in a whirlpool or with the nets out)
-  const CURRENT_FLECKS = 45;         // bits of foam drifting with the current on a screenful of sea, so it can be seen (× the breeze; 0 = none)
+  const WAVELET_BOLD = 1.5;          // how dark the sea's little wave crests are drawn (1 = as before); they drift with the current, so they show it
   const CURRENT_SHORE = 90;          // px: within this of any shore the current lets go (calm water by the coasts); it takes hold again out past it
   const RIG_LEEWAY = {square: 0.35, lateen: 0.08, marconi: 0.05};   // she slips sideways to leeward at this × her speed close-hauled (less on a reach, none running free)
   const RIG_SURF = {square: 1.35, lateen: 0.7, marconi: 0.8};      // surfing a big wave: its push and how long it lasts ×
@@ -422,6 +422,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'No more foam bits for the current: the sea\'s little wave crests are darker and drift with the current instead',
+    ]},
+    {build: '2026-10-11 18:53', items: [
       'The boiling sea is darker and heaves in rolling cells: pale wobbling rings round a dark dimple',
       'The current shows: bits of foam with a short trail drift downwind across the open sea (none by the shores)',
       'Cool water round the castaway, so picking them up no longer scalds the hull',
@@ -437,12 +440,8 @@
       'A castaway waves from the island in G7: anchor close by, take them to Nordania for a reward',
       'Sea monsters only in G4, D6 and H9; the boiling sea starts at the new dashed line',
     ]},
-    {build: '2026-10-11 14:52', items: [
-      'Slingshot: the three stones of a shot all land at the same distance and keep the boat\'s way, so the fan no longer looks random',
-      'Treasure spots: 12 dark rippling patches at sea (random for now); drop anchor on one and the net brings up 1 to 3 coins',
-    ]},
   ];
-  const BUILD = '2026-10-11 18:53';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-11 19:03';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -6416,37 +6415,6 @@
     ctx.globalAlpha = 1;
   }
 
-  // ---- the current made visible: bits of foam on the water drifting downwind at the current's pace (none by the
-  // shores, where it lets go), each a little ragged patch with a short trail behind it ----
-  const curFlecks = [];
-  function updateCurrentFlecks(dt){
-    const v = CURRENT_DRIFT*windStrength, dw = windAngle + Math.PI, vx = Math.cos(dw)*v, vy = Math.sin(dw)*v;
-    const hw = GW*PX/2 + 40, hh = GH*PX/2 + 40, want = CURRENT_FLECKS*Math.min(1, windStrength + 0.2);
-    for(let tries = 0; curFlecks.length < want && tries < 6; tries++){
-      const x = wrapX(boat.x + rand(-hw, hw)), y = wrapY(boat.y + rand(-hh, hh));
-      if(onLand(x, y, CURRENT_SHORE)) continue;
-      curFlecks.push({x, y, life: 0, max: rand(3, 6), n: 2 + Math.floor(Math.random()*3), seed: rand(0, 6.3)});
-    }
-    for(let i = curFlecks.length - 1; i >= 0; i--){
-      const f = curFlecks[i]; f.life += dt; f.x += vx*dt; f.y += vy*dt;
-      if(f.life >= f.max || Math.abs(wdx(f.x, boat.x)) > hw + 40 || Math.abs(wdy(f.y, boat.y)) > hh + 40 || onLand(f.x, f.y, CURRENT_SHORE*0.6)) curFlecks.splice(i, 1);
-    }
-  }
-  function drawCurrentFlecks(){
-    if(!curFlecks.length) return;
-    const dw = windAngle + Math.PI, ux = Math.cos(dw), uy = Math.sin(dw), L = 8 + CURRENT_DRIFT*windStrength*0.7;
-    const trails = new Path2D(), blobs = new Path2D();
-    for(const f of curFlecks){
-      if(!inView(f.x, f.y, 20)) continue;
-      const q = f.life/f.max; if(q < 0.12 || q > 0.9) continue;            // (they come and go quietly)
-      trails.moveTo(f.x - ux*L, f.y - uy*L); trails.lineTo(f.x, f.y);
-      for(let m = 0; m < f.n; m++){ const a = f.seed + m*2.3, d = m ? 2.4 : 0, r = m ? 1.3 : 2, bx = f.x + Math.cos(a)*d, by = f.y + Math.sin(a)*d;
-        blobs.moveTo(bx + r, by); blobs.arc(bx, by, r, 0, TAU); }
-    }
-    ctx.globalAlpha = 0.6; ctx.strokeStyle = INKC; ctx.lineWidth = 1; ctx.setLineDash([2, 3]); ctx.stroke(trails); ctx.setLineDash([]);   // (ink: the sea is pale)
-    ctx.globalAlpha = 1; ctx.strokeStyle = INKC; ctx.lineWidth = 1.4; ctx.stroke(blobs); ctx.fillStyle = PAPERC; ctx.fill(blobs);
-  }
-
   // the seams between the room map's squares (A1–I9, home's in the middle), dotted on the water like on the maps
   function drawRoomSeams(camX, camY, w, h){
     if(!(ROOM_SEAMS > 0)) return;
@@ -8277,7 +8245,6 @@
     // sea surface drift (downwind), wrapped to the tile size
     updateAmbientLife(dt);
     updateStreaks(dt);
-    updateCurrentFlecks(dt);
     updateTraders(dt);
     { // the nearest trader under way: you hear her engine as she comes by
       let best = 0, pan = 0;
@@ -9003,14 +8970,14 @@
     }
 
     // wavelets: little ink crests born at fixed world spots; each drifts
-    // downwind while it fades in and out (the fade dissolves through the dither)
+    // downwind at the current's pace while it fades in and out (the fade dissolves through the dither)
     const NG = Math.round(WORLD.w/58), G = WORLD.w/NG;     // grid that tiles the wrapping world exactly
     const crest = windAngle + Math.PI/2;
     const dx = Math.cos(windAngle+Math.PI), dy = Math.sin(windAngle+Math.PI);
     const i0=Math.floor(camX/G)-1, i1=Math.ceil((camX+w)/G)+1;
     const j0=Math.floor(camY/G)-1, j1=Math.ceil((camY+h)/G)+1;
     ctx.lineCap='round';
-    ctx.lineWidth=1.4;
+    ctx.lineWidth=1.7;
     ctx.strokeStyle=INKC;
     const paths = seaPaths();
     for(let i=i0;i<=i1;i++){
@@ -9023,8 +8990,8 @@
         const swell = Math.sin(cyc);
         const progress = cyc/Math.PI;
         const life = Math.PI/freq;
-        const travel = progress*life*14*windStrength;
-        const a = swell*(0.35+0.4*r4)*(0.6+0.4*windStrength);
+        const travel = progress*life*Math.max(14, CURRENT_DRIFT*1.1)*windStrength;   // (drifting with the current, so it shows)
+        const a = Math.min(1, swell*(0.35+0.4*r4)*(0.6+0.4*windStrength)*WAVELET_BOLD);
         const x = i*G + r1*G + dx*travel;
         const y = j*G + r2*G + dy*travel;
         const len = 7 + r4*10;
@@ -11076,7 +11043,6 @@
     drawDeep(camX,camY,w,h);                                   // the deep water, where big waves run: a darker sea
     drawBoilTint(camX,camY,w,h);                               // the boiling South: a murkier sea…
     drawRoomSeams(camX,camY,w,h);                              // the room map's squares, dotted on the sea
-    drawCurrentFlecks();                                       // foam drifting with the current
 
     // near an edge the view overlaps a neighbouring copy of the world:
     // draw each layer once per copy that touches the screen
