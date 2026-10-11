@@ -49,6 +49,7 @@ def main():
         pg.set_content(html)
         pg.click('#start-btn', force=True)          # the button pulses, so force the click
         pg.wait_for_timeout(300)
+        assert pg.evaluate('__d.boat.health == __d.maxHealth'), 'the boat does not set out with a full hull of MAX_HEALTH'
         if pg.evaluate('__d.ordersOn'): orders(pg)
         else: trip(pg)
         editor(b, errors)

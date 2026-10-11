@@ -438,6 +438,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Fixed: the boat set out with 100 hull points instead of 30, so the hearts stayed full until many knocks later',
+    ]},
+    {build: '2026-10-11 20:56', items: [
       'Fixed: a half heart showed as a full one on some phones, so a knock (half a heart) seemed to take nothing',
     ]},
     {build: '2026-10-11 20:47', items: [
@@ -451,11 +454,8 @@
       'Repairs at a pier give back half a heart at a time',
       'The whirlpools slowly go round a little circle, so they are less predictable',
     ]},
-    {build: '2026-10-11 20:00', items: [
-      'Over a fish bank or a treasure the wheel\'s hub shows a question mark instead of a fish',
-    ]},
   ];
-  const BUILD = '2026-10-11 20:56';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-11 21:04';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -3292,7 +3292,7 @@
     x: SPAWN.x, y: SPAWN.y,
     angle: SPAWN.angle,
     speed: 0,
-    health: 100,
+    health: MAX_HEALTH,   // (it was a plain 100 here: with 3 hearts of 10 they stayed full for the first 14 knocks)
     kx: 0, ky: 0,     // rebound velocity after a collision (decays quickly)
     kdamp: 3.5,       // how fast kx/ky fade (slower for the push off the pier)
     oarK: 0, oarsOut: false, oarPh: 0,   // oars: how far out (0..1), and rowing phase
