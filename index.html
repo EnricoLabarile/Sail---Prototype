@@ -438,6 +438,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Fixed: a half heart showed as a full one on some phones, so a knock (half a heart) seemed to take nothing',
+    ]},
+    {build: '2026-10-11 20:47', items: [
       'Repairs are no longer free at the piers: every village stall sells a repair kit (8 coins, one a day)',
       'A repair kit sits in the Cargo; tap it to mend the hull to full',
       'A sunken treasure now gives one more heart to the hull (and fills it), instead of coins',
@@ -451,12 +454,8 @@
     {build: '2026-10-11 20:00', items: [
       'Over a fish bank or a treasure the wheel\'s hub shows a question mark instead of a fish',
     ]},
-    {build: '2026-10-11 19:49', items: [
-      'Fish banks no longer show fish going round: only the patch of darker water, the same size as before',
-      'Sunken treasures look just like a fish bank now (no more rings or bubbles), so they hide among them; they are only where the map has an X',
-    ]},
   ];
-  const BUILD = '2026-10-11 20:47';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-11 20:56';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -5860,11 +5859,12 @@
   const elHearts = document.getElementById('hearts');
   function renderHearts(hp){
     const n = Math.ceil(maxHealth/HEART), P = 'M8 14.6C4 11.2 1 8.6 1 5.3 1 2.9 2.9 1 5.1 1 6.4 1 7.4 1.7 8 2.8 8.6 1.7 9.6 1 10.9 1 13.1 1 15 2.9 15 5.3 15 8.6 12 11.2 8 14.6Z';
+    const PL = 'M8 14.6C4 11.2 1 8.6 1 5.3 1 2.9 2.9 1 5.1 1 6.4 1 7.4 1.7 8 2.8Z';   // its left half
     let h = '';
     for(let i = 0; i < n; i++){
       const f = Math.max(0, Math.min(1, (hp - i*HEART)/HEART)), half = f > 0 && f < 1 ? 0.5 : f;   // (a heart is full, half or empty)
       const fill = half >= 1 ? '<path d="' + P + '" fill="currentColor"/>'
-                 : half > 0 ? '<clipPath id="hc' + i + '"><rect width="8" height="16"/></clipPath><path d="' + P + '" fill="currentColor" clip-path="url(#hc' + i + ')"/>' : '';
+                 : half > 0 ? '<path d="' + PL + '" fill="currentColor"/>' : '';   // (the left half as a shape of its own: a clip-path didn't show on every phone)
       h += '<svg viewBox="0 0 16 16" class="heart">' + fill + '<path d="' + P + '" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>';
     }
     elHearts.innerHTML = h;

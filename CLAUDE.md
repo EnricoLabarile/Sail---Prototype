@@ -727,7 +727,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   (`dayNo`, +1 at each dawn). A tiny faint frame-rate counter (`#fps`, refreshed twice a second while the logbook is open) sits on the
   paper, in the bottom right corner of the right page. Keyboard: arrows, Space = anchor.
 - **Hearts** (Enrico, like Zelda's): `MAX_HEALTH` 30 hull points (was 100) = 3 hearts of `HEART` 10; `#hearts` in
-  `#hp-meter` (`renderHearts`: an SVG heart each, full, half (clipped) or empty, in currentColor; they blink on the last
+  `#hp-meter` (`renderHearts`: an SVG heart each, full, half (its left half drawn as a path of its own: a clip-path half showed as full on Enrico's phone) or empty, in currentColor; they blink on the last
   heart, class `low`); popups show hearts (`heartsText`: "½♥", "1♥", "1½♥", ♥ forced to text). Damages in hull points
   (Tuning): `HIT_DAMAGE` 5 (any knock on a shore, rock or solid thing, whatever the speed; was up to 25 of 100),
   `SHARK_DAMAGE` 5, `ZORA_DAMAGE` 10, boiling water `BOIL_DAMAGE` 5 every `BOIL_EVERY` 3 s (was 4 a second; ticks
