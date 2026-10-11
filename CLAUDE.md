@@ -528,6 +528,15 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   `drawLateenSail` (`LATEEN_SIZE` 0.6 in Tuning, on top of `SAIL_SIZE`): a long slanted yard on a short mast near the bow, the triangle of cloth trailing aft, eased out
   to leeward about half the wind's angle off the bow (`boat.boomSigned`), bellied to leeward, a sheet to the stern
   quarter; it furls along the yard at anchor.
+  **The Marconi sail** (Enrico; a third rig, `'marconi'`, `TEXT.sails.marconi`, icon `ITEM_ICONS['Marconi sail']`; it waits
+  in the home storehouse with the others, `START_STORED_SAILS`): the modern Bermuda rig, a tall triangle up the mast
+  (`MAST_H` × 1.15) with its foot on a boom (18 px × `SAIL_SIZE` × `MARCONI_SIZE`), drawn by `drawMarconiSail` (the
+  leech and foot bellied to leeward, two battens, a mainsheet to the stern; furled, the head comes down to the boom).
+  Its curve `SAIL_POLAR_MARCONI`: the best close to the wind (35° 0.86, 50° 1.00), a little under the lateen on the
+  beam, the weakest running (180° 0.5); each `RIG_*` has a `marconi` value (turn 1.35, accel 1.2, retrim 2.5, leeway
+  0.05, surf 0.8, wave hit 1.1, broach 1.4). The boom is trimmed like the lateen's yard (fore-and-aft, `boomSigned`),
+  but it has no bad tack and no slow swing across (`LATEEN_MALA`, `LATEEN_TACK_DRIVE`, `LATEEN_SWING` are the
+  lateen's only). The Sails editor on the first screen lists every rig in `POLARS` (the others' curves dashed).
   **The yard only sways a little** (`SAIL_SWING_MAX` 0.35 rad, Tuning): the square sail's yard is braced at most that far off
   square, the lateen's eased out at most 0.12 + that past its rest, plus a faint flutter; it doesn't follow the wind round
   (a look only: the drive is the polar's), so the player turns the boat to the wind.

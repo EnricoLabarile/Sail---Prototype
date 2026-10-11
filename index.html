@@ -345,29 +345,33 @@
   const ROOM_N = 9;                  // the room map in the logbook (Zelda 1 style): rooms a side, the world cut into ROOM_N × ROOM_N squares, home in the middle one
   const SAIL_SIZE = 1.15;             // size of the boat's sail (1 = the old one: a yard 30 px wide)
   const LATEEN_SIZE = 0.6;            // the lateen sail's size, on top of SAIL_SIZE (1 = as it was drawn before)
+  const MARCONI_SIZE = 1;            // the Marconi sail's size, on top of SAIL_SIZE (its mast MAST_H × 1.15, its boom 18 px × this)
   // the two sails' speed curves: [degrees off the wind, share of top speed], made starker than real life so each
   // sail has its own way to sail. The square sail: the open sea, the wind from astern (and SQUARE_RUN_BONUS on top);
   // almost dead on the wind, weak on the beam. The lateen: the wind on the beam (its best is faster than the square's
   // best on the beam by far) and it can point up toward the wind; poor running free
   const SAIL_POLAR_SQUARE = [[0,0],[20,0],[35,0.02],[50,0.05],[70,0.12],[90,0.55],[110,0.97],[130,1.12],[150,1.13],[170,1.04],[180,1.03]];
   const SAIL_POLAR_LATEEN = [[0,0.02],[20,0.22],[35,0.60],[50,0.90],[70,1.06],[90,1.10],[110,1.02],[130,0.88],[150,0.72],[170,0.60],[180,0.55]];
+  // the Marconi (Bermuda) sail: a tall triangle on a boom, the modern one: the best close to the wind, a little less on the
+  // beam than the lateen, the weakest running free; no bad tack, no slow yard to swing across
+  const SAIL_POLAR_MARCONI = [[0,0.04],[20,0.42],[35,0.86],[50,1.00],[70,1.04],[90,1.00],[110,0.92],[130,0.80],[150,0.66],[170,0.55],[180,0.5]];
   // (the curves, SQUARE_RUN_BONUS and the RIG_ values below can also be set live on the first screen, section 'Sails')
   const SQUARE_RUN_BONUS = 0.25;     // running downwind (from DOWNWIND_DEG to dead astern) the square sail gains up to this much more (the lateen none)
   // -- how the two sails differ beyond their speed curves: the square sail for the open sea and steady wind, the lateen
-  //    for the islands' channels and shifting wind (each value: {square, lateen}; with no sail rigged, 1) --
-  const RIG_TURN = {square: 1.3, lateen: 1.25};      // turning speed × (was 0.8 for the square: now it turns as readily as the lateen)
-  const RIG_ACCEL = {square: 0.7, lateen: 1.4};      // how quickly she gathers way × (the lateen picks up at once, the square slowly)
-  const RIG_RETRIM = {square: 0.4, lateen: 3.5};     // how quickly the sail is trimmed again when the wind (or her heading) changes (higher = quicker)
+  //    for the islands' channels and shifting wind, the Marconi for beating close to the wind (each value: {square, lateen, marconi}; with no sail rigged, 1) --
+  const RIG_TURN = {square: 1.3, lateen: 1.25, marconi: 1.35};      // turning speed × (was 0.8 for the square: now it turns as readily as the lateen)
+  const RIG_ACCEL = {square: 0.7, lateen: 1.4, marconi: 1.2};      // how quickly she gathers way × (the lateen picks up at once, the square slowly)
+  const RIG_RETRIM = {square: 0.4, lateen: 3.5, marconi: 2.5};     // how quickly the sail is trimmed again when the wind (or her heading) changes (higher = quicker)
   const RETRIM_SPAN = 60;            // degrees of mis-trim at which the sail gives only RETRIM_FLOOR of its drive
   const RETRIM_FLOOR = 0.3;          // the least a badly trimmed sail still gives
   const LATEEN_TACK_DRIVE = 0.35;    // the lateen's drive while its yard swings across the mast on a change of tack
   const LATEEN_MALA = 0.85;          // the lateen's drive on its 'bad' tack ('a la mala': wind from port, the sail pressed against the mast)
   const CURRENT_DRIFT = 7;           // px/s the current (the wind's push on the water) carries her downwind at full breeze, sail or no sail: steer to make up for it (none at anchor, moored, in a whirlpool or with the nets out)
   const CURRENT_SHORE = 90;          // px: within this of any shore the current lets go (calm water by the coasts); it takes hold again out past it
-  const RIG_LEEWAY = {square: 0.35, lateen: 0.08};   // she slips sideways to leeward at this × her speed close-hauled (less on a reach, none running free)
-  const RIG_SURF = {square: 1.35, lateen: 0.7};      // surfing a big wave: its push and how long it lasts ×
-  const RIG_WAVE_HIT = {square: 0.6, lateen: 1.4};   // damage from a big wave taken badly ×
-  const RIG_BROACH = {square: 0.6, lateen: 2.2};     // how far a bad wave slews her round × (the lateen broaches)
+  const RIG_LEEWAY = {square: 0.35, lateen: 0.08, marconi: 0.05};   // she slips sideways to leeward at this × her speed close-hauled (less on a reach, none running free)
+  const RIG_SURF = {square: 1.35, lateen: 0.7, marconi: 0.8};      // surfing a big wave: its push and how long it lasts ×
+  const RIG_WAVE_HIT = {square: 0.6, lateen: 1.4, marconi: 1.1};   // damage from a big wave taken badly ×
+  const RIG_BROACH = {square: 0.6, lateen: 2.2, marconi: 1.4};     // how far a bad wave slews her round × (the lateen broaches)
   // -- the wind where she is --
   const OPEN_WIND_BONUS = 0.12;      // out on the open sea the wind is steady and this much fresher
   const GUST_EVERY = 3.5;            // seconds between gusts and lulls among the islands (±40%)
@@ -390,7 +394,7 @@
   const SAIL_TONE = 0.72;            // the sail's cloth when drawing well (1 = paper white, 0 = ink); slack or reefed it's a little darker
   const SPARE_SAIL = true;           // both sails ride in the hold (a slot each, the one not rigged); a tap on one in the logbook rigs it
   const START_RIG = null;            // the sail rigged at the start: 'square' or 'lateen' = that one (the other rides in the hold, or waits at home: START_STORED_SAILS); null = none, she goes on the crank (now: both sails wait at home; was 'square')
-  const START_STORED_SAILS = ['square', 'lateen'];   // sails waiting in the home storehouse when a voyage starts (not aboard: no slot in the hold); [] = all aboard (was ['lateen'])
+  const START_STORED_SAILS = ['square', 'lateen', 'marconi'];   // sails waiting in the home storehouse when a voyage starts (not aboard: no slot in the hold); [] = all aboard (was ['lateen'])
   const TREE_KIND = 'olive';         // the islands' trees: 'olive' (Enrico's sketch: a twisted trunk, a wide crown of spiky leaf sprays) or 'pine' (the old stone pines)
   const PINE_MODELS = 4;             // tree shapes, reused (each also mirrored) all over the map (world)
   // draw the scene on the processor (true) or on the graphics card (false): the frame is tiny, and Firefox
@@ -403,6 +407,10 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'A third sail, the Marconi sail (a tall triangle with a boom), waits in the home storehouse: the best close to the wind, quick to change tack, weaker running downwind',
+      'Its speed curve and handling can be tuned in the first screen\'s Sails section, like the other two',
+    ]},
+    {build: '2026-10-11 11:23', items: [
       'A weakened shark or a dazed sea imp can be caught like fish: drop anchor near it and the nets go over (the sling\'s nets still work too)',
     ]},
     {build: '2026-10-11 11:09', items: [
@@ -411,12 +419,8 @@
     {build: '2026-10-11 10:58', items: [
       'The boat turns twice as fast',
     ]},
-    {build: '2026-10-11 10:50', items: [
-      'The lateen sail looks as it did before (the Wind Waker look is gone)',
-      'The slingshot throws three stones: one straight ahead, one to the left and one to the right, inside the cone',
-    ]},
   ];
-  const BUILD = '2026-10-11 11:23';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-11 12:36';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -624,6 +628,7 @@
     sails: {
       square:  'Square sail',
       lateen:  'Lateen sail',
+      marconi: 'Marconi sail',
       hint:    '{sail}: tap to rig it',
       // the wind card on the logbook's right page: how well the sail she carries takes the wind
       windTitle: 'Wind',
@@ -3569,7 +3574,7 @@
   const popups = [];               // floating "+15" / "-8" texts
 
   // polar-ish speed curve per sail: [angleDeg, factor] (see Tuning)
-  const POLARS = {square: SAIL_POLAR_SQUARE, lateen: SAIL_POLAR_LATEEN};
+  const POLARS = {square: SAIL_POLAR_SQUARE, lateen: SAIL_POLAR_LATEEN, marconi: SAIL_POLAR_MARCONI};
   function speedFactor(relDeg, rig){
     relDeg = Math.abs(relDeg);
     rig = rig === undefined ? boat.rig : rig;
@@ -5519,19 +5524,20 @@
     const RIGS = {turn: RIG_TURN, accel: RIG_ACCEL, retrim: RIG_RETRIM, leeway: RIG_LEEWAY, surf: RIG_SURF, waveHit: RIG_WAVE_HIT, broach: RIG_BROACH};
     const NAMES = {turn: 'RIG_TURN', accel: 'RIG_ACCEL', retrim: 'RIG_RETRIM', leeway: 'RIG_LEEWAY', surf: 'RIG_SURF', waveHit: 'RIG_WAVE_HIT', broach: 'RIG_BROACH'};
     const MAX = {turn: 3, accel: 3, retrim: 6, leeway: 1, surf: 3, waveHit: 3, broach: 4};
-    const snap = ()=> ({polar: {square: POLARS.square.map(p=> p[1]), lateen: POLARS.lateen.map(p=> p[1])},
-                        rig: Object.fromEntries(Object.entries(RIGS).map(([k, o])=> [k, {square: o.square, lateen: o.lateen}])), run: squareRunBonus});
+    const KINDS = Object.keys(POLARS);
+    const snap = ()=> ({polar: Object.fromEntries(KINDS.map(r=> [r, POLARS[r].map(p=> p[1])])),
+                        rig: Object.fromEntries(Object.entries(RIGS).map(([k, o])=> [k, Object.fromEntries(KINDS.map(r=> [r, o[r]]))])), run: squareRunBonus});
     const DEF = snap(), defKey = JSON.stringify(DEF);
     const apply = v=>{
-      for(const r of ['square', 'lateen']){ v.polar[r].forEach((f, i)=> POLARS[r][i][1] = f); for(const k in RIGS) RIGS[k][r] = v.rig[k][r]; }
+      for(const r of KINDS){ v.polar[r].forEach((f, i)=> POLARS[r][i][1] = f); for(const k in RIGS) RIGS[k][r] = v.rig[k][r]; }
       squareRunBonus = v.run;
     };
     const save = ()=>{ try{ localStorage.setItem('vv.sails', JSON.stringify({def: defKey, v: snap()})); }catch(e){} };
     try{ const st = JSON.parse(localStorage.getItem('vv.sails') || 'null'); if(st && st.def === defKey) apply(st.v); }catch(e){}
     const n2 = x=> +(+x).toFixed(2);
     box.innerHTML = '<p class="sl-hint">' + T.sailsHint + '</p>';
-    for(const rig of ['square', 'lateen']){
-      const other = rig === 'square' ? 'lateen' : 'square', sec = document.createElement('div'); sec.className = 'sl-sail';
+    for(const rig of KINDS){
+      const others = KINDS.filter(r=> r !== rig), sec = document.createElement('div'); sec.className = 'sl-sail';
       const rows = [];   // {label, min, max, step, get, set, def}
       POLARS[rig].forEach((p, i)=> rows.push({grp: 0, label: p[0] + '°', min: 0, max: 1.5, step: 0.01, get: ()=> POLARS[rig][i][1], set: v=> POLARS[rig][i][1] = v, def: DEF.polar[rig][i]}));
       if(rig === 'square') rows.push({grp: 1, label: P.runBonus, min: 0, max: 0.6, step: 0.01, get: ()=> squareRunBonus, set: v=> squareRunBonus = v, def: DEF.run});
@@ -5545,7 +5551,7 @@
       const svg = sec.querySelector('svg'), code = document.createElement('p'); code.className = 'sl-code';
       const draw = ()=>{
         svg.querySelector('.sl-curve').setAttribute('d', polarPath(rig, 40));
-        svg.querySelector('.sl-other').setAttribute('d', polarPath(other, 40));
+        svg.querySelector('.sl-other').setAttribute('d', others.map(r=> polarPath(r, 40)).join(' '));
         code.textContent = 'SAIL_POLAR_' + rig.toUpperCase() + ' = [' + POLARS[rig].map(p=> '[' + p[0] + ',' + n2(p[1]) + ']').join(',') + '];'
           + (rig === 'square' ? ' SQUARE_RUN_BONUS = ' + n2(squareRunBonus) + ';' : '')
           + Object.keys(RIGS).map(k=> ' ' + NAMES[k] + '.' + rig + ' = ' + n2(RIGS[k][rig]) + ';').join('');
@@ -5885,7 +5891,7 @@
   let settleT = 0;
   const fishAboard = ()=> FISH_KEYS.reduce((a,k)=> a + counts[k], 0);
   const dishesAboard = ()=> Object.values(dishHold).reduce((a,n)=> a + n, 0);
-  const SAILS = ['square', 'lateen'];
+  const SAILS = ['square', 'lateen', 'marconi'];
   const sailsInHold = ()=> SPARE_SAIL ? SAILS.filter(r=> r !== boat.rig && !homeStore.sails.includes(r)) : [];   // (a sail left in the storehouse is not aboard)
   const spareSlots = ()=> sailsInHold().length;                      // the sails not rigged take a slot each
   let charges = START_CHARGES, nets = START_NETS, slingAmmo = 'stone';   // the sling's stones and nets aboard (each stack: one slot), and which is loaded
@@ -7022,6 +7028,7 @@
     // Eolus' fair wind: a medallion with a gust blowing across it
     'Fair wind': ICO('<circle cx="12" cy="12" r="10" '+M+'/><circle cx="12" cy="12" r="7.6" '+N+' stroke-width="0.8" stroke-dasharray="1.5 1.5"/><path d="M5 9.5 H13.5 A2.2 2.2 0 1 0 11.4 6.8 M5 13 H16 A2.4 2.4 0 1 1 13.7 16 M6.5 16.4 H10.5" '+N+' stroke-width="1.7"/>'),
     'Square sail': ICO('<path d="M4 5 Q12 7.5 20 5 Q21 13 20 19 Q12 16.5 4 19 Q3 13 4 5 Z" '+L+'/><path d="M12 6.5 V17.5" '+N+' stroke-width="0.9"/><path d="M2.5 5 Q12 7.5 21.5 5" '+N+' stroke-width="2"/><path d="M12 3 V21.5" '+N+' stroke-width="1.6"/>'),
+    'Marconi sail': ICO('<path d="M9 2.5 Q15 9 19.5 18.5 L9 18.5 Z" '+L+'/><path d="M9 10 Q13 12 15.5 18" '+N+' stroke-width="0.9"/><path d="M9 1.5 V22" '+N+' stroke-width="1.6"/><path d="M8 19 H21" '+N+' stroke-width="2"/>'),
     'Lateen sail': ICO('<path d="M4 18 L19 3 Q19.5 12 15.5 20 Q10 17.5 4 18 Z" '+L+'/><path d="M9.5 13 Q14 12.5 16.5 18" '+N+' stroke-width="0.9"/><path d="M2.5 19.5 L21 1.5" '+N+' stroke-width="2"/><path d="M8 9 V22" '+N+' stroke-width="1.6"/>'),
     'Limoncello': ICO('<path d="M3.5 21 V10 L5.5 7 V2 H8.5 V7 L10.5 10 V21 Z" '+L+'/><path d="M12.5 17 Q13.5 12.8 17.5 13 Q22 13 22.5 17 Q21.5 21 17.5 21 Q13.5 21 12.5 17 Z" '+P+'/><path d="M17.5 13 Q19 9 23 8.5 Q22 12.5 17.5 13 Z" '+I+'/><path d="M12.5 17 H11.6 M22.5 17 H23.3" '+N+'/>'),
   };
@@ -7457,7 +7464,7 @@
     }
   }
   elLetter.addEventListener('click', ()=>{ elLetter.classList.add('hidden'); Sfx.book(false); });
-  const SAIL_ICON = {square: 'Square sail', lateen: 'Lateen sail'};
+  const SAIL_ICON = {square: 'Square sail', lateen: 'Lateen sail', marconi: 'Marconi sail'};
   function spareHTML(rig){
     const name = TEXT.sails[rig], hint = fmt(TEXT.sails.hint, {sail: name});
     return '<button type="button" class="slot spare-sail" data-swap="'+rig+'" title="'+hint+'" aria-label="'+hint+'">'+itemIcon(SAIL_ICON[rig])+'</button>';
@@ -8209,7 +8216,7 @@
     // (a lateen yard instead trails aft, eased out to leeward about half the wind's angle off the bow)
     // the yard only sways a little either way (SAIL_SWING_MAX), plus a faint flutter: she has to be turned to the wind
     const sway = Math.sin(t*1.3 + 0.7)*0.03 + Math.sin(t*3.1)*0.015;
-    const faceTarget = boat.rig === 'lateen' ? boat.sailSide*Math.max(0.12, Math.min(0.12 + SAIL_SWING_MAX, Math.abs(relR)*0.5)) + sway
+    const faceTarget = boat.rig === 'lateen' || boat.rig === 'marconi' ? boat.sailSide*Math.max(0.12, Math.min(0.12 + SAIL_SWING_MAX, Math.abs(relR)*0.5)) + sway
                                               : boat.sailSide*Math.min(Math.abs(faceRaw), MAX_BRACE, SAIL_SWING_MAX) + sway;
     // the lateen's long yard is heavy: when she changes tack it swings across slowly (LATEEN_SWING), then trims as usual
     if(boat.rig === 'lateen' && Math.sign(faceTarget) !== Math.sign(boat.boomSigned) && Math.abs(boat.boomSigned) > 0.05) boat.swingAcross = true;
@@ -10494,7 +10501,7 @@
       const pitchWave = (Math.sin(t*1.1+2.1) + 0.4*Math.sin(t*2.3))*0.03*sm;
       const rel = norm(B.angle - windAngle - (B.windOff||0)), lee = (B.boomSigned||0) >= 0 ? 1 : -1;
       const drive = B.rig ? (B.sailPower||0)*(B.sailAmount === undefined ? 1 : B.sailAmount)*(1 - (B.furl||0)) : 0;
-      const heel = -lee*BOAT_HEEL*drive*Math.abs(Math.sin(rel))*(B.rig === 'lateen' ? 1 : 0.8);
+      const heel = -lee*BOAT_HEEL*drive*Math.abs(Math.sin(rel))*(B.rig === 'lateen' || B.rig === 'marconi' ? 1 : 0.8);
       const turn = mdt > 0 ? norm(B.angle - (B.angPrev === undefined ? B.angle : B.angPrev))/mdt : 0; B.angPrev = B.angle; B.turnRate = turn;
       const acc = mdt > 0 ? ((B.speed||0) - (B.spdPrev === undefined ? (B.speed||0) : B.spdPrev))/mdt : 0; B.spdPrev = B.speed||0;
       const rollT = rollWave + heel - turn*(B.speed||0)*0.006;               // she leans out of the turn
@@ -10717,6 +10724,7 @@
       ctx.strokeStyle = INKC; ctx.lineCap = 'round'; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
       ctx.fillStyle = INKC; ctx.beginPath(); ctx.arc(x0, y0, 1.8, 0, Math.PI*2); ctx.fill(); };
     if(B.rig === 'lateen'){ drawLateenSail(B, P, L, base, FB, mast); ctx.restore(); ctx.restore(); return; }
+    if(B.rig === 'marconi'){ drawMarconiSail(B, P, L, base, FB, mast); ctx.restore(); ctx.restore(); return; }
     if(B.rig === null){                                   // no sail rigged: no mast either (it's stepped with the sail)
       ctx.restore(); ctx.restore(); return;
     }
@@ -10765,6 +10773,42 @@
     ctx.restore();
   }
 
+  // the Marconi sail (boat frame, bow at +x): a tall triangle from the masthead down the mast to its foot and aft along
+  // the boom; the boom swings out to leeward (B.boomSigned, as the lateen's yard) and across at once when she tacks.
+  // Furled, the cloth comes down the mast and lies gathered along the boom
+  function drawMarconiSail(B, P, L, base, FB, mast){
+    const sa = B.boomSigned, lee = sa >= 0 ? 1 : -1, sabs = Math.abs(sa);
+    const mx = 3, my = 0, TOP = MAST_H*1.15, BL = 18*SAIL_SIZE*MARCONI_SIZE;
+    const furl = B.furl, open = 1 - furl;
+    const p = B.sailPower*open;
+    const reef = (0.3 + 0.7*B.sailAmount)*(1 - 0.9*furl);
+    const zB = FB + 4, zH = TOP - 1 - (TOP - 1 - zB - 2)*furl;    // the boom's height; the head of the sail (hauled down when furled)
+    const cx = mx - Math.cos(sabs)*BL, cy = my + lee*Math.sin(sabs)*BL;   // the clew, at the boom's end
+    const belly = (1.2 + p*6)*reef*SAIL_SIZE*MARCONI_SIZE;
+    const luff = p < 0.25 ? (1 - p/0.25) : 0;
+    const ripple = Math.sin(t*22)*2*luff*open;
+    // the leech and the foot belly out to leeward (across the boom), the leech most a little below halfway up
+    const H = P(mx, my, zH), T = P(mx, my, zB), C = P(cx, cy, zB);
+    const L1 = P(mx + (cx - mx)*0.55, my + (cy - my)*0.55 + lee*(belly + ripple)*Math.cos(sabs), zB + (zH - zB)*0.45);
+    const F1 = P(mx + (cx - mx)*0.5, my + (cy - my)*0.5 + lee*(belly*0.6 - ripple*0.5)*Math.cos(sabs), zB);
+    mast(mx, TOP);
+    ctx.setTransform(base);
+    const sailPath = ()=>{ ctx.beginPath(); ctx.moveTo(...T); ctx.lineTo(...H); ctx.quadraticCurveTo(...L1, ...C); ctx.quadraticCurveTo(...F1, ...T); };
+    const tone = SAIL_TONE - 0.14*(1-p) - 0.1*(1-B.sailAmount) - 0.08*furl;
+    ctx.fillStyle = V(tone); sailPath(); ctx.closePath(); ctx.fill();
+    // two battens across the cloth, then its ink edge
+    ctx.strokeStyle = INKC; ctx.lineWidth = 0.8;
+    for(const k of [0.4, 0.7]){ const z = zB + (zH - zB)*k, A = P(mx, my, z), Bp = P(mx + (cx - mx)*(1 - k)*0.9, my + (cy - my)*(1 - k)*0.9 + lee*belly*0.6*Math.cos(sabs), z);
+      ctx.beginPath(); ctx.moveTo(...A); ctx.lineTo(...Bp); ctx.stroke(); }
+    ctx.lineWidth = 1.4; sailPath(); ctx.stroke();
+    // the mainsheet, from the boom's end to the stern
+    const Q = P(-13, 0, FB);
+    ctx.lineWidth = 0.8; ctx.globalAlpha = 0.8; ctx.beginPath(); ctx.moveTo(...C); ctx.lineTo(...Q); ctx.stroke(); ctx.globalAlpha = 1;
+    // the boom
+    ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+    ctx.beginPath(); skSeg(T[0], T[1], C[0], C[1], 1.5); ctx.stroke();
+    { const [hx, hy] = P(mx, 0, TOP); ctx.fillStyle = INKC; ctx.beginPath(); ctx.arc(hx, hy, 1.6, 0, Math.PI*2); ctx.fill(); }
+  }
   // the lateen sail (boat frame, bow at +x): a long slanted yard slung on a
   // short mast near the bow; the triangle of cloth trails aft from it and is
   // eased out to leeward (B.boomSigned: the yard's angle off the centreline,
