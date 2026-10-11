@@ -20,7 +20,7 @@ HOOK = ('requestAnimationFrame(loop);\n})();',
         'dinnerT:(DINNER_HOUR-DAWN_HOUR)/24,ordersOn:ORDERS_ON,get dayNo(){return dayNo},'
         'RUINS,get powerOwned(){return powerOwned},get rig(){return boat.rig},bottles,bottleHold,marks,homeStore,banks,get fishing(){return fishing},get reelOn(){return reelOn},setReel,REEL_ZONE,'
         'get charges(){return charges},get nets(){return nets},get ammo(){return slingAmmo},toSpread(n){while(logSpread!==n){turning=false;turnPage(n>logSpread?1:-1);}},coinsAdd(n){coins+=n},unmoor(){moor=null;moorLock=null;},'
-        'get zora(){return zora},get catches(){return catches},get castaway(){return castaway},get anchored(){return anchored},treasures,get coins(){return coins},onLand,inArea,spawnZora(){zoraArea=creatureArea(boat.x,boat.y);zora={phase:"gone",t:0,wait:0,x:0,y:0,seen:false,seed:0,area:zoraArea};}};'
+        'get zora(){return zora},get catches(){return catches},get castaway(){return castaway},get anchored(){return anchored},treasures,get coins(){return coins},get maxHealth(){return maxHealth},get kits(){return kits},onLand,inArea,spawnZora(){zoraArea=creatureArea(boat.x,boat.y);zora={phase:"gone",t:0,wait:0,x:0,y:0,seen:false,seed:0,area:zoraArea};}};'
         'tutSet("done");'                  # skip the tutorial: the test drives the controls directly
         'requestAnimationFrame(loop);\n})();')
 
@@ -211,16 +211,32 @@ def creatures(pg):
     pg.keyboard.press('Space'); pg.wait_for_timeout(600)
 
 def treasure(pg):
-    # a dark rippling spot: anchored on it, the net brings up 1 to 3 coins and the spot is gone
+    # a dark patch of water like a fish bank: anchored on it, the net brings up a heart (the hull's most grows) and the spot is gone
     n = pg.evaluate('__d.treasures.filter(o=>o.goneAt===undefined).length')
     if not n: return
-    c0 = pg.evaluate('__d.coins')
+    m0 = pg.evaluate('__d.maxHealth')
     pg.evaluate("()=>{const d=__d; d.unmoor(); const o=d.treasures.find(o=>o.goneAt===undefined); d.boat.x=o.x-6; d.boat.y=o.y; d.boat.speed=0;}")
     pg.keyboard.press('Space'); pg.wait_for_timeout(5000)
-    got = pg.evaluate('__d.coins') - c0
-    assert 1 <= got <= 3, f'the treasure gave {got} coins'
+    assert pg.evaluate('__d.maxHealth') == m0 + 10, 'the treasure did not add a heart'
     assert pg.evaluate('__d.treasures.filter(o=>o.goneAt===undefined).length') == n - 1, 'the treasure spot is still there'
     pg.keyboard.press('Space'); pg.wait_for_timeout(1300)
+
+def kit(pg):
+    # no free repairs: a repair kit bought at a stall goes into the Cargo; a tap on it mends the hull
+    pg.evaluate("__d.coinsAdd(10)")
+    dock_at(pg, 'd.VILLAGES[0].pier')
+    press_dock(pg); pg.wait_for_timeout(300)
+    pg.click('#mk-them-items .mk-unit[data-kind=kit]'); pg.wait_for_timeout(50)
+    pg.click('#mk-deal'); pg.wait_for_timeout(200)
+    assert pg.evaluate('__d.kits') == 1, 'the repair kit was not bought'
+    leave(pg)
+    pg.evaluate("()=>{__d.boat.health = 10}"); pg.wait_for_timeout(1500)
+    assert pg.evaluate('__d.boat.health') == 10, 'the hull was mended for free'
+    pg.click('#btn-list', force=True); pg.wait_for_timeout(900)
+    pg.evaluate('__d.toSpread(1)'); pg.wait_for_timeout(600)
+    pg.click('[data-kit]'); pg.wait_for_timeout(200)
+    assert pg.evaluate('__d.boat.health == __d.maxHealth') and pg.evaluate('__d.kits') == 0, 'the repair kit did not mend the hull'
+    pg.click('#btn-list', force=True); pg.wait_for_timeout(700)
 
 def castaway(pg):
     # the castaway: anchored close to their island they come aboard; tied up at the village nearest home, a reward
@@ -249,6 +265,7 @@ def trip(pg):
     d = pg.evaluate('__d.VILLAGES[0].dishes[0]')
     buy_dish(pg, 0, d['name'], d['icon'])
     charges(pg)
+    kit(pg)
     creatures(pg)
     dock_at(pg, 'd.PIER')
     assert pg.evaluate('__d.moor && __d.moor.pier === __d.PIER'), 'did not tie up at home'

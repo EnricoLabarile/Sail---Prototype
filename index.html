@@ -163,8 +163,8 @@
   const MAX_HEALTH = 30;             // a full hull (was 100): shown as hearts, like Zelda's, HEART each (30 = 3 hearts)
   const HEART = 10;                  // hull points in one heart (the damages below are in hull points: 5 = half a heart)
   const HIT_DAMAGE = 5;              // hitting a shore, a rock or anything solid: half a heart (was up to 25 of 100, by the speed)
-  const REPAIR_EVERY = 0.5;          // seconds between patches at a pier (repairs are free)
-  const FISH_HEAL = 5;               // hull points per patch at a pier (half a heart)
+  const REPAIR_KIT_PRICE = 8;        // coins a repair kit, at any village stall (one a day); repairs aren't free any more: a kit in the Cargo, tapped, mends the hull to full
+  const START_KITS = 0;              // repair kits aboard when a voyage starts
   const WHIRL_COUNT = knob('WHIRL_COUNT', MAP_DRAWN ? 0 : Math.round(200*WK2));   // whirlpools in the world (none on the drawn map) (world)
   const WHIRL_FROM_DAY = 1;          // whirlpools start opening from this day (1 = from the start; was 2, a calm first day)
   const WHIRL_DAMAGE = 30;           // hull damage when caught in a whirlpool's core: 3 hearts (was 10 of 100)
@@ -221,7 +221,7 @@
   const BOTTLE_SIZE = 1.8;           // how big a bottle is drawn (1 = true to the boat's scale; bigger reads better)
   const WRECK_LEN = 190;             // px long, the wrecked cruise ship that lies where a message's cross is (in two halves)
   const TREASURE_COUNT = knob('TREASURE_COUNT', 12);   // dark rippling spots at sea with something down there, like Zelda's chests: drop anchor on one and the net brings it up (at random off the drawn map; on it, DRAWN_TREASURES) (world)
-  const TREASURE_COINS = [1, 3];     // coins one gives (fewest, most)
+  const TREASURE_HEARTS = 1;         // hearts a treasure adds to the hull's most (and fills), like Zelda's heart containers (it gave 1–3 coins before)
   const STRANDED_REACH = 300;        // px: anchor this close to the castaway (DRAWN_STRANDED) and they come aboard
   const STRANDED_REWARD = 15;        // coins when the castaway is brought to the village nearest home
   const TREASURE_TIME = 1.5;         // seconds with the net out before it comes up
@@ -438,6 +438,11 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Repairs are no longer free at the piers: every village stall sells a repair kit (8 coins, one a day)',
+      'A repair kit sits in the Cargo; tap it to mend the hull to full',
+      'A sunken treasure now gives one more heart to the hull (and fills it), instead of coins',
+    ]},
+    {build: '2026-10-11 20:39', items: [
       'The hull is 3 hearts now, shown like Zelda\'s (full, half or empty) instead of a bar; the last heart blinks',
       'Damage: a knock on anything solid ½ heart, a shark bite ½, a fireball 1, boiling water ½ every 3 seconds, lightning 2, a whirlpool 3',
       'Repairs at a pier give back half a heart at a time',
@@ -450,12 +455,8 @@
       'Fish banks no longer show fish going round: only the patch of darker water, the same size as before',
       'Sunken treasures look just like a fish bank now (no more rings or bubbles), so they hide among them; they are only where the map has an X',
     ]},
-    {build: '2026-10-11 19:35', items: [
-      'A map editor (World > Map editor, or editor.html): drag treasures, whirlpools, storms, the castaway and the villages about, switch the monster squares, reshape the boiling sea',
-      'In the editor, Try it in the game opens the game with your layout; Copy layout gives the lines to paste into index.html',
-    ]},
   ];
-  const BUILD = '2026-10-11 20:39';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-11 20:47';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -551,7 +552,9 @@
       recovered: 'it got its strength back',         // weakened too long: it makes off
       netCaught: '{what} in the net!',               // a net catches the shark or the imp
       netSlips: 'the net slips off: weaken it first', // a net on a shark or imp still strong
-      treasure: '+{n} {coins} from the deep!',          // a treasure spot's net comes up
+      treasure: 'A heart from the deep! +{n}',          // a treasure spot's net comes up: one more heart for the hull ({n}: hearts, e.g. 1♥)
+      kitUsed:  'Hull mended! +{n}',                    // a repair kit tapped in the Cargo ({n}: hearts)
+      hullSound: 'The hull is sound',                  // a repair kit tapped with the hull already whole
       netEmpty: 'the net sinks empty',               // a net on open water
       netFull: 'no room in the hold for it',
       overboard: '{item} overboard',
@@ -617,6 +620,8 @@
       noNets: 'no nets!',                        // pulling the sling with nets loaded and none aboard
       netsLeft: '{n} sling nets (tap to load them)',
       chargesTap: '{n} sling charges (tap to load them)',
+      kits:     '{n} repair kits (tap to mend the hull)',   // the kits' slot in the Cargo
+      kitName:  'Repair kit',                    // a repair kit on the stall
       loadedStones: 'Stones in the slingshot',   // a toast, tapping the charges in the Cargo
       loadedNets: 'Nets in the slingshot',       // a toast, tapping the nets
       shark: 'a shark',                          // what a net caught (in popups and in the Cargo)
@@ -5824,7 +5829,7 @@
     boonWindT = 0; boonFish = 0; for(const r of RUINS) r.readyAt = 0;
     rollers.length = 0; rollerT = 6; boat.surfT = 0;
     windAngle = rand(0, Math.PI*2); shiftDur = 0; windTimer = rand(28,36); guideWind = false;
-    explored.fill(0); fogVer++; rooms.fill(0); roomsVer++; charges = START_CHARGES; nets = START_NETS; slingAmmo = 'stone'; catches.shark = catches.zora = 0; fillBankTiles(); resetBottles(); resetTreasures(); resetCastaway(); resetStore(); resetShark(); resetZora(); makeDebris(); spring = 0; windProg = 0; crankBack = 0; crankLocked = false; document.getElementById('crank').classList.remove('locked');
+    explored.fill(0); fogVer++; rooms.fill(0); roomsVer++; charges = START_CHARGES; nets = START_NETS; slingAmmo = 'stone'; maxHealth = MAX_HEALTH; boat.health = MAX_HEALTH; kits = START_KITS; catches.shark = catches.zora = 0; fillBankTiles(); resetBottles(); resetTreasures(); resetCastaway(); resetStore(); resetShark(); resetZora(); makeDebris(); spring = 0; windProg = 0; crankBack = 0; crankLocked = false; document.getElementById('crank').classList.remove('locked');
     wake.length = 0; bowSpray.length = 0; steam.length = 0; popups.length = 0;
     voyageTime = 0; hurtFlash = 0; shake = 0;
     gameover.classList.add('hidden');
@@ -5854,7 +5859,7 @@
   // the hearts top left, Zelda's way: full, half or empty, drawn in ink (currentColor: paper when hurt)
   const elHearts = document.getElementById('hearts');
   function renderHearts(hp){
-    const n = Math.ceil(MAX_HEALTH/HEART), P = 'M8 14.6C4 11.2 1 8.6 1 5.3 1 2.9 2.9 1 5.1 1 6.4 1 7.4 1.7 8 2.8 8.6 1.7 9.6 1 10.9 1 13.1 1 15 2.9 15 5.3 15 8.6 12 11.2 8 14.6Z';
+    const n = Math.ceil(maxHealth/HEART), P = 'M8 14.6C4 11.2 1 8.6 1 5.3 1 2.9 2.9 1 5.1 1 6.4 1 7.4 1.7 8 2.8 8.6 1.7 9.6 1 10.9 1 13.1 1 15 2.9 15 5.3 15 8.6 12 11.2 8 14.6Z';
     let h = '';
     for(let i = 0; i < n; i++){
       const f = Math.max(0, Math.min(1, (hp - i*HEART)/HEART)), half = f > 0 && f < 1 ? 0.5 : f;   // (a heart is full, half or empty)
@@ -6020,9 +6025,19 @@
   const SAILS = ['square', 'lateen', 'marconi'];
   const sailsInHold = ()=> SPARE_SAIL ? SAILS.filter(r=> r !== boat.rig && !homeStore.sails.includes(r)) : [];   // (a sail left in the storehouse is not aboard)
   const spareSlots = ()=> sailsInHold().length;                      // the sails not rigged take a slot each
+  let maxHealth = MAX_HEALTH, kits = START_KITS;        // the hull's most (grows with the treasures' hearts) and the repair kits aboard (one slot)
   let charges = START_CHARGES, nets = START_NETS, slingAmmo = 'stone';   // the sling's stones and nets aboard (each stack: one slot), and which is loaded
   const catches = {shark: 0, zora: 0};                               // creatures caught in a net, aboard (a slot each)
-  const chargeSlots = ()=> (SLING_CHARGES && charges > 0 ? 1 : 0) + (nets > 0 ? 1 : 0);
+  const chargeSlots = ()=> (SLING_CHARGES && charges > 0 ? 1 : 0) + (nets > 0 ? 1 : 0) + (kits > 0 ? 1 : 0);   // (the kits stack too: one slot)
+  // a repair kit tapped in the Cargo: the hull mended to full (none spent if it's whole)
+  function useKit(){
+    if(kits <= 0) return;
+    if(boat.health >= maxHealth - 0.5){ popups.push({x: boat.x, y: boat.y - 24, text: TEXT.popups.hullSound, life: 1.3, max: 1.3}); buzz(15); return; }
+    const before = boat.health; kits--; boat.health = maxHealth;
+    popups.push({x: boat.x, y: boat.y - 24, text: fmt(TEXT.popups.kitUsed, {n: heartsText(boat.health - before)}), life: 1.6, max: 1.6});
+    Sfx.hammer(); setTimeout(()=> Sfx.hammer(), 260); buzz([25, 60, 25, 60, 40]); showHealth();
+    if(elList.classList.contains('open')) renderList();
+  }
   const slotsUsed = ()=> fishAboard() + dishesAboard() + spareSlots() + bottleHold.length + chargeSlots() + catches.shark + catches.zora;   // the hold's HOLD_MAX slots: a fish, a dish, the spare sail or a bottle each (gifts are kept apart)
   const holdFull = ()=> slotsUsed() >= HOLD_MAX;
   let fullSaid = null;                                   // the bank we've already said "the hold is full" over
@@ -6122,13 +6137,14 @@
           if(c.what === 'shark'){ shark = null; sharkCool = CREATURE_AGAIN; } else { zora = null; zoraCool = CREATURE_AGAIN; }   // (another comes if she stays in its area)
         }
       }
-      else if(f.t>=f.dur && f.treasure){                // the net comes up with coins; the spot is gone
+      else if(f.t>=f.dur && f.treasure){                // the net comes up with a heart: the hull's most grows (and the new heart is full); the spot is gone
         f.phase='haul'; f.t=0;
-        const n = TREASURE_COINS[0] + Math.floor(Math.random()*(TREASURE_COINS[1] - TREASURE_COINS[0] + 1));
+        const add = TREASURE_HEARTS*HEART;
         f.treasure.goneAt = t;                          // (its patch fades, then it's gone)
-        coins += n; if(elList.classList.contains('open')) renderList();
-        popups.push({x:boat.x, y:boat.y-24, text:fmt(TEXT.popups.treasure, {n, coins: n === 1 ? TEXT.market.coin : TEXT.market.coins}), life:1.8, max:1.8});
-        Sfx.coins(); Sfx.pickup(); buzz([15,50,25]);
+        maxHealth += add; boat.health = Math.min(maxHealth, boat.health + add); showHealth();
+        if(elList.classList.contains('open')) renderList();
+        popups.push({x:boat.x, y:boat.y-24, text:fmt(TEXT.popups.treasure, {n: heartsText(add)}), life:2, max:2});
+        Sfx.bell(); Sfx.pickup(); buzz([15,50,25,50,60]);
       }
       else if(f.t>=f.dur && f.bottle){                  // a bottle in the net: into the hold, and another drifts in elsewhere
         f.phase='haul'; f.t=0;
@@ -6727,7 +6743,7 @@
     const b = BOONS[k];
     if(k==='wind'){ boonWindT = BOON_WIND_T; shiftDur = 0; }
     if(k==='fish') boonFish = BOON_FISH_HAULS;
-    if(k==='heal'){ boat.health = MAX_HEALTH; showHealth(); }
+    if(k==='heal'){ boat.health = maxHealth; showHealth(); }
     Sfx.bell(); buzz([14,22,14,22,14,22,14,22,14,22,40]);   // the ruins' power: a quick flutter
     openDialog(fmt(TEXT.ruins.title, {ruins: r.name, power: b.title}), fmt(TEXT.ruins.visit, {power: b.text}), 5);
   }
@@ -7098,7 +7114,7 @@
   });
   const fishValue = (v, k)=> k===v.own ? COIN_LOCAL : COIN_FOREIGN;
   const fishWorth = (v)=> FISH_KEYS.reduce((a,k)=> a + counts[k]*fishValue(v,k), 0);   // the whole hold, sold here
-  const mkState = (v)=> v.store ? ['store', ...FISH_KEYS.map(k=> counts[k] + ':' + (homeStore.fish[k]||0)), ...ALL_DISHES.map(d=> (dishHold[d.icon]||0) + ':' + (homeStore.dish[d.icon]||0)), bottleHold.length, homeStore.bottles.length, sailsInHold().join(','), homeStore.sails.join(','), catches.shark, catches.zora, homeStore.catches.shark, homeStore.catches.zora].join('|') : [v.name, dayNo, ...v.dishes.map(d=> dishHold[d.icon]||0), coins, charges, nets, catches.shark, catches.zora, ...FISH_KEYS.map(k=>counts[k])].join('|');
+  const mkState = (v)=> v.store ? ['store', ...FISH_KEYS.map(k=> counts[k] + ':' + (homeStore.fish[k]||0)), ...ALL_DISHES.map(d=> (dishHold[d.icon]||0) + ':' + (homeStore.dish[d.icon]||0)), bottleHold.length, homeStore.bottles.length, sailsInHold().join(','), homeStore.sails.join(','), catches.shark, catches.zora, homeStore.catches.shark, homeStore.catches.zora].join('|') : [v.name, dayNo, ...v.dishes.map(d=> dishHold[d.icon]||0), coins, charges, nets, kits, catches.shark, catches.zora, ...FISH_KEYS.map(k=>counts[k])].join('|');
   function openMarket(v){
     marketV = v; elMk.classList.remove('hidden');
     document.body.classList.add('at-market');
@@ -7128,7 +7144,8 @@
     const out = (k)=> !!(v.soldDay && v.soldDay[k] === dayNo);
     v.dishes.forEach((dsh,i)=> mkItems.push({kind:'food', dish:i, stock:'dish'+i, out: out('dish'+i), icon:dsh.icon, name:dsh.name, origin:'them', side:'them', value: dsh.price}));
     if(SLING_CHARGES) mkItems.push({kind:'charges', stock:'charges', out: out('charges'), name: fmt(TEXT.oars.pack, {n: CHARGE_PACK}), origin:'them', side:'them', value: CHARGE_PRICE});
-    mkItems.push({kind:'nets', stock:'nets', out: out('nets'), name: fmt(TEXT.oars.netPack, {n: NET_PACK}), origin:'them', side:'them', value: NET_PRICE});   // and a pack of nets for it   // every stall sells the sling's charges, a pack at a time
+    mkItems.push({kind:'nets', stock:'nets', out: out('nets'), name: fmt(TEXT.oars.netPack, {n: NET_PACK}), origin:'them', side:'them', value: NET_PRICE});
+    mkItems.push({kind:'kit', stock:'kit', out: out('kit'), name: TEXT.oars.kitName, origin:'them', side:'them', value: REPAIR_KIT_PRICE});   // and a repair kit   // and a pack of nets for it   // every stall sells the sling's charges, a pack at a time
     mkItems.forEach((it,i)=> it.id = i);
   }
   // called every frame while docked: only redraws when something changed
@@ -7140,7 +7157,8 @@
     mkKey = key; stockTable(marketV); drawTable();
   }
   const mkBalance = ()=> mkItems.reduce((a,it)=> a + (it.side===it.origin ? 0 : it.origin==='you' ? it.value : -it.value), 0);
-  const mkSlotsAfter = ()=> mkItems.filter(it=> it.side === 'you' && it.kind !== 'charges' && it.kind !== 'nets').length + (marketV && marketV.store ? 0 : spareSlots() + bottleHold.length
+  const mkSlotsAfter = ()=> mkItems.filter(it=> it.side === 'you' && it.kind !== 'charges' && it.kind !== 'nets' && it.kind !== 'kit').length
+    + (marketV && marketV.store ? 0 : (kits > 0 || mkItems.some(it=> it.kind === 'kit' && it.side === 'you') ? 1 : 0)) + (marketV && marketV.store ? 0 : spareSlots() + bottleHold.length
     + (SLING_CHARGES && (charges > 0 || mkItems.some(it=> it.kind === 'charges' && it.side === 'you')) ? 1 : 0)
     + (nets > 0 || mkItems.some(it=> it.kind === 'nets' && it.side === 'you') ? 1 : 0));   // (the charges stack: one slot)   // (at the storehouse the bottles and sails are on the table too)   // what the hold would carry after the trade (the spare sail stays aboard)
   const COIN_SVG = '<svg class="coin" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="var(--paper)" stroke="currentColor" stroke-width="1.4"/><circle cx="6" cy="6" r="2.4" fill="none" stroke="currentColor" stroke-width="1"/></svg>';
@@ -7180,6 +7198,8 @@
     'Charges': ICO('<circle cx="8" cy="15.5" r="4.6" '+M+'/><circle cx="16.5" cy="15.8" r="4.3" '+L+'/><circle cx="12.2" cy="8.4" r="4.4" '+P+'/><path d="M10.5 6.8 Q11.5 5.8 13 6.1" '+N+' stroke-width="0.9"/>'),
     // the sling's nets: a little bundle of mesh with a weight
     'Nets': ICO('<circle cx="12" cy="12" r="8.5" '+L+'/><path d="M6 6.5 L18 17.5 M10 4 L20 13.5 M4 10 L14 20 M18 6.5 L6 17.5 M14 4 L4 13.5 M20 10 L10 20" '+N+' stroke-width="0.9"/><circle cx="19.5" cy="19.5" r="2.4" '+I+'/>'),
+    // a repair kit: a wooden box with a handle, a hammer across it
+    'Repair kit': ICO('<path d="M3 10 H21 V20 H3 Z" '+L+'/><path d="M3 13.5 H21" '+N+' stroke-width="0.9"/><path d="M9 10 V7.5 Q9 6 10.5 6 H13.5 Q15 6 15 7.5 V10" '+N+'/><path d="M6 18 L17.5 6.5" '+N+' stroke-width="1.6"/><path d="M15.2 4.2 L19.8 8.8 L18.4 10.2 L13.8 5.6 Z" '+I+'/>'),
     // a shark caught in a net: its fin, and the mesh over it
     'Shark': ICO('<path d="M2 17 Q12 13 22 17" '+N+'/><path d="M8 16 L13 4 Q15 10 18 15.5 Z" '+I+'/><path d="M3 20 H21 M6 22 L9 18 M12 22 L15 18 M18 22 L21 18" '+N+' stroke-width="0.9"/>'),
     // a sea imp caught: its round head, big eyes and crest
@@ -7195,11 +7215,11 @@
   })();
   const itemIcon = (name)=> ITEM_ICONS[name] || FOOD_SVG;
   function unitHTML(it){
-    const ico = it.kind==='catch' ? itemIcon(it.key === 'shark' ? 'Shark' : 'Sea imp') : it.kind==='sail' ? itemIcon(SAIL_ICON[it.rig]) : it.kind==='charges' ? itemIcon('Charges') : it.kind==='nets' ? itemIcon('Nets') : it.kind==='food' ? itemIcon(it.icon) : it.kind==='bottle' ? itemIcon('Message in a bottle') : document.querySelector('#wood .fish-'+it.key+' svg').outerHTML;
-    const name = it.kind==='catch' ? TEXT.oars[it.key] : it.kind==='sail' ? TEXT.sails[it.rig] : it.kind==='food' || it.kind==='charges' || it.kind==='nets' ? it.name : it.kind==='bottle' ? TEXT.bottles.name : FISH_NAME[it.key].one;
-    const label = it.kind==='food' || it.kind==='charges' || it.kind==='nets' || it.kind==='catch' ? '<span class="mk-name">'+name+'</span>' : '';
+    const ico = it.kind==='catch' ? itemIcon(it.key === 'shark' ? 'Shark' : 'Sea imp') : it.kind==='sail' ? itemIcon(SAIL_ICON[it.rig]) : it.kind==='charges' ? itemIcon('Charges') : it.kind==='nets' ? itemIcon('Nets') : it.kind==='kit' ? itemIcon('Repair kit') : it.kind==='food' ? itemIcon(it.icon) : it.kind==='bottle' ? itemIcon('Message in a bottle') : document.querySelector('#wood .fish-'+it.key+' svg').outerHTML;
+    const name = it.kind==='catch' ? TEXT.oars[it.key] : it.kind==='sail' ? TEXT.sails[it.rig] : it.kind==='food' || it.kind==='charges' || it.kind==='nets' || it.kind==='kit' ? it.name : it.kind==='bottle' ? TEXT.bottles.name : FISH_NAME[it.key].one;
+    const label = it.kind==='food' || it.kind==='charges' || it.kind==='nets' || it.kind==='kit' || it.kind==='catch' ? '<span class="mk-name">'+name+'</span>' : '';
     const priced = it.value !== null;                     // (the storehouse has no prices)
-    return '<div class="mk-unit '+(it.kind==='bottle' || it.kind==='sail' || it.kind==='charges' || it.kind==='nets' || it.kind==='catch' ? 'food' : it.kind)+(it.side!==it.origin ? ' moved' : '')+(it.out ? ' out' : '')+'" data-id="'+it.id+'" data-kind="'+it.kind+'" data-origin="'+it.origin+'" role="button" aria-label="'+name+(priced ? ', '+it.value+(it.value===1 ? ' coin' : ' coins') : '')+'">'
+    return '<div class="mk-unit '+(it.kind==='bottle' || it.kind==='sail' || it.kind==='charges' || it.kind==='nets' || it.kind==='kit' || it.kind==='catch' ? 'food' : it.kind)+(it.side!==it.origin ? ' moved' : '')+(it.out ? ' out' : '')+'" data-id="'+it.id+'" data-kind="'+it.kind+'" data-origin="'+it.origin+'" role="button" aria-label="'+name+(priced ? ', '+it.value+(it.value===1 ? ' coin' : ' coins') : '')+'">'
       + ico + label + (priced ? '<span class="mk-val">'+it.value+COIN_SVG+'</span>' : '') + '</div>';
   }
   function drawTable(){
@@ -7335,7 +7355,8 @@
       if(it.stock) v.soldDay[it.stock] = dayNo;                          // out of stock till tomorrow
       if(it.origin==='you'){ if(it.kind==='fish') counts[it.key]--; else if(it.kind==='catch') catches[it.key]--; else dishHold[it.icon]--; }   // sold
       else if(it.kind === 'charges'){ charges += CHARGE_PACK; got.push(it.name); }
-      else if(it.kind === 'nets'){ nets += NET_PACK; got.push(it.name); }   // the sling's charges, into the hold
+      else if(it.kind === 'nets'){ nets += NET_PACK; got.push(it.name); }
+      else if(it.kind === 'kit'){ kits += 1; got.push(it.name); }   // a repair kit, into the hold   // the sling's charges, into the hold
       else { const d = v.dishes[it.dish]; dishHold[d.icon] = (dishHold[d.icon]||0) + 1; d.boughtEver = true; v.done = true; got.push(it.name); }   // into the hold, for an order
     }
     coins += bal;
@@ -7575,13 +7596,14 @@
   let cargoSel = null;                                   // picked in the Cargo, to throw overboard: {kind:'fish'|'dish'|'bottle', key}
   function holdHTML(){
     // HOLD_MAX slots in a grid: the spare sail, fish, then dishes, the rest empty; the gifts are kept apart, below
-    const items = [...sailsInHold().map(r=> ({sail: r})), ...(SLING_CHARGES && charges > 0 ? [{ammo: 'stone'}] : []), ...(nets > 0 ? [{ammo: 'net'}] : []), ...bottleHold.map((b,i)=> ({bottle: i})),
+    const items = [...sailsInHold().map(r=> ({sail: r})), ...(SLING_CHARGES && charges > 0 ? [{ammo: 'stone'}] : []), ...(nets > 0 ? [{ammo: 'net'}] : []), ...(kits > 0 ? [{kit: true}] : []), ...bottleHold.map((b,i)=> ({bottle: i})),
                    ...['shark', 'zora'].flatMap(k=> Array(catches[k]).fill({name: TEXT.oars[k], svg: itemIcon(k === 'shark' ? 'Shark' : 'Sea imp'), kind:'catch', key:k})), ...FISH_KEYS.flatMap(k=> Array(counts[k]).fill({name: FISH_NAME[k].one, svg: document.querySelector('#wood .fish-'+k+' svg').outerHTML, fish:true, kind:'fish', key:k})),
                    ...ALL_DISHES.flatMap(d=> Array(dishHold[d.icon]||0).fill({name: d.name, svg: itemIcon(d.icon), kind:'dish', key:d.icon}))];
     if(cargoSel && !items.some(it=> selIs(it))) cargoSel = null;      // (what was picked is gone)
     let selShown = false;
     const selCls = it=>{ if(selShown || !selIs(it)) return ''; selShown = true; return ' sel'; };
     const slot = k=> { const it = items[k]; if(it && it.sail) return spareHTML(it.sail);
+      if(it && it.kit){ const nm = fmt(TEXT.oars.kits, {n: kits}); return '<button type="button" class="slot charges" data-kit="1" title="'+nm+'" aria-label="'+nm+'">'+itemIcon('Repair kit')+'<span class="n">'+kits+'</span></button>'; }
       if(it && it.ammo){ const net = it.ammo === 'net', n = net ? nets : charges, nm = fmt(net ? TEXT.oars.netsLeft : TEXT.oars.chargesTap, {n});   // tap: load it in the slingshot
         return '<button type="button" class="slot charges'+(slingAmmo === it.ammo ? ' loaded' : '')+'" data-ammo="'+it.ammo+'" title="'+nm+'" aria-label="'+nm+'">'+itemIcon(net ? 'Nets' : 'Charges')+'<span class="n">'+n+'</span></button>'; } if(it && it.bottle !== undefined) return bottleSlotHTML(it.bottle, selCls(it)); return it ? '<button type="button" class="slot item'+(it.fish?' fish':'')+selCls(it)+'" data-item="'+it.kind+'|'+it.key+'" title="'+it.name+'" aria-label="'+it.name+'">'+it.svg+'</button>' : '<span class="slot empty"></span>'; };
     return '<div class="hold-head"><h3>'+TEXT.logbook.cargo+'</h3><span class="hold-count">'+fmt(TEXT.logbook.holdCount, {n: items.length, max: HOLD_MAX})+'</span><span class="purse" aria-label="Purse: '+coins+' coins">'+COIN_SVG+coins+'</span></div>'
@@ -7673,6 +7695,8 @@
     if(pw && playing){ e.stopPropagation(); usePower(); return; }
     const th = e.target.closest('[data-throw]');
     if(th && playing){ e.stopPropagation(); Sfx.init(); throwOverboard(); return; }
+    const kt = e.target.closest('[data-kit]');
+    if(kt && playing){ e.stopPropagation(); Sfx.init(); useKit(); return; }
     const am = e.target.closest('[data-ammo]');
     if(am && playing){ e.stopPropagation(); Sfx.init(); slingAmmo = am.dataset.ammo; toast(slingAmmo === 'net' ? TEXT.oars.loadedNets : TEXT.oars.loadedStones); Sfx.tick(0.4, 0.8); buzz(10); slingKey = ''; renderList(); return; }
     const itm = e.target.closest('[data-item]');
@@ -7685,7 +7709,7 @@
     e.stopPropagation(); Sfx.init(); swapSail(b.dataset.swap);
   });
   let listKey = '';
-  const holdKey = ()=> [dayNo, coins, charges, nets, slingAmmo, catches.shark, catches.zora, boat.rig, cargoSel ? cargoSel.kind + cargoSel.key : '', bottleHold.map(b=> b.read ? 'r' : 'u').join(''), ...FISH_KEYS.map(k=>counts[k]), ...ALL_DISHES.map(d=> dishHold[d.icon]||0), ...VILLAGES.map(v=> v.giftGot?'g':''), powerOwned, powerLeft, Math.ceil(boonWindT), powerLeft < POWER_USES ? Math.ceil(powerT) : 0,
+  const holdKey = ()=> [dayNo, coins, charges, nets, kits, slingAmmo, catches.shark, catches.zora, boat.rig, cargoSel ? cargoSel.kind + cargoSel.key : '', bottleHold.map(b=> b.read ? 'r' : 'u').join(''), ...FISH_KEYS.map(k=>counts[k]), ...ALL_DISHES.map(d=> dishHold[d.icon]||0), ...VILLAGES.map(v=> v.giftGot?'g':''), powerOwned, powerLeft, Math.ceil(boonWindT), powerLeft < POWER_USES ? Math.ceil(powerT) : 0,
                         order ? order.items.map(it=> it.got).join(',') + order.closed : ''].join('|');
   // while the list is open, keep the hold up to date (a catch, a repair)
   // ---- the logbook's map: the world cut into ROOM_N × ROOM_N squares round home (named A1…I9), over a chart of what
@@ -8443,22 +8467,8 @@
         if(marketV) renderMarket();
         // home: whatever of today's order is aboard goes ashore for dinner
         if(ORDERS_ON && !village && !ruin && moor.pier.isl.home) deliverOrder();
-        // repairs: free for now, they just happen at any pier, a patch every
-        // half second (the hold is never touched; making them a cost the
-        // player has to think about is for later)
-        repairT -= dt;
-        if(repairT<=0 && boat.health < MAX_HEALTH-0.5){
-          const before = boat.health;
-          boat.health = Math.min(MAX_HEALTH, boat.health + FISH_HEAL);
-          popups.push({x:boat.x, y:boat.y-22, text:'+'+heartsText(boat.health-before), life:1.2, max:1.2});
-          Sfx.hammer();
-          showHealth();
-          repairT = REPAIR_EVERY;
-          moor.repaired = true;
-        }
-        // cast off: once there's nothing left to repair, any wheel input
-        // pushes the boat away from the pier, out towards open water
-        const repaired = boat.health >= MAX_HEALTH-0.5;
+        // (no free repairs at the piers any more: a repair kit, bought at a stall, mends the hull)
+        const repaired = true;
         const steering = turnLeft || turnRight || (wheelPointer!==null && Math.abs(wheelAngle) > 0.35);
         if(!steering) moor.skipLock = false;                  // a fresh turn of the wheel is needed
         // at the ruins the wheel first skips the text, then (another turn) casts off
@@ -8722,12 +8732,12 @@
     if(boat.health<=0) sink();
 
     // hull meter: touch the page only when the number changes
-    const hp = Math.ceil(boat.health);
+    const hp = Math.ceil(boat.health) + maxHealth*1000;   // (redrawn when the hull or its most changes)
     if(hp !== lastHp){
       lastHp = hp;
-      renderHearts(boat.health);
-      elStatus.classList.toggle('low', hp <= HEART);      // (the last heart: they blink)
-      elHpMeter.setAttribute('aria-valuenow', hp);
+      renderHearts(boat.health); elHpMeter.setAttribute('aria-valuemax', maxHealth);
+      elStatus.classList.toggle('low', boat.health <= HEART);   // (the last heart: they blink)
+      elHpMeter.setAttribute('aria-valuenow', Math.ceil(boat.health));
     }
     // the paddles' charge (the crank's spring), under the hull bar
     { const sp = Math.ceil(spring*100); if(sp !== lastSp){ lastSp = sp; elSpFill.style.width = sp + '%'; elSpNum.textContent = sp; elSpMeter.setAttribute('aria-valuenow', sp); } }

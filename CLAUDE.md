@@ -332,11 +332,12 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   `TREASURE_COINS` [1, 3], `TREASURE_TIME` 1.5 s; text `TEXT.popups.treasure`): **they look exactly like a fish bank**
   (Enrico: so they hide among them; `treasureAt`: a bank's radius 36–46 and its five soft blobs of darker water,
   `drawTreasure` with the bank's `softDot`; no rings or bubbles any more), fished from as near as a bank
-  (`FISH_REACH` × r); once fished its patch fades over 1.8 s (`goneAt`) and it's dropped;
+  (`FISH_REACH` × r); once fished its patch fades over 1.8 s (`goneAt`) and it's dropped; **it gives a heart**
+  (Enrico, like Zelda's heart containers: `TREASURE_HEARTS` 1; `maxHealth` += a heart, the new heart full; popup
+  `TEXT.popups.treasure`, a bell; it gave coins before; `maxHealth` back to `MAX_HEALTH` on a new voyage);
   on the drawn map where the X are drawn (`DRAWN_TREASURES`), off it at random (`resetTreasures`, at start and on a
-  new voyage: open sea, 400 px from home, 60 from land, 150 from piers, 300 apart). Fished at anchor like a bank (`treasureUnderBoat`,
-  within 1.3 × `TREASURE_R`; after a creature, before a bank; no hold room needed): the net comes up with 1–3 coins
-  (`Sfx.coins`), the spot is gone.
+  new voyage: open sea, 400 px from home, 60 from land, 150 from piers, 300 apart). Fished at anchor like a bank (`treasureUnderBoat`;
+  after a creature, before a bank; no hold room needed).
 - **Ruins** on the diagonals (the temples): **off for now** (`RUINS_ON` = false in Tuning: `RUINS` is empty). When on: dock there for
   a random power (friendly wind 60 s, blessed nets ×3, full hull).
 - **Fish:** sardines (N), mackerel (E), red mullet (S), sea bream (W). **On the drawn map** (Enrico's rules: fish
@@ -405,8 +406,11 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   it (`dizzy`), then it recovers and makes off. (The old near-miss scare of the shark, `SLING_SCARE_R`, and the imp
   diving away for good at one stone are gone.) A new voyage: `START_NETS` (20), stones loaded, no catches.
   "Trade" is disabled if the purse can't cover a negative balance; a positive balance goes to the purse.
-  Repairs are free and automatic at any pier (+15 hull every half second, the hold is never touched); making them a
-  cost the player has to think about is planned for later (see the TickTick list "Vento e Vele: playtest suggestions").
+  **Repairs cost** (Enrico; the free patching at the piers is gone): every stall sells a **repair kit**
+  (`REPAIR_KIT_PRICE` 8 coins, `kind:'kit'`, one a day like the rest, `TEXT.oars.kitName`, icon `ITEM_ICONS['Repair kit']`:
+  a box with a hammer); `kits` stack in one slot (`chargeSlots`, `mkSlotsAfter`), shown in the Cargo with their number
+  (`data-kit`, `TEXT.oars.kits`); a tap mends the hull to `maxHealth` (`useKit`: hammering, popup `TEXT.popups.kitUsed`;
+  with the hull whole, `TEXT.popups.hullSound` and none spent). A voyage starts with `START_KITS` (0).
   The market is a centred window over the world (no dark backdrop; a clear `#mk-shade` still catches stray taps); while it's open the compass (with its fish
   counters) and wheel/anchor are hidden. Buttons: Quit (left) and Trade (right); both close it and leave you moored
   with the anchor back, so you can linger. **Nothing opens by itself on docking**: tied up at a village or at home, a
