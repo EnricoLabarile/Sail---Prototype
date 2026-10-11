@@ -378,7 +378,7 @@
   const RETRIM_FLOOR = 0.3;          // the least a badly trimmed sail still gives
   const LATEEN_TACK_DRIVE = 0.35;    // the lateen's drive while its yard swings across the mast on a change of tack
   const LATEEN_MALA = 0.85;          // the lateen's drive on its 'bad' tack ('a la mala': wind from port, the sail pressed against the mast)
-  const CURRENT_DRIFT = 7;           // px/s the current (the wind's push on the water) carries her downwind at full breeze, sail or no sail: steer to make up for it (none at anchor, moored, in a whirlpool or with the nets out)
+  const CURRENT_DRIFT = 18;          // (was 7) px/s the current (the wind's push on the water) carries her downwind at full breeze, sail or no sail: steer to make up for it (none at anchor, moored, in a whirlpool or with the nets out)
   const CURRENT_SHORE = 90;          // px: within this of any shore the current lets go (calm water by the coasts); it takes hold again out past it
   const RIG_LEEWAY = {square: 0.35, lateen: 0.08, marconi: 0.05};   // she slips sideways to leeward at this × her speed close-hauled (less on a reach, none running free)
   const RIG_SURF = {square: 1.35, lateen: 0.7, marconi: 0.8};      // surfing a big wave: its push and how long it lasts ×
@@ -420,6 +420,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The current is much stronger: the wind\'s push on the water carries the boat about 2.5 times as far',
+    ]},
+    {build: '2026-10-11 18:25', items: [
       'The fifth map: new coasts, home on the shore with its pier into Home sea, a long inlet down from H1 to Estolia',
       'Only two villages for now, where the dots are: Nordania (F3) and Estolia (H4)',
       'Ten whirlpools and two storm clouds in the stormy north-west, a storm cloud in E6',
@@ -434,11 +437,8 @@
     {build: '2026-10-11 14:07', items: [
       'The boat is the original gozzo again (no longer bow), the cannon stays on its foredeck',
     ]},
-    {build: '2026-10-11 13:57', items: [
-      'The bow is half as long as in the last build (halfway between the old boat and the long one)',
-    ]},
   ];
-  const BUILD = '2026-10-11 18:25';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-11 18:43';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
