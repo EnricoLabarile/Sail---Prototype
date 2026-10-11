@@ -14,6 +14,7 @@
 // Top-level consts in this script are shared with the game script further down.
 "use strict";
   // ---------- Tuning ----------
+  const ZOOM_DEFAULT = 1.5;          // how close the view of the world is, on a first visit (1 = as before; 2 = twice as close, the pixels twice as big); the Zoom slider on the first screen changes it (and it's remembered)
   const HAPTICS_DEFAULT = 0;         // vibration strength on a first visit (0 = off … 1 = strong); the slider on the first screen changes it (and it's remembered)
   // The game's main knobs, all in one place: change a number, save, reload.
   // Each one is used further down (search for its name to see how). When a
@@ -399,6 +400,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The view is closer to the boat (zoomed in); a Zoom slider in Settings sets how close, from 1 (as before) to 2.5',
+    ]},
+    {build: '2026-10-11 09:36', items: [
       'The anchor is back on the wheel: hold its hub to drop or weigh it',
       'Sail button on the left, mirroring the slingshot: a tap sets or furls the sail',
       'At anchor every control stays: the crank can be wound there too',
@@ -412,11 +416,8 @@
       'The long press is half a second longer',
       'The wheel stays in sight at anchor (its hub no longer works the anchor)',
     ]},
-    {build: '2026-10-10 21:57', items: [
-      'The paddles are 30% louder',
-    ]},
   ];
-  const BUILD = '2026-10-11 09:36';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-11 09:41';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -435,6 +436,7 @@
       changes:  'New in this build',
       reel:      'Fishing minigame',                 // the switch for the reel (fishing as a minigame instead of the passive nets)
       fullscreen: 'Full screen',                     // the switch: full screen on setting sail
+      zoom: 'Zoom',                                 // the slider for how close the view of the world is
       vibration: 'Vibration',                       // the slider for the strength of the phone's vibrations (the whole game)
       earlier:  'Earlier: build {time}',                // a heading for each of the few builds before this one
       build:    'Build {time}',                       // top right of the first screen: when this version was made
@@ -1480,6 +1482,7 @@
     <!-- collapsible sections (a tap on the heading opens or shuts it): what's new, settings, the world, all shut at first -->
     <details class="wg-sec" id="wg-sec-changes"><summary id="wg-sum-changes"></summary><div id="wg-changes"></div></details>
     <details class="wg-sec" id="wg-sec-settings"><summary id="wg-sum-settings"></summary>
+    <div class="wg-setting"><label for="wg-zoom" id="wg-zoom-label"></label><input id="wg-zoom" type="range" min="1" max="2.5" step="0.25"><span id="wg-zoom-val"></span></div>
     <div class="wg-setting"><label for="wg-haptics" id="wg-haptics-label"></label><input id="wg-haptics" type="range" min="0" max="1" step="0.05"><span id="wg-haptics-val"></span></div>
     <div class="wg-setting"><label for="wg-reel" id="wg-reel-label"></label><input id="wg-reel" type="checkbox"></div>
     <div class="wg-setting"><label for="wg-fs" id="wg-fs-label"></label><input id="wg-fs" type="checkbox"></div></details>
@@ -1670,6 +1673,11 @@
   const obuf = document.createElement('canvas');       // (fallback) final 1-bit frame, screen size
   const octx = gl ? null : obuf.getContext('2d');
   let PX = 1, K = 1, GW = 1, GH = 1, outImg = null;
+  // the zoom: a game pixel is shown ZOOM times bigger (in whole device pixels), so the
+  // view takes in less of the world; everything in the world grows with it, the grain too
+  let zoom = ZOOM_DEFAULT;
+  try{ const v = localStorage.getItem('vv.zoom'); if(v !== null && isFinite(+v)) zoom = Math.max(1, Math.min(2.5, +v)); }catch(e){}
+  function setZoom(v){ zoom = Math.max(1, Math.min(2.5, v)); try{ localStorage.setItem('vv.zoom', String(zoom)); }catch(e){} window.dispatchEvent(new Event('resize')); }
   // the size of the game's frame: the whole screen on a phone, a phone-shaped
   // column on a wide screen (see #wrap in the CSS)
   const wrapEl = document.getElementById('wrap');
@@ -1679,14 +1687,15 @@
     const dpr = window.devicePixelRatio || 1;
     const target = Math.max(1, Math.floor(Math.min(w,h)/380));
     K = Math.max(1, Math.round(target*dpr));
-    PX = K/dpr;
-    GW = Math.ceil(w/PX); GH = Math.ceil(h/PX);
+    PX = K/dpr;                                         // world px a game pixel
+    const D = Math.max(K, Math.round(K*zoom)), cpx = D/dpr;   // device / CSS px a game pixel is shown at (whole device pixels: even grain)
+    GW = Math.ceil(w/cpx); GH = Math.ceil(h/cpx);
     buf.width = GW; buf.height = GH;
     // with WebGL the screen canvas is one pixel per game pixel and the browser
     // blows it up with hard edges (image-rendering: pixelated): the shader then
     // runs once per game pixel, not K×K times (9× less work on a 3× phone screen)
     canvas.width = gl ? GW : GW*K; canvas.height = gl ? GH : GH*K;
-    canvas.style.width = (GW*PX)+'px'; canvas.style.height = (GH*PX)+'px';
+    canvas.style.width = (GW*cpx)+'px'; canvas.style.height = (GH*cpx)+'px';
     if(gl){
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.uniform2f(gl.U.uGrid, GW, GH); gl.uniform1f(gl.U.uK, 1); gl.uniform1f(gl.U.uH, canvas.height);
@@ -5603,6 +5612,11 @@
       for(const line of g.items){ const li = document.createElement('li'); li.textContent = line; ol.appendChild(li); }
       ch.append(h, ol);
     });
+    // the zoom (how close the view of the world is): a slider, the view behind the card follows it live
+    const zs = document.getElementById('wg-zoom'), zv = document.getElementById('wg-zoom-val');
+    document.getElementById('wg-zoom-label').textContent = T.zoom;
+    zs.value = zoom; zv.textContent = (+zoom).toFixed(2);
+    zs.addEventListener('input', ()=>{ setZoom(+zs.value); zv.textContent = (+zs.value).toFixed(2); });
     // the vibration strength (for the whole game): a slider, a little buzz to feel it
     const hs = document.getElementById('wg-haptics'), hv = document.getElementById('wg-haptics-val');
     document.getElementById('wg-haptics-label').textContent = T.vibration;

@@ -399,6 +399,11 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   `WATCH_MARK` = 19 (`drawWatchFace`). The time is `watchHour()` = `DAWN_HOUR` (5) + `dayT`×24, so the golden hour
   falls at about 19.
   The old fish counters round it are hidden (`#wood`); the cargo is shown on the logbook's right page.
+- **Zoom** (`ZOOM_DEFAULT` 1.5 in Tuning; slider "Zoom" 1–2.5 in the first screen's Settings, `#wg-zoom`, `TEXT.worldGen.zoom`,
+  kept as `vv.zoom`, `setZoom` fires a resize): in `resize`, a game pixel is shown at `D` = round(`K` × zoom) device pixels
+  (whole pixels, so the grain stays even; the real zoom is D/K, e.g. 5/3 on a 2.625 phone) while it still covers `PX`
+  world px, so `GW`/`GH` shrink and the world (and the dither grain) grows; `GW*PX` stays the view in world px and
+  `viewW()/(GW*PX)` the world-to-screen scale. The HUD and widgets don't change.
 - **Full screen** (`FULLSCREEN_DEFAULT` true in Tuning; switch "Full screen" in the first screen's Settings, `#wg-fs`,
   `TEXT.worldGen.fullscreen`, kept as `vv.fs`, hidden where the browser can't, `fsCan`): `goFull` asks for it on the
   "Set sail" tap (browsers allow it only on a tap; `navigationUI: 'hide'`) and locks portrait where it can; after
