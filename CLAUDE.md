@@ -187,7 +187,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   `STRANDED_REWARD` 15; texts `TEXT.toasts.castawaySeen/castawayAboard/castawayHome`): drawn waving with a rag on a
   stick in a sandy clearing (`drawCastaway`); a toast within 600 px; anchored within `STRANDED_REACH` they come aboard
   (`updateCastaway`, a second figure forward in the boat); tied up at the village nearest home (`castawayTo`, Nordania)
-  the reward; `resetCastaway` on a new voyage.
+  the reward; `resetCastaway` on a new voyage. The boiling sea leaves cool water within `STRANDED_REACH` + 120 of them (`boilRaw`), so the pick-up doesn't scald.
   **Rule for the next drawn maps (Enrico):** put in the world only what he drew or wrote; never add or place things
   of my own (as Sudia and the temple were placed this first time); keep randomness down wherever possible; and wait
   for his go before generating a new map.
@@ -228,7 +228,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   `SOUTH_TO` (2900, past the map's wrapped edge), within `SOUTH_HALF_W` (1600) of home's longitude, the edge wobbling a
   little (`boilRaw`), the sea boils; villages and temples keep a ring of cool water `BOIL_SAFE` (420; Sudia sits in one).
   Worked out per `DEEP_CELL` like the deep water (`boilGrid`, `boilAt`) and drawn the same way, a darker tint
-  (`drawBoilTint`, `BOIL_TINT` 0.3, heaving a little), with clusters of bubbles welling up, swelling and popping into rings
+  (`drawBoilTint`, `BOIL_TINT` 0.42 (was 0.3), heaving a little; over it the **rolling boil**, `drawBoilCells`, `BOIL_TEXTURE`: on a 34 px grid jittered per cell, fixed in the world, a wobbling paper ring swelling and shrinking round an ink dimple), with clusters of bubbles welling up, swelling and popping into rings
   (`boilBubbles`, `drawBoilBubbles`, `BOIL_BUBBLES` 70 clusters a second on a screenful) and puffs of steam rising and
   drifting downwind over everything (`boilFumes`, `drawBoilFumes`, after the boat, `BOIL_FUMES` 12); all in `updateBoil`.
   The boat in it (not moored): a toast once per visit (`TEXT.toasts.boilIn`), small wisps hissing off her waterline, and
@@ -553,7 +553,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   (1.3 / 1.25; the square's was 0.8), gathering way × `RIG_ACCEL` (0.7 / 1.4). **The current** (`CURRENT_DRIFT` 18 px/s (was 7; about a third of her top speed) × the local breeze, `boat.dfx/dfy`, added to her
   motion like the leeway): the wind carries her downwind whatever the sail does, so she must steer to make up for it; eased
   in and out (`boat.driftK`), none at anchor, moored, in a whirlpool, while fishing or within `CURRENT_SHORE` (90 px) of any land (`onLand`), so it never
-  pins her to a coast. (5) **Leeway** (`boat.lwx/lwy`, added to her motion): to
+  pins her to a coast. **Made visible** (`CURRENT_FLECKS` 45 a screenful × the breeze; `curFlecks`, `updateCurrentFlecks` with the streaks, `drawCurrentFlecks` after the room seams): little foam patches (paper with an ink rim, 2–4 blobs) with a dotted ink trail upwind, drifting at the current's pace, none within `CURRENT_SHORE` of land, fading in and out over 3–6 s. (5) **Leeway** (`boat.lwx/lwy`, added to her motion): to
   leeward, × `RIG_LEEWAY` (0.35 / 0.08) × her speed, full close-hauled (≤50° off), none from 130°. (6) **Big waves**:
   surfing push and length × `RIG_SURF` (1.35 / 0.7, `boat.surfK`), damage × `RIG_WAVE_HIT` (0.6 / 1.4), the slew round
   × `RIG_BROACH` (0.6 / 2.2). Measured (sail-only target): open sea, square at 150° ~51 px/s, lateen at 70° ~55; among

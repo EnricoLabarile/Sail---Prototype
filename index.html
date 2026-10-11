@@ -327,7 +327,8 @@
   const BOIL_SAFE = 420;             // px of cool water round each village and temple inside it (world)
   const BOIL_DELAY = knob('BOIL_DELAY', 2.5);      // seconds in boiling water before the hull starts to suffer (the hull hisses meanwhile)
   const BOIL_DAMAGE = knob('BOIL_DAMAGE', 4);      // hull lost per second in boiling water after that (MAX_HEALTH 100)
-  const BOIL_TINT = 0.3;             // how dark the boiling water is drawn (ink over the sea, like DEEP_TINT)
+  const BOIL_TINT = 0.42;            // how dark the boiling water is drawn (ink over the sea, like DEEP_TINT; was 0.3)
+  const BOIL_TEXTURE = 1;            // the boiling water's rolling cells: wobbling pale rings with a dimple, heaving (0 = none)
   const BOIL_BUBBLES = 70;           // clusters of bubbles welling up a second on a screenful of boiling sea (3–6 bubbles each)
   const BOIL_FUMES = 12;             // puffs of steam rising off it a second, on a screenful
   const STORM_EVERY = [6, 14];       // seconds between one bolt and the next from a storm cloud (shortest, longest)
@@ -379,6 +380,7 @@
   const LATEEN_TACK_DRIVE = 0.35;    // the lateen's drive while its yard swings across the mast on a change of tack
   const LATEEN_MALA = 0.85;          // the lateen's drive on its 'bad' tack ('a la mala': wind from port, the sail pressed against the mast)
   const CURRENT_DRIFT = 18;          // (was 7) px/s the current (the wind's push on the water) carries her downwind at full breeze, sail or no sail: steer to make up for it (none at anchor, moored, in a whirlpool or with the nets out)
+  const CURRENT_FLECKS = 45;         // bits of foam drifting with the current on a screenful of sea, so it can be seen (× the breeze; 0 = none)
   const CURRENT_SHORE = 90;          // px: within this of any shore the current lets go (calm water by the coasts); it takes hold again out past it
   const RIG_LEEWAY = {square: 0.35, lateen: 0.08, marconi: 0.05};   // she slips sideways to leeward at this × her speed close-hauled (less on a reach, none running free)
   const RIG_SURF = {square: 1.35, lateen: 0.7, marconi: 0.8};      // surfing a big wave: its push and how long it lasts ×
@@ -420,6 +422,11 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The boiling sea is darker and heaves in rolling cells: pale wobbling rings round a dark dimple',
+      'The current shows: bits of foam with a short trail drift downwind across the open sea (none by the shores)',
+      'Cool water round the castaway, so picking them up no longer scalds the hull',
+    ]},
+    {build: '2026-10-11 18:43', items: [
       'The current is much stronger: the wind\'s push on the water carries the boat about 2.5 times as far',
     ]},
     {build: '2026-10-11 18:25', items: [
@@ -434,11 +441,8 @@
       'Slingshot: the three stones of a shot all land at the same distance and keep the boat\'s way, so the fan no longer looks random',
       'Treasure spots: 12 dark rippling patches at sea (random for now); drop anchor on one and the net brings up 1 to 3 coins',
     ]},
-    {build: '2026-10-11 14:07', items: [
-      'The boat is the original gozzo again (no longer bow), the cannon stays on its foredeck',
-    ]},
   ];
-  const BUILD = '2026-10-11 18:43';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-11 18:53';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -6272,7 +6276,8 @@
   const inPoly = (P, x, y)=>{ let c = false; for(let i=0, j=P.length-1; i<P.length; j=i++){ const [xi, yi] = P[i], [xj, yj] = P[j]; if((yi > y) !== (yj > y) && x < (xj - xi)*(y - yi)/(yj - yi) + xi) c = !c; } return c; };
   function boilRaw(x, y){
     if(!BOIL_ON) return false;
-    if(MAP_DRAWN) return inPoly(DRAWN_BOIL, wrapX(x), wrapY(y)) && !SPECIALS.some(v=> wdist(x, y, v.isl.x, v.isl.y) < BOIL_SAFE);   // the drawn map: past the dashed line
+    if(MAP_DRAWN) return inPoly(DRAWN_BOIL, wrapX(x), wrapY(y)) && !SPECIALS.some(v=> wdist(x, y, v.isl.x, v.isl.y) < BOIL_SAFE)
+      && !(DRAWN_STRANDED && wdist(x, y, DRAWN_STRANDED[0], DRAWN_STRANDED[1]) < STRANDED_REACH + 120);   // the drawn map: past the dashed line (cool round the castaway, to pick them up)
     const dy = ((y - START.y)%WORLD.h + WORLD.h)%WORLD.h, dx = wdx(x, START.x);
     const wob = 70*Math.sin(x*TAU*3/WORLD.w + 1.3) + 40*Math.sin(x*TAU*8/WORLD.w + 0.4);   // the edge isn't ruler-straight
     if(dy < SOUTH_FROM + wob || dy > (MAP_DRAWN ? Math.min(SOUTH_TO, WORLD.h - START.y) : SOUTH_TO) + wob) return false;   // (on the drawn map it stops at the south edge)
@@ -6311,6 +6316,24 @@
     ctx.globalAlpha = BOIL_TINT*(0.85 + 0.15*Math.sin(t*1.7));      // it heaves a little
     ctx.drawImage(boilBig, 0, 0, boilBox.w, boilBox.h, boilBox.x, boilBox.y, boilBox.w, boilBox.h);
     ctx.globalAlpha = 1;
+    if(BOIL_TEXTURE) drawBoilCells(camX, camY, w, h);
+  }
+  // the rolling boil: the water heaves in cells, each a wobbling pale ring swelling and shrinking round a dark dimple,
+  // on a grid with a jitter per cell (fixed in the world), so the boiling sea has a texture of its own
+  function drawBoilCells(camX, camY, w, h){
+    const G = 34, rings = new Path2D(), dims = new Path2D();
+    for(let j = Math.floor(camY/G) - 1, je = Math.ceil((camY + h)/G); j <= je; j++)
+      for(let i = Math.floor(camX/G) - 1, ie = Math.ceil((camX + w)/G); i <= ie; i++){
+        const hsh = hash2(i*7 + 3, j*13 + 5), hs2 = hash2(i*11 + 1, j*5 + 9);
+        const cx = (i + 0.2 + 0.6*hsh)*G, cy = (j + 0.2 + 0.6*hs2)*G;
+        if(!boilAt(cx, cy) || drawnDist(cx, cy) < 14) continue;
+        const ph = t*(1.1 + hsh) + hs2*TAU, q = 0.5 + 0.5*Math.sin(ph), r = G*(0.22 + 0.2*q), sq = 0.75 + 0.2*Math.sin(ph*0.7 + hsh*5);
+        rings.moveTo(cx + r, cy);
+        for(let k = 1; k <= 10; k++){ const a = k/10*TAU, rr = r*(1 + 0.16*Math.sin(a*3 + hsh*9 + t*0.8)); rings.lineTo(cx + Math.cos(a)*rr, cy + Math.sin(a)*rr*sq); }
+        const dr = 1 + 1.6*(1 - q); dims.moveTo(cx + dr, cy); dims.arc(cx, cy, dr, 0, TAU);
+      }
+    ctx.globalAlpha = 0.9; ctx.strokeStyle = PAPERC; ctx.lineWidth = 1.2; ctx.stroke(rings);
+    ctx.globalAlpha = 0.45; ctx.fillStyle = INKC; ctx.fill(dims); ctx.globalAlpha = 1;
   }
   const boilBubbles = [], boilFumes = [];
   let boilBubAcc = 0, boilFumeAcc = 0, boilTick = 0, boilSaid = false, boilOutT = 0, boilScaldSaid = false;
@@ -6391,6 +6414,37 @@
     ctx.globalAlpha = 0.45; ctx.strokeStyle = INKC; ctx.lineWidth = 1.2; ctx.stroke(blobs);
     ctx.globalAlpha = 0.7; ctx.fillStyle = PAPERC; ctx.fill(blobs);
     ctx.globalAlpha = 1;
+  }
+
+  // ---- the current made visible: bits of foam on the water drifting downwind at the current's pace (none by the
+  // shores, where it lets go), each a little ragged patch with a short trail behind it ----
+  const curFlecks = [];
+  function updateCurrentFlecks(dt){
+    const v = CURRENT_DRIFT*windStrength, dw = windAngle + Math.PI, vx = Math.cos(dw)*v, vy = Math.sin(dw)*v;
+    const hw = GW*PX/2 + 40, hh = GH*PX/2 + 40, want = CURRENT_FLECKS*Math.min(1, windStrength + 0.2);
+    for(let tries = 0; curFlecks.length < want && tries < 6; tries++){
+      const x = wrapX(boat.x + rand(-hw, hw)), y = wrapY(boat.y + rand(-hh, hh));
+      if(onLand(x, y, CURRENT_SHORE)) continue;
+      curFlecks.push({x, y, life: 0, max: rand(3, 6), n: 2 + Math.floor(Math.random()*3), seed: rand(0, 6.3)});
+    }
+    for(let i = curFlecks.length - 1; i >= 0; i--){
+      const f = curFlecks[i]; f.life += dt; f.x += vx*dt; f.y += vy*dt;
+      if(f.life >= f.max || Math.abs(wdx(f.x, boat.x)) > hw + 40 || Math.abs(wdy(f.y, boat.y)) > hh + 40 || onLand(f.x, f.y, CURRENT_SHORE*0.6)) curFlecks.splice(i, 1);
+    }
+  }
+  function drawCurrentFlecks(){
+    if(!curFlecks.length) return;
+    const dw = windAngle + Math.PI, ux = Math.cos(dw), uy = Math.sin(dw), L = 8 + CURRENT_DRIFT*windStrength*0.7;
+    const trails = new Path2D(), blobs = new Path2D();
+    for(const f of curFlecks){
+      if(!inView(f.x, f.y, 20)) continue;
+      const q = f.life/f.max; if(q < 0.12 || q > 0.9) continue;            // (they come and go quietly)
+      trails.moveTo(f.x - ux*L, f.y - uy*L); trails.lineTo(f.x, f.y);
+      for(let m = 0; m < f.n; m++){ const a = f.seed + m*2.3, d = m ? 2.4 : 0, r = m ? 1.3 : 2, bx = f.x + Math.cos(a)*d, by = f.y + Math.sin(a)*d;
+        blobs.moveTo(bx + r, by); blobs.arc(bx, by, r, 0, TAU); }
+    }
+    ctx.globalAlpha = 0.6; ctx.strokeStyle = INKC; ctx.lineWidth = 1; ctx.setLineDash([2, 3]); ctx.stroke(trails); ctx.setLineDash([]);   // (ink: the sea is pale)
+    ctx.globalAlpha = 1; ctx.strokeStyle = INKC; ctx.lineWidth = 1.4; ctx.stroke(blobs); ctx.fillStyle = PAPERC; ctx.fill(blobs);
   }
 
   // the seams between the room map's squares (A1–I9, home's in the middle), dotted on the water like on the maps
@@ -8223,6 +8277,7 @@
     // sea surface drift (downwind), wrapped to the tile size
     updateAmbientLife(dt);
     updateStreaks(dt);
+    updateCurrentFlecks(dt);
     updateTraders(dt);
     { // the nearest trader under way: you hear her engine as she comes by
       let best = 0, pan = 0;
@@ -11021,6 +11076,7 @@
     drawDeep(camX,camY,w,h);                                   // the deep water, where big waves run: a darker sea
     drawBoilTint(camX,camY,w,h);                               // the boiling South: a murkier sea…
     drawRoomSeams(camX,camY,w,h);                              // the room map's squares, dotted on the sea
+    drawCurrentFlecks();                                       // foam drifting with the current
 
     // near an edge the view overlaps a neighbouring copy of the world:
     // draw each layer once per copy that touches the screen
