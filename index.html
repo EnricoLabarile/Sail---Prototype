@@ -328,7 +328,7 @@
   const TUT_PAUSE = 1500;            // ms between one step and the next
   const TUT_COMPASS_T = 4500;        // ms the compass step lasts (no input needed)
   const TUT_DROP_WAIT = 3000, TUT_DROP_T = 3000;   // after the wheel: wait, then the optional drop-anchor tip for a while (ms)
-  const HUB_HOLD = 660;              // ms to hold the anchor button (left, mirroring the sling) to drop or weigh anchor; a shorter press sets or furls the sail (was 160 on the wheel's hub, before that 320, 500)
+  const HUB_HOLD = 660;              // ms to hold the wheel's hub to drop or weigh anchor (back on the hub; was 160 there, before that 320, 500)
   const WEIGH_TIME = 0.45;           // seconds to get the anchor up before she's under way again (was 0.9)
   const ANCHOR_BITE = 8;             // how quickly the anchor stops her once it's down (rate a second; was 4)
 
@@ -399,6 +399,11 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The anchor is back on the wheel: hold its hub to drop or weigh it',
+      'Sail button on the left, mirroring the slingshot: a tap sets or furls the sail',
+      'At anchor every control stays: the crank can be wound there too',
+    ]},
+    {build: '2026-10-11 09:15', items: [
       'Full screen: the game goes full screen when you tap "Set sail" (a switch in Settings); after leaving it, the little button top right brings it back',
       'It can be added to the home screen as an app (browser menu, "Add to home screen"): it then opens full screen, with its own icon',
     ]},
@@ -410,13 +415,8 @@
     {build: '2026-10-10 21:57', items: [
       'The paddles are 30% louder',
     ]},
-    {build: '2026-10-10 21:52', items: [
-      'No sail rigged: no mast either',
-      'The steam is see-through and its plume shorter',
-      'Top left, under the hull bar: the paddles\' charge (the crank\'s spring)',
-    ]},
   ];
-  const BUILD = '2026-10-11 09:15';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-11 09:36';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -515,7 +515,7 @@
       fling:    'flung!',
       whirl:    'Whirlpool! -{damage}',
       sharkSeen: 'a fin!',
-      sailSet: 'sail set',                       // a short press on the anchor button
+      sailSet: 'sail set',                       // a tap on the sail button (left, mirroring the sling)
       sailFurled: 'sail furled',
       noSail: 'no sail rigged',
       debrisHit: 'crack! {n} more',              // a slingshot shot on a driftwood jam
@@ -899,16 +899,18 @@
   #sling{position:fixed; right:12px; bottom:calc(100px + env(safe-area-inset-bottom,0px)); width:64px; height:80px; z-index:7;
     touch-action:none; cursor:grab; color:var(--ink);}
   #sling svg{width:100%; height:100%; display:block; overflow:visible;}
-  /* the anchor button: left, mirroring the sling (a short press: set or furl the sail; held HUB_HOLD: the anchor) */
-  #anchor-btn{position:fixed; left:12px; bottom:calc(108px + env(safe-area-inset-bottom,0px)); width:64px; height:64px; z-index:7; touch-action:none; cursor:pointer;}
-  #anchor-btn svg{width:100%; height:100%; display:block; overflow:visible;}
-  #anchor-btn .ab-disc{fill:var(--paper); stroke:var(--ink); stroke-width:2.4;}
-  #anchor-btn .ab-anchor{stroke:var(--ink);}
-  #anchor-btn .ab-ring{fill:none; stroke:var(--ink); stroke-width:3.5; stroke-dasharray:100; stroke-dashoffset:100; transform:rotate(-90deg);}
-  #anchor-btn.down .ab-disc{fill:var(--ink); stroke:var(--paper);}
-  #anchor-btn.down .ab-anchor{stroke:var(--paper);}
-  #anchor-btn.shake{animation:talkNudge .06s 4;}
-  #anchor-btn.hidden, body.at-market #anchor-btn, body.talking #anchor-btn{display:none;}
+  /* the sail button: left, mirroring the sling (a tap sets or furls the sail; inked while furled) */
+  #sail-btn{position:fixed; left:12px; bottom:calc(108px + env(safe-area-inset-bottom,0px)); width:64px; height:64px; z-index:7; touch-action:none; cursor:pointer;}
+  #sail-btn svg{width:100%; height:100%; display:block; overflow:visible;}
+  #sail-btn .sb-disc{fill:var(--paper); stroke:var(--ink); stroke-width:2.4;}
+  #sail-btn .sb-mast{stroke:var(--ink); stroke-width:2.6; stroke-linecap:round; fill:none;}
+  #sail-btn .sb-cloth{fill:var(--ink);}
+  #sail-btn .sb-furl{display:none; fill:var(--ink);}
+  #sail-btn.down .sb-cloth{display:none;}
+  #sail-btn.down .sb-furl{display:block;}
+  #sail-btn.norig{opacity:.45;}
+  #sail-btn.shake{animation:talkNudge .06s 4;}
+  #sail-btn.hidden, body.at-market #sail-btn, body.talking #sail-btn{display:none;}
   #sling .wood{fill:var(--paper); stroke:var(--ink); stroke-width:2.2; stroke-linejoin:round;}
   #sling .grain{fill:none; stroke:var(--ink); stroke-width:.8; opacity:.5;}
   #sling .band-bg{fill:none; stroke:var(--paper); stroke-width:5.5; stroke-linecap:round;}   /* a paper edge, so the bands read over the wood */
@@ -1521,9 +1523,11 @@
     <circle class="track" r="19.5"/><circle class="charge" r="19.5" stroke-dasharray="0 123" transform="rotate(-90)"/>
     <g class="rot"><line class="arm" x1="0" y1="0" x2="0" y2="-26"/><circle class="knob" cy="-26" r="8.5"/><circle class="rivet" cy="-26" r="2.4"/></g>
     <circle class="hub" r="4.5"/></svg></div>
-  <div id="anchor-btn" class="hidden" role="button" tabindex="0" aria-label="Sail and anchor"><svg viewBox="-34 -34 68 68" aria-hidden="true">
-    <circle class="ab-disc" r="28"/><circle class="ab-ring" r="31" pathLength="100"/>
-    <g class="ab-anchor"><circle cx="0" cy="-15" r="3.6" fill="none" stroke-width="2.6"/><path d="M0 -11.4 V15 M-8 -5 H8 M-15 4 Q-13 16 0 16 Q13 16 15 4 M-15 4 L-19 8 M-15 4 L-11 8 M15 4 L19 8 M15 4 L11 8" fill="none" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></g></svg></div>
+  <div id="sail-btn" class="hidden" role="button" tabindex="0" aria-label="Sail"><svg viewBox="-34 -34 68 68" aria-hidden="true">
+    <circle class="sb-disc" r="28"/>
+    <path class="sb-mast" d="M0 -18 V19 M-14 -14 H14 M-12 19 H12"/>
+    <path class="sb-cloth" d="M-13 -12 Q-16 1 -12 12 H12 Q16 1 13 -12 Z"/>
+    <rect class="sb-furl" x="-14" y="-16.5" width="28" height="5" rx="2.5"/></svg></div>
   <div id="sling" class="hidden" role="button" tabindex="0"><svg viewBox="0 0 64 80" aria-hidden="true">
     <path class="wood" d="M28 77 L28 52 Q28 44 20 38 L8 21 Q6 14 12 13 Q17 13 18 19 L28 33 Q32 38 36 33 L46 19 Q47 13 52 13 Q58 14 56 21 L44 38 Q36 44 36 52 L36 77 Z"/>
     <path class="grain" d="M31 73 L31 55 M33 70 L33 60"/>
@@ -4679,7 +4683,7 @@
   const HUB_R = 21;                        // hub radius (unscaled); how long to hold it: HUB_HOLD (Tuning)
   const HUB_SAIL_R = 16.5;                  // the hub's grip while sailing (it's drawn big now: keep the wheel around it to steer)
   let hubHold = null, hubShake = 0, bankHint = false, wheelVis = 1, hubScale = 2;
-  const stowed = ()=> anchored && weighT <= 0;             // at anchor the wheel itself is locked
+  const stowed = ()=> anchored && weighT <= 0;             // at anchor (the hub turns dark and its grip grows)
   function wheelLocal(ev){
     const r = wheelCv.getBoundingClientRect();
     return [(ev.clientX-r.left)*(WH_W/r.width) - WH_CX, (ev.clientY-r.top)*(WH_H/r.height) - WH_CY];
@@ -4693,6 +4697,7 @@
     wheelCv.setPointerCapture(ev.pointerId);
     wheelCv.classList.add('grabbed');
     wheelLast = Math.atan2(y,x);
+    if(onHub) hubHold = {t0: performance.now(), x, y, done: false};   // held HUB_HOLD: the anchor
     Sfx.init();
   });
   wheelCv.addEventListener('pointermove', ev=>{
@@ -6667,37 +6672,27 @@
     if(elList.classList.contains('open')) renderList();
     slingReload = SLING_RELOAD; Sfx.thunk(0.35); buzz([10, 20, 25]);
   }
-  // ---- the anchor button (left, mirroring the sling): a short press sets or furls the sail, held HUB_HOLD it drops
-  // or weighs the anchor (a ring fills round it while it's held, then a little shake) ----
-  const elAnchorBtn = document.getElementById('anchor-btn'), elAbRing = elAnchorBtn.querySelector('.ab-ring');
-  let abHold = null;
+  // ---- the sail button (left, mirroring the sling): a tap sets or furls the sail (the anchor is back on the wheel's hub) ----
+  const elSailBtn = document.getElementById('sail-btn');
   function toggleSail(){
-    if(!boat.rig){ popups.push({x: boat.x, y: boat.y - 26, text: TEXT.popups.noSail, life: 1.2, max: 1.2}); buzz(20); Sfx.tick(0.3, 0.5); return; }
+    if(!boat.rig){ popups.push({x: boat.x, y: boat.y - 26, text: TEXT.popups.noSail, life: 1.2, max: 1.2}); buzz(20); Sfx.tick(0.3, 0.5);
+      elSailBtn.classList.remove('shake'); void elSailBtn.offsetWidth; elSailBtn.classList.add('shake'); return; }
     boat.sailFurled = !boat.sailFurled; Sfx.thunk(0.25); buzz(15);
     popups.push({x: boat.x, y: boat.y - 26, text: boat.sailFurled ? TEXT.popups.sailFurled : TEXT.popups.sailSet, life: 1.2, max: 1.2});
   }
-  elAnchorBtn.addEventListener('pointerdown', ev=>{ ev.preventDefault(); Sfx.init(); abHold = {id: ev.pointerId, t0: performance.now(), done: false}; try{ elAnchorBtn.setPointerCapture(ev.pointerId); }catch(e){} });
-  const abUp = ev=>{ const h = abHold; if(!h || ev.pointerId !== h.id) return; abHold = null;
-    if(!h.done && ev.type === 'pointerup') toggleSail(); };   // let go before the anchor: the sail
-  elAnchorBtn.addEventListener('pointerup', abUp); elAnchorBtn.addEventListener('pointercancel', abUp);
-  elAnchorBtn.addEventListener('keydown', ev=>{ if((ev.key === 'Enter' || ev.key === ' ') && !ev.repeat){ ev.preventDefault(); ev.stopPropagation(); toggleSail(); } });
-  let abKey = '';
-  function updateAnchorBtn(){
+  elSailBtn.addEventListener('pointerdown', ev=>{ ev.preventDefault(); Sfx.init(); toggleSail(); });
+  elSailBtn.addEventListener('keydown', ev=>{ if((ev.key === 'Enter' || ev.key === ' ') && !ev.repeat){ ev.preventDefault(); ev.stopPropagation(); toggleSail(); } });
+  let sbKey = '';
+  function updateSailBtn(){
     const show = playing;
-    if(show !== !elAnchorBtn.classList.contains('hidden')) elAnchorBtn.classList.toggle('hidden', !show);
-    let k = 0;
-    if(abHold && !abHold.done){
-      k = Math.min(1, (performance.now() - abHold.t0)/HUB_HOLD);
-      if(k >= 1){ abHold.done = true; k = 0; setAnchor(!(anchored && weighT <= 0));
-        elAnchorBtn.classList.remove('shake'); void elAnchorBtn.offsetWidth; elAnchorBtn.classList.add('shake'); }
-    }
-    const key = k.toFixed(2) + '|' + (anchored && weighT <= 0);
-    if(key === abKey) return; abKey = key;
-    elAbRing.style.strokeDashoffset = (100 - k*100).toFixed(1);
-    elAnchorBtn.classList.toggle('down', anchored && weighT <= 0);
+    if(show !== !elSailBtn.classList.contains('hidden')) elSailBtn.classList.toggle('hidden', !show);
+    const key = !!boat.sailFurled + '|' + !!boat.rig;
+    if(key === sbKey) return; sbKey = key;
+    elSailBtn.classList.toggle('down', !!boat.sailFurled);
+    elSailBtn.classList.toggle('norig', !boat.rig);
   }
   function updateSling(dt){
-    updateAnchorBtn();
+    updateSailBtn();
     const show = SLING_ON && playing && !marketV && !(fishing && fishing.phase === 'game');   // (the fishing bar has its place)
     if(show !== !elSling.classList.contains('hidden')) elSling.classList.toggle('hidden', !show);
     if(!show && slingDrag){ slingDrag = null; slingPull = 0; }
@@ -6799,7 +6794,7 @@
     ctx.globalAlpha = 1;
   }
   function updateSpring(dt){
-    const show = MANUAL_OARS && playing && !marketV && !anchored;      // at anchor (moored too), at the market and while someone talks to you it steps aside
+    const show = MANUAL_OARS && playing && !marketV;      // at the market and while someone talks to you it steps aside (at anchor it stays: wind it up there)
     if(show !== !elCrank.classList.contains('hidden')) elCrank.classList.toggle('hidden', !show);
     if(!show && crankDrag){ crankDrag = null; if(windProg > 0){ crankBack = windProg*Math.PI*2*SPRING_TURNS; crankTick = crankStep = 0; } }   // let go of it as it goes (a half winding springs back)
     if(!elOar.classList.contains('hidden')) elOar.classList.add('hidden');

@@ -446,12 +446,14 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   logbook bottom left (compass at the top centre), wheel bottom centre; the crank bottom right, mirroring the logbook (hidden at anchor).
   (An anchor button of its own and three buttons swapping the wheel for a crank, a windlass or a halyard winch were
   tried and dropped: back to the anchor on the hub and the crank always in sight.)
-  **The anchor button** (Enrico; `#anchor-btn`, left, mirroring the sling: 64 px, `bottom` 108 px; `updateAnchorBtn`, called from
-  `updateSling`): a paper disc with an ink anchor (inked, paper anchor, while at anchor); a **short press sets or furls the
-  sail** (`toggleSail`: `boat.sailFurled`, popups `TEXT.popups.sailSet/sailFurled`, `noSail` with no sail rigged; Enter/Space
-  on it too); **held `HUB_HOLD` (660 ms, 0.5 s longer than before) it drops or weighs the anchor**, a ring filling round
-  it while held, then a little shake. Space anywhere still works the anchor. **The wheel no longer fades out at anchor**
-  (`wheelVis` stays 1) and its hub no longer works the anchor (it still shows the state: dark at anchor). Before:
+  **The sail button** (Enrico; `#sail-btn`, left, mirroring the sling: 64 px, `bottom` 108 px; `updateSailBtn`, called from
+  `updateSling`): a paper disc with an ink square sail on its mast (furled: only the yard with the cloth rolled on it,
+  class `down`; pale with no sail rigged, `norig`); **a tap sets or furls the sail** (`toggleSail`: `boat.sailFurled`, popups
+  `TEXT.popups.sailSet/sailFurled`, `noSail` with no sail rigged; Enter/Space on it too). **The anchor is back on the
+  wheel's hub**: held `HUB_HOLD` (660 ms) it drops or weighs it (`hubHold`, a ring filling round the hub, then a shake);
+  Space anywhere works the anchor too. (For a while the anchor was on this left button, a long press; a short press the
+  sail.) **No control is hidden or disabled at anchor** (Enrico): the wheel stays (`wheelVis` stays 1), the crank stays
+  in sight and can be wound (the paddles only drive once she's under way), the sling and the sail button too.
   Hub of the wheel = anchor only:
   No rudder gauge above the wheel (removed): the wheel's turn and the rudder on the boat show the helm.
   **long press 0.16 s = anchor** (the anchor comes up in `WEIGH_TIME` 0.45 s, it stops her at `ANCHOR_BITE` 8, both halved/doubled from 0.9 and 4) (weighing it: `Sfx.anchor(false)`, the chain's links an octave lower than at first and louder, ×2.4, over a low rumble of chain running in) (`HUB_HOLD`, was 0.32, before that 0.5). At anchor the wheel fades out and only the hub (dark) remains. The hub is always drawn big (`hubScale` = 2, the
@@ -530,7 +532,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   (Oar handles on the screen's sides, dragged down in time, were tried after a sketch and dropped: they didn't work
   well; the round button below is back.)
   **The spring and the crank** (`SPRING_PADDLES` in Tuning, on; false = the old rhythmic oar button below): the
-  paddle wheels run off a wound spring (`spring` 0..1). The crank (`#crank`, 84 px (was 132; viewBox ±36 now that the hint arrow above it is gone), in the bottom right corner mirroring the logbook bottom left (same centre, z-index over the wheel's canvas), shown while playing, but hidden and out of use at anchor (moored too), at the market and while someone talks; a winding in progress is let go and springs back: a toothed gear
+  paddle wheels run off a wound spring (`spring` 0..1). The crank (`#crank`, 84 px (was 132; viewBox ±36 now that the hint arrow above it is gone), in the bottom right corner mirroring the logbook bottom left (same centre, z-index over the wheel's canvas), shown while playing (at anchor and moored too: it can be wound there), hidden at the market and while someone talks; a winding in progress is let go and springs back: a toothed gear
   (16 teeth, a dotted pattern fill `#crank-dots`) turning with the arm, a hatched plate with three rivets, an arm with a
   big knob that turns by as much as the finger turns round the centre (it doesn't jump to where the finger lands; `crankA`, 0 = pointing up, reset to 0 when wound full and when it has sprung back), and, inside the plate under the arm, a dotted track and a ring (r 19.5 in the viewBox, between the turning gear
   group and the turning arm group, both `.rot`, so it stays still) that fills with the charge (it used to run all round
