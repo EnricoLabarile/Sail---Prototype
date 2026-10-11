@@ -439,6 +439,12 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   logbook bottom left (compass at the top centre), wheel bottom centre; the crank bottom right, mirroring the logbook (hidden at anchor).
   (An anchor button of its own and three buttons swapping the wheel for a crank, a windlass or a halyard winch were
   tried and dropped: back to the anchor on the hub and the crank always in sight.)
+  **The anchor button** (Enrico; `#anchor-btn`, left, mirroring the sling: 64 px, `bottom` 108 px; `updateAnchorBtn`, called from
+  `updateSling`): a paper disc with an ink anchor (inked, paper anchor, while at anchor); a **short press sets or furls the
+  sail** (`toggleSail`: `boat.sailFurled`, popups `TEXT.popups.sailSet/sailFurled`, `noSail` with no sail rigged; Enter/Space
+  on it too); **held `HUB_HOLD` (660 ms, 0.5 s longer than before) it drops or weighs the anchor**, a ring filling round
+  it while held, then a little shake. Space anywhere still works the anchor. **The wheel no longer fades out at anchor**
+  (`wheelVis` stays 1) and its hub no longer works the anchor (it still shows the state: dark at anchor). Before:
   Hub of the wheel = anchor only:
   No rudder gauge above the wheel (removed): the wheel's turn and the rudder on the boat show the helm.
   **long press 0.16 s = anchor** (the anchor comes up in `WEIGH_TIME` 0.45 s, it stops her at `ANCHOR_BITE` 8, both halved/doubled from 0.9 and 4) (weighing it: `Sfx.anchor(false)`, the chain's links an octave lower than at first and louder, ×2.4, over a low rumble of chain running in) (`HUB_HOLD`, was 0.32, before that 0.5). At anchor the wheel fades out and only the hub (dark) remains. The hub is always drawn big (`hubScale` = 2, the
