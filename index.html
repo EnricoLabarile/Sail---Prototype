@@ -160,13 +160,16 @@
   const SURF_COS = 0.4;              // surf if the heading is within ~66° of the wave's travel (else the wave hurts)
 
   // -- Hull and dangers --
-  const MAX_HEALTH = 100;            // a full hull
-  const HIT_MAX_DAMAGE = 25;         // damage of a head-on hit at full speed (grazes do less)
+  const MAX_HEALTH = 30;             // a full hull (was 100): shown as hearts, like Zelda's, HEART each (30 = 3 hearts)
+  const HEART = 10;                  // hull points in one heart (the damages below are in hull points: 5 = half a heart)
+  const HIT_DAMAGE = 5;              // hitting a shore, a rock or anything solid: half a heart (was up to 25 of 100, by the speed)
   const REPAIR_EVERY = 0.5;          // seconds between patches at a pier (repairs are free)
-  const FISH_HEAL = 15;              // hull points per patch
+  const FISH_HEAL = 5;               // hull points per patch at a pier (half a heart)
   const WHIRL_COUNT = knob('WHIRL_COUNT', MAP_DRAWN ? 0 : Math.round(200*WK2));   // whirlpools in the world (none on the drawn map) (world)
   const WHIRL_FROM_DAY = 1;          // whirlpools start opening from this day (1 = from the start; was 2, a calm first day)
-  const WHIRL_DAMAGE = 10;           // hull damage when caught in a whirlpool's core
+  const WHIRL_DAMAGE = 30;           // hull damage when caught in a whirlpool's core: 3 hearts (was 10 of 100)
+  const WHIRL_ORBIT_R = 40;          // px: a drawn whirlpool wanders round a little circle about its place, so it's less predictable (0 = still)
+  const WHIRL_ORBIT_T = 22;          // seconds for one round of that circle
   const WHIRL_PULL = 44;             // px/s pull at the edge of the core (was 22: doubled)…
   const WHIRL_CURVE = 4;             // …rising exponentially from ~0 at the rim
   const WHIRL_FADE = 3;              // seconds for a whirlpool to open up / die down
@@ -175,14 +178,14 @@
   const SHARK_CHANCE = knob('SHARK_CHANCE', 0.6); // the chance of an encounter in each minute she spends at sea, out of home waters (was 0.25)
   const SHARK_COOLDOWN = knob('SHARK_COOLDOWN', 45); // seconds at least between one encounter and the next
   const SHARK_SPEED = knob('SHARK_SPEED', 26); // how fast it swims after her (px/s; was 38; under sail or the wheels she outruns it)
-  const SHARK_DAMAGE = knob('SHARK_DAMAGE', 8); // hull damage from a bite
+  const SHARK_DAMAGE = knob('SHARK_DAMAGE', 5); // hull damage from a bite: half a heart (was 8 of 100)
   // the sea imp (like Zelda's Zora): pops out of the water near her, spits a fireball at her, ducks under and pops up elsewhere
   const ZORA_ON = knob('ZORA_ON', 1);   // 1 = sea imps about, 0 = none (only on the sides of home in CREATURE_SIDES)
   const ZORA_CHANCE = knob('ZORA_CHANCE', 0.5); // the chance of one turning up in each minute at sea, out of home waters
   const ZORA_COOLDOWN = 40;          // seconds at least between one sea imp and the next
   const ZORA_DIST = [80, 150];       // px from the boat it pops up (nearest, furthest)
   const ZORA_BALL_SPEED = 75;        // px/s its fireball flies (she can dodge it)
-  const ZORA_DAMAGE = knob('ZORA_DAMAGE', 6);   // hull damage from a fireball
+  const ZORA_DAMAGE = knob('ZORA_DAMAGE', 10);  // hull damage from a fireball: a heart (was 6 of 100)
   const ZORA_SIZE = 1.7;             // how big the sea imp is drawn (1 = about the boat's helmsman)
   const CREATURE_WARN = 3;           // seconds of rippling water where a shark or a sea imp is about to come up, before it shows
   const CREATURE_AREA = 0.2;         // a shark or an imp keeps to the map square it turned up in, plus this share of a square on each side; it keeps coming while she's in there, and leaves only when she sails out
@@ -338,7 +341,8 @@
   const SOUTH_HALF_W = 1600;         // px east and west of home's longitude it reaches (world)
   const BOIL_SAFE = 420;             // px of cool water round each village and temple inside it (world)
   const BOIL_DELAY = knob('BOIL_DELAY', 2.5);      // seconds in boiling water before the hull starts to suffer (the hull hisses meanwhile)
-  const BOIL_DAMAGE = knob('BOIL_DAMAGE', 4);      // hull lost per second in boiling water after that (MAX_HEALTH 100)
+  const BOIL_DAMAGE = knob('BOIL_DAMAGE', 5);      // hull lost in boiling water after that, every BOIL_EVERY seconds: half a heart (was 4 a second of 100)
+  const BOIL_EVERY = 3;              // seconds between those scalds
   const BOIL_TINT = 0.42;            // how dark the boiling water is drawn (ink over the sea, like DEEP_TINT; was 0.3)
   const BOIL_TEXTURE = 1;            // the boiling water's rolling cells: wobbling pale rings with a dimple, heaving (0 = none)
   const BOIL_BUBBLES = 70;           // clusters of bubbles welling up a second on a screenful of boiling sea (3–6 bubbles each)
@@ -347,7 +351,7 @@
   const STORM_WARN = knob('STORM_WARN', 1.2); // seconds of warning before a bolt: a ring flickers on the water where it will strike
   const STORM_AIM = knob('STORM_AIM', 0.4); // chance a bolt aims at her when she's under the storm (else anywhere under it)
   const STORM_HIT_R = knob('STORM_HIT_R', 26); // px: a bolt striking this close to her hits the boat
-  const STORM_DAMAGE = knob('STORM_DAMAGE', 15); // hull damage from a lightning strike
+  const STORM_DAMAGE = knob('STORM_DAMAGE', 20); // hull damage from a lightning strike: 2 hearts (was 15 of 100)
 
   // -- Ruins' powers --
   const BOON_WIND_T = 60;            // seconds of friendly wind (its text says "a minute")
@@ -434,6 +438,12 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The hull is 3 hearts now, shown like Zelda\'s (full, half or empty) instead of a bar; the last heart blinks',
+      'Damage: a knock on anything solid ½ heart, a shark bite ½, a fireball 1, boiling water ½ every 3 seconds, lightning 2, a whirlpool 3',
+      'Repairs at a pier give back half a heart at a time',
+      'The whirlpools slowly go round a little circle, so they are less predictable',
+    ]},
+    {build: '2026-10-11 20:00', items: [
       'Over a fish bank or a treasure the wheel\'s hub shows a question mark instead of a fish',
     ]},
     {build: '2026-10-11 19:49', items: [
@@ -444,14 +454,8 @@
       'A map editor (World > Map editor, or editor.html): drag treasures, whirlpools, storms, the castaway and the villages about, switch the monster squares, reshape the boiling sea',
       'In the editor, Try it in the game opens the game with your layout; Copy layout gives the lines to paste into index.html',
     ]},
-    {build: '2026-10-11 19:20', items: [
-      'She sets out with the Marconi sail (the square and the lateen wait in the storehouse)',
-      'The Marconi is now the best with the wind on the side and still good with it from behind',
-      'Running before the wind, the Marconi\'s boom swings out square across the boat',
-      'The Marconi sail is 20% bigger',
-    ]},
   ];
-  const BUILD = '2026-10-11 20:00';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-11 20:39';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -554,7 +558,7 @@
       surf:     'surf!',
       fairWind: 'fair wind!',
       fling:    'flung!',
-      whirl:    'Whirlpool! -{damage}',
+      whirl:    'Whirlpool! -{damage}',              // ({damage}: hearts, e.g. 1½♥)
       sharkSeen: 'a fin!',
       sailSet: 'sail set',                       // a tap on the sail button (left, mirroring the sling)
       sailFurled: 'sail furled',
@@ -1070,11 +1074,13 @@
     padding:1px;
   }
   .hp-fill{height:100%; width:100%; background:var(--ink);}
-  #status.low .hp-fill{animation:blink .6s steps(2) infinite;}
+  #status.low .hp-fill, #status.low #hearts{animation:blink .6s steps(2) infinite;}
+  #hearts{display:flex; gap:3px; align-items:center; height:16px;}
+  #hearts .heart{width:17px; height:17px; display:block;}
   @keyframes blink{50%{opacity:0;}}
   .hp .hp-label{min-width:52px;}   /* (the two bars line up) */
   #sp-fill{width:0;}
-  #hp-num, #sp-num{min-width:24px; text-align:right; font-variant-numeric:tabular-nums;}
+  #sp-num{min-width:24px; text-align:right; font-variant-numeric:tabular-nums;}
   .res-item{display:flex; align-items:center; gap:6px;}
   .log-ico{width:22px; height:12px;}
 
@@ -1464,10 +1470,9 @@
 
   <button id="fs-btn" class="hidden" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9 V3 H9 M15 3 H21 V9 M21 15 V21 H15 M9 21 H3 V15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square"/></svg></button>
   <div class="hud panel" id="status">
-    <div class="hp" role="meter" aria-label="Hull integrity" aria-valuemin="0" aria-valuemax="100" id="hp-meter">
+    <div class="hp" role="meter" aria-label="Hull integrity" aria-valuemin="0" aria-valuemax="30" id="hp-meter">
       <span class="hp-label">Hull</span>
-      <div class="hp-track"><div class="hp-fill" id="hp-fill"></div></div>
-      <span id="hp-num">100</span>
+      <span id="hearts"></span>
     </div>
     <div class="hp sp" role="meter" aria-label="Paddles' charge" aria-valuemin="0" aria-valuemax="100" id="sp-meter">
       <span class="hp-label sp-label">Paddles</span>
@@ -2838,7 +2843,7 @@
     }
   })();
   // the drawn map's whirlpools: where they're drawn, always open, never wandering (DRAWN_WHIRLS)
-  if(MAP_DRAWN) for(const [x, y, r] of DRAWN_WHIRLS) whirlpools.push({x, y, r, core: 35, fixed: true, west: false, dir: 1, rot: rand(0, Math.PI*2),
+  if(MAP_DRAWN) for(const [x, y, r] of DRAWN_WHIRLS) whirlpools.push({x, y, r, cx: x, cy: y, orb: rand(0, Math.PI*2), orbDir: Math.random() < 0.5 ? -1 : 1, core: 35, fixed: true, west: false, dir: 1, rot: rand(0, Math.PI*2),
     hd: 0, vel: 0, speed: 1.8, armed: true, escaping: false, phase: 'on', s: 1, timer: Infinity});
   // may a whirlpool's eye be here? open water, clear of home and villages
   function whirlWaterOK(x,y,core){
@@ -2851,6 +2856,10 @@
   function updateWhirlpools(dt){
     // slow wandering: a heading that drifts; turn away from land, rocks, piers
     for(const w of whirlpools){
+      if(w.fixed && WHIRL_ORBIT_R > 0){                      // a drawn one goes slowly round a little circle about its place
+        w.orb += w.orbDir*dt*Math.PI*2/WHIRL_ORBIT_T;
+        w.x = w.cx + Math.cos(w.orb)*WHIRL_ORBIT_R; w.y = w.cy + Math.sin(w.orb)*WHIRL_ORBIT_R;
+      }
       if(w.s<=0 || w.hd===undefined || w.fixed) continue;      // (a drawn one stays put)
       // she's near (within WHIRL_FOLLOW × its radius): it creeps after her, slowly, as long as the water lets it
       const fd = wdist(boat.x, boat.y, w.x, w.y);
@@ -2975,7 +2984,7 @@
         hurtFlash = 0.35; shake = 0.12; showHealth(); Sfx.crash(0.45);
         boat.rock = Math.min(2.5, (boat.rock||0) + 0.9);
         buzz([40, 30, 70]);
-        popups.push({x: boat.x, y: boat.y - 26, text: fmt(TEXT.popups.sharkBite, {damage: SHARK_DAMAGE}), life: 1.6, max: 1.6});
+        popups.push({x: boat.x, y: boat.y - 26, text: fmt(TEXT.popups.sharkBite, {damage: heartsText(SHARK_DAMAGE)}), life: 1.6, max: 1.6});
         sh.recoil = SHARK_BITE_BACK; sh.hd = Math.atan2(-dy, -dx) + rand(-0.5, 0.5);   // off a moment, then again
       }
       if(!sh.seen && d < 230){ sh.seen = true; popups.push({x: sh.x, y: sh.y - 14, text: TEXT.popups.sharkSeen, life: 1.4, max: 1.4}); buzz([15]); }
@@ -3020,7 +3029,7 @@
         boat.health = Math.max(0, boat.health - ZORA_DAMAGE);
         hurtFlash = 0.35; shake = 0.12; showHealth(); Sfx.crash(0.45); Sfx.sizzle(0.6);
         boat.rock = Math.min(2.5, (boat.rock||0) + 0.8); buzz([40, 30, 60]);
-        popups.push({x: boat.x, y: boat.y - 26, text: fmt(TEXT.popups.zoraHit, {damage: ZORA_DAMAGE}), life: 1.6, max: 1.6});
+        popups.push({x: boat.x, y: boat.y - 26, text: fmt(TEXT.popups.zoraHit, {damage: heartsText(ZORA_DAMAGE)}), life: 1.6, max: 1.6});
       }
     }
     if(!ZORA_ON || !playing) return;
@@ -5840,10 +5849,23 @@
   const elMood = document.getElementById('mood'), elMoodFill = document.getElementById('mood-fill');
   let moodShown = -1;
   function showHealth(){ healthShowT = HEALTH_SHOW; }
-  const elHpFill = document.getElementById('hp-fill');
+  // hull points as hearts for a popup: 5 → "½♥", 10 → "1♥", 15 → "1½♥" (the ♥ as text, not an emoji)
+  const heartsText = d=>{ const h = Math.round(d/HEART*2)/2, w = Math.floor(h); return (w ? w : '') + (h > w ? '½' : '') + '\u2665\uFE0E'; };
+  // the hearts top left, Zelda's way: full, half or empty, drawn in ink (currentColor: paper when hurt)
+  const elHearts = document.getElementById('hearts');
+  function renderHearts(hp){
+    const n = Math.ceil(MAX_HEALTH/HEART), P = 'M8 14.6C4 11.2 1 8.6 1 5.3 1 2.9 2.9 1 5.1 1 6.4 1 7.4 1.7 8 2.8 8.6 1.7 9.6 1 10.9 1 13.1 1 15 2.9 15 5.3 15 8.6 12 11.2 8 14.6Z';
+    let h = '';
+    for(let i = 0; i < n; i++){
+      const f = Math.max(0, Math.min(1, (hp - i*HEART)/HEART)), half = f > 0 && f < 1 ? 0.5 : f;   // (a heart is full, half or empty)
+      const fill = half >= 1 ? '<path d="' + P + '" fill="currentColor"/>'
+                 : half > 0 ? '<clipPath id="hc' + i + '"><rect width="8" height="16"/></clipPath><path d="' + P + '" fill="currentColor" clip-path="url(#hc' + i + ')"/>' : '';
+      h += '<svg viewBox="0 0 16 16" class="heart">' + fill + '<path d="' + P + '" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+    }
+    elHearts.innerHTML = h;
+  }
   const elSpFill = document.getElementById('sp-fill'), elSpNum = document.getElementById('sp-num'), elSpMeter = document.getElementById('sp-meter');
   let lastSp = -1;
-  const elHpNum = document.getElementById('hp-num');
   const elHpMeter = document.getElementById('hp-meter');
 
   // Collision damage: scales with how fast the boat was moving INTO the
@@ -5853,7 +5875,7 @@
     const vx = Math.cos(boat.angle)*boat.speed, vy = Math.sin(boat.angle)*boat.speed;
     const into = -(vx*nx + vy*ny);
     if(hitCooldown>0 || into < 4) return;
-    const dmg = Math.max(1, Math.round(into/MAX_SPEED*HIT_MAX_DAMAGE));
+    const dmg = HIT_DAMAGE, hard = Math.min(1, into/MAX_SPEED);   // (the same whatever the speed: half a heart)
     boat.health = Math.max(0, boat.health - dmg);
     hitCooldown = 0.6;
     // rebound: a push away from the surface, stronger for harder hits,
@@ -5868,10 +5890,10 @@
     boat.angle += side * Math.min(0.3, 0.08 + into/MAX_SPEED*0.25);   // a small yaw so the bow swings off
     hurtFlash = 0.35;
     showHealth();
-    Sfx.crash(Math.min(1, dmg/HIT_MAX_DAMAGE));
-    buzz(dmg > 12 ? [70,35,90] : [45,25,45]);             // hull hit: a jolt, harder for big knocks
-    shake = 0.25*Math.min(1, dmg/12);
-    popups.push({x:boat.x, y:boat.y-20, text:'-'+dmg, life:1.1, max:1.1});
+    Sfx.crash(Math.max(0.3, hard));
+    buzz(hard > 0.5 ? [70,35,90] : [45,25,45]);           // hull hit: a jolt, harder for big knocks
+    shake = 0.25*Math.max(0.4, hard);
+    popups.push({x:boat.x, y:boat.y-20, text:'-'+heartsText(dmg), life:1.1, max:1.1});
   }
 
   // wheel sounds: a soft knock every WHEEL_TICK of rotation, a quiet
@@ -6387,10 +6409,11 @@
                   a: burning ? 0.9 : 0.5, life: 0, max: rand(1, 1.6), seed: Math.random()*6.3});
     }
     if(burning){
-      boat.health = Math.max(0, boat.health - BOIL_DAMAGE*dt);
       if(!boilScaldSaid){ boilScaldSaid = true; popups.push({x: boat.x, y: boat.y - 26, text: TEXT.popups.scald, life: 1.8, max: 1.8}); }
       boilTick -= dt;
-      if(boilTick <= 0){ boilTick = 1; showHealth(); hurtFlash = Math.max(hurtFlash, 0.15); boat.rock = Math.min(2.5, (boat.rock||0) + 0.3); Sfx.sizzle(1); buzz(30); }
+      if(boilTick <= 0){ boilTick = BOIL_EVERY; boat.health = Math.max(0, boat.health - BOIL_DAMAGE);   // a scald every BOIL_EVERY s
+        popups.push({x: boat.x, y: boat.y - 20, text: '-' + heartsText(BOIL_DAMAGE), life: 1.1, max: 1.1});
+        showHealth(); hurtFlash = Math.max(hurtFlash, 0.25); boat.rock = Math.min(2.5, (boat.rock||0) + 0.3); Sfx.sizzle(1); buzz(30); }
     } else boilTick = 0;
   }
   // bubbles: paper with an ink rim, swelling, then popping into a ring and a few specks; steam drifts over them
@@ -6557,7 +6580,7 @@
         buzz([180,50,120,50,70]);                   // riding the wave: a sustained rumble
       } else {
         const k2 = s*(0.6 + 0.4*(1-Math.max(0,c)));        // head-on and broadside hurt most
-        const dmg = Math.round((6 + 10*k2)*rigK(RIG_WAVE_HIT));        // (the lateen suffers most, the square least)
+        const dmg = Math.max(HEART/2, Math.round((6 + 10*k2)*rigK(RIG_WAVE_HIT)*MAX_HEALTH/100/(HEART/2))*(HEART/2));   // (in half hearts; the lateen suffers most, the square least)
         boat.health = Math.max(0, boat.health - dmg);
         boat.kx += w.ux*45*s; boat.ky += w.uy*45*s; boat.kdamp = 2.2;
         boat.speed *= 0.4;
@@ -8427,7 +8450,7 @@
         if(repairT<=0 && boat.health < MAX_HEALTH-0.5){
           const before = boat.health;
           boat.health = Math.min(MAX_HEALTH, boat.health + FISH_HEAL);
-          popups.push({x:boat.x, y:boat.y-22, text:'+'+Math.round(boat.health-before), life:1.2, max:1.2});
+          popups.push({x:boat.x, y:boat.y-22, text:'+'+heartsText(boat.health-before), life:1.2, max:1.2});
           Sfx.hammer();
           showHealth();
           repairT = REPAIR_EVERY;
@@ -8496,7 +8519,7 @@
           boat.health = Math.max(0, boat.health - WHIRL_DAMAGE);
           hurtFlash = 0.35; shake = 0.15; showHealth(); Sfx.crash(0.6);
           buzz([60,40,60,40,90]);                   // spun round
-          popups.push({x:w.x, y:w.y-w.core-8, text:fmt(TEXT.popups.whirl, {damage: WHIRL_DAMAGE}), life:1.4, max:1.4});
+          popups.push({x:w.x, y:w.y-w.core-8, text:fmt(TEXT.popups.whirl, {damage: heartsText(WHIRL_DAMAGE)}), life:1.4, max:1.4});
           Sfx.whirl();
         }
       }
@@ -8702,9 +8725,8 @@
     const hp = Math.ceil(boat.health);
     if(hp !== lastHp){
       lastHp = hp;
-      elHpNum.textContent = hp;
-      elHpFill.style.width = (boat.health/MAX_HEALTH*100)+'%';
-      elStatus.classList.toggle('low', hp<=25);
+      renderHearts(boat.health);
+      elStatus.classList.toggle('low', hp <= HEART);      // (the last heart: they blink)
       elHpMeter.setAttribute('aria-valuenow', hp);
     }
     // the paddles' charge (the crank's spring), under the hull bar
@@ -10194,7 +10216,7 @@
             hurtFlash = 0.45; shake = 0.18; showHealth(); Sfx.crash(0.7);
             boat.rock = Math.min(2.5, (boat.rock||0) + 1.2);
             buzz([60, 30, 90]);
-            popups.push({x: boat.x, y: boat.y - 26, text: fmt(TEXT.popups.lightning, {damage: STORM_DAMAGE}), life: 1.8, max: 1.8});
+            popups.push({x: boat.x, y: boat.y - 26, text: fmt(TEXT.popups.lightning, {damage: heartsText(STORM_DAMAGE)}), life: 1.8, max: 1.8});
           } else if(near > 0.3) buzz([20]);
         }
         if(b.t < -0.5) c.bolt = null;

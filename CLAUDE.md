@@ -722,7 +722,15 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   Opening/closing it plays `Sfx.book(open)`: paper flutter, and the cover's thump on closing. The list also shows the day of the voyage
   (`dayNo`, +1 at each dawn). A tiny faint frame-rate counter (`#fps`, refreshed twice a second while the logbook is open) sits on the
   paper, in the bottom right corner of the right page. Keyboard: arrows, Space = anchor.
-- **Hull bar** (`#status`, `#hp-meter`): always shown top left while she sails (hidden at the market and in a talk); under it the **paddles' charge** (`#sp-meter`, `TEXT.hud.spring`, the crank's `spring` 0..100, written only when it changes, `lastSp`);
+- **Hearts** (Enrico, like Zelda's): `MAX_HEALTH` 30 hull points (was 100) = 3 hearts of `HEART` 10; `#hearts` in
+  `#hp-meter` (`renderHearts`: an SVG heart each, full, half (clipped) or empty, in currentColor; they blink on the last
+  heart, class `low`); popups show hearts (`heartsText`: "½♥", "1♥", "1½♥", ♥ forced to text). Damages in hull points
+  (Tuning): `HIT_DAMAGE` 5 (any knock on a shore, rock or solid thing, whatever the speed; was up to 25 of 100),
+  `SHARK_DAMAGE` 5, `ZORA_DAMAGE` 10, boiling water `BOIL_DAMAGE` 5 every `BOIL_EVERY` 3 s (was 4 a second; ticks
+  after `BOIL_DELAY`), `STORM_DAMAGE` 20, `WHIRL_DAMAGE` 30 (a whirlpool sinks a full hull), big waves in half hearts;
+  repairs `FISH_HEAL` 5 a patch. **Drawn whirlpools orbit** a little circle about their place (`WHIRL_ORBIT_R` 40 px,
+  `WHIRL_ORBIT_T` 22 s a round, random way and phase; `cx`/`cy` the drawn place) on top of their swirl.
+- **Hull bar** (now the hearts above) (`#status`, `#hp-meter`): always shown top left while she sails (hidden at the market and in a talk); under it the **paddles' charge** (`#sp-meter`, `TEXT.hud.spring`, the crank's `spring` 0..100, written only when it changes, `lastSp`);
   it was shown only for a few seconds after damage. The fair-wind badge `#boon` sits under it.
 - **Hazards:** rocks (the faraglioni, tall rock columns off the cliffs, were removed; **spacing**, Tuning, world: two rocks, or a rock and the shore, either touch or have at
   least `ROCK_GAP` 64 px of water between them, about twice the boat's length, so she never gets stuck in a slot:
