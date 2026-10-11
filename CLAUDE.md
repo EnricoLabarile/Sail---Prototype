@@ -195,6 +195,14 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   whitewashed square tower on a sloping base ('a scarpa', the east slope in shade), a cordon, a door high up with a
   ladder, two slits, the parapet on corbels and a terrace with a hatch, drawn in the rocks' layer with height shown
   up the screen × `BOAT_TILT`, a patch of bare ground and a shadow down-right.
+  **They fire cannonballs** (Enrico; `updateTowers`, `drawCannon`, `resetTowers` on a new voyage; Tuning `TOWER_FIRE`,
+  `TOWER_RANGE` 300, `TOWER_RELOAD` [4, 6.5] s, `TOWER_FIRST` 1.5 s after she comes within reach, `TOWER_FLIGHT` 1.4 s,
+  `TOWER_LEAD` 0.8, `TOWER_SPREAD` 14, `TOWER_HIT_R` 16, `TOWER_DAMAGE` 5 = half a heart; not in home waters, not tied
+  up): a flash and smoke at the parapet, `Sfx.cannon` (a crack, a deep boom, a rumble; kind `cannon` in `SOUND_VOL`,
+  Audio slider "Cannon"), the ball (`cannonballs`) arcing over to where she'll be while a dashed ring (paper under ink)
+  tightens where it will fall; within `TOWER_HIT_R` of her: damage, flash, shake, rock, buzz, popup
+  `TEXT.popups.cannonHit`; else a splash (`stoneSplash`) or a puff of dust on land. A toast the first time
+  (`TEXT.toasts.towerFire`, once a voyage).
   **The map editor** (`editor.html`, next to `index.html`, served by GitHub Pages too; button `#wg-editor` in the first
   screen's World, `TEXT.worldGen.editor`): everything placed on the drawn map lives in **one block in Tuning**,
   `MAP_LAYOUT_FILE` between `// MAP_LAYOUT >>>` and `// <<< MAP_LAYOUT` (villages, whirlpools, storms, treasures,

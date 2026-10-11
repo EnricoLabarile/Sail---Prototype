@@ -144,6 +144,7 @@
     buoy: 1,       // a buoy knocked as she brushes past
     crate: 1,      // the storehouse's door and crate
     thunder: 1,    // the thunder of the storm clouds
+    cannon: 1,     // the coastal towers' cannon
     coins: 1,      // the purse's jingle at the market
     book: 1,       // the logbook opening, closing and its pages turning
   };
@@ -226,6 +227,15 @@
   const COAST_TOWER_GAP = 420;       // px: no two towers closer than this (world)
   const COAST_TOWER_CLEAR = 450;     // px: none this close to home, a village or a temple (world)
   const COAST_TOWER_SIZE = 1;        // how big they are drawn (1 ≈ 26 px across the foot)
+  const TOWER_FIRE = true;           // the coastal towers fire cannonballs at her when she comes within reach
+  const TOWER_RANGE = 300;           // px: how far a tower reaches
+  const TOWER_RELOAD = [4, 6.5];     // seconds between a tower's shots (random in this range)
+  const TOWER_FIRST = 1.5;           // seconds from coming within reach to the first shot
+  const TOWER_FLIGHT = 1.4;          // seconds a cannonball flies (a dashed ring shows where it will come down: time to dodge)
+  const TOWER_LEAD = 0.8;            // how much it aims ahead of her (1 = right where she'll be if she holds her course)
+  const TOWER_SPREAD = 14;           // px of random error in its aim
+  const TOWER_HIT_R = 16;            // px: a ball coming down this close to her hits
+  const TOWER_DAMAGE = 5;            // hull points a hit takes (5 = half a heart)
   const STRANDED_REACH = 300;        // px: anchor this close to the castaway (DRAWN_STRANDED) and they come aboard
   const STRANDED_REWARD = 15;        // coins when the castaway is brought to the village nearest home
   const TREASURE_TIME = 1.5;         // seconds with the net out before it comes up
@@ -446,6 +456,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The coastal towers fire cannonballs at you when you sail within reach: a dashed ring shows where each one will fall, half a heart if it hits',
+    ]},
+    {build: '2026-10-11 23:02', items: [
       'Coastal watchtowers, like the Spanish towers on Apulia\'s coasts, stand along the shores (placed at random for now)',
     ]},
     {build: '2026-10-11 22:52', items: [
@@ -454,11 +467,8 @@
     {build: '2026-10-11 21:57', items: [
       'The sail swells out much more when it draws at its best, the Marconi most of all',
     ]},
-    {build: '2026-10-11 21:43', items: [
-      'No more rings of buoys round home and the villages, and no more "Leaving home" / "You approach…" messages',
-    ]},
   ];
-  const BUILD = '2026-10-11 23:02';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-11 23:05';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -496,7 +506,7 @@
       audio: {master: 'All sounds', sea: 'Sea and hull', rain: 'Rain', cicadas: 'Cicadas', night: 'Night', gulls: 'Gulls', town: 'Villages',
               engine: 'Motor boats', whirl: 'Whirlpools', waves: 'Big waves', crash: 'Knocks and bites', wheel: 'Wheel rub', clicks: 'Clicks',
               anchor: 'Anchor', crank: 'Crank', paddles: 'Paddle wheels', oars: 'Oars', nets: 'Nets', bell: 'Bell', buoy: 'Buoys',
-              crate: 'Storehouse', coins: 'Coins', book: 'Logbook', thunder: 'Thunder'},
+              crate: 'Storehouse', coins: 'Coins', book: 'Logbook', thunder: 'Thunder', cannon: 'Cannon'},
       sailsParams: {turn: 'Turning', accel: 'Pick-up', retrim: 'Retrim', leeway: 'Leeway', surf: 'Surfing', waveHit: 'Wave damage', broach: 'Broaching', runBonus: 'Run bonus'},
     },
     intro: {                                        // (not shown for now: the first screen is the world generator)
@@ -529,6 +539,7 @@
       debris:     'Driftwood blocks the way: break it with the slingshot',   // the first time she comes up to a jam
       castawaySeen:   'Someone is waving from that island! Drop anchor close by',   // the first time she comes near the castaway
       castawayAboard: 'The castaway is aboard: take them to {village}',             // they swim out and climb in
+      towerFire:      'The tower is firing on us! Keep moving!',      // the first time a coastal tower shoots at her
       castawayHome:   '{village} welcomes the castaway home: +{n} coins!',          // tied up there with them aboard
       gift:       'Come again! This is on the house: {gift}!',
       delivered:  'Delivered for tonight\'s dinner',
@@ -568,6 +579,7 @@
       debrisGone: 'The way is open!',            // …and the last one breaks it up
       sharkBite: 'Shark bite! -{damage}',
       zoraSeen:  'something in the water!',          // a sea imp pops up for the first time
+      cannonHit: 'Cannonball! -{damage}',          // a coastal tower's ball hits the boat
       zoraHit:   'Fireball! -{damage}',              // its fireball hits the boat
       lightning: 'Struck by lightning! -{damage}',   // a storm cloud's bolt hits the boat
       scald:    'the hull is scalding!',             // in the boiling South, once the hull starts to suffer
@@ -3688,7 +3700,73 @@
     quad([[-P, T + up(Z2 + 3)], [P, T + up(Z2 + 3)], [P, -P + up(Z2 + 3)], [-P, -P + up(Z2 + 3)]], PAPERC);   // the terrace's rim
     ctx.lineWidth = 0.6; quad([[-P + 2, T - 0.6 + up(Z2 + 3)], [P - 2, T - 0.6 + up(Z2 + 3)], [P - 2, -P + 2 + up(Z2 + 3)], [-P + 2, -P + 2 + up(Z2 + 3)]], V(0.45));   // the terrace
     ctx.fillStyle = PAPERC; ctx.fillRect(P - 4.2, -P + 2.4 + up(Z2 + 3), 2.4, 2);       // the hatch down
+    if(o.flash > 0){                                                                      // the cannon's flash
+      ctx.fillStyle = PAPERC; ctx.strokeStyle = INKC; ctx.lineWidth = 0.8; ctx.beginPath();
+      for(let i=0;i<10;i++){ const a = i*Math.PI/5, r = i%2 ? 2.5 : 6; ctx.lineTo(Math.cos(a)*r, T + up(Z2 + 1) + Math.sin(a)*r); }
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
     ctx.restore();
+  }
+  // ---- the towers' cannon (TOWER_*): within TOWER_RANGE (out of home waters, not tied up) a tower fires every few
+  // seconds at where she'll be; the ball arcs over in TOWER_FLIGHT s while a dashed ring marks where it will fall ----
+  const cannonballs = [], cannonSmoke = [];
+  let towerWarned = false;
+  function resetTowers(){ cannonballs.length = 0; cannonSmoke.length = 0; towerWarned = false; for(const o of coastTowers){ o.cool = TOWER_FIRST; o.flash = 0; } }
+  resetTowers();
+  const towerMuzzle = o=>{ const S = 1.7*COAST_TOWER_SIZE; return [o.x, o.y + (7.5 - 24*BOAT_TILT)*S]; };   // the front of its parapet
+  function updateTowers(dt){
+    for(let i=cannonballs.length-1;i>=0;i--){
+      const b = cannonballs[i]; b.t += dt;
+      if(b.t < b.T) continue;
+      cannonballs.splice(i, 1);
+      const x = wrapX(b.tx), y = wrapY(b.ty);
+      if(!moor && wdist(x, y, boat.x, boat.y) < TOWER_HIT_R){
+        boat.health = Math.max(0, boat.health - TOWER_DAMAGE);
+        hurtFlash = 0.35; shake = 0.15; showHealth(); Sfx.crash(0.7);
+        boat.rock = Math.min(2.5, (boat.rock||0) + 1); buzz([50, 30, 70]);
+        popups.push({x: boat.x, y: boat.y - 26, text: fmt(TEXT.popups.cannonHit, {damage: heartsText(TOWER_DAMAGE)}), life: 1.6, max: 1.6});
+        cannonSmoke.push({x, y, z: 2, r: 4, life: 0, max: 0.9});
+      } else if(onLand(x, y, 0)){
+        for(let k=0;k<3;k++) cannonSmoke.push({x: x + rand(-4, 4), y: y + rand(-3, 3), z: 1, r: rand(2.5, 4), life: 0, max: rand(0.6, 1)});   // a puff of dust
+      } else {
+        stoneSplash.push({x, y, t: 0, seed: rand(0, 6.3), s: 1.2}); Sfx.splash();
+      }
+    }
+    for(let i=cannonSmoke.length-1;i>=0;i--){ const f = cannonSmoke[i]; f.life += dt; if(f.life >= f.max){ cannonSmoke.splice(i, 1); continue; } f.z += 10*dt; f.r += 6*dt; }
+    for(const o of coastTowers) o.flash = Math.max(0, o.flash - dt);
+    if(!TOWER_FIRE || !playing) return;
+    const safe = moor || wdist(boat.x, boat.y, START.x, START.y) < SAFE_R;
+    for(const o of coastTowers){
+      const d = wdist(boat.x, boat.y, o.x, o.y);
+      if(safe || d > TOWER_RANGE){ o.cool = Math.max(o.cool, TOWER_FIRST); continue; }
+      if((o.cool -= dt) > 0) continue;
+      o.cool = rand(TOWER_RELOAD[0], TOWER_RELOAD[1]); o.flash = 0.18;
+      const [mx, my] = towerMuzzle(o), lead = TOWER_FLIGHT*TOWER_LEAD;
+      const px = boat.x + Math.cos(boat.angle)*boat.speed*lead + rand(-TOWER_SPREAD, TOWER_SPREAD);
+      const py = boat.y + Math.sin(boat.angle)*boat.speed*lead + rand(-TOWER_SPREAD, TOWER_SPREAD);
+      cannonballs.push({sx: mx, sy: my, tx: mx + wdx(px, mx), ty: my + wdy(py, my), t: 0, T: TOWER_FLIGHT});
+      for(let k=0;k<4;k++) cannonSmoke.push({x: mx + rand(-3, 3), y: my + rand(-2, 2), z: 0, r: rand(3, 5), life: 0, max: rand(0.9, 1.5)});
+      Sfx.cannon(Math.max(0.3, 1 - d/(TOWER_RANGE*1.4)));
+      if(!towerWarned){ towerWarned = true; toast(TEXT.toasts.towerFire); }
+    }
+  }
+  // the balls (an ink ball high in an arc, its shadow on the water below), where they'll come down, the smoke
+  function drawCannon(){
+    for(const b of cannonballs){
+      const q = b.t/b.T, x = b.sx + (b.tx - b.sx)*q, y = b.sy + (b.ty - b.sy)*q, h = 70*q*(1 - q);
+      const tight = 1 - q;                                                      // the ring where it falls, tightening as it nears
+      ctx.setLineDash([3, 3]); ctx.lineWidth = 2.6; ctx.strokeStyle = PAPERC; ctx.beginPath(); ctx.arc(b.tx, b.ty, TOWER_HIT_R*(0.8 + 0.6*tight), 0, TAU); ctx.stroke();
+      ctx.lineWidth = 1.2; ctx.strokeStyle = INKC; ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = INKC; ctx.globalAlpha = 0.3; ctx.beginPath(); ctx.ellipse(x + h*0.25, y + h*0.15, 3, 2, 0, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
+      ctx.fillStyle = INKC; ctx.beginPath(); ctx.arc(x, y - h, 3, 0, TAU); ctx.fill();
+      ctx.fillStyle = PAPERC; ctx.beginPath(); ctx.arc(x - 0.9, y - h - 0.9, 0.9, 0, TAU); ctx.fill();
+    }
+    for(const f of cannonSmoke){
+      const q = f.life/f.max; ctx.globalAlpha = 1 - q;
+      ctx.fillStyle = PAPERC; ctx.strokeStyle = INKC; ctx.lineWidth = 0.9;
+      ctx.beginPath(); ctx.arc(f.x, f.y - f.z, f.r, 0, TAU); ctx.fill(); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
   }
   function resetBottles(){
     clearWrecks();
@@ -4541,6 +4619,22 @@
       g2.gain.setTargetAtTime(0.0001, at, 0.6);
       s2.connect(lp); lp.connect(lp2); lp2.connect(g2); g2.connect(master); s2.start(t0, Math.random()*0.5); s2.stop(at + 3);
     }
+    // cannon: k 0..1 (farther = softer): a crack, a deep boom dropping away and a short rumble
+    function cannon(k){
+      if(!ac || ac.state!=='running' || !(k > 0)) return;
+      const t0 = ac.currentTime + 0.01;
+      const s = ac.createBufferSource(); s.buffer = noise;
+      const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 900;
+      const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.3*k, t0 + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.12);
+      s.connect(hp); hp.connect(g); g.connect(master); s.start(t0, Math.random()*0.5, 0.15);
+      const o = ac.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(90, t0); o.frequency.exponentialRampToValueAtTime(32, t0 + 0.5);
+      const og = ac.createGain(); og.gain.setValueAtTime(0.0001, t0); og.gain.exponentialRampToValueAtTime(0.9*k, t0 + 0.01); og.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.6);
+      o.connect(og); og.connect(master); o.start(t0); o.stop(t0 + 0.65);
+      const s2 = ac.createBufferSource(); s2.buffer = noise;
+      const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(600, t0); lp.frequency.exponentialRampToValueAtTime(90, t0 + 1.2);
+      const g2 = ac.createGain(); g2.gain.setValueAtTime(0.0001, t0); g2.gain.exponentialRampToValueAtTime(0.7*k, t0 + 0.02); g2.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.3);
+      s2.connect(lp); lp.connect(g2); g2.connect(master); s2.start(t0, Math.random()*0.5, 1.4);
+    }
     function crash(k){                 // k: 0..1 how hard
       if(!ac || ac.state!=='running') return;
       const t0 = ac.currentTime, vol = 0.1 + 0.18*k;
@@ -4854,10 +4948,10 @@
                   crate: 'crate', tick: 'clicks', thunk: 'clicks', type: 'clicks', hammer: 'clicks', book: 'book', pageTurn: 'book',
                   pickup: 'nets', splash: 'nets', sizzle: 'crash', bell: 'bell', whirl: 'whirl', drone: 'whirl', gull: 'gulls', crash: 'crash',
                   waveBreak: 'waves', waveHit: 'waves', surf: 'waves', townEvent: 'town', chatter: 'town', cricket: 'night', howl: 'night',
-                  anchor: 'anchor', buoy: 'buoy', coins: 'coins', rain: 'rain', cicadas: 'cicadas', ambient: 'sea', wheel: 'wheel', engine: 'engine', grind: 'crank', thunder: 'thunder'};
+                  anchor: 'anchor', buoy: 'buoy', coins: 'coins', rain: 'rain', cicadas: 'cicadas', ambient: 'sea', wheel: 'wheel', engine: 'engine', grind: 'crank', thunder: 'thunder', cannon: 'cannon'};
     const kinded = (name, fn)=> (...a)=>{ const k = curKind; curKind = KIND[name]; try{ return routed(KIND[name], ()=> fn(...a)); } finally { curKind = k; } };
     for(const [k, v] of Object.entries(SOUND_VOL)) vol[k] = v;
-    return {init, setVol, ...Object.fromEntries(Object.entries({oar, ratchet, paddle, springOff, oarCue, oarHit, rowBed, crate, tick, thunk, wheel, ambient, rain, cicadas, book, pageTurn, pickup, hammer, bell, whirl, type, splash, drone, gull, crash, waveBreak, waveHit, surf, townEvent, chatter, cricket, howl, anchor, buoy, coins, engine, grind, thunder, sizzle}).map(([n, f])=> [n, kinded(n, f)]))};
+    return {init, setVol, ...Object.fromEntries(Object.entries({oar, ratchet, paddle, springOff, oarCue, oarHit, rowBed, crate, tick, thunk, wheel, ambient, rain, cicadas, book, pageTurn, pickup, hammer, bell, whirl, type, splash, drone, gull, crash, waveBreak, waveHit, surf, townEvent, chatter, cricket, howl, anchor, buoy, coins, engine, grind, thunder, sizzle, cannon}).map(([n, f])=> [n, kinded(n, f)]))};
   })();
 
   // ---------- Ship's wheel ----------
@@ -5773,7 +5867,7 @@
                     whirl: ()=> Sfx.whirl(), waves: ()=> Sfx.waveBreak(0.8, 0), crash: ()=> Sfx.crash(0.6), clicks: ()=> Sfx.thunk(0.5),
                     anchor: ()=> Sfx.anchor(true), crank: ()=> Sfx.ratchet(CRANK_VOL, true), paddles: ()=> Sfx.paddle(PADDLE_VOL),
                     oars: ()=> Sfx.oarHit(OAR_CUE_VOL), nets: ()=> Sfx.pickup(), bell: ()=> Sfx.bell(), buoy: ()=> Sfx.buoy(),
-                    crate: ()=> Sfx.crate(), coins: ()=> Sfx.coins(), book: ()=> Sfx.pageTurn(), thunder: ()=> Sfx.thunder(0.8, 1)};
+                    crate: ()=> Sfx.crate(), coins: ()=> Sfx.coins(), book: ()=> Sfx.pageTurn(), thunder: ()=> Sfx.thunder(0.8, 1), cannon: ()=> Sfx.cannon(1)};
     const n2 = x=> (+(+x).toFixed(2)).toFixed(2);
     box.innerHTML = '<p class="sl-hint">' + T.audioHint + '</p>';
     const code = document.createElement('p'); code.className = 'sl-code';
@@ -5895,7 +5989,7 @@
     boonWindT = 0; boonFish = 0; for(const r of RUINS) r.readyAt = 0;
     rollers.length = 0; rollerT = 6; boat.surfT = 0;
     windAngle = rand(0, Math.PI*2); shiftDur = 0; windTimer = rand(28,36); guideWind = false;
-    explored.fill(0); fogVer++; rooms.fill(0); roomsVer++; charges = START_CHARGES; nets = START_NETS; slingAmmo = 'stone'; maxHealth = MAX_HEALTH; boat.health = MAX_HEALTH; kits = START_KITS; catches.shark = catches.zora = 0; fillBankTiles(); resetBottles(); resetTreasures(); resetCastaway(); resetStore(); resetShark(); resetZora(); makeDebris(); spring = 0; windProg = 0; crankBack = 0; crankLocked = false; document.getElementById('crank').classList.remove('locked');
+    explored.fill(0); fogVer++; rooms.fill(0); roomsVer++; charges = START_CHARGES; nets = START_NETS; slingAmmo = 'stone'; maxHealth = MAX_HEALTH; boat.health = MAX_HEALTH; kits = START_KITS; catches.shark = catches.zora = 0; fillBankTiles(); resetBottles(); resetTreasures(); resetCastaway(); resetTowers(); resetStore(); resetShark(); resetZora(); makeDebris(); spring = 0; windProg = 0; crankBack = 0; crankLocked = false; document.getElementById('crank').classList.remove('locked');
     wake.length = 0; bowSpray.length = 0; steam.length = 0; popups.length = 0;
     voyageTime = 0; hurtFlash = 0; shake = 0;
     gameover.classList.add('hidden');
@@ -8747,6 +8841,7 @@
 
     updateFishing(dt);
     updateCastaway();
+    updateTowers(dt);
     updateBoil(dt);
     updateReel(dt);
     updateGuests(dt);
@@ -11221,7 +11316,7 @@
     drawBoat();
     layer(()=>drawSteam());                                  // the funnel's steam, over the boat
     layer(()=>drawBoilFumes());
-    layer(()=>drawStones());                                 // slingshot stones in the air, and their splashes                              // steam rising off the boiling South
+    layer(()=>{ drawStones(); drawCannon(); });                                 // slingshot stones in the air, and their splashes                              // steam rising off the boiling South
     layer(()=>drawStreaks());
     layer(()=>{
       for(const g of gulls) if(inView(g.x,g.y,16)) drawGull(g);
