@@ -188,6 +188,13 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   stick in a sandy clearing (`drawCastaway`); a toast within 600 px; anchored within `STRANDED_REACH` they come aboard
   (`updateCastaway`, a second figure forward in the boat); tied up at the village nearest home (`castawayTo`, Nordania)
   the reward; `resetCastaway` on a new voyage. The boiling sea leaves cool water within `STRANDED_REACH` + 120 of them (`boilRaw`), so the pick-up doesn't scald.
+  **Coastal towers** (Enrico, after the Spanish watchtowers on Apulia's coasts; section by the castaway's, `coastTowers`,
+  `placeTowers`, `drawTower`; Tuning `COAST_TOWERS` 24, `COAST_TOWER_GAP` 420, `COAST_TOWER_CLEAR` 450 from home,
+  villages and temples, `COAST_TOWER_SIZE` 1): **at random for now** (Enrico will give exact places later: then they
+  go in `MAP_LAYOUT`): on land with solid ground 14 px round and sea within 40 px, on any map. A look only: a
+  whitewashed square tower on a sloping base ('a scarpa', the east slope in shade), a cordon, a door high up with a
+  ladder, two slits, the parapet on corbels and a terrace with a hatch, drawn in the rocks' layer with height shown
+  up the screen × `BOAT_TILT`, a patch of bare ground and a shadow down-right.
   **The map editor** (`editor.html`, next to `index.html`, served by GitHub Pages too; button `#wg-editor` in the first
   screen's World, `TEXT.worldGen.editor`): everything placed on the drawn map lives in **one block in Tuning**,
   `MAP_LAYOUT_FILE` between `// MAP_LAYOUT >>>` and `// <<< MAP_LAYOUT` (villages, whirlpools, storms, treasures,

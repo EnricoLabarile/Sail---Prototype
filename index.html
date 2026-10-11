@@ -222,6 +222,10 @@
   const WRECK_LEN = 190;             // px long, the wrecked cruise ship that lies where a message's cross is (in two halves)
   const TREASURE_COUNT = knob('TREASURE_COUNT', 12);   // dark rippling spots at sea with something down there, like Zelda's chests: drop anchor on one and the net brings it up (at random off the drawn map; on it, DRAWN_TREASURES) (world)
   const TREASURE_HEARTS = 1;         // hearts a treasure adds to the hull's most (and fills), like Zelda's heart containers (it gave 1–3 coins before)
+  const COAST_TOWERS = 24;           // coastal watchtowers (after the Spanish towers on Apulia's coasts) scattered along the coasts, at random for now (world)
+  const COAST_TOWER_GAP = 420;       // px: no two towers closer than this (world)
+  const COAST_TOWER_CLEAR = 450;     // px: none this close to home, a village or a temple (world)
+  const COAST_TOWER_SIZE = 1;        // how big they are drawn (1 ≈ 26 px across the foot)
   const STRANDED_REACH = 300;        // px: anchor this close to the castaway (DRAWN_STRANDED) and they come aboard
   const STRANDED_REWARD = 15;        // coins when the castaway is brought to the village nearest home
   const TREASURE_TIME = 1.5;         // seconds with the net out before it comes up
@@ -442,6 +446,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Coastal watchtowers, like the Spanish towers on Apulia\'s coasts, stand along the shores (placed at random for now)',
+    ]},
+    {build: '2026-10-11 22:52', items: [
       'The boat is slower under sail: top speed cut to 80%',
     ]},
     {build: '2026-10-11 21:57', items: [
@@ -450,11 +457,8 @@
     {build: '2026-10-11 21:43', items: [
       'No more rings of buoys round home and the villages, and no more "Leaving home" / "You approach…" messages',
     ]},
-    {build: '2026-10-11 21:16', items: [
-      'Fish banks and treasures now both look like the treasures used to: a smaller dark patch, thinner rings, a bubble now and then',
-    ]},
   ];
-  const BUILD = '2026-10-11 22:52';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-11 23:02';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -3631,6 +3635,59 @@
     ctx.beginPath(); ctx.arc(0, -9.6, 1.5, 0, TAU); ctx.fill();                                                        // head
     ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(6, 0); ctx.lineTo(6, -14); ctx.stroke();                          // the stick
     ctx.fillStyle = PAPERC; ctx.beginPath(); ctx.moveTo(6, -14); ctx.lineTo(11 + w, -13 + w*0.5); ctx.lineTo(6, -10.5); ctx.closePath(); ctx.fill(); ctx.stroke();   // the rag
+    ctx.restore();
+  }
+  // ---- coastal towers (after the Spanish watchtowers along Apulia's coasts): a square tower on a sloping base
+  // ('a scarpa'), a cordon round it, a door high up on the first floor, corbels under the parapet; a look only (they
+  // stand on land). At random for now: on land a little in from the coast, COAST_TOWER_GAP apart ----
+  const coastTowers = [];
+  (function placeTowers(){
+    const avoid = [[START.x, START.y], ...VILLAGES.map(v=>[v.isl.x, v.isl.y]), ...RUINS.map(r=>[r.isl.x, r.isl.y])];
+    const dirs = []; for(let k=0;k<12;k++) dirs.push([Math.cos(k*Math.PI/6), Math.sin(k*Math.PI/6)]);
+    for(let tries=0; tries<6000 && coastTowers.length<COAST_TOWERS; tries++){
+      const x = rand(0, WORLD.w), y = rand(0, WORLD.h);
+      if(!onLand(x, y, 0)) continue;
+      if(avoid.some(([ax, ay])=> wdist(x, y, ax, ay) < COAST_TOWER_CLEAR)) continue;
+      if(coastTowers.some(o=> wdist(x, y, o.x, o.y) < COAST_TOWER_GAP)) continue;
+      if(dirs.some(([dx, dy])=> !onLand(x + dx*14, y + dy*14, 0))) continue;          // solid ground all round its foot…
+      let sx = 0, sy = 0, n = 0;
+      for(const [dx, dy] of dirs) if(!onLand(x + dx*40, y + dy*40, 0)){ sx += dx; sy += dy; n++; }
+      if(!n) continue;                                                                   // …and the sea close by
+      coastTowers.push({x, y, seaA: Math.atan2(sy, sx), ph: rand(0, 6.3)});
+    }
+  })();
+  function drawTower(o){
+    const S = 1.7*COAST_TOWER_SIZE;
+    if(!inView(o.x, o.y, 40*S)) return;
+    const k = BOAT_TILT, up = z=> -z*k;                              // height shows as a shift up the screen
+    const B = 10, T = 7.5, Z1 = 7, Z2 = 23, P = 8.6;   // half-widths of the foot, the shaft, the parapet; heights
+    ctx.save(); ctx.translate(o.x, o.y); ctx.scale(S, S);
+    ctx.fillStyle = PAPERC; ctx.strokeStyle = INKC; ctx.lineWidth = 0.8;   // a patch of bare ground round it
+    ctx.beginPath(); ctx.ellipse(0, 1, 17, 12, 0, 0, TAU); ctx.fill(); ctx.setLineDash([1.5, 2.5]); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = INKC; ctx.globalAlpha = 0.35;                    // its shadow, down-right
+    ctx.beginPath(); ctx.moveTo(B, -B); ctx.lineTo(B + Z2*0.55, -B + Z2*0.35); ctx.lineTo(B + Z2*0.55, B + Z2*0.35); ctx.lineTo(-B + Z2*0.55, B + Z2*0.35); ctx.lineTo(-B, B); ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = 1; ctx.lineJoin = 'round';
+    const quad = (pts, fill)=>{ ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for(const p of pts.slice(1)) ctx.lineTo(p[0], p[1]); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.stroke(); };
+    ctx.lineWidth = 0.9;
+    // the sloping base: its front (south) face and its top ledge
+    quad([[-B, B], [B, B], [T, T + up(Z1)], [-T, T + up(Z1)]], V(0.92));
+    quad([[-B, B], [-T, T + up(Z1)], [-T, -T + up(Z1)], [-B, -B]], PAPERC);          // the west slope, in the light
+    quad([[B, B], [T, T + up(Z1)], [T, -T + up(Z1)], [B, -B]], V(0.62));             // the east slope, in shade
+    // the shaft: its front face
+    quad([[-T, T + up(Z1)], [T, T + up(Z1)], [T, T + up(Z2)], [-T, T + up(Z2)]], V(0.97));
+    ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(-T, T + up(Z1)); ctx.lineTo(T, T + up(Z1)); ctx.stroke();   // the cordon ('toro')
+    ctx.fillStyle = INKC;                                                                // the door, high up, and a slit window
+    ctx.fillRect(-1.4, T + up(Z1 + 7.5), 2.8, 3.6);
+    ctx.fillRect(-4.6, T + up(Z1 + 12.5), 0.9, 2.2); ctx.fillRect(3.8, T + up(Z1 + 12.5), 0.9, 2.2);
+    ctx.lineWidth = 0.7; ctx.strokeStyle = INKC;                                         // the ladder up to the door
+    ctx.beginPath(); ctx.moveTo(-1.2, T + up(Z1 + 4)); ctx.lineTo(-1.6, B); ctx.moveTo(1.2, T + up(Z1 + 4)); ctx.lineTo(1.6, B);
+    for(let r=0;r<3;r++){ const yy = B - 1.5 - r*2.2; ctx.moveTo(-1.5, yy); ctx.lineTo(1.5, yy); } ctx.stroke();
+    // the parapet jutting out on corbels ('beccatelli'): a band of little dark gaps under it, then the top
+    quad([[-P, T + up(Z2)], [P, T + up(Z2)], [P, T + up(Z2 + 3)], [-P, T + up(Z2 + 3)]], PAPERC);
+    ctx.fillStyle = INKC; for(let i=-3;i<=3;i++) ctx.fillRect(i*2.3 - 0.6, T + up(Z2) - 1.1, 1.2, 1.1);
+    quad([[-P, T + up(Z2 + 3)], [P, T + up(Z2 + 3)], [P, -P + up(Z2 + 3)], [-P, -P + up(Z2 + 3)]], PAPERC);   // the terrace's rim
+    ctx.lineWidth = 0.6; quad([[-P + 2, T - 0.6 + up(Z2 + 3)], [P - 2, T - 0.6 + up(Z2 + 3)], [P - 2, -P + 2 + up(Z2 + 3)], [-P + 2, -P + 2 + up(Z2 + 3)]], V(0.45));   // the terrace
+    ctx.fillStyle = PAPERC; ctx.fillRect(P - 4.2, -P + 2.4 + up(Z2 + 3), 2.4, 2);       // the hatch down
     ctx.restore();
   }
   function resetBottles(){
@@ -11119,7 +11176,7 @@
     layer(()=>drawBoilBubbles());                             // …bubbling
     layer(()=>{ if(drawnIsl) drawIslandWater(drawnIsl); for(const isl of visIslands()) drawIslandWater(isl); }, true);
     layer(()=>{ for(const isl of visIslands()) drawIslandLand(isl); if(drawnIsl) drawIslandLand(drawnIsl); }, true);   // (the drawn land over the villages' edges, so they join it)
-    layer(()=>{ const vis = []; rockGrid.query(view.x+w/2, view.y+h/2, Math.max(w,h)/2+20, o=>{ if(!o.hidden && inView(o.x,o.y,o.r+6)) vis.push(o); }); drawRocks(vis); drawDebris();
+    layer(()=>{ const vis = []; rockGrid.query(view.x+w/2, view.y+h/2, Math.max(w,h)/2+20, o=>{ if(!o.hidden && inView(o.x,o.y,o.r+6)) vis.push(o); }); drawRocks(vis); drawDebris(); for(const o of coastTowers) drawTower(o);
       for(const wk of wrecks) if(inView(wk.x, wk.y, wk.L*0.7)) drawWreck(wk); });
     layer(()=>{ for(const b of banks) drawBank(b); for(const bo of bottles) drawBottle(bo); for(const o of treasures) drawTreasure(o); drawCastaway(); });
     layer(()=>drawShark());
