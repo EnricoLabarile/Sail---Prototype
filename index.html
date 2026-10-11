@@ -434,6 +434,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Over a fish bank or a treasure the wheel\'s hub shows a question mark instead of a fish',
+    ]},
+    {build: '2026-10-11 19:49', items: [
       'Fish banks no longer show fish going round: only the patch of darker water, the same size as before',
       'Sunken treasures look just like a fish bank now (no more rings or bubbles), so they hide among them; they are only where the map has an X',
     ]},
@@ -447,11 +450,8 @@
       'Running before the wind, the Marconi\'s boom swings out square across the boat',
       'The Marconi sail is 20% bigger',
     ]},
-    {build: '2026-10-11 19:03', items: [
-      'No more foam bits for the current: the sea\'s little wave crests are darker and drift with the current instead',
-    ]},
   ];
-  const BUILD = '2026-10-11 19:49';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-11 20:00';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -5199,10 +5199,10 @@
       // point at what the button is for there (dropping anchor = nets over)
       c.save(); c.scale(1.2, 1.2);
       if(bankHint){
-        c.save(); c.translate(-0.8, 0);
-        c.beginPath(); c.moveTo(-7.2, 0); c.quadraticCurveTo(-1.5, -6.4, 4.6, 0); c.quadraticCurveTo(-1.5, 6.4, -7.2, 0); c.fill();   // body
-        c.beginPath(); c.moveTo(3.4, 0); c.lineTo(8.8, -4.4); c.lineTo(7.6, 0); c.lineTo(8.8, 4.4); c.closePath(); c.fill();          // tail
-        c.fillStyle = inv ? INKW : PAPW; c.beginPath(); c.arc(-3.9, -1, 1.15, 0, Math.PI*2); c.fill();                              // eye
+        // a question mark: something down there (fish, or something else: a bank and a treasure look alike)
+        c.save(); c.lineWidth = 2.4; c.lineCap = 'round';
+        c.beginPath(); c.arc(0, -3.2, 4.2, Math.PI*1.05, Math.PI*0.45, false); c.quadraticCurveTo(0, 0.8, 0, 3); c.stroke();   // the hook
+        c.beginPath(); c.arc(0, 7, 1.5, 0, Math.PI*2); c.fill();                                                                // the dot
         c.restore();
       } else {
         c.lineWidth = inv ? 1.7 : 1.75;
@@ -8657,7 +8657,7 @@
     if(!moor && !dlg){
       const b = fishing ? (fishing.bank || fishing.bottle || fishing.treasure) : (treasureUnderBoat() || bankUnderBoat() || bottleUnderBoat());
       elHint.classList.add('hidden');                   // fishing speaks for itself: nets, fish, splash
-      bankHint = !!b && !fishing && !anchored && !holdFull();   // over a bank: the hub of the wheel shows a fish (not with a full hold)
+      bankHint = !!b && !fishing && !anchored && !holdFull();   // over a bank or a treasure: the hub of the wheel shows a question mark (not with a full hold)
     }
     else elHint.classList.add('hidden');              // at a quay: no hint window
 

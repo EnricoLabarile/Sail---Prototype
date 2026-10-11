@@ -516,7 +516,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   size it once grew to only at anchor); while sailing its grip is just the hub (`HUB_SAIL_R`), so the spokes still steer. The hub is
   drawn like the compass, in greys then dithered: a light brass bezel (lit top left) with four rivets round a shaded
   face with a glint; sailing, a light face with an ink anchor; at anchor, a dark face, one light rim and a paper anchor (same size both ways). Over a fish bank (not fishing, not
-  at anchor) the anchor on the hub turns into a little fish (ink silhouette, paper eye) to point at its use there.
+  at anchor) the anchor on the hub turns into a **question mark** (was a little fish; Enrico: more generic, a bank and a treasure look alike), with a dashed ring turning round the hub.
   **The long bow and the cannon** (Enrico): **now 0: the original gozzo, the cannon kept** (Enrico; 10 and 5 were tried). The bow can reach `BOW_EXT` px further forward than the old gozzo's
   (`BX` = 21 + `BOW_EXT`, the fore half of `hullPath` stretched by `FX`), the pivot (boat.x/y) where it was, so she turns
   as before; the foredeck, stem post, bow foam, spray and anchor rode moved with it; on the foredeck a **cannon**
