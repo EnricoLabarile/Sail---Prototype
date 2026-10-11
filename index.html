@@ -14,7 +14,7 @@
 // Top-level consts in this script are shared with the game script further down.
 "use strict";
   // ---------- Tuning ----------
-  const ZOOM_DEFAULT = 1.5;          // how close the view of the world is, on a first visit (1 = as before; 2 = twice as close, the pixels twice as big); the Zoom slider on the first screen changes it (and it's remembered)
+  const ZOOM_DEFAULT = 1.2;          // how close the view of the world is, on a first visit (1 = as before; 2 = twice as close, the pixels twice as big); the Zoom slider on the first screen changes it (and it's remembered)
   const HAPTICS_DEFAULT = 0;         // vibration strength on a first visit (0 = off … 1 = strong); the slider on the first screen changes it (and it's remembered)
   // The game's main knobs, all in one place: change a number, save, reload.
   // Each one is used further down (search for its name to see how). When a
@@ -400,6 +400,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Zoom starts at 1.2 (a little closer than before the zoom); the slider now moves in steps of 0.1',
+    ]},
+    {build: '2026-10-11 09:41', items: [
       'The view is closer to the boat (zoomed in); a Zoom slider in Settings sets how close, from 1 (as before) to 2.5',
     ]},
     {build: '2026-10-11 09:36', items: [
@@ -411,13 +414,8 @@
       'Full screen: the game goes full screen when you tap "Set sail" (a switch in Settings); after leaving it, the little button top right brings it back',
       'It can be added to the home screen as an app (browser menu, "Add to home screen"): it then opens full screen, with its own icon',
     ]},
-    {build: '2026-10-11 09:04', items: [
-      'Anchor button on the left, mirroring the slingshot: a short press sets or furls the sail, a long press drops or weighs the anchor',
-      'The long press is half a second longer',
-      'The wheel stays in sight at anchor (its hub no longer works the anchor)',
-    ]},
   ];
-  const BUILD = '2026-10-11 09:41';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-11 09:47';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -1482,7 +1480,7 @@
     <!-- collapsible sections (a tap on the heading opens or shuts it): what's new, settings, the world, all shut at first -->
     <details class="wg-sec" id="wg-sec-changes"><summary id="wg-sum-changes"></summary><div id="wg-changes"></div></details>
     <details class="wg-sec" id="wg-sec-settings"><summary id="wg-sum-settings"></summary>
-    <div class="wg-setting"><label for="wg-zoom" id="wg-zoom-label"></label><input id="wg-zoom" type="range" min="1" max="2.5" step="0.25"><span id="wg-zoom-val"></span></div>
+    <div class="wg-setting"><label for="wg-zoom" id="wg-zoom-label"></label><input id="wg-zoom" type="range" min="1" max="2.5" step="0.1"><span id="wg-zoom-val"></span></div>
     <div class="wg-setting"><label for="wg-haptics" id="wg-haptics-label"></label><input id="wg-haptics" type="range" min="0" max="1" step="0.05"><span id="wg-haptics-val"></span></div>
     <div class="wg-setting"><label for="wg-reel" id="wg-reel-label"></label><input id="wg-reel" type="checkbox"></div>
     <div class="wg-setting"><label for="wg-fs" id="wg-fs-label"></label><input id="wg-fs" type="checkbox"></div></details>
