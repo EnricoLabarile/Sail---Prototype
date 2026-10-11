@@ -399,6 +399,13 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   `WATCH_MARK` = 19 (`drawWatchFace`). The time is `watchHour()` = `DAWN_HOUR` (5) + `dayT`×24, so the golden hour
   falls at about 19.
   The old fish counters round it are hidden (`#wood`); the cargo is shown on the logbook's right page.
+- **Full screen** (`FULLSCREEN_DEFAULT` true in Tuning; switch "Full screen" in the first screen's Settings, `#wg-fs`,
+  `TEXT.worldGen.fullscreen`, kept as `vv.fs`, hidden where the browser can't, `fsCan`): `goFull` asks for it on the
+  "Set sail" tap (browsers allow it only on a tap; `navigationUI: 'hide'`) and locks portrait where it can; after
+  leaving it a little button top right (`#fs-btn`, `updateFsBtn`, `TEXT.hud.fullscreen`) brings it back. iPhones can't
+  (only video goes full screen there): for them, and for anyone, **the web app manifest** (`manifest.webmanifest`,
+  `display: fullscreen`, portrait, `icon-192.png` / `icon-512.png`: a square sail on a gozzo over three waves, ink on
+  paper, made with OpenCV) lets "Add to home screen" open it full screen with its own icon.
 - **First screen: the world generator** (the intro card; `worldGen`, `TEXT.worldGen`; the old intro lines in
   `TEXT.intro` aren't shown for now): a 200 px preview of this world (land in ink, the clusters' zones dotted, home a
   square, the villages rings), a field per world knob (named as in Tuning: `ISLAND_SCALE`, `ISLAND_COUNT`,

@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Vento e Vele</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1b1a17">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="icon-192.png">
 <script>
 // ===== Tuning and texts: first in the file, so they are easy to find and edit (on GitHub too). =====
 // Top-level consts in this script are shared with the game script further down.
@@ -203,6 +208,7 @@
   const FISH_TIME_MIN = 2, FISH_TIME_MAX = 4;   // seconds with the nets out before the haul (with the reel: before the bite)
   // the reel (a Stardew-style minigame): anchored on a bank, a bite, then a ring round the anchor hub is the reel: turned
   // round clockwise it lifts the band up the bar on the right, let alone it sinks; keep the fish in the band to fill the meter
+  const FULLSCREEN_DEFAULT = true;   // the game goes full screen when you tap "Set sail" (a switch in the first screen's Settings changes it, remembered in this browser; iPhones can't, iPads and Android can)
   const REEL_ON = false;             // the fishing minigame (the reel) exists at all: off for now, fishing is automatic (drop anchor on a bank, the net hauls it in); its switch in Settings is hidden
   const REEL_DEFAULT = false;        // the minigame on a first visit (off: the old passive nets, stop on a bank and they haul it in by themselves); the switch in the first screen's Settings changes it (and it's remembered)
   const REEL_ZONE = 0.28;            // the band's height, a share of the bar
@@ -393,6 +399,10 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Full screen: the game goes full screen when you tap "Set sail" (a switch in Settings); after leaving it, the little button top right brings it back',
+      'It can be added to the home screen as an app (browser menu, "Add to home screen"): it then opens full screen, with its own icon',
+    ]},
+    {build: '2026-10-11 09:04', items: [
       'Anchor button on the left, mirroring the slingshot: a short press sets or furls the sail, a long press drops or weighs the anchor',
       'The long press is half a second longer',
       'The wheel stays in sight at anchor (its hub no longer works the anchor)',
@@ -405,11 +415,8 @@
       'The steam is see-through and its plume shorter',
       'Top left, under the hull bar: the paddles\' charge (the crank\'s spring)',
     ]},
-    {build: '2026-10-10 21:41', items: [
-      'No sail at the start: both sails wait in the storehouse at home; you get about with the crank (the paddle wheels)',
-    ]},
   ];
-  const BUILD = '2026-10-11 09:04';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-11 09:15';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -427,6 +434,7 @@
       settings: 'Settings',                         // the heading of the settings (vibration)
       changes:  'New in this build',
       reel:      'Fishing minigame',                 // the switch for the reel (fishing as a minigame instead of the passive nets)
+      fullscreen: 'Full screen',                     // the switch: full screen on setting sail
       vibration: 'Vibration',                       // the slider for the strength of the phone's vibrations (the whole game)
       earlier:  'Earlier: build {time}',                // a heading for each of the few builds before this one
       build:    'Build {time}',                       // top right of the first screen: when this version was made
@@ -684,7 +692,7 @@
       stats: 'You sailed for {min} min {sec} s and caught {fish} fish.',
     },
     restart: 'Set sail again',
-    hud: { hull: 'Hull', spring: 'Paddles' },   // the bars top left: the hull, the paddles' charge (the crank's spring)
+    hud: { hull: 'Hull', spring: 'Paddles', fullscreen: 'Full screen' },   // (fullscreen: the little button top right to go back to full screen)   // the bars top left: the hull, the paddles' charge (the crank's spring)
   };
   // fill the {braces} of a text
   const fmt = (s, o)=> s.replace(/\{(\w+)\}/g, (m, k)=> (o && k in o) ? o[k] : m);
@@ -765,6 +773,10 @@
   #status.hurt .hp-track{border-color:var(--paper);}
   #status.hurt .hp-fill{background:var(--paper);}
   /* the guests' mood: a plate and a bar, top right (no words) */
+  #fs-btn{position:fixed; right:12px; top:calc(12px + env(safe-area-inset-top,0px)); z-index:6; width:34px; height:34px; padding:6px;
+    background:var(--paper); color:var(--ink); border:2px solid var(--ink); border-radius:4px; box-shadow:2px 2px 0 var(--ink); cursor:pointer;}
+  #fs-btn svg{width:100%; height:100%; display:block;}
+  #fs-btn.hidden, body.at-market #fs-btn, body.talking #fs-btn{display:none;}
   #mood{position:fixed; right:12px; top:calc(12px + env(safe-area-inset-top,0px)); z-index:5; display:flex; align-items:center; gap:5px;
     padding:4px 7px; opacity:0; transition:opacity .5s; pointer-events:none;}
   #mood.show{opacity:1;}
@@ -1404,6 +1416,7 @@
   </div>
 
 
+  <button id="fs-btn" class="hidden" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9 V3 H9 M15 3 H21 V9 M21 15 V21 H15 M9 21 H3 V15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square"/></svg></button>
   <div class="hud panel" id="status">
     <div class="hp" role="meter" aria-label="Hull integrity" aria-valuemin="0" aria-valuemax="100" id="hp-meter">
       <span class="hp-label">Hull</span>
@@ -1466,7 +1479,8 @@
     <details class="wg-sec" id="wg-sec-changes"><summary id="wg-sum-changes"></summary><div id="wg-changes"></div></details>
     <details class="wg-sec" id="wg-sec-settings"><summary id="wg-sum-settings"></summary>
     <div class="wg-setting"><label for="wg-haptics" id="wg-haptics-label"></label><input id="wg-haptics" type="range" min="0" max="1" step="0.05"><span id="wg-haptics-val"></span></div>
-    <div class="wg-setting"><label for="wg-reel" id="wg-reel-label"></label><input id="wg-reel" type="checkbox"></div></details>
+    <div class="wg-setting"><label for="wg-reel" id="wg-reel-label"></label><input id="wg-reel" type="checkbox"></div>
+    <div class="wg-setting"><label for="wg-fs" id="wg-fs-label"></label><input id="wg-fs" type="checkbox"></div></details>
     <details class="wg-sec" id="wg-sec-sails"><summary id="wg-sum-sails"></summary><div id="wg-sails"></div></details>
     <details class="wg-sec" id="wg-sec-audio"><summary id="wg-sum-audio"></summary><div id="wg-audio"></div></details>
     <details class="wg-sec" id="wg-sec-dangers"><summary id="wg-sum-dangers"></summary>
@@ -5272,7 +5286,28 @@
   scrollBody.addEventListener('scroll', curlScroll, {passive:true});
   addEventListener('resize', curlScroll);
   requestAnimationFrame(()=> requestAnimationFrame(curlScroll));
+  // ---- full screen (FULLSCREEN_DEFAULT): asked for on the "Set sail" tap (browsers only allow it on a tap), the
+  // portrait orientation locked where it can be; a little button top right goes back to it after leaving ----
+  const fsEl = document.documentElement;
+  const fsCan = !!(fsEl.requestFullscreen || fsEl.webkitRequestFullscreen);
+  let fsOn = FULLSCREEN_DEFAULT;
+  try{ const v = localStorage.getItem('vv.fs'); if(v === '1' || v === '0') fsOn = v === '1'; }catch(e){}
+  function setFs(on){ fsOn = !!on; try{ localStorage.setItem('vv.fs', fsOn ? '1' : '0'); }catch(e){} }
+  const isFull = ()=> !!(document.fullscreenElement || document.webkitFullscreenElement);
+  function goFull(){
+    if(!fsCan || isFull()) return;
+    try{
+      const pr = (fsEl.requestFullscreen || fsEl.webkitRequestFullscreen).call(fsEl, {navigationUI: 'hide'});
+      if(pr && pr.then) pr.then(()=>{ try{ screen.orientation && screen.orientation.lock && screen.orientation.lock('portrait').catch(()=>{}); }catch(e){} }).catch(()=>{});
+    }catch(e){}
+  }
+  const elFsBtn = document.getElementById('fs-btn');
+  elFsBtn.setAttribute('aria-label', TEXT.hud.fullscreen); elFsBtn.title = TEXT.hud.fullscreen;
+  elFsBtn.addEventListener('click', ()=>{ Sfx.init(); buzz(10); goFull(); });
+  let fsShown = null;
+  function updateFsBtn(){ const sh = playing && fsOn && fsCan && !isFull(); if(sh !== fsShown){ fsShown = sh; elFsBtn.classList.toggle('hidden', !sh); } }
   document.getElementById('start-btn').addEventListener('click', ()=>{
+    if(fsOn) goFull();                                        // (on this tap: the browser allows it only now)
     buzz([25,50,40]);
     playing = true; camFx = boat.x; camFy = boat.y;          // the camera starts on the boat
     Sfx.init();
@@ -5573,6 +5608,10 @@
     document.getElementById('wg-reel-label').textContent = T.reel;
     rs.checked = reelOn; rs.addEventListener('change', ()=> setReel(rs.checked));
     if(!REEL_ON) rs.closest('.wg-setting').style.display = 'none';   // (the minigame is off for now: no switch)
+    const fsBox = document.getElementById('wg-fs');                 // full screen on setting sail: on or off
+    document.getElementById('wg-fs-label').textContent = T.fullscreen;
+    fsBox.checked = fsOn; fsBox.addEventListener('change', ()=> setFs(fsBox.checked));
+    if(!fsCan) fsBox.closest('.wg-setting').style.display = 'none';   // (this browser can't: no switch)
     sailEditor(T);
     audioEditor(T);
     const gen = document.getElementById('wg-gen'), reset = document.getElementById('wg-reset');
@@ -8507,6 +8546,7 @@
     updateOarCtl(dt);
     updateSling(dt);
     updateDebris(dt);
+    updateFsBtn();
   }
 
   // ---------- 1-bit rendering ----------
