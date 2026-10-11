@@ -72,6 +72,7 @@
   const STEAM_RATE = 9;              // puffs a second while the wheels drive her (× how hard they drive)
   const STEAM_IDLE = 0.18;           // …while she moves and the wheels only freewheel: this share of the puffs…
   const STEAM_ALPHA = 0.45;          // how see-through the steam is (1 = solid; was 1)
+  const STEAM_WIND = 40;             // px/s the wind carries the steam at full breeze (was 14): the plume streams off downwind
   const STEAM_LIFE = 0.55;           // how long a puff lasts, so how long the plume trails (× the old 2–2.8 s; was 1)
   const STEAM_LIGHT = 0.45;          // …each this much as big and as white (1 = like the driving steam)
   const PADDLE_FREE_VOL = 0.5;       // …and when they only freewheel under sail (dragged round by the water): the same splash at this share of it (× PADDLE_VOL; was 0.22, fading in with her speed)…
@@ -350,7 +351,7 @@
   // sail has its own way to sail. The square sail: the open sea, the wind from astern (and SQUARE_RUN_BONUS on top);
   // almost dead on the wind, weak on the beam. The lateen: the wind on the beam (its best is faster than the square's
   // best on the beam by far) and it can point up toward the wind; poor running free
-  const SAIL_POLAR_SQUARE = [[0,0],[20,0],[35,0.02],[50,0.05],[70,0.12],[90,0.55],[110,0.97],[130,1.12],[150,1.13],[170,1.04],[180,1.03]];
+  const SAIL_POLAR_SQUARE = [[0,0],[20,0],[35,0.02],[50,0.15],[70,0.6],[90,0.95],[110,1.05],[130,1.12],[150,1.13],[170,1.04],[180,1.03]];   // (good on the beam too now: 70° was 0.12, 90° 0.55, 110° 0.97)
   const SAIL_POLAR_LATEEN = [[0,0.02],[20,0.22],[35,0.60],[50,0.90],[70,1.06],[90,1.10],[110,1.02],[130,0.88],[150,0.72],[170,0.60],[180,0.55]];
   // the Marconi (Bermuda) sail: a tall triangle on a boom, the modern one: the best close to the wind, a little less on the
   // beam than the lateen, the weakest running free; no bad tack, no slow yard to swing across
@@ -390,11 +391,12 @@
   const BOAT_TILT = 0.45;            // the boat in 3D: how much the view looks at her from the south (0 = straight down; height then shows only through her roll and pitch)
   const BOAT_HEEL = 0.3;             // how far she heels to leeward with the sail full of wind (radians at full drive, the wind on the beam)
   const BOAT_SEA_MOTION = 1;         // how much the swell rolls and pitches her (1 = as tuned)
+  const BOW_EXT = 10;                // px the bow reaches further forward than the old gozzo's (room for the bow cannon); she still turns where she did
   const MAST_H = 26;                 // the square sail's mast height (the yard just under its top); the lateen's yard climbs to about this
   const SAIL_TONE = 0.72;            // the sail's cloth when drawing well (1 = paper white, 0 = ink); slack or reefed it's a little darker
   const SPARE_SAIL = true;           // both sails ride in the hold (a slot each, the one not rigged); a tap on one in the logbook rigs it
-  const START_RIG = null;            // the sail rigged at the start: 'square' or 'lateen' = that one (the other rides in the hold, or waits at home: START_STORED_SAILS); null = none, she goes on the crank (now: both sails wait at home; was 'square')
-  const START_STORED_SAILS = ['square', 'lateen', 'marconi'];   // sails waiting in the home storehouse when a voyage starts (not aboard: no slot in the hold); [] = all aboard (was ['lateen'])
+  const START_RIG = 'square';        // the sail rigged at the start: 'square', 'lateen' or 'marconi' (the others ride in the hold, or wait at home: START_STORED_SAILS); null = none, she goes on the crank (was null for a while)
+  const START_STORED_SAILS = ['lateen', 'marconi'];   // sails waiting in the home storehouse when a voyage starts (not aboard: no slot in the hold); [] = all aboard (was ['lateen'])
   const TREE_KIND = 'olive';         // the islands' trees: 'olive' (Enrico's sketch: a twisted trunk, a wide crown of spiky leaf sprays) or 'pine' (the old stone pines)
   const PINE_MODELS = 4;             // tree shapes, reused (each also mirrored) all over the map (world)
   // draw the scene on the processor (true) or on the graphics card (false): the frame is tiny, and Firefox
@@ -407,6 +409,12 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'She sets out with the square sail rigged (the lateen and the Marconi wait in the storehouse)',
+      'The square sail now sails well with the wind on the beam too (still poor close to the wind)',
+      'The funnel\'s steam streams off downwind, more strongly',
+      'The boat is longer at the bow, with a cannon on the foredeck: the slingshot\'s shots leave from its muzzle (she still turns about the same point)',
+    ]},
+    {build: '2026-10-11 12:36', items: [
       'A third sail, the Marconi sail (a tall triangle with a boom), waits in the home storehouse: the best close to the wind, quick to change tack, weaker running downwind',
       'Its speed curve and handling can be tuned in the first screen\'s Sails section, like the other two',
     ]},
@@ -416,11 +424,8 @@
     {build: '2026-10-11 11:09', items: [
       'On the paddles the boat turns a little slower (still quicker than under sail)',
     ]},
-    {build: '2026-10-11 10:58', items: [
-      'The boat turns twice as fast',
-    ]},
   ];
-  const BUILD = '2026-10-11 12:36';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-11 13:39';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -6679,7 +6684,7 @@
   // a point in the cone ahead of the bow: off (-1..1 of its half-width) and at d px from the bow
   function slingPoint(off, d){
     const a = boat.angle + off*SLING_CONE_DEG*Math.PI/360;
-    const x0 = boat.x + Math.cos(boat.angle)*16, y0 = boat.y + Math.sin(boat.angle)*16;
+    const x0 = boat.x + Math.cos(boat.angle)*(16 + BOW_EXT), y0 = boat.y + Math.sin(boat.angle)*(16 + BOW_EXT);   // (from the bow cannon's muzzle)
     return [x0, y0, x0 + Math.cos(a)*d, y0 + Math.sin(a)*d];
   }
   const ammoLeft = ()=> slingAmmo === 'net' ? nets : SLING_CHARGES ? charges : Infinity;
@@ -8420,8 +8425,8 @@
         const ca=Math.cos(boat.angle), sa=Math.sin(boat.angle);
         while(bowAcc > 1){
           bowAcc -= 1;
-          const side = Math.random() < 0.5 ? -1 : 1, along = 21 - Math.random()*Math.random()*12;   // most near the stem
-          const half = 10.5*Math.max(0, 1 - Math.pow((along-5)/16, 2)) + 0.5;
+          const side = Math.random() < 0.5 ? -1 : 1, along = 21 + BOW_EXT - Math.random()*Math.random()*12;   // most near the stem
+          const half = 10.5*Math.max(0, 1 - Math.pow((along-5)/(16 + BOW_EXT), 2)) + 0.5;
           const out = rand(4, 14)*(0.5 + k);                                   // flung outward
           bowSpray.push({x: boat.x + ca*along - sa*side*half, y: boat.y + sa*along + ca*side*half,
                          vx: -sa*side*out + ca*rand(-2, 4)*k, vy: ca*side*out + sa*rand(-2, 4)*k,
@@ -8448,12 +8453,13 @@
         steam.push({x: boat.x - ca*4 + rand(-0.6, 0.6), y: boat.y - sa*4 + rand(-0.6, 0.6), z: 10, vz: rand(12, 18)*(0.6 + 0.4*k),
                     r: rand(1.4, 2)*(0.5 + 0.8*k), a: Math.min(1, 0.35 + 0.75*k), life: 0, max: rand(2, 2.8)*(0.55 + 0.6*k)*STEAM_LIFE, seed: Math.random()*6.3});
       }
-      const dw = windAngle + boat.windOff + Math.PI, wx = Math.cos(dw)*windStrength*14, wy = Math.sin(dw)*windStrength*14;
+      const dw = windAngle + boat.windOff + Math.PI, wx = Math.cos(dw)*windStrength*STEAM_WIND, wy = Math.sin(dw)*windStrength*STEAM_WIND;
       for(let i=steam.length-1;i>=0;i--){
         const f = steam[i];
         f.life += dt;
         if(f.life >= f.max){ steam.splice(i,1); continue; }
-        f.x += wx*dt; f.y += wy*dt; f.z += f.vz*dt; f.vz *= Math.exp(-1.2*dt);
+        const catchK = Math.min(1, 0.35 + f.life*1.5);           // it takes the wind more as it rises clear of the boat
+        f.x += wx*catchK*dt; f.y += wy*catchK*dt; f.z += f.vz*dt; f.vz *= Math.exp(-1.2*dt);
       }
     } else steam.length = 0;
     for(let k=wake.length-1;k>=0;k--){
@@ -8483,6 +8489,9 @@
     if(drawnSD && !moor && !boat.whirl){                    // the drawn map's coasts: pushed back out along the slope
       const d = drawnDist(boat.x, boat.y);
       if(d < hullR){ const [nx, ny] = drawnNormal(boat.x, boat.y); impact(nx, ny); boat.x += nx*(hullR - d); boat.y += ny*(hullR - d); boat.speed *= 0.25; }
+      // the long bow (BOW_EXT) reaches past the hull's circle: a point near the stem is kept off the coast too
+      const bxp = boat.x + Math.cos(boat.angle)*(14 + BOW_EXT), byp = boat.y + Math.sin(boat.angle)*(14 + BOW_EXT), db = drawnDist(bxp, byp);
+      if(BOW_EXT > 0 && db < 4){ const [nx, ny] = drawnNormal(bxp, byp); impact(nx, ny); boat.x += nx*(4 - db); boat.y += ny*(4 - db); boat.speed *= 0.25; }
     }
     for(const wk of wrecks) if(!wk.seen && wdist(boat.x, boat.y, wk.x, wk.y) < 220){ wk.seen = true; toast(TEXT.bottles.wreck); buzz([20,40,20]); }   // the wreck from the message, first sighted
     // rock collision
@@ -10529,13 +10538,15 @@
     const FB = 3;                                          // freeboard: the gunwale's height above the water
     L(0);
     // hull outline (boat frame, bow at +x): a gozzo, beamy and pointed at both ends (no transom)
+    // (the bow reaches BOW_EXT further forward than the old gozzo's 21: the fore half stretched, the pivot where it was)
+    const BX = 21 + BOW_EXT, FX = BX/21;
     const hullPath=(s)=>{
       ctx.beginPath();
-      ctx.moveTo(21*s,0);
-      ctx.bezierCurveTo(16*s,-7.5*s, 8*s,-10.2*s, 0,-10.2*s);
+      ctx.moveTo(BX*s,0);
+      ctx.bezierCurveTo(16*FX*s,-7.5*s, 8*FX*s,-10.2*s, 0,-10.2*s);
       ctx.bezierCurveTo(-8*s,-10.2*s, -15*s,-7.2*s, -19*s,0);
       ctx.bezierCurveTo(-15*s,7.2*s, -8*s,10.2*s, 0,10.2*s);
-      ctx.bezierCurveTo(8*s,10.2*s, 16*s,7.5*s, 21*s,0);
+      ctx.bezierCurveTo(8*FX*s,10.2*s, 16*FX*s,7.5*s, BX*s,0);
       ctx.closePath();
     };
     // shadow on the water: further off when a swell lifts her
@@ -10552,7 +10563,7 @@
           const a = (i/(n-1) - 0.5)*2.2 + Math.sin(t*13 + i*2.1)*0.25;       // round the stem, jittering
           const d = 1.5 + k*2.5 + Math.sin(t*17 + i*3.7)*0.8*k;
           const r = (0.7 + 1.3*k)*(0.7 + 0.5*Math.abs(Math.sin(t*11 + i*1.9)));
-          const x = 20.5 + Math.cos(a)*d, y = Math.sin(a)*(d + 2.5*k);
+          const x = BX - 0.5 + Math.cos(a)*d, y = Math.sin(a)*(d + 2.5*k);
           P.moveTo(x + r, y); P.arc(x, y, r, 0, Math.PI*2);
         }
         ctx.globalAlpha = 0.5 + 0.5*k; ctx.strokeStyle = INKC; ctx.lineWidth = 1.2; ctx.stroke(P);
@@ -10583,9 +10594,9 @@
     if(!blink){
       ctx.fillStyle = V(0.9); hullPath(0.8); ctx.fill();
       ctx.save(); hullPath(0.8); ctx.clip();
-      ctx.fillStyle = PAPERC; ctx.fillRect(12.5, -12, 12, 24); ctx.fillRect(-24, -12, 11.5, 24);
+      ctx.fillStyle = PAPERC; ctx.fillRect(12.5, -12, 12 + BOW_EXT, 24); ctx.fillRect(-24, -12, 11.5, 24);
       ctx.strokeStyle = INKC; ctx.lineWidth = 0.6; ctx.globalAlpha = 0.6; ctx.beginPath();
-      for(const yy of [-3, 0, 3]){ ctx.moveTo(12.5, yy); ctx.lineTo(21, yy*0.4); ctx.moveTo(-12.5, yy); ctx.lineTo(-19, yy*0.4); }
+      for(const yy of [-3, 0, 3]){ ctx.moveTo(12.5, yy); ctx.lineTo(BX, yy*0.4); ctx.moveTo(-12.5, yy); ctx.lineTo(-19, yy*0.4); }
       ctx.stroke(); ctx.globalAlpha = 1;
       ctx.lineWidth = 1.1; ctx.beginPath(); ctx.moveTo(12.5, -10); ctx.lineTo(12.5, 10); ctx.moveTo(-12.5, -10); ctx.lineTo(-12.5, 10); ctx.stroke();   // the decks' edges
       ctx.restore();
@@ -10620,19 +10631,35 @@
       }
     }
 
+    // the bow cannon on the foredeck (the slingshot's shots leave from its muzzle): a dark wooden carriage on two little
+    // wheels, the barrel along the centreline, thick at the breech with a knob, a ring at the muzzle
+    if(!g){
+      const cb = 14, cm = BX - 2.5;                          // breech and muzzle (boat frame x)
+      L(FB); ctx.fillStyle = V(0.3); ctx.strokeStyle = INKC; ctx.lineWidth = 0.8;
+      ctx.beginPath(); ctx.rect(cb - 1, -3, 9, 6); ctx.fill(); ctx.stroke();                     // the carriage
+      for(const sy of [-3.6, 3.6]){ ctx.fillStyle = INKC; ctx.beginPath(); ctx.ellipse(cb + 3.5, sy, 2, 0.9, 0, 0, Math.PI*2); ctx.fill(); }   // its wheels
+      ctx.setTransform(base); ctx.lineCap = 'round';
+      const [k0, k1] = P(cb - 1.6, 0, FB + 2.6), [r0, r1] = P(cb, 0, FB + 2.6), [m0, m1] = P(cm, 0, FB + 3.4);
+      ctx.strokeStyle = INKC; ctx.lineWidth = 4.2; ctx.beginPath(); ctx.moveTo(r0, r1); ctx.lineTo(m0, m1); ctx.stroke();   // the barrel
+      ctx.strokeStyle = V(0.45); ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(r0, r1 - 0.8); ctx.lineTo(m0, m1 - 0.8); ctx.stroke();   // a dull gleam along it
+      ctx.fillStyle = INKC; ctx.beginPath(); ctx.arc(k0, k1, 1.7, 0, Math.PI*2); ctx.fill();                           // the knob at the breech
+      ctx.beginPath(); ctx.arc(m0, m1, 2.6, 0, Math.PI*2); ctx.fill();                                                   // the muzzle ring
+      ctx.fillStyle = V(0.15); ctx.beginPath(); ctx.arc(m0, m1, 1.2, 0, Math.PI*2); ctx.fill();
+      L(FB);
+    }
     // the gozzo's tall stem post (the 'capone') rising over the bow, and a short stern post
     {
       ctx.setTransform(base); ctx.lineCap = 'round'; ctx.strokeStyle = INKC;
-      const [a0, a1] = P(20.4, 0, FB), [b0, b1] = P(22.6, 0, FB + 7), [c0, c1] = P(-18.4, 0, FB), [d0, d1] = P(-19.6, 0, FB + 3.5);
+      const [a0, a1] = P(BX - 0.6, 0, FB), [b0, b1] = P(BX + 1.6, 0, FB + 7), [c0, c1] = P(-18.4, 0, FB), [d0, d1] = P(-19.6, 0, FB + 3.5);
       ctx.lineWidth = 2.6; ctx.beginPath(); ctx.moveTo(a0, a1); ctx.lineTo(b0, b1); ctx.moveTo(c0, c1); ctx.lineTo(d0, d1); ctx.stroke();
       ctx.fillStyle = INKC; ctx.beginPath(); ctx.arc(b0, b1, 1.6, 0, Math.PI*2); ctx.fill();
       L(FB);
     }
     if(!g && anchored){                                // anchor rode running down from the bow
       ctx.strokeStyle = INKC; ctx.lineWidth = 1*LWK; ctx.setLineDash([2,1.5]);
-      ctx.beginPath(); ctx.moveTo(19,0); ctx.quadraticCurveTo(26, 2+Math.sin(t*1.5)*1.5, 31, 0); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(BX-2,0); ctx.quadraticCurveTo(BX+5, 2+Math.sin(t*1.5)*1.5, BX+10, 0); ctx.stroke();
       ctx.setLineDash([]);
-      ctx.beginPath(); ctx.arc(31, 0, 2.2, 0, Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(BX+10, 0, 2.2, 0, Math.PI*2); ctx.stroke();
     }
     // tiller inside the stern: swings opposite to the rudder blade
     ctx.strokeStyle = INKC; ctx.lineWidth = 1.6*LWK; ctx.lineCap='round';

@@ -472,7 +472,13 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   drawn like the compass, in greys then dithered: a light brass bezel (lit top left) with four rivets round a shaded
   face with a glint; sailing, a light face with an ink anchor; at anchor, a dark face, one light rim and a paper anchor (same size both ways). Over a fish bank (not fishing, not
   at anchor) the anchor on the hub turns into a little fish (ink silhouette, paper eye) to point at its use there.
-  **The boat is a gozzo** (`hullPath`: beamy, pointed at both ends, no transom; white sides with a dark band along the top, the open hull inside a shade darker with a little planked deck at the bow and one at the stern, two thwarts, the tall stem post, the 'capone', rising over the bow and a short stern post carrying the rudder and tiller). **The boat in 3D** (`drawBoat`): she is a small 3D model projected each frame: a point (x, y, z) of hers (bow +x,
+  **The long bow and the cannon** (Enrico): the bow reaches `BOW_EXT` (10 px) further forward than the old gozzo's
+  (`BX` = 21 + `BOW_EXT`, the fore half of `hullPath` stretched by `FX`), the pivot (boat.x/y) where it was, so she turns
+  as before; the foredeck, stem post, bow foam, spray and anchor rode moved with it; on the foredeck a **cannon**
+  (drawn in `drawBoat`, the player's boat only: a dark carriage on two wheels, the barrel from x 14 to `BX` − 2.5, a
+  knob at the breech, a ring at the muzzle); the slingshot's shots leave from its muzzle (`slingPoint`, 16 + `BOW_EXT`).
+  Collisions are still a circle round the pivot (`hullR`) plus, on the drawn map, a point near the stem kept 4 px off
+  the coast. **The boat is a gozzo** (`hullPath`: beamy, pointed at both ends, no transom; white sides with a dark band along the top, the open hull inside a shade darker with a little planked deck at the bow and one at the stern, two thwarts, the tall stem post, the 'capone', rising over the bow and a short stern post carrying the rudder and tiller). **The boat in 3D** (`drawBoat`): she is a small 3D model projected each frame: a point (x, y, z) of hers (bow +x,
   starboard +y, up +z) is rolled (`B.roll`, + lifts starboard) and pitched (`B.pitch`, + lifts the bow), then seen from
   above with the view tilted toward the south (`BOAT_TILT` 0.45 in Tuning: height shows as a shift up the screen, like
   the trees); `P(x,y,z)` projects a point, `L(z)` sets the canvas to draw flat on the plane at height z. The hull is a
@@ -494,7 +500,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   The boat's square sail is drawn `SAIL_SIZE` (1.3) times the old size, its cloth a dotted grey `SAIL_TONE` (0.72; 1 =
   paper), darker when slack or reefed. At anchor (and moored) the cloth is drawn gathered up to the yard (`boat.furl`,
   eased; a look only: the sail stays set as far as the physics goes), and it spreads again as the anchor comes up.
-  **Two sails** (`SPARE_SAIL` in Tuning): **she sets out with no sail** (Enrico, for now: `START_RIG` null and both sails in the storehouse, `START_STORED_SAILS` ['square', 'lateen']: she gets about on the crank's paddle wheels; before: the square rigged, `START_RIG` = 'square'; with
+  **Two sails** (`SPARE_SAIL` in Tuning): **she sets out with the square sail rigged** (`START_RIG` 'square' again; the lateen and the Marconi in the storehouse, `START_STORED_SAILS` ['lateen', 'marconi']; for a while she set out with none, `START_RIG` null; with
   null, `boat.rig` null: the wind gives her nothing, `speedFactor` is 0, no mast is drawn either; she goes on the
   oars) and **the other sail waits in the home storehouse** (`START_STORED_SAILS` ['lateen'] in Tuning: `homeStore.sails` at the start and at `resetStore`; it takes no slot until it's taken aboard there; with [] it rides in the hold as before): every sail not rigged takes one of the `HOLD_MAX` slots (`sailsInHold`, `spareSlots`, counted in
   `slotsUsed` and at the market in `mkSlotsAfter`), first in the Cargo grid, a tappable slot with its own icon in
@@ -502,8 +508,8 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   new sail bent on furled and spreading) and the one she carried (if any) goes into the hold in its place. Each sail has its own speed curve, in Tuning
   (`SAIL_POLAR_SQUARE`, `SAIL_POLAR_LATEEN`: [degrees off the wind, share of top speed]; `POLARS` picks by `boat.rig`):
   made **starker than real life** so each sail forces its own way of sailing: the **square** one is for the open sea
-  with the wind aft of the beam (Enrico's curve: 90° 0.55, 110° 0.97, 130° 1.12, 150° 1.13, 170° 1.04, 180° 1.03, plus `SQUARE_RUN_BONUS` 0.25 running downwind: `downwindBonus` is the square
-  sail's only) and nearly dead on the wind (35° 0.02, 50° 0.05, 70° 0.12); the **lateen**
+  with the wind aft of the beam, and since Enrico asked **good on the beam too** (70° 0.6, 90° 0.95, 110° 1.05; was 0.12 / 0.55 / 0.97; 130° 1.12, 150° 1.13, 170° 1.04, 180° 1.03, plus `SQUARE_RUN_BONUS` 0.25 running downwind: `downwindBonus` is the square
+  sail's only) and nearly dead on the wind (35° 0.02, 50° 0.15); the **lateen**
   is for the wind on the beam (50° 0.90, 70° 1.06, beam 1.10, 110° 1.02) and can point up (35° 0.60, 20° 0.22); a
   rounder curve aft of the beam, falling off gently to 0.55 dead downwind (130° 0.88, 150° 0.72, 170° 0.60): pick the sail by the course to the next port. The wind card
   draws the curves with the square's run bonus (radius 40, room for 1.25×).
@@ -579,7 +585,8 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   `STEAM_LIGHT` 0.45 the size/whiteness while she moves (> 3 px/s) with the wheels only freewheeling; none moored or
   still): a short dark funnel amidships (x −4, `FB` to `FB`+7, in `drawBoat`, every boat) and puffs from its top
   (`steam`, updated with the bow spray, drawn by `drawSteam` right after the boat): each rises (`z`, shown as a shift up
-  the screen × `BOAT_TILT`), swells (×4.5) and drifts downwind; the air stays put, so she leaves them astern. Drawn as
+  the screen × `BOAT_TILT`), swells (×4.5) and streams off downwind (`STEAM_WIND` 40 px/s at full breeze, was 14; taking
+  the wind more as it rises clear, 0.35 → 1 over its first ~0.4 s); the air stays put, so she leaves them astern. Drawn as
   cartoon clouds: the young puffs all stroked in ink then filled with paper, so they merge into one outlined plume (soft
   greys vanished in the dither); old ones break into dotted grey wisps.
   **Paddle wheels, not oars** (pedalò style; in `drawBoat`, every boat): two upright wheels, one a side amidships
