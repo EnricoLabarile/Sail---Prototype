@@ -230,7 +230,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   the bar top right (`#mood`: a plate icon and a bar, no words, starts at `SAT_START`, pulses when it changes); there's
   no game over for it. **The mood is off for now** (`SATISFACTION_ON` = false: no bar, dinners don't move it, so the
   masseria keeps the look of `SAT_START`). The voyage still ends only by sinking (`#gameover`).
-  Each has a bay, a wooden pier, a lighthouse with a sweeping beam, a pixel-art town, 17 buoys at ~616 px (`BUOYS_PER_VILLAGE`, `BUOY_R`) (toasts "Entering / Leaving the waters of …"; leaving counts 150 px past the buoys).
+  Each has a bay, a wooden pier, a lighthouse with a sweeping beam, a pixel-art town, 17 buoys at ~616 px (`BUOYS_PER_VILLAGE`, `BUOY_R`): **off now** (`BUOY_RINGS` false, Enrico will place buoys by hand; the "You approach / Leaving …" toasts are gone with them; the buoys' drawing, knock and fog window stay for his).
 - **Biomes** (Tuning "Biomes", world): the sea is split into regions with their own weather; for now one, the **stormy
   West** (`inWest(x, y)`: more than `WEST_FROM` 800 px west of home, out to the far side of the wrapped world, and within
   `WEST_HALF_H` 1300 px of home's latitude; `westPoint()` picks a spot in it; Westa's village lies in it). It gets
@@ -274,7 +274,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   north-west, an olive grove in three rows to the south; no drying net). Home's `yard` also clears the palace's
   ground of macchia at every level. Night lights follow the level (court and trulli lit at the palace, plus the chapel).
 - **Home waters** (`SAFE_R` ≈ 665 px round home): no whirlpools (pull ring included) and no big waves (any that drift in
-  die down harmlessly); a ring of 22 buoys (`HOME_BUOYS`) marks the edge, with toasts "Leaving home waters" / "Back in home waters".
+  die down harmlessly); a ring of 22 buoys (`HOME_BUOYS`) marked the edge (off now, `BUOY_RINGS`; its toasts gone).
   Inside them, a calm **lagoon** (`LAGOON_R` ≈ 455 px round home): no islands and no rocks, room to learn the controls.
 - **Wind:** random from the start (the old guiding wind toward Nordania, `guideWind`, is off), then the normal shifting winds.
   **Fair wind** (a power, an **item in the Cargo**, with the gifts: it takes no slot; `powerHTML`, icon `ITEM_ICONS['Fair wind']`,

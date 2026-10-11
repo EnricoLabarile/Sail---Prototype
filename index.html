@@ -296,7 +296,8 @@
   const LAGOON_R = Math.round(650*WORLD_K);        // calm lagoon round home: no islands, no rocks (world)
   const DANGER_RING = Math.round(3400*WORLD_K);    // the sea gets wilder out to this distance from home (world)
   const BUOY_R = Math.round(880*WORLD_K);          // radius of each village's ring of buoys (world)
-  const BUOYS_PER_VILLAGE = Math.round(24*WORLD_K), HOME_BUOYS = Math.round(32*WORLD_K);   // buoys per ring (world)
+  const BUOY_RINGS = false;          // rings of buoys round each village and round home waters: off (Enrico will place buoys by hand) (world)
+  const BUOYS_PER_VILLAGE = Math.round(24*WORLD_K), HOME_BUOYS = Math.round(32*WORLD_K);   // buoys per ring, with BUOY_RINGS (world)
   const OPEN_ROCK_TRIES = knob('OPEN_ROCK_TRIES', MAP_DRAWN ? 0 : Math.round(127*WK2));     // clusters of rocks tried out in open water (none on the drawn map) (world)
   const ROCK_GAP = 64;               // px of clear water at least between two rocks, or a rock and the shore, unless they touch (about twice the boat's length, so she never gets stuck) (world)
   const ROCK_BIG = 0.4;              // share of rocks drawn bigger than the usual (up to ROCK_BIG_MAX ×) (world)
@@ -439,6 +440,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'No more rings of buoys round home and the villages, and no more "Leaving home" / "You approach…" messages',
+    ]},
+    {build: '2026-10-11 21:16', items: [
       'Fish banks and treasures now both look like the treasures used to: a smaller dark patch, thinner rings, a bubble now and then',
     ]},
     {build: '2026-10-11 21:11', items: [
@@ -447,11 +451,8 @@
     {build: '2026-10-11 21:04', items: [
       'Fixed: the boat set out with 100 hull points instead of 30, so the hearts stayed full until many knocks later',
     ]},
-    {build: '2026-10-11 20:56', items: [
-      'Fixed: a half heart showed as a full one on some phones, so a knock (half a heart) seemed to take nothing',
-    ]},
   ];
-  const BUILD = '2026-10-11 21:16';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-11 21:43';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -523,10 +524,6 @@
       castawaySeen:   'Someone is waving from that island! Drop anchor close by',   // the first time she comes near the castaway
       castawayAboard: 'The castaway is aboard: take them to {village}',             // they swim out and climb in
       castawayHome:   '{village} welcomes the castaway home: +{n} coins!',          // tied up there with them aboard
-      homeBack:   'Back home',
-      homeLeave:  'Leaving home',
-      villageIn:  'You approach {village}',
-      villageOut: 'Leaving {village}',
       gift:       'Come again! This is on the house: {gift}!',
       delivered:  'Delivered for tonight\'s dinner',
       orderReady: 'Tonight\'s order is ready',
@@ -3399,8 +3396,7 @@
   // its lighthouse, marking the edge of its waters
   // (BUOY_R, BUOYS_PER_VILLAGE: see Tuning)
   const buoys = [];
-  for(const v of VILLAGES){
-    v.inside = null;                                      // unknown until the first frame (no message then)
+  if(BUOY_RINGS) for(const v of VILLAGES){
     for(let k=0;k<BUOYS_PER_VILLAGE;k++){
       const a = k/BUOYS_PER_VILLAGE*Math.PI*2 + rand(-0.04,0.04);
       for(const dr of [0,40,-40,80,-80,130,-130,180]){
@@ -3413,7 +3409,7 @@
   }
   // and a ring round home waters (SAFE_R): inside, no whirlpools and no big waves
   // (HOME_BUOYS: see Tuning)
-  for(let k=0;k<HOME_BUOYS;k++){
+  if(BUOY_RINGS) for(let k=0;k<HOME_BUOYS;k++){
     const a = k/HOME_BUOYS*Math.PI*2 + rand(-0.03,0.03);
     for(const dr of [0,30,-30,60,-60,100,-100]){
       const r = SAFE_R + dr, x = wrapX(START.x + Math.cos(a)*r), y = wrapY(START.y + Math.sin(a)*r);
@@ -3422,7 +3418,6 @@
       break;
     }
   }
-  let homeInside = null;
   const homeLanes = lanes.filter(L=> L.a === 0).sort(()=> Math.random() - 0.5), farLanes = lanes.filter(L=> L.a !== 0);
   const dealt = [...Array.from({length: homeLanes.length ? TRADERS_HOME : 0}, (_,k)=> homeLanes[k % homeLanes.length]),
                  ...Array.from({length: farLanes.length ? TRADERS_VILLAGES : 0}, (_,k)=> farLanes[k % farLanes.length])];
@@ -8108,23 +8103,7 @@
         buzz([22,35,14]); Sfx.buoy();
       }
     }
-    { // home waters, the same way
-      const d = wdist(boat.x, boat.y, START.x, START.y);
-      if(homeInside === null) homeInside = d < SAFE_R;
-      else if(!homeInside && d < SAFE_R){ homeInside = true; if(playing){ toast(TEXT.toasts.homeBack); buzz([12,40,12]); } }
-      else if(homeInside && d > SAFE_R + 150){ homeInside = false; if(playing){ toast(TEXT.toasts.homeLeave); buzz(12); } }
-    }
-    for(const v of VILLAGES){
-      const d = wdist(boat.x, boat.y, v.isl.x, v.isl.y);
-      if(v.inside === null){ v.inside = d < BUOY_R; continue; }
-      if(!v.inside && d < BUOY_R){
-        v.inside = true;
-        if(playing){ toast(fmt(TEXT.toasts.villageIn, {village: v.name})); buzz([12,40,12]); }
-      } else if(v.inside && d > BUOY_R + 150){             // a little past the buoys, so it doesn't flicker
-        v.inside = false;
-        if(playing){ toast(fmt(TEXT.toasts.villageOut, {village: v.name})); buzz(12); }
-      }
-    }
+    // (the toasts on entering and leaving home's and the villages' waters went with their rings of buoys)
   }
   // a buoy: a striped float riding the swell, a pole with a cone topmark,
   // and a small lamp that blinks after dusk
