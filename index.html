@@ -57,7 +57,7 @@
   const MAX_SPEED = 50;              // px/s: reference speed (collision damage is scaled by it too)
   const WIND_BOOST = 0.96;           // how much the wind gives: sets the top speed (~52 px/s dead downwind in full wind)
   const BOAT_ACCEL = 0.7/1.2;        // how quickly she gathers way (higher = quicker); slowing down is separate
-  const TURN_RATE = 0.6;             // rad/s at full rudder (was 0.42: easier to turn)
+  const TURN_RATE = 1.2;             // rad/s at full rudder (was 0.6, before that 0.42: she turns twice as fast)
   const ROW_TURN_MULT = 2;           // turning is this much quicker on the oars
   const ROW_ENTER = 10;              // px/s: slower than this, with the wind unable to help, and the oars come out (sail brailed up)
   const ROW_EXIT = 16;               // px/s: once the sail could drive her faster than this again, it's set and the oars come in
@@ -401,6 +401,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The boat turns twice as fast',
+    ]},
+    {build: '2026-10-11 10:50', items: [
       'The lateen sail looks as it did before (the Wind Waker look is gone)',
       'The slingshot throws three stones: one straight ahead, one to the left and one to the right, inside the cone',
     ]},
@@ -410,11 +413,8 @@
     {build: '2026-10-11 09:47', items: [
       'Zoom starts at 1.2 (a little closer than before the zoom); the slider now moves in steps of 0.1',
     ]},
-    {build: '2026-10-11 09:41', items: [
-      'The view is closer to the boat (zoomed in); a Zoom slider in Settings sets how close, from 1 (as before) to 2.5',
-    ]},
   ];
-  const BUILD = '2026-10-11 10:50';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-11 10:58';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
