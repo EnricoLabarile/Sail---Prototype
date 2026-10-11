@@ -71,7 +71,7 @@
 
   // -- Boat --
   const MAX_SPEED = 50;              // px/s: reference speed (collision damage is scaled by it too)
-  const WIND_BOOST = 0.96;           // how much the wind gives: sets the top speed (~52 px/s dead downwind in full wind)
+  const WIND_BOOST = 0.768;          // how much the wind gives: sets the top speed (~42 px/s dead downwind in full wind; was 0.96, cut to 80%)
   const BOAT_ACCEL = 0.7/1.2;        // how quickly she gathers way (higher = quicker); slowing down is separate
   const TURN_RATE = 1.2;             // rad/s at full rudder (was 0.6, before that 0.42: she turns twice as fast)
   const ROW_TURN_MULT = 1.5;         // turning is this much quicker on the paddles (oars) than under sail (was 2: with TURN_RATE 1.2 that gave 2.4 rad/s, a little too fast)
@@ -442,6 +442,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The boat is slower under sail: top speed cut to 80%',
+    ]},
+    {build: '2026-10-11 21:57', items: [
       'The sail swells out much more when it draws at its best, the Marconi most of all',
     ]},
     {build: '2026-10-11 21:43', items: [
@@ -450,11 +453,8 @@
     {build: '2026-10-11 21:16', items: [
       'Fish banks and treasures now both look like the treasures used to: a smaller dark patch, thinner rings, a bubble now and then',
     ]},
-    {build: '2026-10-11 21:11', items: [
-      'Fish banks and treasures have their ripples back (the same rings on both), so they are easier to spot',
-    ]},
   ];
-  const BUILD = '2026-10-11 21:57';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-11 22:52';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in

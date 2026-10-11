@@ -686,7 +686,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   in; weighing it head to wind, the oars take her. Turning is easier in general (`TURN_RATE` = 1.2; was 0.6, doubled by Enrico); on the paddles × `ROW_TURN_MULT` (1.5; was 2, too fast after the doubling). To stop on a fish
   bank, drop anchor (the nets go over after 0.25 s).
   The boat gathers way slowly (`BOAT_ACCEL` = 0.4/1.2: the speed approaches its target at that rate, so it was divided by 1.2 when the top speed went up 20%, keeping the same push in px/s²; slowing down unchanged).
-  Top speed is kept modest (`WIND_BOOST` = 0.96, ~52 px/s dead downwind in full wind; running dead downwind adds only up to +10%, `downwindBonus`).
+  Top speed is kept modest (`WIND_BOOST` = 0.768, cut to 80% of 0.96 by Enrico, ~42 px/s dead downwind in full wind; running dead downwind adds only up to +10%, `downwindBonus`).
   Oars never come out because of the anchor (nor while getting under way after weighing it).
   The **logbook** button (bottom left corner, under the compass) is just the book, no round knob: a 76 px icon
   (`LOG_PX`) drawn like the wheel (greys, then dithered: dark leather, spine bands, metal corners, strap; drawn in 56
