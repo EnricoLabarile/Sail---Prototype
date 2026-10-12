@@ -630,6 +630,12 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   over `CRANK_FULL_RATE` (5 rad/s; a turn a second is 6.3) and `boat.rowV` = `SPRING_SPEED` × `oarSpin`; stop cranking
   and they let go; not at anchor, moored or in a whirlpool; the gear still ticks and grinds; the ring on the plate shows
   the push; Enter/Space on the crank drives them a second. With `CRANK_DIRECT` false the wound spring below is back.
+  **Its size and touch zone** (Enrico: more room): `#crank` is now a touch zone in the bottom right corner (130 × 100 px,
+  more if the crank is bigger) and the SVG inside it is the crank, sized by `layoutCrank` (on showing, on resize and once
+  a second while shown): as big as the corner allows without its circle reaching the wheel's grip (84 × `WH_S` round
+  the wheel's middle, + 6 px), from 84 px (its old size, never smaller) up to `CRANK_MAX` (124; ~84 on a 360 px wide
+  phone, ~98 at 412); the sling moves up above it if needed. A touch in the zone that falls on the wheel's grip is handed
+  to the wheel (`inWheelGrip`, `wheelDown`, the wheel's pointerdown handler); `crankAngle` measures from the SVG's middle.
   **The spring and the crank** (`SPRING_PADDLES` in Tuning, on; false = the old rhythmic oar button below): the
   paddle wheels run off a wound spring (`spring` 0..1). The crank (`#crank`, 84 px (was 132; viewBox ±36 now that the hint arrow above it is gone), in the bottom right corner mirroring the logbook bottom left (same centre, z-index over the wheel's canvas), shown while playing (at anchor too: it can be wound there; not while tied up at a pier), hidden at the market and while someone talks; a winding in progress is let go and springs back: a toothed gear
   (16 teeth, a dotted pattern fill `#crank-dots`) turning with the arm, a hatched plate with three rivets, an arm with a
