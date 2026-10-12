@@ -73,6 +73,17 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   without the dither went from ~4.8 / 5.4 / 6.9 ms (open sea / cluster / village at night) to ~2.8 / 3.2 / 4.0 ms; the
   slowest tile bake from ~23 to ~13 ms.) The island layers are drawn on the
   wrapped copies of the world out to `320 + MAX_RMAX` past the edge, so a big island never pops at the seam.
+  **Combined static tiles on the drawn map** (`COMBINE_STATIC` in Tuning, `comboTile`, `drawComboTiles`, `clearCombo`):
+  the drawn shallows, the islands' shallows, the islands' land and the drawn land are baked together, in that order,
+  into one set of world tiles (`ISL_TILE`, LRU `COMBO_MAX` 90; `rebakeHome` clears them), so the frame draws one
+  `drawImage` a tile instead of four full-screen passes (~0.85 ms each in headless Chromium); the islands' crawling
+  surf (`drawIslandSurf`, never over the drawn land: `drawnDist` < 1 skipped) and the mooring lines go live on top.
+  `drawDrawnStatic` writes its pixels through a scratch canvas (`drawnScratch`), since `putImageData` would wipe what's
+  under it. `drawDeep` is skipped while there are no big waves (`ROLLER_RATE` and `SURF_WAVE_CHANCE` 0, as on the
+  drawn map). `viewW()` / `viewH()` are cached (`measureView` in `resize` and a ResizeObserver): reading `clientWidth`
+  every frame after the HUD's style writes forced a layout each time. Measured (headless, home, 393×851 at 2.75×):
+  the scene from ~7.8 to ~4.7 ms a frame. To time the scene by section, flush the canvas with `getImageData(0,0,1,1)`
+  around each call in `draw()` (see the profiling tip below).
   Every picture drawn into the scene (baked islands, cloud sprites, fog, soft dots) is a memory canvas too (`sceneCtx`):
   a graphics-card canvas drawn into a memory one is read back from the card, which gave 26 ms stalls one frame in 20.
   The frame goes to the GPU with `texSubImage2D` (same texture, written in place). The night light mask is built per
@@ -517,7 +528,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   gone after `TUT_DROP_T` = 3 s, or as soon as the anchor goes down) -> free. The smoke test skips it with `tutSet("done")`. At each step a speech bubble (`#tut-tip`,
   `TUT_TIPS`, `placeTip`) sits by the control with its tail pointing at it and says in a few words what it does. When a step is done its highlight
   goes at once and the next step comes after a pause (`TUT_PAUSE` = 1.5 s, `tutNext`).
-- **Controls:** wheel (drag in a circle; half a turn = full lock; its sounds, the spokes' knocks, the thump at full lock and the rub, × `WHEEL_VOL` 2 in Tuning). Inside the rim a dark backing (a radial grey 70→44, dithered to a deep dotted texture) fills the gaps between the spokes, so the light wood reads clearly; the wood
+- **Controls:** wheel (drag in a circle; half a turn = full lock; its sounds, the spokes' knocks (off now: `WHEEL_KNOCKS` false, Enrico), the thump at full lock and the rub, × `WHEEL_VOL` 2 in Tuning). Inside the rim a dark backing (a radial grey 70→44, dithered to a deep dotted texture) fills the gaps between the spokes, so the light wood reads clearly; the wood
   is a mid grey (`WOOD`, `WOOD_SH`, `WOOD_RIM` in drawWheel) so it stands out from the pale sea.
   Layout (no panel behind the controls: a wooden dashboard was tried and dropped, it hid too much sea): compass over
   logbook bottom left (compass at the top centre), wheel bottom centre; the crank bottom right, mirroring the logbook (hidden at anchor).

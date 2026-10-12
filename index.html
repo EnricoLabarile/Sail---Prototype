@@ -14,6 +14,8 @@
 // Top-level consts in this script are shared with the game script further down.
 "use strict";
   // ---------- Tuning ----------
+  const WHEEL_KNOCKS = false;        // a knock every spoke (60°) as the wheel turns (Enrico: off; the soft rub and the thud at full lock stay)
+  const COMBINE_STATIC = true;       // on the drawn map, bake the shallows and land of the map and of the islands into one set of tiles (much quicker; false = the four separate layers, as before)
   const BOTTOM_PAD = 24;             // px of empty screen under the controls (wheel, crank, logbook…), so a thumb near the bottom edge doesn't open the phone's navigation bar
   const ZOOM_DEFAULT = 1.2;          // how close the view of the world is, on a first visit (1 = as before; 2 = twice as close, the pixels twice as big); the Zoom slider on the first screen changes it (and it's remembered)
   const HAPTICS_DEFAULT = 0;         // vibration strength on a first visit (0 = off … 1 = strong); the slider on the first screen changes it (and it's remembered)
@@ -471,6 +473,10 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The steering wheel no longer knocks at every spoke as it turns (the soft rub and the thud at full lock stay)',
+      'Quicker: the land and shallows are drawn in one pass instead of four, the darker deep-water tint is skipped while there are no big waves, and the screen size is no longer re-measured every frame (drawing ~40% lighter)',
+    ]},
+    {build: '2026-10-12 18:07', items: [
       'The Marconi sail draws fully everywhere except within 15° of the wind\'s eye, where it falls off steeply (dead into the wind: nothing)',
     ]},
     {build: '2026-10-12 18:03', items: [
@@ -481,12 +487,8 @@
       'The paddle wheels pat the water again, a splash a paddle (the steady wash is gone)',
       'The crank half as loud again',
     ]},
-    {build: '2026-10-12 17:34', items: [
-      'The paddle wheels can be heard again while you crank (their churn was lost under the sea)',
-      'The crank half as loud again',
-    ]},
   ];
-  const BUILD = '2026-10-12 18:07';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-12 18:25';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -1767,8 +1769,13 @@
   // the size of the game's frame: the whole screen on a phone, a phone-shaped
   // column on a wide screen (see #wrap in the CSS)
   const wrapEl = document.getElementById('wrap');
-  const viewW = ()=> wrapEl.clientWidth || window.innerWidth, viewH = ()=> wrapEl.clientHeight || window.innerHeight;
+  // (measured once per resize: reading clientWidth every frame, after the HUD's style writes, forced a fresh layout each time)
+  let viewWc = 0, viewHc = 0;
+  const measureView = ()=>{ viewWc = wrapEl.clientWidth || window.innerWidth; viewHc = wrapEl.clientHeight || window.innerHeight; };
+  const viewW = ()=> viewWc || (measureView(), viewWc), viewH = ()=> viewHc || (measureView(), viewHc);
+  if(window.ResizeObserver) new ResizeObserver(measureView).observe(wrapEl);
   function resize(){
+    measureView();
     const w = viewW(), h = viewH();                     // the frame (the whole screen on a phone)
     const dpr = window.devicePixelRatio || 1;
     const target = Math.max(1, Math.floor(Math.min(w,h)/380));
@@ -2508,6 +2515,7 @@
     const bb = home.bb; if(!bb) return;
     for(const tl of bb.tiles.values()){ const k = cached.indexOf(tl); if(k >= 0) cached.splice(k, 1); }
     bb.tiles.clear();
+    clearCombo();                                          // (home is baked into the drawn map's combined tiles too)
   }
   // the clients' boats: as many tied up at the guest pier as the mood
   // allows; a new one sails in from the open sea, one too many sails away
@@ -6149,7 +6157,7 @@
         lastTickT = t;
         const self = wheelPointer===null && !turnLeft && !turnRight;
         const k = Math.min(1, angVel/8);
-        Sfx.tick(WHEEL_VOL*((self?0.5:0.75)+0.25*k), (0.97+0.06*k)*(0.95+Math.random()*0.1));
+        if(WHEEL_KNOCKS) Sfx.tick(WHEEL_VOL*((self?0.5:0.75)+0.25*k), (0.97+0.06*k)*(0.95+Math.random()*0.1));
         buzz(self ? 4 : 6, 60);                          // a click per spoke: under the finger, and softer as it spins back
       }
     }
@@ -6526,7 +6534,7 @@
   const deepBig = document.createElement('canvas'), deepBigCtx = sceneCtx(deepBig);
   let deepImg = null, deepKey = '', deepBox = null;
   function drawDeep(camX, camY, w, h){
-    if(DEEP_TINT <= 0) return;
+    if(DEEP_TINT <= 0 || (ROLLER_RATE <= 0 && SURF_WAVE_CHANCE <= 0)) return;   // (it shows where the big waves run: with none, nothing to show; ~0.8 ms a frame saved)
     const C = DEEP_CELL, i0 = Math.floor(camX/C)-1, j0 = Math.floor(camY/C)-1, nx = Math.ceil(w/C)+3, ny = Math.ceil(h/C)+3;
     const key = i0 + '|' + j0 + '|' + nx + '|' + ny;
     if(key !== deepKey){
@@ -9375,6 +9383,9 @@
   function drawIslandWater(isl){
     drawIslandTiles(isl, true);
     if(isl.drawn) return;                                  // (the drawn map's surf is baked)
+    drawIslandSurf(isl);
+  }
+  function drawIslandSurf(isl){
     const R=isl.radii;
     ctx.strokeStyle=INKC; ctx.lineWidth=1.3;
     const surf = 6+Math.sin(t*1.4+isl.x)*2;
@@ -9407,7 +9418,7 @@
           const pos = (((s + d + off) % dash) + dash) % dash, step = Math.min(L - d, dash - pos + 1e-6);
           const drawing = on(s + d + step*0.5);
           const qx = px + (nx-px)*(step/(L-d)), qy = py + (ny-py)*(step/(L-d));
-          if(drawing){ if(!pen){ ctx.moveTo(px,py); pen=true; } ctx.lineTo(qx,qy); } else pen=false;
+          if(drawing && !(comboOn && drawnDist(qx, qy) < 1)){ if(!pen){ ctx.moveTo(px,py); pen=true; } ctx.lineTo(qx,qy); } else pen=false;   // (on the drawn map, never over its land)
           d += step; px=qx; py=qy;
         }
         s += L; x=nx; y=ny;
@@ -9570,6 +9581,46 @@
     }
     return false;
   }
+  let drawnScratch = null, drawnScratchCtx = null;
+  // On the drawn map the four static layers (the drawn shallows, the islands' shallows, the islands' land, the drawn
+  // land) are baked together into one set of world tiles (COMBINE_STATIC): one drawImage a tile a frame instead of four
+  // full-screen passes (each ~0.85 ms). Only the islands' crawling surf and the mooring lines are drawn live over them.
+  const comboOn = !!(MAP_DRAWN && COMBINE_STATIC);
+  const comboTiles = new Map(), comboList = [], COMBO_MAX = 90, COMBO_N = Math.ceil(WORLD.w/ISL_TILE);
+  function comboTile(tx, ty, mayBake){
+    const key = ty*COMBO_N + tx;
+    let tl = comboTiles.get(key);
+    if(tl){ tl.seen = frameNo; return tl; }
+    if(!mayBake) return null;
+    if(comboList.length >= COMBO_MAX){ comboList.sort((a, b)=> a.seen - b.seen); comboTiles.delete(comboList.shift().key); }
+    const T = ISL_TILE, x0 = tx*T, y0 = ty*T, w = Math.min(T, WORLD.w - x0), h = Math.min(T, WORLD.h - y0);
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const saved = ctx; ctx = sceneCtx(c); ctx.translate(-x0, -y0);
+    const R0 = {x0, y0, x1: x0 + w, y1: y0 + h};
+    bakeR = R0; drawDrawnStatic(true, x0, y0, w, h);
+    const hits = [];                                       // the islands (and their copies across the wrapped edge) on this tile
+    for(const isl of islands){ const bb = islandBox(isl, true);
+      for(const sx of [-WORLD.w, 0, WORLD.w]) for(const sy of [-WORLD.h, 0, WORLD.h])
+        if(bb.ox + sx < R0.x1 && bb.ox + bb.size + sx > R0.x0 && bb.oy + sy < R0.y1 && bb.oy + bb.size + sy > R0.y0) hits.push([isl, sx, sy]); }
+    for(const pass of [drawIslandWaterStatic, drawIslandLandStatic]) for(const [isl, sx, sy] of hits){
+      ctx.save(); ctx.translate(sx, sy); bakeR = {x0: x0 - sx, y0: y0 - sy, x1: x0 + w - sx, y1: y0 + h - sy};
+      pass(isl); ctx.restore(); }
+    bakeR = R0; drawDrawnStatic(false, x0, y0, w, h);
+    bakeR = null; ctx = saved; bakedThisFrame++;
+    tl = {c, x0, y0, seen: frameNo, key}; comboTiles.set(key, tl); comboList.push(tl);
+    return tl;
+  }
+  function drawComboTiles(){
+    const T = ISL_TILE, A = 160;
+    const r0 = v=> Math.max(0, Math.floor(v/T)), r1 = v=> Math.min(COMBO_N - 1, Math.floor(v/T));
+    for(let ty = r0(view.y - A); ty <= r1(view.y + view.h + A); ty++) for(let tx = r0(view.x - A); tx <= r1(view.x + view.w + A); tx++){
+      const x0 = tx*T, y0 = ty*T, seen = x0 < view.x + view.w && x0 + T > view.x && y0 < view.y + view.h && y0 + T > view.y;
+      const tl = comboTile(tx, ty, seen || bakedThisFrame === 0);
+      if(tl && seen) ctx.drawImage(tl.c, tl.x0, tl.y0);
+    }
+  }
+  var comboReady = true;
+  function clearCombo(){ if(comboReady){ comboTiles.clear(); comboList.length = 0; } }
   function drawDrawnStatic(water, x0, y0, w, h){
     if(drawnDist(x0 + w/2, y0 + h/2) > Math.hypot(w, h)/2 + 40) return;   // all open sea: nothing to draw
     const img = ctx.createImageData(w, h), D = img.data;
@@ -9594,7 +9645,10 @@
       const k = (j*w + i)*4, c = Math.round(g*255);
       D[k] = D[k+1] = D[k+2] = c; D[k+3] = 255;
     }
-    ctx.putImageData(img, 0, 0);                         // (pixel coordinates: the tile's own corner)
+    if(!drawnScratch){ drawnScratch = document.createElement('canvas'); drawnScratchCtx = sceneCtx(drawnScratch); }
+    if(drawnScratch.width !== w || drawnScratch.height !== h){ drawnScratch.width = w; drawnScratch.height = h; }
+    drawnScratchCtx.putImageData(img, 0, 0);             // (through a scratch canvas: putImageData would wipe what's under it in a combined tile)
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(drawnScratch, 0, 0); ctx.restore();   // (pixel coordinates: the tile's own corner)
     if(water) return;
     const bushes = [], trees = [], tufts = [];
     const cx0 = Math.floor(x0/ISL_TILE), cy0 = Math.floor(y0/ISL_TILE);
@@ -11422,8 +11476,13 @@
     };
     layer(()=>{ for(const wp of whirlpools) if(wp.s>0 && inView(wp.x,wp.y,wp.r+10)){ ctx.globalAlpha = wp.s; drawWhirlpool(wp); ctx.globalAlpha = 1; } });
     layer(()=>drawBoilBubbles());                             // …bubbling
-    layer(()=>{ if(drawnIsl) drawIslandWater(drawnIsl); for(const isl of visIslands()) drawIslandWater(isl); }, true);
-    layer(()=>{ for(const isl of visIslands()) drawIslandLand(isl); if(drawnIsl) drawIslandLand(drawnIsl); }, true);   // (the drawn land over the villages' edges, so they join it)
+    if(comboOn){
+      layer(()=> drawComboTiles());                             // shallows and land, all baked together
+      layer(()=>{ for(const isl of visIslands()) drawIslandSurf(isl); if(moor) drawMooringLines(); }, true);
+    } else {
+      layer(()=>{ if(drawnIsl) drawIslandWater(drawnIsl); for(const isl of visIslands()) drawIslandWater(isl); }, true);
+      layer(()=>{ for(const isl of visIslands()) drawIslandLand(isl); if(drawnIsl) drawIslandLand(drawnIsl); }, true);   // (the drawn land over the villages' edges, so they join it)
+    }   // (the drawn land over the villages' edges, so they join it)
     layer(()=>{ const vis = []; rockGrid.query(view.x+w/2, view.y+h/2, Math.max(w,h)/2+20, o=>{ if(!o.hidden && inView(o.x,o.y,o.r+6)) vis.push(o); }); drawRocks(vis); drawDebris(); for(const o of coastTowers) drawTower(o);
       for(const wk of wrecks) if(inView(wk.x, wk.y, wk.L*0.7)) drawWreck(wk); });
     layer(()=>{ for(const b of banks) drawBank(b); for(const bo of bottles) drawBottle(bo); for(const o of treasures) drawTreasure(o); drawCastaway(); });
