@@ -402,11 +402,12 @@
   // sail has its own way to sail. The square sail: the open sea, the wind from astern (and SQUARE_RUN_BONUS on top);
   // almost dead on the wind, weak on the beam. The lateen: the wind on the beam (its best is faster than the square's
   // best on the beam by far) and it can point up toward the wind; poor running free
-  const SAIL_POLAR_SQUARE = [[0,0],[20,0],[35,0.02],[50,0.15],[70,0.6],[90,0.95],[110,1.05],[130,1.12],[150,1.13],[170,1.04],[180,1.03]];   // (good on the beam too now: 70° was 0.12, 90° 0.55, 110° 0.97)
-  const SAIL_POLAR_LATEEN = [[0,0.02],[20,0.22],[35,0.60],[50,0.90],[70,1.06],[90,1.10],[110,1.02],[130,0.88],[150,0.72],[170,0.60],[180,0.55]];
+  // (Enrico: every sail ×1.3 close to the wind, 20–50°, and ×1.5 with the wind on the beam, 70–110°)
+  const SAIL_POLAR_SQUARE = [[0,0],[20,0],[35,0.026],[50,0.195],[70,0.9],[90,1.425],[110,1.575],[130,1.12],[150,1.13],[170,1.04],[180,1.03]];   // (good on the beam too now: 70° was 0.12, 90° 0.55, 110° 0.97)
+  const SAIL_POLAR_LATEEN = [[0,0.02],[20,0.286],[35,0.78],[50,1.17],[70,1.59],[90,1.65],[110,1.53],[130,0.88],[150,0.72],[170,0.6],[180,0.55]];
   // the Marconi (Bermuda) sail: a tall triangle on a boom, the modern one: the best close to the wind, a little less on the
   // beam than the lateen, the weakest running free; no bad tack, no slow yard to swing across
-  const SAIL_POLAR_MARCONI = [[0,0.04],[20,0.42],[35,0.82],[50,0.98],[70,1.10],[90,1.16],[110,1.12],[130,1.02],[150,0.94],[170,0.88],[180,0.86]];   // the best with the wind on the beam, still decent running (the boom squared out); was best close-hauled and weak running (180° 0.5)
+  const SAIL_POLAR_MARCONI = [[0,0.04],[20,0.546],[35,1.066],[50,1.274],[70,1.65],[90,1.74],[110,1.68],[130,1.02],[150,0.94],[170,0.88],[180,0.86]];   // the best with the wind on the beam, still decent running (the boom squared out); was best close-hauled and weak running (180° 0.5)
   // (the curves, SQUARE_RUN_BONUS and the RIG_ values below can also be set live on the first screen, section 'Sails')
   const SQUARE_RUN_BONUS = 0.25;     // running downwind (from DOWNWIND_DEG to dead astern) the square sail gains up to this much more (the lateen none)
   // -- how the two sails differ beyond their speed curves: the square sail for the open sea and steady wind, the lateen
@@ -465,6 +466,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'Every sail draws better: 30% more close to the wind (20–50° off it) and 50% more with the wind on the beam (70–110°)',
+    ]},
+    {build: '2026-10-12 13:35', items: [
       'The crank is drawn as big as the corner allows without reaching the wheel (bigger on wider phones), and you can grab it anywhere in the bottom right corner',
       'Fixed a rare drawing error from the ripples before a shark or a sea imp comes up',
     ]},
@@ -474,14 +478,8 @@
     {build: '2026-10-12 12:30', items: [
       'The anchor stays where it fell (drawn on the water, with its line to the bow): she drifts until the line is taut, then swings round it, bow to the anchor',
     ]},
-    {build: '2026-10-12 12:16', items: [
-      'The anchor needs half as long a press on the hub',
-      'At anchor the current still carries the boat until the anchor line comes taut: then it holds her and her bow swings round to face the anchor',
-      'No steering at anchor',
-      'The nets go over and come back half a second quicker',
-    ]},
   ];
-  const BUILD = '2026-10-12 13:35';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-12 13:41';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -5862,19 +5860,19 @@
     for(const rig of KINDS){
       const others = KINDS.filter(r=> r !== rig), sec = document.createElement('div'); sec.className = 'sl-sail';
       const rows = [];   // {label, min, max, step, get, set, def}
-      POLARS[rig].forEach((p, i)=> rows.push({grp: 0, label: p[0] + '°', min: 0, max: 1.5, step: 0.01, get: ()=> POLARS[rig][i][1], set: v=> POLARS[rig][i][1] = v, def: DEF.polar[rig][i]}));
+      POLARS[rig].forEach((p, i)=> rows.push({grp: 0, label: p[0] + '°', min: 0, max: 2, step: 0.01, get: ()=> POLARS[rig][i][1], set: v=> POLARS[rig][i][1] = v, def: DEF.polar[rig][i]}));
       if(rig === 'square') rows.push({grp: 1, label: P.runBonus, min: 0, max: 0.6, step: 0.01, get: ()=> squareRunBonus, set: v=> squareRunBonus = v, def: DEF.run});
       for(const k in RIGS) rows.push({grp: 1, label: P[k], min: 0, max: MAX[k], step: 0.01, get: ()=> RIGS[k][rig], set: v=> RIGS[k][rig] = v, def: DEF.rig[k][rig]});
       sec.innerHTML = '<p class="sl-name">' + TEXT.sails[rig] + '</p>'
-        + '<svg viewBox="-53 -53 106 106" aria-hidden="true"><circle r="40" fill="none" stroke="currentColor" stroke-width=".7" stroke-dasharray="1 3"/>'
+        + '<svg viewBox="-53 -53 106 106" aria-hidden="true"><circle r="30" fill="none" stroke="currentColor" stroke-width=".7" stroke-dasharray="1 3"/>'
         + '<path d="M0 -40 V40 M-40 0 H40" stroke="currentColor" stroke-width=".5" opacity=".5"/>'
         + '<path class="sl-other" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2.5 2.5" opacity=".75"/>'
         + '<path class="sl-curve" fill="url(#sh-light)" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>'
         + '<path d="M0 -51 V-43 M-3.5 -47 L0 -42.5 L3.5 -47" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
       const svg = sec.querySelector('svg'), code = document.createElement('p'); code.className = 'sl-code';
       const draw = ()=>{
-        svg.querySelector('.sl-curve').setAttribute('d', polarPath(rig, 40));
-        svg.querySelector('.sl-other').setAttribute('d', others.map(r=> polarPath(r, 40)).join(' '));
+        svg.querySelector('.sl-curve').setAttribute('d', polarPath(rig, 30));
+        svg.querySelector('.sl-other').setAttribute('d', others.map(r=> polarPath(r, 30)).join(' '));
         code.textContent = 'SAIL_POLAR_' + rig.toUpperCase() + ' = [' + POLARS[rig].map(p=> '[' + p[0] + ',' + n2(p[1]) + ']').join(',') + '];'
           + (rig === 'square' ? ' SQUARE_RUN_BONUS = ' + n2(squareRunBonus) + ';' : '')
           + Object.keys(RIGS).map(k=> ' ' + NAMES[k] + '.' + rig + ' = ' + n2(RIGS[k][rig]) + ';').join('');
@@ -7833,7 +7831,7 @@
   const windRel = ()=> norm(boat.angle - windAngle)*180/Math.PI;          // degrees off the wind, signed by side
   const windCardKey = ()=> [Math.round(windRel()/2), boat.rig, Math.round(windStrength*20)].join('|');
   function windHTML(){
-    const Rr = 40, f = n=> n.toFixed(1);                  // (room for the square sail's run, up to 1.25 ×)
+    const Rr = 30, f = n=> n.toFixed(1);                  // (the dotted ring is top speed; room for the curves up to ~1.8 ×)
     const curve = rig=> polarPath(rig, Rr);
     const rel = windRel(), r = rel*Math.PI/180, eff = speedFactor(rel)*downwindBonus(rel), hx = Math.sin(r), hy = -Math.cos(r);
     const spare = sailsInHold().map(r=> '<path d="'+curve(r)+'" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2.5 2.5" opacity=".75"/>').join('');
