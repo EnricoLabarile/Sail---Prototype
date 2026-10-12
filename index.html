@@ -458,6 +458,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The Marconi sail is drawn as before again (the solid-sheet drawing is undone)',
+    ]},
+    {build: '2026-10-12 08:09', items: [
       'Every sail swells out the same at its best: SAIL_INFLATE 1 for all three',
     ]},
     {build: '2026-10-12 08:04', items: [
@@ -468,11 +471,8 @@
       'Five slingshot shots bring a coastal tower down: it stops firing and stays a ruin',
       'The Marconi sail is drawn as a solid sheet: however full it gets, you no longer see through it',
     ]},
-    {build: '2026-10-11 23:05', items: [
-      'The coastal towers fire cannonballs at you when you sail within reach: a dashed ring shows where each one will fall, half a heart if it hits',
-    ]},
   ];
-  const BUILD = '2026-10-12 08:09';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-12 08:37';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -11176,29 +11176,21 @@
     const belly = (1.2 + p*6)*reef*SAIL_SIZE*MARCONI_SIZE*sailInflate(p, 'marconi');
     const luff = p < 0.25 ? (1 - p/0.25) : 0;
     const ripple = Math.sin(t*22)*2*luff*open;
-    // the cloth as a surface: horizontal chords from the mast to the leech, each bellied to leeward (across the boom,
-    // forward once it's squared out running), the draft deepest a little aft of the mast; drawn as strips, so however
-    // full it is it reads as one solid sheet (a single outline bowed at the leech crossed itself and showed through)
-    const T = P(mx, my, zB), C = P(cx, cy, zB);
-    const nx = Math.sin(sabs), ny = lee*Math.cos(sabs);
-    const pt = (v, u)=>{
-      const lx = mx + (cx - mx)*(1 - v), ly = my + (cy - my)*(1 - v);          // the leech at this height
-      const d = belly*Math.pow(1 - v, 0.8)*(0.6 + 1.4*v)*Math.sin(Math.PI*Math.pow(u, 0.8)) + ripple*u*(1 - v);
-      return P(mx + (lx - mx)*u + nx*d, my + (ly - my)*u + ny*d, zB + (zH - zB)*v);
-    };
-    const NV = 7, NU = 8, rows = [];
-    for(let i=0;i<=NV;i++){ const r = []; for(let k=0;k<=NU;k++) r.push(pt(i/NV, k/NU)); rows.push(r); }
+    // the leech and the foot belly out to leeward (across the boom), the leech most a little below halfway up
+    const H = P(mx, my, zH), T = P(mx, my, zB), C = P(cx, cy, zB);
+    const nx = Math.sin(sabs), ny = lee*Math.cos(sabs);            // across the boom, to leeward (forward once it's squared out running)
+    const L1 = P(mx + (cx - mx)*0.55 + nx*(belly + ripple), my + (cy - my)*0.55 + ny*(belly + ripple), zB + (zH - zB)*0.45);
+    const F1 = P(mx + (cx - mx)*0.5 + nx*(belly*0.6 - ripple*0.5), my + (cy - my)*0.5 + ny*(belly*0.6 - ripple*0.5), zB);
     mast(mx, TOP);
     ctx.setTransform(base);
-    const strip = i=>{ ctx.beginPath(); ctx.moveTo(...rows[i][0]); for(let k=1;k<=NU;k++) ctx.lineTo(...rows[i][k]); for(let k=NU;k>=0;k--) ctx.lineTo(...rows[i+1][k]); ctx.closePath(); };
+    const sailPath = ()=>{ ctx.beginPath(); ctx.moveTo(...T); ctx.lineTo(...H); ctx.quadraticCurveTo(...L1, ...C); ctx.quadraticCurveTo(...F1, ...T); };
     const tone = SAIL_TONE - 0.14*(1-p) - 0.1*(1-B.sailAmount) - 0.08*furl;
-    ctx.lineJoin = 'round'; ctx.strokeStyle = INKC; ctx.lineWidth = 2.6;                // the ink edge round the whole sheet…
-    for(let i=0;i<NV;i++){ strip(i); ctx.stroke(); }
-    ctx.fillStyle = ctx.strokeStyle = V(tone); ctx.lineWidth = 0.6;                     // …then the cloth over it
-    for(let i=0;i<NV;i++){ strip(i); ctx.fill(); ctx.stroke(); }
-    ctx.strokeStyle = INKC; ctx.lineWidth = 0.8;                                         // two battens along the cloth's curve
-    for(const v of [0.4, 0.7]){ ctx.beginPath(); for(let k=0;k<=NU;k++){ const q = pt(v, k/NU*0.85); k ? ctx.lineTo(...q) : ctx.moveTo(...q); } ctx.stroke(); }
-    ctx.lineWidth = 1.2; ctx.beginPath(); for(let i=0;i<=NV;i++) i ? ctx.lineTo(...rows[i][NU]) : ctx.moveTo(...rows[i][NU]); ctx.stroke();   // the leech
+    ctx.fillStyle = V(tone); sailPath(); ctx.closePath(); ctx.fill();
+    // two battens across the cloth, then its ink edge
+    ctx.strokeStyle = INKC; ctx.lineWidth = 0.8;
+    for(const k of [0.4, 0.7]){ const z = zB + (zH - zB)*k, A = P(mx, my, z), Bp = P(mx + (cx - mx)*(1 - k)*0.9 + nx*belly*0.6, my + (cy - my)*(1 - k)*0.9 + ny*belly*0.6, z);
+      ctx.beginPath(); ctx.moveTo(...A); ctx.lineTo(...Bp); ctx.stroke(); }
+    ctx.lineWidth = 1.4; sailPath(); ctx.stroke();
     // the mainsheet, from the boom's end to the stern
     const Q = P(-13, 0, FB);
     ctx.lineWidth = 0.8; ctx.globalAlpha = 0.8; ctx.beginPath(); ctx.moveTo(...C); ctx.lineTo(...Q); ctx.stroke(); ctx.globalAlpha = 1;

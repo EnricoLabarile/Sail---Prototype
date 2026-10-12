@@ -604,9 +604,8 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   quarter; it furls along the yard at anchor.
   **The Marconi sail** (Enrico; a third rig, `'marconi'`, `TEXT.sails.marconi`, icon `ITEM_ICONS['Marconi sail']`; it waits
   in the home storehouse with the others, `START_STORED_SAILS`): the modern Bermuda rig, a tall triangle up the mast
-  (`MAST_H` × 1.15 × `MARCONI_SIZE`) with its foot on a boom (18 px × `SAIL_SIZE` × `MARCONI_SIZE`; `MARCONI_SIZE` 1.2, was 1), drawn by `drawMarconiSail` (a surface of
-  horizontal chords from mast to leech, each bellied to leeward, filled as strips over an ink edge so it reads solid however full (a single
-  outline bowed at the leech crossed itself and looked see-through); two battens along the curve, a mainsheet to the stern; furled, the head comes down to the boom).
+  (`MAST_H` × 1.15 × `MARCONI_SIZE`) with its foot on a boom (18 px × `SAIL_SIZE` × `MARCONI_SIZE`; `MARCONI_SIZE` 1.2, was 1), drawn by `drawMarconiSail` (the
+  leech and foot bellied to leeward, two battens; a version drawn as a solid surface of bellied strips was tried and undone by Enrico; a mainsheet to the stern; furled, the head comes down to the boom).
   Its curve `SAIL_POLAR_MARCONI` (Enrico, after Wind Waker's sail): the best with the wind on the beam (70° 1.10, 90° 1.16, 110° 1.12), still decent running (150° 0.94, 180° 0.86), close-hauled 35° 0.82, 50° 0.98 (before: best close-hauled, 180° 0.5); each `RIG_*` has a `marconi` value (turn 1.35, accel 1.2, retrim 2.5, leeway
   0.05, surf 0.8, wave hit 1.1, broach 1.4). The boom is eased out with the wind (`faceTarget`: 0.12 rad close-hauled up to 90°, square across her, running; the cloth's belly is pushed across the boom, so forward when squared out),
   but it has no bad tack and no slow swing across (`LATEEN_MALA`, `LATEEN_TACK_DRIVE`, `LATEEN_SWING` are the
