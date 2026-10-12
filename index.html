@@ -142,7 +142,7 @@
     wheel: 1,      // the wheel's rub as it turns
     clicks: 1,     // the wheel's spokes and the little wooden knocks of the controls
     anchor: 1,     // the anchor chain, down and up
-    crank: 0.5,    // the crank's gears as it winds (was 1)
+    crank: 0.25,   // the crank's gears as it winds (was 1, then 0.5)
     paddles: 1,    // the paddle wheels in the water, and the spring running down
     oars: 1,       // the oars' strokes, cue, catch and wash
     nets: 1,       // the nets: splash going over, haul coming in
@@ -469,6 +469,10 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The paddle wheels can be heard again while you crank (their churn was lost under the sea)',
+      'The crank half as loud again',
+    ]},
+    {build: '2026-10-12 16:24', items: [
       'The paddle wheels are twice as loud, the crank half as loud',
     ]},
     {build: '2026-10-12 15:22', items: [
@@ -478,11 +482,8 @@
       'The boat gathers way 50% quicker',
       'The paddle wheels sound as a steady, soft churn of water instead of a toc a paddle (Audio: Paddles)',
     ]},
-    {build: '2026-10-12 13:41', items: [
-      'Every sail draws better: 30% more close to the wind (20–50° off it) and 50% more with the wind on the beam (70–110°)',
-    ]},
   ];
-  const BUILD = '2026-10-12 16:24';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-12 17:34';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -4066,7 +4067,15 @@
                {...layer(brown,'lowpass',380,0.5, 0.55,3.1), ph:0.5, per:8.5} ]);
       rush = routed('sea', ()=> layer(brown,'lowpass',320,0.5,0,2.2));   // deep, soft water along the hull
       rowL = routed('oars', ()=> layer(pink,'bandpass',480,0.9,0,4.1));
-      padL = routed('paddles', ()=> layer(pink,'bandpass',420,0.7,0,2.7));   // the paddle wheels' churn: a steady, soft wash of water (see paddleBed())   // the oars' wash: a soft swirl of water that swells with each pull (see rowBed())
+      // the paddle wheels' churn: a steady, soft wash of water (see paddleBed()); straight to the master like the crank's
+      // clicks, not through the quiet ambience bus (there it was ten times softer and lost under the sea)
+      padL = routed('paddles', ()=>{
+        const src = ac.createBufferSource(); src.buffer = pink; src.loop = true;
+        const f = ac.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 420; f.Q.value = 0.7;
+        const g = ac.createGain(); g.gain.value = 0;
+        src.connect(f); f.connect(g); g.connect(master); src.start(0, 2.7);
+        return {f, g};
+      });   // the oars' wash: a soft swirl of water that swells with each pull (see rowBed())
       // rain on the sea: a broad, soft wash under the patter (see rain()), between a hiss and a murmur
       rainL = routed('rain', ()=> layer(pink,'bandpass',1800,0.35,0,1.3));
       rainBus = ac.createGain(); rainBus.gain.value = 1; rainBus.connect(ambBus);
@@ -4604,7 +4613,7 @@
       const t = ac.currentTime;
       if(sample) padSampleT = t + 0.9;
       if(t < padSampleT){ level = Math.max(level, 1); sf = Math.max(sf, 0.5); }
-      padL.g.gain.setTargetAtTime(0.16*PADDLE_BED_VOL*level, t, 0.12);
+      padL.g.gain.setTargetAtTime(0.06*PADDLE_BED_VOL*level, t, 0.12);
       padL.f.frequency.setTargetAtTime(320 + 260*sf + 120*level, t, 0.15);
     }
     // the spring run down: the wheels let go, a slack clunk of the gear and a short, falling whirr of the last turns
