@@ -110,6 +110,8 @@
   const CRANK_BACK_PITCH = 0.6;      // pitch of the ticks as the crank springs back on its own (1 = the winding's clicks; lower = less tinny)
   const CRANK_VOL = 1;               // loudness of the crank's gears as it winds (a tick a tooth, a heavier step each quarter turn; 0 = silent)
   const SLING_ON = true;             // the slingshot on the right: drag its pouch down and let go, a stone flies off ahead of the bow
+  const SLING_ITEM = true;           // the slingshot is an item in the Cargo (one slot): a tap on it equips or unequips it; unequipped, no sling on the screen and no cannon on the bow (false = always there, no slot)
+  const SLING_START_EQUIPPED = true; // a voyage starts with it equipped
   const SLING_RANGE = [20, 80];      // px ahead of the bow the shot's cone covers: nearest, furthest (the pull no longer sets the distance)
   const SLING_DIST = 60;             // px ahead of the bow every stone of a shot lands (all at the same distance, so the fan is even; was a random distance each)
   const SLING_CONE_DEG = 50;         // how wide the cone of stones spreads in front of the bow (degrees, all of it; half each side)
@@ -473,6 +475,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The slingshot is an item in the Cargo: tap it to equip or stow it (stowed, the sling and the bow cannon are gone); it takes a slot',
+    ]},
+    {build: '2026-10-12 18:43', items: [
       'The map in the logbook has a cross where the castaway is waiting (gone once they\'re aboard)',
       'The current lets go only right at the shore (1 px)',
     ]},
@@ -483,11 +488,8 @@
       'The steering wheel no longer knocks at every spoke as it turns (the soft rub and the thud at full lock stay)',
       'Quicker: the land and shallows are drawn in one pass instead of four, the darker deep-water tint is skipped while there are no big waves, and the screen size is no longer re-measured every frame (drawing ~40% lighter)',
     ]},
-    {build: '2026-10-12 18:07', items: [
-      'The Marconi sail draws fully everywhere except within 15° of the wind\'s eye, where it falls off steeply (dead into the wind: nothing)',
-    ]},
   ];
-  const BUILD = '2026-10-12 18:43';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-12 23:04';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -655,6 +657,9 @@
       kitName:  'Repair kit',                    // a repair kit on the stall
       loadedStones: 'Stones in the slingshot',   // a toast, tapping the charges in the Cargo
       loadedNets: 'Nets in the slingshot',       // a toast, tapping the nets
+      slingItem: 'Slingshot (tap to equip or unequip it)',   // its slot in the Cargo
+      slingOn:  'Slingshot equipped',            // a toast, equipping it
+      slingOff: 'Slingshot stowed',              // a toast, unequipping it
       shark: 'a shark',                          // what a net caught (in popups and in the Cargo)
       zora: 'a sea imp',
       crank: 'The spring: turn the crank round clockwise to wind it; the paddle wheels then drive her until it runs down',
@@ -6069,7 +6074,7 @@
     boonWindT = 0; boonFish = 0; for(const r of RUINS) r.readyAt = 0;
     rollers.length = 0; rollerT = 6; boat.surfT = 0;
     windAngle = rand(0, Math.PI*2); shiftDur = 0; windTimer = rand(28,36); guideWind = false;
-    explored.fill(0); fogVer++; rooms.fill(0); roomsVer++; charges = START_CHARGES; nets = START_NETS; slingAmmo = 'stone'; maxHealth = MAX_HEALTH; boat.health = MAX_HEALTH; kits = START_KITS; catches.shark = catches.zora = 0; fillBankTiles(); resetBottles(); resetTreasures(); resetCastaway(); resetTowers(); resetStore(); resetShark(); resetZora(); makeDebris(); spring = 0; windProg = 0; crankBack = 0; crankLocked = false; document.getElementById('crank').classList.remove('locked');
+    explored.fill(0); fogVer++; rooms.fill(0); roomsVer++; charges = START_CHARGES; nets = START_NETS; slingAmmo = 'stone'; slingEquipped = !SLING_ITEM || SLING_START_EQUIPPED; maxHealth = MAX_HEALTH; boat.health = MAX_HEALTH; kits = START_KITS; catches.shark = catches.zora = 0; fillBankTiles(); resetBottles(); resetTreasures(); resetCastaway(); resetTowers(); resetStore(); resetShark(); resetZora(); makeDebris(); spring = 0; windProg = 0; crankBack = 0; crankLocked = false; document.getElementById('crank').classList.remove('locked');
     wake.length = 0; bowSpray.length = 0; steam.length = 0; popups.length = 0;
     voyageTime = 0; hurtFlash = 0; shake = 0;
     gameover.classList.add('hidden');
@@ -6265,6 +6270,7 @@
   const sailsInHold = ()=> SPARE_SAIL ? SAILS.filter(r=> r !== boat.rig && !homeStore.sails.includes(r)) : [];   // (a sail left in the storehouse is not aboard)
   const spareSlots = ()=> sailsInHold().length;                      // the sails not rigged take a slot each
   let maxHealth = MAX_HEALTH, kits = START_KITS;        // the hull's most (grows with the treasures' hearts) and the repair kits aboard (one slot)
+  let slingEquipped = !SLING_ITEM || SLING_START_EQUIPPED;   // (SLING_ITEM: equipped from the Cargo)
   let charges = START_CHARGES, nets = START_NETS, slingAmmo = 'stone';   // the sling's stones and nets aboard (each stack: one slot), and which is loaded
   const catches = {shark: 0, zora: 0};                               // creatures caught in a net, aboard (a slot each)
   const chargeSlots = ()=> (SLING_CHARGES && charges > 0 ? 1 : 0) + (nets > 0 ? 1 : 0) + (kits > 0 ? 1 : 0);   // (the kits stack too: one slot)
@@ -6277,7 +6283,7 @@
     Sfx.hammer(); setTimeout(()=> Sfx.hammer(), 260); buzz([25, 60, 25, 60, 40]); showHealth();
     if(elList.classList.contains('open')) renderList();
   }
-  const slotsUsed = ()=> fishAboard() + dishesAboard() + spareSlots() + bottleHold.length + chargeSlots() + catches.shark + catches.zora;   // the hold's HOLD_MAX slots: a fish, a dish, the spare sail or a bottle each (gifts are kept apart)
+  const slotsUsed = ()=> fishAboard() + dishesAboard() + spareSlots() + (SLING_ITEM ? 1 : 0) + bottleHold.length + chargeSlots() + catches.shark + catches.zora;   // the hold's HOLD_MAX slots: a fish, a dish, the spare sail or a bottle each (gifts are kept apart)
   const holdFull = ()=> slotsUsed() >= HOLD_MAX;
   let fullSaid = null;                                   // the bank we've already said "the hold is full" over
   function bankUnderBoat(){
@@ -7180,7 +7186,7 @@
   }
   function updateSling(dt){
     updateSailBtn();
-    const show = SLING_ON && playing && !marketV && !moor && !(fishing && fishing.phase === 'game');   // (the fishing bar has its place)
+    const show = SLING_ON && slingEquipped && playing && !marketV && !moor && !(fishing && fishing.phase === 'game');   // (the fishing bar has its place; stowed in the Cargo: gone)
     if(show !== !elSling.classList.contains('hidden')) elSling.classList.toggle('hidden', !show);
     if(!show && slingDrag){ slingDrag = null; slingPull = 0; }
     slingReload = Math.max(0, slingReload - dt);
@@ -7454,7 +7460,7 @@
   }
   const mkBalance = ()=> mkItems.reduce((a,it)=> a + (it.side===it.origin ? 0 : it.origin==='you' ? it.value : -it.value), 0);
   const mkSlotsAfter = ()=> mkItems.filter(it=> it.side === 'you' && it.kind !== 'charges' && it.kind !== 'nets' && it.kind !== 'kit').length
-    + (marketV && marketV.store ? 0 : (kits > 0 || mkItems.some(it=> it.kind === 'kit' && it.side === 'you') ? 1 : 0)) + (marketV && marketV.store ? 0 : spareSlots() + bottleHold.length
+    + (marketV && marketV.store ? 0 : (kits > 0 || mkItems.some(it=> it.kind === 'kit' && it.side === 'you') ? 1 : 0)) + (marketV && marketV.store ? 0 : spareSlots() + (SLING_ITEM ? 1 : 0) + bottleHold.length
     + (SLING_CHARGES && (charges > 0 || mkItems.some(it=> it.kind === 'charges' && it.side === 'you')) ? 1 : 0)
     + (nets > 0 || mkItems.some(it=> it.kind === 'nets' && it.side === 'you') ? 1 : 0));   // (the charges stack: one slot)   // (at the storehouse the bottles and sails are on the table too)   // what the hold would carry after the trade (the spare sail stays aboard)
   const COIN_SVG = '<svg class="coin" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="var(--paper)" stroke="currentColor" stroke-width="1.4"/><circle cx="6" cy="6" r="2.4" fill="none" stroke="currentColor" stroke-width="1"/></svg>';
@@ -7492,6 +7498,8 @@
     // a corked bottle with a rolled note inside
     // the sling's charges: three round stones in a little heap
     'Charges': ICO('<circle cx="8" cy="15.5" r="4.6" '+M+'/><circle cx="16.5" cy="15.8" r="4.3" '+L+'/><circle cx="12.2" cy="8.4" r="4.4" '+P+'/><path d="M10.5 6.8 Q11.5 5.8 13 6.1" '+N+' stroke-width="0.9"/>'),
+    // the slingshot: a wooden Y fork, its bands meeting in a pouch
+    'Slingshot': ICO('<path d="M12 22 V13 M12 13 L6.5 4 M12 13 L17.5 4" '+N+' stroke-width="2.6"/><path d="M6.5 4 L11 15.5 L17.5 4" '+N+' stroke-width="0.9"/><path d="M9.4 14.6 Q11 17.6 12.6 14.6 Z" '+I+'/>'),
     // the sling's nets: a little bundle of mesh with a weight
     'Nets': ICO('<circle cx="12" cy="12" r="8.5" '+L+'/><path d="M6 6.5 L18 17.5 M10 4 L20 13.5 M4 10 L14 20 M18 6.5 L6 17.5 M14 4 L4 13.5 M20 10 L10 20" '+N+' stroke-width="0.9"/><circle cx="19.5" cy="19.5" r="2.4" '+I+'/>'),
     // a repair kit: a wooden box with a handle, a hammer across it
@@ -7892,13 +7900,14 @@
   let cargoSel = null;                                   // picked in the Cargo, to throw overboard: {kind:'fish'|'dish'|'bottle', key}
   function holdHTML(){
     // HOLD_MAX slots in a grid: the spare sail, fish, then dishes, the rest empty; the gifts are kept apart, below
-    const items = [...sailsInHold().map(r=> ({sail: r})), ...(SLING_CHARGES && charges > 0 ? [{ammo: 'stone'}] : []), ...(nets > 0 ? [{ammo: 'net'}] : []), ...(kits > 0 ? [{kit: true}] : []), ...bottleHold.map((b,i)=> ({bottle: i})),
+    const items = [...sailsInHold().map(r=> ({sail: r})), ...(SLING_ITEM ? [{sling: true}] : []), ...(SLING_CHARGES && charges > 0 ? [{ammo: 'stone'}] : []), ...(nets > 0 ? [{ammo: 'net'}] : []), ...(kits > 0 ? [{kit: true}] : []), ...bottleHold.map((b,i)=> ({bottle: i})),
                    ...['shark', 'zora'].flatMap(k=> Array(catches[k]).fill({name: TEXT.oars[k], svg: itemIcon(k === 'shark' ? 'Shark' : 'Sea imp'), kind:'catch', key:k})), ...FISH_KEYS.flatMap(k=> Array(counts[k]).fill({name: FISH_NAME[k].one, svg: document.querySelector('#wood .fish-'+k+' svg').outerHTML, fish:true, kind:'fish', key:k})),
                    ...ALL_DISHES.flatMap(d=> Array(dishHold[d.icon]||0).fill({name: d.name, svg: itemIcon(d.icon), kind:'dish', key:d.icon}))];
     if(cargoSel && !items.some(it=> selIs(it))) cargoSel = null;      // (what was picked is gone)
     let selShown = false;
     const selCls = it=>{ if(selShown || !selIs(it)) return ''; selShown = true; return ' sel'; };
     const slot = k=> { const it = items[k]; if(it && it.sail) return spareHTML(it.sail);
+      if(it && it.sling) return '<button type="button" class="slot charges'+(slingEquipped ? ' loaded' : '')+'" data-sling="1" title="'+TEXT.oars.slingItem+'" aria-label="'+TEXT.oars.slingItem+'" aria-pressed="'+slingEquipped+'">'+itemIcon('Slingshot')+'</button>';   // (outlined while equipped)
       if(it && it.kit){ const nm = fmt(TEXT.oars.kits, {n: kits}); return '<button type="button" class="slot charges" data-kit="1" title="'+nm+'" aria-label="'+nm+'">'+itemIcon('Repair kit')+'<span class="n">'+kits+'</span></button>'; }
       if(it && it.ammo){ const net = it.ammo === 'net', n = net ? nets : charges, nm = fmt(net ? TEXT.oars.netsLeft : TEXT.oars.chargesTap, {n});   // tap: load it in the slingshot
         return '<button type="button" class="slot charges'+(slingAmmo === it.ammo ? ' loaded' : '')+'" data-ammo="'+it.ammo+'" title="'+nm+'" aria-label="'+nm+'">'+itemIcon(net ? 'Nets' : 'Charges')+'<span class="n">'+n+'</span></button>'; } if(it && it.bottle !== undefined) return bottleSlotHTML(it.bottle, selCls(it)); return it ? '<button type="button" class="slot item'+(it.fish?' fish':'')+selCls(it)+'" data-item="'+it.kind+'|'+it.key+'" title="'+it.name+'" aria-label="'+it.name+'">'+it.svg+'</button>' : '<span class="slot empty"></span>'; };
@@ -7993,6 +8002,8 @@
     if(th && playing){ e.stopPropagation(); Sfx.init(); throwOverboard(); return; }
     const kt = e.target.closest('[data-kit]');
     if(kt && playing){ e.stopPropagation(); Sfx.init(); useKit(); return; }
+    const sg = e.target.closest('[data-sling]');
+    if(sg && playing){ e.stopPropagation(); Sfx.init(); slingEquipped = !slingEquipped; toast(slingEquipped ? TEXT.oars.slingOn : TEXT.oars.slingOff); Sfx.thunk(0.3); buzz(12); slingKey = ''; renderList(); return; }
     const am = e.target.closest('[data-ammo]');
     if(am && playing){ e.stopPropagation(); Sfx.init(); slingAmmo = am.dataset.ammo; toast(slingAmmo === 'net' ? TEXT.oars.loadedNets : TEXT.oars.loadedStones); Sfx.tick(0.4, 0.8); buzz(10); slingKey = ''; renderList(); return; }
     const itm = e.target.closest('[data-item]');
@@ -8005,7 +8016,7 @@
     e.stopPropagation(); Sfx.init(); swapSail(b.dataset.swap);
   });
   let listKey = '';
-  const holdKey = ()=> [dayNo, coins, charges, nets, kits, slingAmmo, catches.shark, catches.zora, boat.rig, cargoSel ? cargoSel.kind + cargoSel.key : '', bottleHold.map(b=> b.read ? 'r' : 'u').join(''), ...FISH_KEYS.map(k=>counts[k]), ...ALL_DISHES.map(d=> dishHold[d.icon]||0), ...VILLAGES.map(v=> v.giftGot?'g':''), powerOwned, powerLeft, Math.ceil(boonWindT), powerLeft < POWER_USES ? Math.ceil(powerT) : 0,
+  const holdKey = ()=> [dayNo, coins, charges, nets, kits, slingAmmo, slingEquipped, catches.shark, catches.zora, boat.rig, cargoSel ? cargoSel.kind + cargoSel.key : '', bottleHold.map(b=> b.read ? 'r' : 'u').join(''), ...FISH_KEYS.map(k=>counts[k]), ...ALL_DISHES.map(d=> dishHold[d.icon]||0), ...VILLAGES.map(v=> v.giftGot?'g':''), powerOwned, powerLeft, Math.ceil(boonWindT), powerLeft < POWER_USES ? Math.ceil(powerT) : 0,
                         order ? order.items.map(it=> it.got).join(',') + order.closed : ''].join('|');
   // while the list is open, keep the hold up to date (a catch, a repair)
   // ---- the logbook's map: the world cut into ROOM_N × ROOM_N squares round home (named A1…I9), over a chart of what
@@ -11151,8 +11162,8 @@
     }
 
     // the bow cannon on the foredeck (the slingshot's shots leave from its muzzle): a dark wooden carriage on two little
-    // wheels, the barrel along the centreline, thick at the breech with a knob, a ring at the muzzle
-    if(!g){
+    // wheels, the barrel along the centreline, thick at the breech with a knob, a ring at the muzzle (only while the slingshot is equipped)
+    if(!g && slingEquipped){
       const cb = 14 - Math.max(0, 10 - BOW_EXT)*0.3, cm = BX - 2.5;   // breech and muzzle (boat frame x; on the short original bow it sits a little further aft)
       L(FB); ctx.fillStyle = V(0.3); ctx.strokeStyle = INKC; ctx.lineWidth = 0.8;
       ctx.beginPath(); ctx.rect(cb - 1, -3, Math.min(9, cm - cb + 0.5), 6); ctx.fill(); ctx.stroke();   // the carriage
