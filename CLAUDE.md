@@ -199,7 +199,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   `STRANDED_REWARD` 15; texts `TEXT.toasts.castawaySeen/castawayAboard/castawayHome`): drawn waving with a rag on a
   stick in a sandy clearing (`drawCastaway`); a toast within 600 px; anchored within `STRANDED_REACH` they come aboard
   (`updateCastaway`, a second figure forward in the boat); tied up at the village nearest home (`castawayTo`, Nordania)
-  the reward; `resetCastaway` on a new voyage. The boiling sea leaves cool water within `STRANDED_REACH` + 120 of them (`boilRaw`), so the pick-up doesn't scald.
+  the reward; `resetCastaway` on a new voyage. While they wait, the logbook's map has an ink cross on them, like the bottles' (`paintChart`, `pins`; gone once aboard, `chartFog = -1` repaints). The boiling sea leaves cool water within `STRANDED_REACH` + 120 of them (`boilRaw`), so the pick-up doesn't scald.
   **Coastal towers** (Enrico, after the Spanish watchtowers on Apulia's coasts; section by the castaway's, `coastTowers`,
   `placeTowers`, `drawTower`; Tuning `COAST_TOWERS` 24, `COAST_TOWER_GAP` 420, `COAST_TOWER_CLEAR` 450 from home,
   villages and temples, `COAST_TOWER_SIZE` 1): **at random for now** (Enrico will give exact places later: then they
@@ -608,7 +608,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   bad tack (wind from port, `sailSide` < 0, 'a la mala') × `LATEEN_MALA` (0.85). (4) **Handling**: turning × `RIG_TURN`
   (1.3 / 1.25; the square's was 0.8), gathering way × `RIG_ACCEL` (0.7 / 1.4). **The current** (`CURRENT_DRIFT` 18 px/s (was 7; about a third of her top speed) × the local breeze, `boat.dfx/dfy`, added to her
   motion like the leeway): the wind carries her downwind whatever the sail does, so she must steer to make up for it; eased
-  in and out (`boat.driftK`), none moored, in a whirlpool, while fishing under way (at anchor it acts, held by the line) or within `CURRENT_SHORE` of any land (`onLand`; now 0, Enrico: off, it carries her right up to the shore; was 90 px). **Made visible** by the sea's wavelets (`drawSea`): they drift downwind at max(14, 1.1 × `CURRENT_DRIFT`) × the breeze, darker (`WAVELET_BOLD` 1.5) and thicker (1.7). (Foam bits with dotted trails, `CURRENT_FLECKS`, were tried and dropped: they read as arrows.) (5) **Leeway** (`boat.lwx/lwy`, added to her motion): to
+  in and out (`boat.driftK`), none moored, in a whirlpool, while fishing under way (at anchor it acts, held by the line) or within `CURRENT_SHORE` of any land (`onLand`; now 1, Enrico: it carries her right up to the shore; was 90 px, then 0). **Made visible** by the sea's wavelets (`drawSea`): they drift downwind at max(14, 1.1 × `CURRENT_DRIFT`) × the breeze, darker (`WAVELET_BOLD` 1.5) and thicker (1.7). (Foam bits with dotted trails, `CURRENT_FLECKS`, were tried and dropped: they read as arrows.) (5) **Leeway** (`boat.lwx/lwy`, added to her motion): to
   leeward, × `RIG_LEEWAY` (0.35 / 0.08) × her speed, full close-hauled (≤50° off), none from 130°. (6) **Big waves**:
   surfing push and length × `RIG_SURF` (1.35 / 0.7, `boat.surfK`), damage × `RIG_WAVE_HIT` (0.6 / 1.4), the slew round
   × `RIG_BROACH` (0.6 / 2.2). Measured (sail-only target): open sea, square at 150° ~51 px/s, lateen at 70° ~55; among

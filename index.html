@@ -430,7 +430,7 @@
   const NET_HAUL = 0.6;              // seconds the haul takes (was 1.1)
   const CURRENT_DRIFT = 18;          // (was 7) px/s the current (the wind's push on the water) carries her downwind at full breeze, sail or no sail: steer to make up for it (none at anchor, moored, in a whirlpool or with the nets out)
   const WAVELET_BOLD = 1.5;          // how dark the sea's little wave crests are drawn (1 = as before); they drift with the current, so they show it
-  const CURRENT_SHORE = 0;           // px: within this of any shore the current lets go (calm water by the coasts); 0 = it carries her right up to the shore (Enrico; was 90)
+  const CURRENT_SHORE = 1;           // px: within this of any shore the current lets go (calm water by the coasts); 1 = it carries her right up to the shore (Enrico; was 90, then 0)
   const RIG_LEEWAY = {square: 0.35, lateen: 0.08, marconi: 0.05};   // she slips sideways to leeward at this × her speed close-hauled (less on a reach, none running free)
   const RIG_SURF = {square: 1.35, lateen: 0.7, marconi: 0.8};      // surfing a big wave: its push and how long it lasts ×
   const RIG_WAVE_HIT = {square: 0.6, lateen: 1.4, marconi: 1.1};   // damage from a big wave taken badly ×
@@ -473,6 +473,10 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The map in the logbook has a cross where the castaway is waiting (gone once they\'re aboard)',
+      'The current lets go only right at the shore (1 px)',
+    ]},
+    {build: '2026-10-12 18:39', items: [
       'No more calm by the coasts: the wind no longer drops in the lee of land, and the current keeps carrying her right up to the shore',
     ]},
     {build: '2026-10-12 18:25', items: [
@@ -482,12 +486,8 @@
     {build: '2026-10-12 18:07', items: [
       'The Marconi sail draws fully everywhere except within 15° of the wind\'s eye, where it falls off steeply (dead into the wind: nothing)',
     ]},
-    {build: '2026-10-12 18:03', items: [
-      'The controls sit a little higher off the bottom edge, so a thumb there doesn\'t open the phone\'s navigation bar',
-      'The sails\' curves never go past 100%: the best (the Marconi\'s) is now 100% and the rest scaled with it; the boat is as fast as before',
-    ]},
   ];
-  const BUILD = '2026-10-12 18:39';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-12 18:43';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -3650,7 +3650,7 @@
       const d = wdist(boat.x, boat.y, c.x, c.y);
       if(!c.seen && d < 600){ c.seen = true; toast(TEXT.toasts.castawaySeen); }
       if(d < STRANDED_REACH && anchored && weighT <= 0 && !moor && to){
-        c.state = 'aboard'; Sfx.splash(); Sfx.pickup(); buzz([15, 50, 25]);
+        c.state = 'aboard'; chartFog = -1;   /* (the chart's cross for them goes) */ Sfx.splash(); Sfx.pickup(); buzz([15, 50, 25]);
         toast(fmt(TEXT.toasts.castawayAboard, {village: to.name}));
       }
     } else if(c.state === 'aboard' && moor && moor.phase === 'moored' && moor.pier.isl.village === to){
@@ -8234,7 +8234,8 @@
     // the crosses from the messages in bottles: an ink X, wherever they are (seen or not)
     mapCtx.strokeStyle = '#000'; mapCtx.lineWidth = Math.max(1.5, N/120); mapCtx.lineCap = 'round';
     const xs = Math.max(3, N/50), ox = wrapX(START.x - WORLD.w/2), oy = wrapY(START.y - WORLD.h/2);   // (the squares start half a world west and north of home)
-    for(const m of marks){
+    const pins = castaway && castaway.state === 'waiting' ? [...marks, castaway] : marks;   // (and one where the castaway waits, until picked up)
+    for(const m of pins){
       const x = wrapX(m.x - ox)/S, y = wrapY(m.y - oy)/S;
       mapCtx.beginPath(); mapCtx.moveTo(x-xs, y-xs); mapCtx.lineTo(x+xs, y+xs); mapCtx.moveTo(x+xs, y-xs); mapCtx.lineTo(x-xs, y+xs); mapCtx.stroke();
     }
