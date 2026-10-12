@@ -380,9 +380,7 @@
   const TUT_COMPASS_T = 4500;        // ms the compass step lasts (no input needed)
   const TUT_DROP_WAIT = 3000, TUT_DROP_T = 3000;   // after the wheel: wait, then the optional drop-anchor tip for a while (ms)
   const HUB_HOLD = 330;              // ms to hold the wheel's hub to drop or weigh anchor (halved from 660; was 160 there, before that 320, 500)
-  const ANCHOR_RODE = 40;            // px of anchor line: at anchor the current still carries her, until the line comes taut round the anchor (a pivot)
-  const ANCHOR_PULL = 4;             // how hard a taut line pulls her back to its length against the current (a share of the overshoot a second)
-  const ANCHOR_SWING = 1.6;          // rad/s her bow swings round to face the anchor once the line is taut (no steering at anchor)
+  const ANCHOR_RODE = 30;            // px of anchor line from the bow: the anchor stays where it fell; she drifts until the line is taut, then the line holds her bow there (a pivot) and she swings round it, stern downstream
   const WEIGH_TIME = 0.45;           // seconds to get the anchor up before she's under way again (was 0.9)
   const ANCHOR_BITE = 8;             // how quickly the anchor stops her once it's down (rate a second; was 4)
 
@@ -463,6 +461,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The anchor stays where it fell (drawn on the water, with its line to the bow): she drifts until the line is taut, then swings round it, bow to the anchor',
+    ]},
+    {build: '2026-10-12 12:16', items: [
       'The anchor needs half as long a press on the hub',
       'At anchor the current still carries the boat until the anchor line comes taut: then it holds her and her bow swings round to face the anchor',
       'No steering at anchor',
@@ -474,11 +475,8 @@
     {build: '2026-10-12 08:09', items: [
       'Every sail swells out the same at its best: SAIL_INFLATE 1 for all three',
     ]},
-    {build: '2026-10-12 08:04', items: [
-      'The sail swells out half as much as before when it draws at its best',
-    ]},
   ];
-  const BUILD = '2026-10-12 12:16';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-12 12:30';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -5449,6 +5447,7 @@
 
   // anchor: drops and holds the boat where it is; press again to weigh it
   let anchored = false;
+  const ANCHOR_BOW = 18;               // px from her pivot to the bow, where the anchor line is made fast
   let anchorPt = null;                 // where the anchor lies on the bottom (ANCHOR_RODE: she swings round it)
 
   // weighing anchor takes a moment: the chain comes in (you hear it) and
@@ -5466,7 +5465,7 @@
     if(on){
       if(anchored && weighT <= 0) return;
       weighT = 0; anchored = true; anchorUI();
-      if(!moor) anchorPt = {x: boat.x + Math.cos(boat.angle)*14, y: boat.y + Math.sin(boat.angle)*14};   // let go off the bow
+      if(!moor) anchorPt = {x: boat.x + Math.cos(boat.angle)*ANCHOR_BOW, y: boat.y + Math.sin(boat.angle)*ANCHOR_BOW};   // let go off the bow: it stays there
       Sfx.init(); Sfx.anchor(true); buzz([45,40,20,30,15]);
     } else {
       if(!anchored || weighT > 0) return;
@@ -8749,15 +8748,20 @@
         boat.y += Math.sin(boat.angle)*boat.speed*dt + (boat.ky + boat.lwy + boat.dfy)*dt;
         const kd = Math.exp(-boat.kdamp*dt);              // rebound fades out
         boat.kx *= kd; boat.ky *= kd;
-        // at anchor the line is a pivot: once the current has carried her out to ANCHOR_RODE it pulls her back, and her bow swings to the anchor
+        // at anchor the line is a pivot: the anchor stays put; once the line from the bow is taut (ANCHOR_RODE) the bow
+        // can go no further, and whatever the current does swings her round it, stern downstream, bow to the anchor
         if(anchored && !moor && anchorPt){
-          const dx = wdx(anchorPt.x, boat.x), dy = wdy(anchorPt.y, boat.y), d = Math.hypot(dx, dy);
-          if(d > ANCHOR_RODE*3){ anchorPt = {x: boat.x, y: boat.y}; }   // (carried far off some other way: the anchor drags and bites again where she is)
+          const ca = Math.cos(boat.angle), sa = Math.sin(boat.angle);
+          let bx = boat.x + ca*ANCHOR_BOW, by = boat.y + sa*ANCHOR_BOW;              // the bow
+          const ax = bx + wdx(anchorPt.x, bx), ay = by + wdy(anchorPt.y, by);       // the anchor, on the same copy of the world
+          const dx = bx - ax, dy = by - ay, d = Math.hypot(dx, dy);
+          if(d > ANCHOR_RODE*4){ anchorPt = {x: wrapX(bx), y: wrapY(by)}; }       // (carried far off some other way: it drags and bites again)
           else if(d > ANCHOR_RODE){
-            const over = d - ANCHOR_RODE, k = Math.min(1, ANCHOR_PULL*dt);
-            boat.x += dx/d*over*k; boat.y += dy/d*over*k;
-            const want = Math.atan2(dy, dx), da = Math.atan2(Math.sin(want - boat.angle), Math.cos(want - boat.angle));
-            boat.angle += da*Math.min(1, ANCHOR_SWING*dt*Math.min(1, over/4 + 0.3));
+            bx = ax + dx/d*ANCHOR_RODE; by = ay + dy/d*ANCHOR_RODE;                  // the taut line holds the bow
+            const sx = boat.x - bx, sy = boat.y - by, sl = Math.hypot(sx, sy) || 1;  // the hull trails from the bow, the way it's being pushed
+            boat.x = bx + sx/sl*ANCHOR_BOW; boat.y = by + sy/sl*ANCHOR_BOW;
+            boat.angle = Math.atan2(-sy, -sx);
+            boat.speed = Math.min(boat.speed, 0); boat.kx *= 0.5; boat.ky *= 0.5;    // the line takes her way off
           }
         }
       }
@@ -11026,11 +11030,15 @@
       ctx.fillStyle = INKC; ctx.beginPath(); ctx.arc(b0, b1, 1.6, 0, Math.PI*2); ctx.fill();
       L(FB);
     }
-    if(!g && anchored){                                // anchor rode running down from the bow
+    if(!g && anchored && anchorPt && !moor){           // the anchor line from the bow to where the anchor lies (it doesn't move)
+      const dx = wdx(anchorPt.x, B.x), dy = wdy(anchorPt.y, B.y), c = Math.cos(B.angle), s = Math.sin(B.angle);
+      const lx = dx*c + dy*s, ly = -dx*s + dy*c;                                   // in her own frame
+      const tx = BX - 2, slack = Math.max(0, 1 - Math.hypot(lx - tx, ly)/ANCHOR_RODE);   // a slack line sags, a taut one runs straight
       ctx.strokeStyle = INKC; ctx.lineWidth = 1*LWK; ctx.setLineDash([2,1.5]);
-      ctx.beginPath(); ctx.moveTo(BX-2,0); ctx.quadraticCurveTo(BX+5, 2+Math.sin(t*1.5)*1.5, BX+10, 0); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(tx, 0); ctx.quadraticCurveTo((tx + lx)/2 - ly*0.2*slack, ly/2 + (lx - tx)*0.2*slack + Math.sin(t*1.5)*slack, lx, ly); ctx.stroke();
       ctx.setLineDash([]);
-      ctx.beginPath(); ctx.arc(BX+10, 0, 2.2, 0, Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(lx, ly, 2.4, 0, Math.PI*2); ctx.stroke();            // where it went down: a buoy-like ring on the water
+      ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.arc(lx, ly, 4 + Math.sin(t*2)*0.6, 0, Math.PI*2); ctx.stroke(); ctx.globalAlpha = 1;
     }
     // tiller inside the stern: swings opposite to the rudder blade
     ctx.strokeStyle = INKC; ctx.lineWidth = 1.6*LWK; ctx.lineCap='round';
