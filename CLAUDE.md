@@ -601,15 +601,14 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   used for her angle off the wind and the drive as `localWind` / `localStrength`): on open sea steady and
   `OPEN_WIND_BONUS` (0.12) fresher; among the islands (`archipelago`) gusts and lulls every `GUST_EVERY` (3.5 s ±40%,
   +`GUST_RISE` 0.3 / −`GUST_DROP` 0.45) and veering ±`GUST_SHIFT` (35°); in the lee of land within `LEE_DIST` (140 px)
-  upwind it drops by up to `LEE_DROP` (0.6). (2) **Retrim** (`boat.trimA` follows her angle off the wind at
+  upwind it dropped by up to `LEE_DROP` (now 0, Enrico: off; was 0.6). (2) **Retrim** (`boat.trimA` follows her angle off the wind at
   `RIG_RETRIM` 0.4 / 3.5 a second; the drive × max(`RETRIM_FLOOR` 0.3, 1 − mis-trim/`RETRIM_SPAN` 60°·0.7)): after a 60°
   shift the square needs ~5 s to be back to 90%, the lateen ~0.5 s; sharp turns cost the square too. (3) **The
   lateen's tack**: while its yard swings across (`boat.swingAcross`) the drive is × `LATEEN_TACK_DRIVE` (0.35), and on its
   bad tack (wind from port, `sailSide` < 0, 'a la mala') × `LATEEN_MALA` (0.85). (4) **Handling**: turning × `RIG_TURN`
   (1.3 / 1.25; the square's was 0.8), gathering way × `RIG_ACCEL` (0.7 / 1.4). **The current** (`CURRENT_DRIFT` 18 px/s (was 7; about a third of her top speed) × the local breeze, `boat.dfx/dfy`, added to her
   motion like the leeway): the wind carries her downwind whatever the sail does, so she must steer to make up for it; eased
-  in and out (`boat.driftK`), none moored, in a whirlpool, while fishing under way (at anchor it acts, held by the line) or within `CURRENT_SHORE` (90 px) of any land (`onLand`), so it never
-  pins her to a coast. **Made visible** by the sea's wavelets (`drawSea`): they drift downwind at max(14, 1.1 × `CURRENT_DRIFT`) × the breeze, darker (`WAVELET_BOLD` 1.5) and thicker (1.7). (Foam bits with dotted trails, `CURRENT_FLECKS`, were tried and dropped: they read as arrows.) (5) **Leeway** (`boat.lwx/lwy`, added to her motion): to
+  in and out (`boat.driftK`), none moored, in a whirlpool, while fishing under way (at anchor it acts, held by the line) or within `CURRENT_SHORE` of any land (`onLand`; now 0, Enrico: off, it carries her right up to the shore; was 90 px). **Made visible** by the sea's wavelets (`drawSea`): they drift downwind at max(14, 1.1 × `CURRENT_DRIFT`) × the breeze, darker (`WAVELET_BOLD` 1.5) and thicker (1.7). (Foam bits with dotted trails, `CURRENT_FLECKS`, were tried and dropped: they read as arrows.) (5) **Leeway** (`boat.lwx/lwy`, added to her motion): to
   leeward, × `RIG_LEEWAY` (0.35 / 0.08) × her speed, full close-hauled (≤50° off), none from 130°. (6) **Big waves**:
   surfing push and length × `RIG_SURF` (1.35 / 0.7, `boat.surfK`), damage × `RIG_WAVE_HIT` (0.6 / 1.4), the slew round
   × `RIG_BROACH` (0.6 / 2.2). Measured (sail-only target): open sea, square at 150° ~51 px/s, lateen at 70° ~55; among

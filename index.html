@@ -430,7 +430,7 @@
   const NET_HAUL = 0.6;              // seconds the haul takes (was 1.1)
   const CURRENT_DRIFT = 18;          // (was 7) px/s the current (the wind's push on the water) carries her downwind at full breeze, sail or no sail: steer to make up for it (none at anchor, moored, in a whirlpool or with the nets out)
   const WAVELET_BOLD = 1.5;          // how dark the sea's little wave crests are drawn (1 = as before); they drift with the current, so they show it
-  const CURRENT_SHORE = 90;          // px: within this of any shore the current lets go (calm water by the coasts); it takes hold again out past it
+  const CURRENT_SHORE = 0;           // px: within this of any shore the current lets go (calm water by the coasts); 0 = it carries her right up to the shore (Enrico; was 90)
   const RIG_LEEWAY = {square: 0.35, lateen: 0.08, marconi: 0.05};   // she slips sideways to leeward at this × her speed close-hauled (less on a reach, none running free)
   const RIG_SURF = {square: 1.35, lateen: 0.7, marconi: 0.8};      // surfing a big wave: its push and how long it lasts ×
   const RIG_WAVE_HIT = {square: 0.6, lateen: 1.4, marconi: 1.1};   // damage from a big wave taken badly ×
@@ -442,7 +442,7 @@
   const GUST_DROP = 0.45;            // …and a lull drops it up to this much
   const GUST_SHIFT = 35;             // degrees the wind veers back and forth among the islands
   const LEE_DIST = 140;              // px: land this close upwind puts her in its lee
-  const LEE_DROP = 0.6;              // how much of the wind the lee takes (land right upwind; less the farther it is)
+  const LEE_DROP = 0;                // how much of the wind the lee takes (land right upwind; less the farther it is); 0 = no lee, the wind as strong by the coasts (Enrico; was 0.6)
   const SAIL_SWING_MAX = 0.35;       // radians the yard may swing off square (square sail) or out past its rest (lateen): it only sways a little; the player turns the boat
   const SAIL_INFLATE = {square: 1, lateen: 1, marconi: 1};   // per sail: how much more the cloth bellies out when it draws at its best (0 = as before; the extra comes in from SAIL_INFLATE_FROM of top drive up to full)
   const SAIL_INFLATE_FROM = 0.55;    // the share of top drive where the extra belly starts
@@ -473,6 +473,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'No more calm by the coasts: the wind no longer drops in the lee of land, and the current keeps carrying her right up to the shore',
+    ]},
+    {build: '2026-10-12 18:25', items: [
       'The steering wheel no longer knocks at every spoke as it turns (the soft rub and the thud at full lock stay)',
       'Quicker: the land and shallows are drawn in one pass instead of four, the darker deep-water tint is skipped while there are no big waves, and the screen size is no longer re-measured every frame (drawing ~40% lighter)',
     ]},
@@ -483,12 +486,8 @@
       'The controls sit a little higher off the bottom edge, so a thumb there doesn\'t open the phone\'s navigation bar',
       'The sails\' curves never go past 100%: the best (the Marconi\'s) is now 100% and the rest scaled with it; the boat is as fast as before',
     ]},
-    {build: '2026-10-12 17:42', items: [
-      'The paddle wheels pat the water again, a splash a paddle (the steady wash is gone)',
-      'The crank half as loud again',
-    ]},
   ];
-  const BUILD = '2026-10-12 18:25';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-12 18:39';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -8704,7 +8703,7 @@
     }
     // the current: the wind sets the water moving, and it carries her downwind whatever the sail does
     {
-      const on = !moor && !boat.whirl && (anchored || !fishing) && !onLand(boat.x, boat.y, CURRENT_SHORE) ? 1 : 0;   // (none close to a shore; at anchor it still carries her, the line holds her)
+      const on = !moor && !boat.whirl && (anchored || !fishing) && !(CURRENT_SHORE > 0 && onLand(boat.x, boat.y, CURRENT_SHORE)) ? 1 : 0;   // (none close to a shore; at anchor it still carries her, the line holds her)
       boat.driftK += (on - boat.driftK)*Math.min(1, dt*0.8);       // (it takes hold slowly after weighing anchor, and lets go as the anchor bites)
       const v = CURRENT_DRIFT*localStrength*boat.driftK;
       boat.dfx = Math.cos(localWind + Math.PI)*v; boat.dfy = Math.sin(localWind + Math.PI)*v;
