@@ -654,6 +654,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   (called by `updateOarCtl`) also turns the wheels (`oarRate`, 1.4 × `OAR_RATE` × `SPRING_SPEED`/14); the steady churn (`Sfx.rowBed`) is
   silent in this mode: instead `drawBoat` plays `Sfx.paddle` (a low lowpassed splash and a 105→62 Hz thud, loudness
   `PADDLE_VOL` 2.03 × `oarSpin` (was 1.56, 1.3, 1.8, 3.6); made softer and lower: attacks 35 / 25 ms, the splash low-passed 340→120 Hz, the thud 75→48 Hz) every other paddle that comes round (four a turn of `B.wheelA`; it was eight), so the sound follows the wheels; freewheeling under sail (no spring drive, her speed > 3 px/s, and not while the crank is being turned, so its clicks always sound the same) the same splash plays at half the volume, same pitch (`PADDLE_FREE_VOL` 0.5 × `PADDLE_VOL`, `PADDLE_FREE_PITCH` 1, Tuning; it was 0.22 × a fade-in with her speed and 0.7 pitch, too faint to hear);
+  **Now a steady churn instead** (Enrico: the tocs sounded weird; `PADDLE_BED` true in Tuning, false = the tocs above): `Sfx.paddleBed(level, sf)`, a looped pink-noise layer band-passed ~420–800 Hz (`padL`, kind `paddles`), its level set every frame from `drawBoat` (`oarSpin` while cranked, × `PADDLE_FREE_VOL` freewheeling, 0 moored), no beat in it; loudness `PADDLE_BED_VOL`.
   when the spring runs down `Sfx.springOff` (the gear's last links slowing, a slack clunk). A new voyage starts with it empty.
   **The slingshot** (`SLING_ON`, `#sling`, section in the code before `updateSpring`; text `TEXT.oars.sling`): a wooden
   Y fork on the right, above the crank (64×80, `bottom` 100 px; it was 150 tall), its bands (ink over a paper edge, so they read over the
@@ -719,7 +720,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   again and the oars come in. Never because of the anchor: while it's down (or going down) the sail stays up and the oars
   in; weighing it head to wind, the oars take her. Turning is easier in general (`TURN_RATE` = 1.2; was 0.6, doubled by Enrico); on the paddles × `ROW_TURN_MULT` (1.5; was 2, too fast after the doubling). To stop on a fish
   bank, drop anchor (the nets go over after 0.25 s; their animation: `NET_DROP` 0.9 s, `NET_HAUL` 0.6 s in Tuning, half a second quicker than 1.4 / 1.1).
-  The boat gathers way slowly (`BOAT_ACCEL` = 0.4/1.2: the speed approaches its target at that rate, so it was divided by 1.2 when the top speed went up 20%, keeping the same push in px/s²; slowing down unchanged).
+  The boat gathers way (`BOAT_ACCEL` = 1.05/1.2 now, Enrico: +50% from 0.7/1.2; once 0.4/1.2: the speed approaches its target at that rate, so it was divided by 1.2 when the top speed went up 20%, keeping the same push in px/s²; slowing down unchanged).
   Top speed is kept modest (`WIND_BOOST` = 0.768, cut to 80% of 0.96 by Enrico, ~42 px/s dead downwind in full wind; running dead downwind adds only up to +10%, `downwindBonus`).
   Oars never come out because of the anchor (nor while getting under way after weighing it).
   The **logbook** button (bottom left corner, under the compass) is just the book, no round knob: a 76 px icon

@@ -72,7 +72,7 @@
   // -- Boat --
   const MAX_SPEED = 50;              // px/s: reference speed (collision damage is scaled by it too)
   const WIND_BOOST = 0.768;          // how much the wind gives: sets the top speed (~42 px/s dead downwind in full wind; was 0.96, cut to 80%)
-  const BOAT_ACCEL = 0.7/1.2;        // how quickly she gathers way (higher = quicker); slowing down is separate
+  const BOAT_ACCEL = 1.05/1.2;       // how quickly she gathers way (higher = quicker; was 0.7/1.2, raised 50%); slowing down is separate
   const TURN_RATE = 1.2;             // rad/s at full rudder (was 0.6, before that 0.42: she turns twice as fast)
   const ROW_TURN_MULT = 1.5;         // turning is this much quicker on the paddles (oars) than under sail (was 2: with TURN_RATE 1.2 that gave 2.4 rad/s, a little too fast)
   const ROW_ENTER = 10;              // px/s: slower than this, with the wind unable to help, and the oars come out (sail brailed up)
@@ -95,6 +95,8 @@
   const STEAM_WIND = 40;             // px/s the wind carries the steam at full breeze (was 14): the plume streams off downwind
   const STEAM_LIFE = 0.55;           // how long a puff lasts, so how long the plume trails (× the old 2–2.8 s; was 1)
   const STEAM_LIGHT = 0.45;          // …each this much as big and as white (1 = like the driving steam)
+  const PADDLE_BED = true;           // the paddle wheels sound as a steady, soft churn of water (louder the harder they turn) instead of a splash and a thud a paddle (false = the old tocs)
+  const PADDLE_BED_VOL = 1;          // loudness of that churn (0 = silent); freewheeling under sail it's × PADDLE_FREE_VOL
   const PADDLE_FREE_VOL = 0.5;       // …and when they only freewheel under sail (dragged round by the water): the same splash at this share of it (× PADDLE_VOL; was 0.22, fading in with her speed)…
   const PADDLE_FREE_PITCH = 1;       // …and this pitch (1 = the same as when driven; was 0.7)
   const CRANK_BACK_SPEED = 12;       // let go of the crank before a full turn and it springs back anticlockwise, like an alarm clock's key: turns a second (radians, quicker the more it was wound)
@@ -466,6 +468,10 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The boat gathers way 50% quicker',
+      'The paddle wheels sound as a steady, soft churn of water instead of a toc a paddle (Audio: Paddles)',
+    ]},
+    {build: '2026-10-12 13:41', items: [
       'Every sail draws better: 30% more close to the wind (20–50° off it) and 50% more with the wind on the beam (70–110°)',
     ]},
     {build: '2026-10-12 13:35', items: [
@@ -475,11 +481,8 @@
     {build: '2026-10-12 12:52', items: [
       'The crank no longer charges a spring: keep turning it and the paddle wheels push the boat (the faster you crank, the harder), stop and they stop; no charge bar',
     ]},
-    {build: '2026-10-12 12:30', items: [
-      'The anchor stays where it fell (drawn on the water, with its line to the bow): she drifts until the line is taut, then swings round it, bow to the anchor',
-    ]},
   ];
-  const BUILD = '2026-10-12 13:41';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-12 13:48';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -4000,7 +4003,7 @@
       if(name === 'master') master.gain.setTargetAtTime(0.9*v, ac.currentTime, 0.05);
       else if(chans[name]) for(const g of chans[name].values()) g.gain.setTargetAtTime(v, ac.currentTime, 0.05);
     }
-    let ambBus=null, sea=null, rush=null, rowL=null, rainL=null, rainBus=null, rainNext=0, rainGustT=0, rainGust=1, cicadaOut=null, cicadaSingers=[], droneNodes=null, engineNodes=null, grindNodes=null;
+    let ambBus=null, sea=null, rush=null, rowL=null, padL=null, padSampleT=0, rainL=null, rainBus=null, rainNext=0, rainGustT=0, rainGust=1, cicadaOut=null, cicadaSingers=[], droneNodes=null, engineNodes=null, grindNodes=null;
     function init(){
       if(ac){ if(ac.state==='suspended') ac.resume(); return; }
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -4062,7 +4065,8 @@
       sea  = routed('sea', ()=> [ {...layer(brown,'lowpass',380,0.5,-0.55,0),   ph:0,   per:7},
                {...layer(brown,'lowpass',380,0.5, 0.55,3.1), ph:0.5, per:8.5} ]);
       rush = routed('sea', ()=> layer(brown,'lowpass',320,0.5,0,2.2));   // deep, soft water along the hull
-      rowL = routed('oars', ()=> layer(pink,'bandpass',480,0.9,0,4.1));   // the oars' wash: a soft swirl of water that swells with each pull (see rowBed())
+      rowL = routed('oars', ()=> layer(pink,'bandpass',480,0.9,0,4.1));
+      padL = routed('paddles', ()=> layer(pink,'bandpass',420,0.7,0,2.7));   // the paddle wheels' churn: a steady, soft wash of water (see paddleBed())   // the oars' wash: a soft swirl of water that swells with each pull (see rowBed())
       // rain on the sea: a broad, soft wash under the patter (see rain()), between a hiss and a murmur
       rainL = routed('rain', ()=> layer(pink,'bandpass',1800,0.35,0,1.3));
       rainBus = ac.createGain(); rainBus.gain.value = 1; rainBus.connect(ambBus);
@@ -4593,6 +4597,16 @@
       const og = ac.createGain(); og.gain.setValueAtTime(0.0001, t0); og.gain.exponentialRampToValueAtTime(0.06*k, t0+0.025); og.gain.exponentialRampToValueAtTime(0.0001, t0+0.14);
       o.connect(og); og.connect(master); o.start(t0); o.stop(t0+0.15);
     }
+    // the paddle wheels turning (PADDLE_BED): a steady, even churn of water, no beat in it; level 0..1 (0 silent),
+    // sf her speed 0..1 (a little brighter as she goes); sample: play it a moment at full (the Audio editor's sample)
+    function paddleBed(level, sf, sample){
+      if(!padL || ac.state!=='running') return;
+      const t = ac.currentTime;
+      if(sample) padSampleT = t + 0.9;
+      if(t < padSampleT){ level = Math.max(level, 1); sf = Math.max(sf, 0.5); }
+      padL.g.gain.setTargetAtTime(0.16*PADDLE_BED_VOL*level, t, 0.12);
+      padL.f.frequency.setTargetAtTime(320 + 260*sf + 120*level, t, 0.15);
+    }
     // the spring run down: the wheels let go, a slack clunk of the gear and a short, falling whirr of the last turns
     function springOff(k){
       if(!ac || ac.state!=='running' || !(k > 0)) return;
@@ -4984,14 +4998,14 @@
 
 
     // each sound's kind (for SOUND_VOL); the ones played every frame set gains made in init(), routed there
-    const KIND = {oar: 'oars', oarCue: 'oars', oarHit: 'oars', rowBed: 'oars', ratchet: 'crank', paddle: 'paddles', springOff: 'paddles',
+    const KIND = {oar: 'oars', oarCue: 'oars', oarHit: 'oars', rowBed: 'oars', ratchet: 'crank', paddle: 'paddles', paddleBed: 'paddles', springOff: 'paddles',
                   crate: 'crate', tick: 'clicks', thunk: 'clicks', type: 'clicks', hammer: 'clicks', book: 'book', pageTurn: 'book',
                   pickup: 'nets', splash: 'nets', sizzle: 'crash', bell: 'bell', whirl: 'whirl', drone: 'whirl', gull: 'gulls', crash: 'crash',
                   waveBreak: 'waves', waveHit: 'waves', surf: 'waves', townEvent: 'town', chatter: 'town', cricket: 'night', howl: 'night',
                   anchor: 'anchor', buoy: 'buoy', coins: 'coins', rain: 'rain', cicadas: 'cicadas', ambient: 'sea', wheel: 'wheel', engine: 'engine', grind: 'crank', thunder: 'thunder', cannon: 'cannon'};
     const kinded = (name, fn)=> (...a)=>{ const k = curKind; curKind = KIND[name]; try{ return routed(KIND[name], ()=> fn(...a)); } finally { curKind = k; } };
     for(const [k, v] of Object.entries(SOUND_VOL)) vol[k] = v;
-    return {init, setVol, ...Object.fromEntries(Object.entries({oar, ratchet, paddle, springOff, oarCue, oarHit, rowBed, crate, tick, thunk, wheel, ambient, rain, cicadas, book, pageTurn, pickup, hammer, bell, whirl, type, splash, drone, gull, crash, waveBreak, waveHit, surf, townEvent, chatter, cricket, howl, anchor, buoy, coins, engine, grind, thunder, sizzle, cannon}).map(([n, f])=> [n, kinded(n, f)]))};
+    return {init, setVol, ...Object.fromEntries(Object.entries({oar, ratchet, paddle, paddleBed, springOff, oarCue, oarHit, rowBed, crate, tick, thunk, wheel, ambient, rain, cicadas, book, pageTurn, pickup, hammer, bell, whirl, type, splash, drone, gull, crash, waveBreak, waveHit, surf, townEvent, chatter, cricket, howl, anchor, buoy, coins, engine, grind, thunder, sizzle, cannon}).map(([n, f])=> [n, kinded(n, f)]))};
   })();
 
   // ---------- Ship's wheel ----------
@@ -5821,7 +5835,7 @@
   function sink(){
     playing = false;
     boat.speed = 0;
-    Sfx.wheel(0); Sfx.drone(0); Sfx.rowBed(0, 0, 0);
+    Sfx.wheel(0); Sfx.drone(0); Sfx.rowBed(0, 0, 0); Sfx.paddleBed(0, 0);
     closeDialog();
     elGoTitle.textContent = TEXT.sunk.title;
     const min = Math.floor(voyageTime/60), sec = Math.floor(voyageTime%60);
@@ -5910,7 +5924,7 @@
     for(const k in SOUND_VOL) Sfx.setVol(k, SOUND_VOL[k]);
     const SAMPLE = {master: ()=> Sfx.bell(), night: ()=> Sfx.howl(0.03, 0), gulls: ()=> Sfx.gull(0, 0.09), town: ()=> Sfx.townEvent('hammer', 0.6, 0),
                     whirl: ()=> Sfx.whirl(), waves: ()=> Sfx.waveBreak(0.8, 0), crash: ()=> Sfx.crash(0.6), clicks: ()=> Sfx.thunk(0.5),
-                    anchor: ()=> Sfx.anchor(true), crank: ()=> Sfx.ratchet(CRANK_VOL, true), paddles: ()=> Sfx.paddle(PADDLE_VOL),
+                    anchor: ()=> Sfx.anchor(true), crank: ()=> Sfx.ratchet(CRANK_VOL, true), paddles: ()=> PADDLE_BED ? Sfx.paddleBed(1, 0.5, true) : Sfx.paddle(PADDLE_VOL),
                     oars: ()=> Sfx.oarHit(OAR_CUE_VOL), nets: ()=> Sfx.pickup(), bell: ()=> Sfx.bell(), buoy: ()=> Sfx.buoy(),
                     crate: ()=> Sfx.crate(), coins: ()=> Sfx.coins(), book: ()=> Sfx.pageTurn(), thunder: ()=> Sfx.thunder(0.8, 1), cannon: ()=> Sfx.cannon(1)};
     const n2 = x=> (+(+x).toFixed(2)).toFixed(2);
@@ -11136,7 +11150,11 @@
       // a paddle slapping into the water every other one that comes round (four a turn): while the spring drives the wheels,
       // or, quieter and lower, while they only freewheel under sail (fading in with her way)
       { const idx = Math.floor(turnA/(Math.PI/2));
-        if(!g && SPRING_PADDLES && idx !== B.padIdx){
+        if(!g && SPRING_PADDLES && PADDLE_BED){
+          const free = (B.speed || 0) > 3 && !crankDrag ? PADDLE_FREE_VOL*Math.min(1, (B.speed || 0)/25) : 0;
+          Sfx.paddleBed(moor ? 0 : Math.max(oarSpin > 0.05 ? oarSpin : 0, free), Math.min(1, (B.speed || 0)/MAX_SPEED));
+        }
+        else if(!g && SPRING_PADDLES && idx !== B.padIdx){
           if(oarSpin > 0.05) Sfx.paddle(PADDLE_VOL*oarSpin);
           else if((B.speed || 0) > 3 && !crankDrag) Sfx.paddle(PADDLE_VOL*PADDLE_FREE_VOL, PADDLE_FREE_PITCH);   // (not while the crank is turned: its clicks stay its own)
         }
