@@ -429,7 +429,7 @@
   const LEE_DIST = 140;              // px: land this close upwind puts her in its lee
   const LEE_DROP = 0.6;              // how much of the wind the lee takes (land right upwind; less the farther it is)
   const SAIL_SWING_MAX = 0.35;       // radians the yard may swing off square (square sail) or out past its rest (lateen): it only sways a little; the player turns the boat
-  const SAIL_INFLATE = {square: 1.2, lateen: 1.2, marconi: 3};   // per sail: how much more the cloth bellies out when it draws at its best (0 = as before; the extra comes in from SAIL_INFLATE_FROM of top drive up to full)
+  const SAIL_INFLATE = {square: 0.6, lateen: 0.6, marconi: 1.5};   // per sail: how much more the cloth bellies out when it draws at its best (0 = as before; the extra comes in from SAIL_INFLATE_FROM of top drive up to full)
   const SAIL_INFLATE_FROM = 0.55;    // the share of top drive where the extra belly starts
   const SAIL_TRIM_TIME = 2;          // seconds the sail takes to swing round and fill to a change of wind or course (a look: the yard and the cloth's belly)
   const LATEEN_SWING = 0.9;          // how quickly the lateen yard swings across when she changes tack (3/SAIL_TRIM_TIME = as quick as the sail trims; lower = heavier)
@@ -458,6 +458,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The sail swells out half as much as before when it draws at its best',
+    ]},
+    {build: '2026-10-11 23:16', items: [
       'Coastal towers reach less far (200 instead of 300)',
       'Five slingshot shots bring a coastal tower down: it stops firing and stays a ruin',
       'The Marconi sail is drawn as a solid sheet: however full it gets, you no longer see through it',
@@ -468,11 +471,8 @@
     {build: '2026-10-11 23:02', items: [
       'Coastal watchtowers, like the Spanish towers on Apulia\'s coasts, stand along the shores (placed at random for now)',
     ]},
-    {build: '2026-10-11 22:52', items: [
-      'The boat is slower under sail: top speed cut to 80%',
-    ]},
   ];
-  const BUILD = '2026-10-11 23:16';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-12 08:04';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
