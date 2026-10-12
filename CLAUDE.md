@@ -624,6 +624,12 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   `refreshList`, only when the rounded angle, the sail or the breeze changes).
   (Oar handles on the screen's sides, dragged down in time, were tried after a sketch and dropped: they didn't work
   well; the round button below is back.)
+  **The crank drives the wheels directly** (Enrico; `CRANK_DIRECT` true in Tuning, `updateCrankDirect`; texts
+  `TEXT.oars.crankDirect`): no spring to charge, no lock, no spring-back, no charge bar (`#sp-meter` hidden): while the
+  crank is turned clockwise the paddle wheels push her, `oarSpin` easing (`CRANK_EASE` 2.5) toward the cranking speed
+  over `CRANK_FULL_RATE` (5 rad/s; a turn a second is 6.3) and `boat.rowV` = `SPRING_SPEED` × `oarSpin`; stop cranking
+  and they let go; not at anchor, moored or in a whirlpool; the gear still ticks and grinds; the ring on the plate shows
+  the push; Enter/Space on the crank drives them a second. With `CRANK_DIRECT` false the wound spring below is back.
   **The spring and the crank** (`SPRING_PADDLES` in Tuning, on; false = the old rhythmic oar button below): the
   paddle wheels run off a wound spring (`spring` 0..1). The crank (`#crank`, 84 px (was 132; viewBox ±36 now that the hint arrow above it is gone), in the bottom right corner mirroring the logbook bottom left (same centre, z-index over the wheel's canvas), shown while playing (at anchor too: it can be wound there; not while tied up at a pier), hidden at the market and while someone talks; a winding in progress is let go and springs back: a toothed gear
   (16 teeth, a dotted pattern fill `#crank-dots`) turning with the arm, a hatched plate with three rivets, an arm with a
