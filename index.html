@@ -412,7 +412,7 @@
   const SAIL_POLAR_LATEEN = [[0,0.011],[20,0.164],[35,0.448],[50,0.672],[70,0.914],[90,0.948],[110,0.948],[130,0.948],[150,0.948],[170,0.948],[180,0.948]];
   // the Marconi (Bermuda) sail: a tall triangle on a boom, the modern one: the best close to the wind, a little less on the
   // beam than the lateen, the weakest running free; no bad tack, no slow yard to swing across
-  const SAIL_POLAR_MARCONI = [[0,0.023],[20,0.314],[35,0.613],[50,0.732],[70,0.948],[90,1],[110,1],[130,1],[150,1],[170,1],[180,1]];   // the best with the wind on the beam, still decent running (the boom squared out); was best close-hauled and weak running (180° 0.5)
+  const SAIL_POLAR_MARCONI = [[0,0],[5,0.4],[10,0.8],[15,1],[180,1]];   // (Enrico) full drive everywhere but the 15° either side of the wind's eye, falling steeply to 0 dead into it; was [[0,0.023],[20,0.314],[35,0.613],[50,0.732],[70,0.948],[90,1],[110,1],[130,1],[150,1],[170,1],[180,1]]
   // (the curves, SQUARE_RUN_BONUS and the RIG_ values below can also be set live on the first screen, section 'Sails')
   const SQUARE_RUN_BONUS = 0;        // (was 0.25; 0 now that the wind from astern gives as much as on the beam) running downwind (from DOWNWIND_DEG to dead astern) the square sail gains up to this much more (the lateen none)
   // -- how the two sails differ beyond their speed curves: the square sail for the open sea and steady wind, the lateen
@@ -471,6 +471,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The Marconi sail draws fully everywhere except within 15° of the wind\'s eye, where it falls off steeply (dead into the wind: nothing)',
+    ]},
+    {build: '2026-10-12 18:03', items: [
       'The controls sit a little higher off the bottom edge, so a thumb there doesn\'t open the phone\'s navigation bar',
       'The sails\' curves never go past 100%: the best (the Marconi\'s) is now 100% and the rest scaled with it; the boat is as fast as before',
     ]},
@@ -482,11 +485,8 @@
       'The paddle wheels can be heard again while you crank (their churn was lost under the sea)',
       'The crank half as loud again',
     ]},
-    {build: '2026-10-12 16:24', items: [
-      'The paddle wheels are twice as loud, the crank half as loud',
-    ]},
   ];
-  const BUILD = '2026-10-12 18:03';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-12 18:07';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
