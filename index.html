@@ -96,7 +96,7 @@
   const STEAM_LIFE = 0.55;           // how long a puff lasts, so how long the plume trails (× the old 2–2.8 s; was 1)
   const STEAM_LIGHT = 0.45;          // …each this much as big and as white (1 = like the driving steam)
   const PADDLE_BED = true;           // the paddle wheels sound as a steady, soft churn of water (louder the harder they turn) instead of a splash and a thud a paddle (false = the old tocs)
-  const PADDLE_BED_VOL = 1;          // loudness of that churn (0 = silent); freewheeling under sail it's × PADDLE_FREE_VOL
+  const PADDLE_BED_VOL = 2;          // loudness of that churn (0 = silent; was 1); freewheeling under sail it's × PADDLE_FREE_VOL
   const PADDLE_FREE_VOL = 0.5;       // …and when they only freewheel under sail (dragged round by the water): the same splash at this share of it (× PADDLE_VOL; was 0.22, fading in with her speed)…
   const PADDLE_FREE_PITCH = 1;       // …and this pitch (1 = the same as when driven; was 0.7)
   const CRANK_BACK_SPEED = 12;       // let go of the crank before a full turn and it springs back anticlockwise, like an alarm clock's key: turns a second (radians, quicker the more it was wound)
@@ -142,7 +142,7 @@
     wheel: 1,      // the wheel's rub as it turns
     clicks: 1,     // the wheel's spokes and the little wooden knocks of the controls
     anchor: 1,     // the anchor chain, down and up
-    crank: 1,      // the crank's gears as it winds
+    crank: 0.5,    // the crank's gears as it winds (was 1)
     paddles: 1,    // the paddle wheels in the water, and the spring running down
     oars: 1,       // the oars' strokes, cue, catch and wash
     nets: 1,       // the nets: splash going over, haul coming in
@@ -469,6 +469,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The paddle wheels are twice as loud, the crank half as loud',
+    ]},
+    {build: '2026-10-12 15:22', items: [
       'Every sail goes as fast with the wind from astern as with it on the beam (90° to 180° off the wind all the same, at its best)',
     ]},
     {build: '2026-10-12 13:48', items: [
@@ -478,12 +481,8 @@
     {build: '2026-10-12 13:41', items: [
       'Every sail draws better: 30% more close to the wind (20–50° off it) and 50% more with the wind on the beam (70–110°)',
     ]},
-    {build: '2026-10-12 13:35', items: [
-      'The crank is drawn as big as the corner allows without reaching the wheel (bigger on wider phones), and you can grab it anywhere in the bottom right corner',
-      'Fixed a rare drawing error from the ripples before a shark or a sea imp comes up',
-    ]},
   ];
-  const BUILD = '2026-10-12 15:22';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-12 16:24';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
