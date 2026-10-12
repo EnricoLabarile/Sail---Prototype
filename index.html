@@ -14,6 +14,7 @@
 // Top-level consts in this script are shared with the game script further down.
 "use strict";
   // ---------- Tuning ----------
+  const BOTTOM_PAD = 24;             // px of empty screen under the controls (wheel, crank, logbook…), so a thumb near the bottom edge doesn't open the phone's navigation bar
   const ZOOM_DEFAULT = 1.2;          // how close the view of the world is, on a first visit (1 = as before; 2 = twice as close, the pixels twice as big); the Zoom slider on the first screen changes it (and it's remembered)
   const HAPTICS_DEFAULT = 0;         // vibration strength on a first visit (0 = off … 1 = strong); the slider on the first screen changes it (and it's remembered)
   // The game's main knobs, all in one place: change a number, save, reload.
@@ -71,7 +72,7 @@
 
   // -- Boat --
   const MAX_SPEED = 50;              // px/s: reference speed (collision damage is scaled by it too)
-  const WIND_BOOST = 0.768;          // how much the wind gives: sets the top speed (~42 px/s dead downwind in full wind; was 0.96, cut to 80%)
+  const WIND_BOOST = 0.768*1.74;     // how much the wind gives: sets the top speed (the sails' curves now top out at 1 = 100%, so × 1.74, their old best; 0.768 was 80% of 0.96)
   const BOAT_ACCEL = 1.05/1.2;       // how quickly she gathers way (higher = quicker; was 0.7/1.2, raised 50%); slowing down is separate
   const TURN_RATE = 1.2;             // rad/s at full rudder (was 0.6, before that 0.42: she turns twice as fast)
   const ROW_TURN_MULT = 1.5;         // turning is this much quicker on the paddles (oars) than under sail (was 2: with TURN_RATE 1.2 that gave 2.4 rad/s, a little too fast)
@@ -406,11 +407,12 @@
   // best on the beam by far) and it can point up toward the wind; poor running free
   // (Enrico: every sail ×1.3 close to the wind, 20–50°, and ×1.5 with the wind on the beam, 70–110°)
   // (then: from 90° to 180° off the wind each curve is flat at its best beam value: astern as good as on the beam)
-  const SAIL_POLAR_SQUARE = [[0,0],[20,0],[35,0.026],[50,0.195],[70,0.9],[90,1.575],[110,1.575],[130,1.575],[150,1.575],[170,1.575],[180,1.575]];   // (good on the beam too now: 70° was 0.12, 90° 0.55, 110° 0.97)
-  const SAIL_POLAR_LATEEN = [[0,0.02],[20,0.286],[35,0.78],[50,1.17],[70,1.59],[90,1.65],[110,1.65],[130,1.65],[150,1.65],[170,1.65],[180,1.65]];
+  // (then all divided by the best of them, the Marconi's 1.74, so nothing is over 100%; WIND_BOOST × 1.74 keeps the speeds)
+  const SAIL_POLAR_SQUARE = [[0,0],[20,0],[35,0.015],[50,0.112],[70,0.517],[90,0.905],[110,0.905],[130,0.905],[150,0.905],[170,0.905],[180,0.905]];   // (good on the beam too now: 70° was 0.12, 90° 0.55, 110° 0.97)
+  const SAIL_POLAR_LATEEN = [[0,0.011],[20,0.164],[35,0.448],[50,0.672],[70,0.914],[90,0.948],[110,0.948],[130,0.948],[150,0.948],[170,0.948],[180,0.948]];
   // the Marconi (Bermuda) sail: a tall triangle on a boom, the modern one: the best close to the wind, a little less on the
   // beam than the lateen, the weakest running free; no bad tack, no slow yard to swing across
-  const SAIL_POLAR_MARCONI = [[0,0.04],[20,0.546],[35,1.066],[50,1.274],[70,1.65],[90,1.74],[110,1.74],[130,1.74],[150,1.74],[170,1.74],[180,1.74]];   // the best with the wind on the beam, still decent running (the boom squared out); was best close-hauled and weak running (180° 0.5)
+  const SAIL_POLAR_MARCONI = [[0,0.023],[20,0.314],[35,0.613],[50,0.732],[70,0.948],[90,1],[110,1],[130,1],[150,1],[170,1],[180,1]];   // the best with the wind on the beam, still decent running (the boom squared out); was best close-hauled and weak running (180° 0.5)
   // (the curves, SQUARE_RUN_BONUS and the RIG_ values below can also be set live on the first screen, section 'Sails')
   const SQUARE_RUN_BONUS = 0;        // (was 0.25; 0 now that the wind from astern gives as much as on the beam) running downwind (from DOWNWIND_DEG to dead astern) the square sail gains up to this much more (the lateen none)
   // -- how the two sails differ beyond their speed curves: the square sail for the open sea and steady wind, the lateen
@@ -469,6 +471,10 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The controls sit a little higher off the bottom edge, so a thumb there doesn\'t open the phone\'s navigation bar',
+      'The sails\' curves never go past 100%: the best (the Marconi\'s) is now 100% and the rest scaled with it; the boat is as fast as before',
+    ]},
+    {build: '2026-10-12 17:42', items: [
       'The paddle wheels pat the water again, a splash a paddle (the steady wash is gone)',
       'The crank half as loud again',
     ]},
@@ -479,11 +485,8 @@
     {build: '2026-10-12 16:24', items: [
       'The paddle wheels are twice as loud, the crank half as loud',
     ]},
-    {build: '2026-10-12 15:22', items: [
-      'Every sail goes as fast with the wind from astern as with it on the beam (90° to 180° off the wind all the same, at its best)',
-    ]},
   ];
-  const BUILD = '2026-10-12 17:42';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-12 18:03';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -778,6 +781,7 @@
 </script>
 <style>
   :root{
+    --sb:calc(env(safe-area-inset-bottom,0px) + var(--pad-b, 24px));   /* the controls' gap from the screen's bottom edge (BOTTOM_PAD in Tuning) */
     --ink:#1b1a17;
     --paper:#ebe7dc;
     box-sizing:border-box;
@@ -955,10 +959,10 @@
     cursor:pointer;
   }
   /* the oar button: a disc with a pointer that turns with the strokes, under a fixed mark; press as the pointer comes round to it */
-  #oar-ctl{position:fixed; right:12px; bottom:calc(178px + env(safe-area-inset-bottom,0px)); width:64px; height:74px; z-index:5; touch-action:none; cursor:pointer;}
+  #oar-ctl{position:fixed; right:12px; bottom:calc(178px + var(--sb)); width:64px; height:74px; z-index:5; touch-action:none; cursor:pointer;}
   /* the crank (SPRING_PADDLES): a paper disc with an arm and a handle that follows the finger round; the ring round it
      fills as the spring is wound, and empties as the wheels use it */
-  #crank{position:fixed; right:0; bottom:env(safe-area-inset-bottom,0px); width:130px; height:100px; z-index:7; touch-action:none; cursor:grab; color:var(--ink);}   /* a wide touch zone in the corner (a touch on the wheel's grip is handed on to the wheel) */
+  #crank{position:fixed; right:0; bottom:var(--sb); width:130px; height:100px; z-index:7; touch-action:none; cursor:grab; color:var(--ink);}   /* a wide touch zone in the corner (a touch on the wheel's grip is handed on to the wheel) */
   #crank svg{position:absolute; right:4px; bottom:4px; width:84px; height:84px; display:block; overflow:visible;}   /* the crank itself: sized by layoutCrank */
   #crank .disc{fill:var(--paper); stroke:var(--ink); stroke-width:2;}
   #crank .gear{fill:url(#crank-dots); stroke:var(--ink); stroke-width:1.6; stroke-linejoin:round;}
@@ -975,11 +979,11 @@
   #crank.locked{cursor:default;} #crank.locked .rot{opacity:.45;}   /* wound full: locked until the spring has run down */
   #crank.hidden, body.at-market #crank{display:none;}
   /* the slingshot: on the right, above the crank; its pouch is dragged down and let go */
-  #sling{position:fixed; right:12px; bottom:calc(100px + env(safe-area-inset-bottom,0px)); width:64px; height:80px; z-index:7;
+  #sling{position:fixed; right:12px; bottom:calc(100px + var(--sb)); width:64px; height:80px; z-index:7;
     touch-action:none; cursor:grab; color:var(--ink);}
   #sling svg{width:100%; height:100%; display:block; overflow:visible;}
   /* the sail button: left, mirroring the sling (a tap sets or furls the sail; inked while furled) */
-  #sail-btn{position:fixed; left:12px; bottom:calc(108px + env(safe-area-inset-bottom,0px)); width:64px; height:64px; z-index:7; touch-action:none; cursor:pointer;}
+  #sail-btn{position:fixed; left:12px; bottom:calc(108px + var(--sb)); width:64px; height:64px; z-index:7; touch-action:none; cursor:pointer;}
   #sail-btn svg{width:100%; height:100%; display:block; overflow:visible;}
   #sail-btn .sb-disc{fill:var(--paper); stroke:var(--ink); stroke-width:2.4;}
   #sail-btn .sb-mast{stroke:var(--ink); stroke-width:2.6; stroke-linecap:round; fill:none;}
@@ -1005,7 +1009,7 @@
   #shoplist .slot.charges .n{position:absolute; right:2px; bottom:0; font:bold 11px Georgia, serif; background:var(--paper); padding:0 1px; line-height:1.1;}
   #sling.hidden, body.at-market #sling, body.talking #sling{display:none;}
   /* the reel (fishing): a ring round the anchor hub, where the wheel was (its middle left open: the hub still weighs anchor) */
-  #reel{position:fixed; left:calc(50% - 100px); bottom:calc(17px + env(safe-area-inset-bottom,0px)); width:200px; height:200px;
+  #reel{position:fixed; left:calc(50% - 100px); bottom:calc(17px + var(--sb)); width:200px; height:200px;
     z-index:7; pointer-events:none; color:var(--ink); transition:opacity .25s, transform .25s;}
   #reel svg{width:100%; height:100%; display:block; overflow:visible;}
   #reel .grip{fill:none; stroke:transparent; stroke-width:40; pointer-events:stroke; cursor:grab; touch-action:none;}
@@ -1017,7 +1021,7 @@
   #reel .knob-in{fill:var(--ink);}
   #reel.hidden{opacity:0; transform:scale(.8); visibility:hidden;}
   /* …and the bar on the right: the band the reel lifts, the fish darting up and down, the meter beside it */
-  #fishbar{position:fixed; right:14px; bottom:calc(28px + env(safe-area-inset-bottom,0px)); width:52px; height:250px; z-index:7;
+  #fishbar{position:fixed; right:14px; bottom:calc(28px + var(--sb)); width:52px; height:250px; z-index:7;
     pointer-events:none; transition:opacity .25s;}
   #fishbar.hidden{opacity:0; visibility:hidden;}
   #fishbar .fb-track{position:absolute; left:0; top:0; bottom:0; width:32px; border:2px solid var(--ink); border-radius:6px;
@@ -1030,7 +1034,7 @@
   body.at-market #reel, body.talking #reel, body.at-market #fishbar, body.talking #fishbar{display:none;}
   /* the talk box (Stardew style): a framed portrait on the left, the words typed out, a smaller round button on the right
      (go on / farewell); while it's up, the boat's controls step aside */
-  #talk{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(14px + env(safe-area-inset-bottom,0px));
+  #talk{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(14px + var(--sb));
     width:min(460px, calc(var(--fw) - 24px)); box-sizing:border-box; z-index:8; display:flex; align-items:center; gap:10px; padding:10px; cursor:pointer;}
   #talk.hidden{display:none;}
   #talk .t-portrait{flex:0 0 84px; height:84px; box-sizing:border-box; border:2px solid var(--ink); border-radius:3px; overflow:hidden;
@@ -1164,7 +1168,7 @@
   #btn-list .log-pages{opacity:0; transform:scale(.85); transition:opacity .25s .12s, transform .35s .12s;}
   #btn-list.open .log-cover{transform:rotateY(-160deg); opacity:0;}
   #btn-list.open .log-pages{opacity:1; transform:none;}
-  #btn-list{left:9px; right:auto; bottom:calc(10px + env(safe-area-inset-bottom,0px));}   /* bottom left; the compass sits above it */
+  #btn-list{left:9px; right:auto; bottom:calc(10px + var(--sb));}   /* bottom left; the compass sits above it */
   body.at-market #btn-list{display:none;}
   /* at the barter table the sail badge and the compass (with its fish counters) step aside */
   body.at-market #sail, body.at-market #compass, body.at-market #wood, body.at-market #wheel{display:none;}
@@ -1273,7 +1277,7 @@
   #tut-tip.below::after{bottom:auto; top:-7px; transform:rotate(225deg);}   /* under its target (the compass at the top): the tail points up */
   body.at-market #tut-tip{display:none;}
   #toast{
-    position:fixed; left:50%; bottom:calc(262px + env(safe-area-inset-bottom,0px)); z-index:10;   /* just above the wheel (and over the market) */
+    position:fixed; left:50%; bottom:calc(262px + var(--sb)); z-index:10;   /* just above the wheel (and over the market) */
     transform:translate(-50%, -8px); opacity:0; transition:opacity .5s, transform .5s;
     padding:6px 14px; font-style:italic; font-size:15px; white-space:nowrap; pointer-events:none;
   }
@@ -1330,7 +1334,7 @@
     transition:opacity .35s;
     position:fixed;
     left:50%; transform:translateX(-50%);
-    bottom:calc(6px + env(safe-area-inset-bottom,0px));
+    bottom:calc(6px + var(--sb));
     width:221px; height:242px;
     touch-action:none; cursor:grab;
     z-index:6;
@@ -1338,7 +1342,7 @@
   #wheel.grabbed{cursor:grabbing;}
   /* the sail switch: bottom right, as tall as the compass and logbook together; slide the badge up or down */
   #sail{display:none !important;}   /* the sail is automatic now: the switch is hidden (its code stays, unused) */
-  #sail-unused{position:fixed; right:13px; bottom:calc(10px + env(safe-area-inset-bottom,0px)); width:76px; height:160px;
+  #sail-unused{position:fixed; right:13px; bottom:calc(10px + var(--sb)); width:76px; height:160px;
     z-index:7; cursor:pointer; touch-action:manipulation; image-rendering:pixelated; transition:opacity .5s;}
   #sail:focus-visible{outline:2px dashed var(--ink); outline-offset:-2px; border-radius:36px;}
   /* tutorial: controls not reached yet are hidden and can't be touched; they fade in when their turn comes */
@@ -1670,6 +1674,7 @@
 
 
   // the texts written in the page itself (intro card, buttons, labels)
+  document.documentElement.style.setProperty('--pad-b', BOTTOM_PAD + 'px');   // (the controls' gap from the bottom edge)
   (function applyTexts(){
     const set = (sel, s)=>{ const el = document.querySelector(sel); if(el) el.textContent = s; };
     set('#intro-lead', TEXT.intro.lead); set('#intro-after', TEXT.intro.after); set('#start-btn', TEXT.intro.start);
@@ -3888,10 +3893,10 @@
       const [a0,f0]=POLAR[i], [a1,f1]=POLAR[i+1];
       if(relDeg>=a0 && relDeg<=a1){
         const t=(relDeg-a0)/(a1-a0);
-        return f0+(f1-f0)*t;
+        return Math.min(1, f0+(f1-f0)*t);              // (never more than 100%)
       }
     }
-    return POLAR[POLAR.length-1][1];
+    return Math.min(1, POLAR[POLAR.length-1][1]);
   }
   // extra reward for having the wind from behind: rises from a broad reach
   // (120°) to dead downwind (180°), up to +10%
@@ -5883,19 +5888,19 @@
     for(const rig of KINDS){
       const others = KINDS.filter(r=> r !== rig), sec = document.createElement('div'); sec.className = 'sl-sail';
       const rows = [];   // {label, min, max, step, get, set, def}
-      POLARS[rig].forEach((p, i)=> rows.push({grp: 0, label: p[0] + '°', min: 0, max: 2, step: 0.01, get: ()=> POLARS[rig][i][1], set: v=> POLARS[rig][i][1] = v, def: DEF.polar[rig][i]}));
+      POLARS[rig].forEach((p, i)=> rows.push({grp: 0, label: p[0] + '°', min: 0, max: 1, step: 0.01, get: ()=> POLARS[rig][i][1], set: v=> POLARS[rig][i][1] = v, def: DEF.polar[rig][i]}));
       if(rig === 'square') rows.push({grp: 1, label: P.runBonus, min: 0, max: 0.6, step: 0.01, get: ()=> squareRunBonus, set: v=> squareRunBonus = v, def: DEF.run});
       for(const k in RIGS) rows.push({grp: 1, label: P[k], min: 0, max: MAX[k], step: 0.01, get: ()=> RIGS[k][rig], set: v=> RIGS[k][rig] = v, def: DEF.rig[k][rig]});
       sec.innerHTML = '<p class="sl-name">' + TEXT.sails[rig] + '</p>'
-        + '<svg viewBox="-53 -53 106 106" aria-hidden="true"><circle r="30" fill="none" stroke="currentColor" stroke-width=".7" stroke-dasharray="1 3"/>'
+        + '<svg viewBox="-53 -53 106 106" aria-hidden="true"><circle r="40" fill="none" stroke="currentColor" stroke-width=".7" stroke-dasharray="1 3"/>'
         + '<path d="M0 -40 V40 M-40 0 H40" stroke="currentColor" stroke-width=".5" opacity=".5"/>'
         + '<path class="sl-other" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2.5 2.5" opacity=".75"/>'
         + '<path class="sl-curve" fill="url(#sh-light)" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>'
         + '<path d="M0 -51 V-43 M-3.5 -47 L0 -42.5 L3.5 -47" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
       const svg = sec.querySelector('svg'), code = document.createElement('p'); code.className = 'sl-code';
       const draw = ()=>{
-        svg.querySelector('.sl-curve').setAttribute('d', polarPath(rig, 30));
-        svg.querySelector('.sl-other').setAttribute('d', others.map(r=> polarPath(r, 30)).join(' '));
+        svg.querySelector('.sl-curve').setAttribute('d', polarPath(rig, 40));
+        svg.querySelector('.sl-other').setAttribute('d', others.map(r=> polarPath(r, 40)).join(' '));
         code.textContent = 'SAIL_POLAR_' + rig.toUpperCase() + ' = [' + POLARS[rig].map(p=> '[' + p[0] + ',' + n2(p[1]) + ']').join(',') + '];'
           + (rig === 'square' ? ' SQUARE_RUN_BONUS = ' + n2(squareRunBonus) + ';' : '')
           + Object.keys(RIGS).map(k=> ' ' + NAMES[k] + '.' + rig + ' = ' + n2(RIGS[k][rig]) + ';').join('');
@@ -7082,7 +7087,7 @@
     elCrank.style.height = Math.max(100, 2*R + 2*M) + 'px';
     elCrank.style.width = Math.max(130, 2*R + 2*M) + 'px';
     const sb = Math.max(100, 2*R + 2*M + 6);
-    if(elSling) elSling.style.bottom = 'calc(' + sb + 'px + env(safe-area-inset-bottom,0px))';
+    if(elSling) elSling.style.bottom = 'calc(' + sb + 'px + var(--sb))';
   }
   addEventListener('resize', ()=> setTimeout(layoutCrank, 60));   // (after the frame has settled)
   setInterval(()=>{ if(!elCrank.classList.contains('hidden')) layoutCrank(); }, 1000);   // (and now and then: the wheel may not be laid out yet when the crank first shows)
@@ -7854,7 +7859,7 @@
   const windRel = ()=> norm(boat.angle - windAngle)*180/Math.PI;          // degrees off the wind, signed by side
   const windCardKey = ()=> [Math.round(windRel()/2), boat.rig, Math.round(windStrength*20)].join('|');
   function windHTML(){
-    const Rr = 30, f = n=> n.toFixed(1);                  // (the dotted ring is top speed; room for the curves up to ~1.8 ×)
+    const Rr = 40, f = n=> n.toFixed(1);                  // (the dotted ring is 100%: no curve goes past it)
     const curve = rig=> polarPath(rig, Rr);
     const rel = windRel(), r = rel*Math.PI/180, eff = speedFactor(rel)*downwindBonus(rel), hx = Math.sin(r), hy = -Math.cos(r);
     const spare = sailsInHold().map(r=> '<path d="'+curve(r)+'" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2.5 2.5" opacity=".75"/>').join('');

@@ -42,6 +42,7 @@ A top-down sailing game in a single HTML file (`index.html`, no dependencies, ca
 You run a little restaurant at home: every day brings an order for dinner (fish, and from day 2 village dishes too),
 which you must bring home by 19:00; the guests' mood goes up or down with how it went. No ending: the days go on.
 
+- **Bottom gap** (Enrico): every control placed from the bottom edge sits `BOTTOM_PAD` (24 px, Tuning) higher, plus the safe area (CSS `--sb`, set from the knob as `--pad-b` at start), so a thumb near the edge doesn't swipe up the phone's navigation bar.
 - **Screen:** made for a phone held upright. On a wide screen (`min-aspect-ratio: 4/5`: a computer, a tablet on its side)
   the game plays in a phone-shaped frame in the middle (`#wrap`, at most 880 px tall, ~0.47 wide), dark around it, so the
   view of the world, the grain and the controls match the phone. `--fw` / `--fh` are the frame size in CSS; in the code
@@ -577,7 +578,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   (`SAIL_POLAR_SQUARE`, `SAIL_POLAR_LATEEN`: [degrees off the wind, share of top speed]; `POLARS` picks by `boat.rig`):
   **(Enrico: all three curves were then raised ×1.3 at 20–50° off the wind and ×1.5 at 70–110°; the numbers below are
   from before that, see Tuning for the current ones; the wind card and the Sails editor now draw top speed as a ring of
-  radius 30 instead of 40, so curves up to ~1.8× fit, and the editor's sliders go to 2.)** **(Then: wind from astern as good as on the beam: every curve flat at its best beam value from 90° to 180°, square 1.575, lateen 1.65, Marconi 1.74; `SQUARE_RUN_BONUS` 0.)**
+  radius 30 instead of 40, so curves up to ~1.8× fit, and the editor's sliders go to 2.)** **(Then: wind from astern as good as on the beam: every curve flat at its best beam value from 90° to 180°, square 1.575, lateen 1.65, Marconi 1.74; `SQUARE_RUN_BONUS` 0.)** **(Then (Enrico: nothing over 100%): every curve divided by the best, 1.74, so the Marconi tops out at exactly 1 from 90° to 180° (square 0.905, lateen 0.948), `WIND_BOOST` × 1.74 so the speeds are unchanged; `speedFactor` clamps at 1; the diagrams draw 100% at radius 40 again, the editor's sliders go to 1.)**
   made **starker than real life** so each sail forces its own way of sailing: the **square** one is for the open sea
   with the wind aft of the beam, and since Enrico asked **good on the beam too** (70° 0.6, 90° 0.95, 110° 1.05; was 0.12 / 0.55 / 0.97; 130° 1.12, 150° 1.13, 170° 1.04, 180° 1.03, plus `SQUARE_RUN_BONUS` 0.25 running downwind: `downwindBonus` is the square
   sail's only) and nearly dead on the wind (35° 0.02, 50° 0.15); the **lateen**
