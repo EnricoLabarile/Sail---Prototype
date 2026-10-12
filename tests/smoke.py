@@ -36,6 +36,9 @@ def press_dock(pg):
 
 def leave(pg):
     pg.keyboard.press('Space'); pg.wait_for_timeout(1300)          # weigh anchor
+    if pg.evaluate('!!__d.moor'):                                  # (a press can be swallowed while the screen settles: once more)
+        pg.evaluate('document.activeElement && document.activeElement.blur()')
+        pg.keyboard.press('Space'); pg.wait_for_timeout(1300)
 
 def main():
     html = GAME.read_text(encoding='utf-8')

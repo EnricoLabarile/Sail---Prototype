@@ -526,10 +526,10 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   `updateSling`): a paper disc with an ink square sail on its mast (furled: only the yard with the cloth rolled on it,
   class `down`; pale with no sail rigged, `norig`); **a tap sets or furls the sail** (`toggleSail`: `boat.sailFurled`, popups
   `TEXT.popups.sailSet/sailFurled`, `noSail` with no sail rigged; Enter/Space on it too). **The anchor is back on the
-  wheel's hub**: held `HUB_HOLD` (660 ms) it drops or weighs it (`hubHold`, a ring filling round the hub, then a shake);
+  wheel's hub**: held `HUB_HOLD` (330 ms; was 660) it drops or weighs it (`hubHold`, a ring filling round the hub, then a shake);
   Space anywhere works the anchor too. (For a while the anchor was on this left button, a long press; a short press the
   sail.) **No control is hidden or disabled at anchor** (Enrico): the wheel stays (`wheelVis` stays 1), the crank stays
-  in sight and can be wound (the paddles only drive once she's under way), the sling and the sail button too.
+  in sight and can be wound (the paddles only drive once she's under way), the sling and the sail button too. **But the wheel doesn't steer at anchor** (Enrico: `helmFree` in `update` and the wheel's pointermove). **The anchor is a pivot** (Enrico; `anchorPt`, set in `setAnchor` 14 px off the bow, cleared when weighed, set again where she is if she's carried more than 3 × `ANCHOR_RODE` off; Tuning `ANCHOR_RODE` 40, `ANCHOR_PULL` 4, `ANCHOR_SWING` 1.6): the current still carries her at anchor (also with the nets out), until the line comes taut at `ANCHOR_RODE`; then it pulls her back to that length against the current and her bow swings round to face the anchor (after the movement in `update`).
   **Tied up at a pier (`moor`) only the anchor stays** (Enrico): body class `docked` (set in `updateSailBtn`) hides the
   crank, the sling, the sail button and the hull bar; the wheel fades out to its hub (`wheelVis` → 0, only the hub
   takes a finger), which weighs anchor to cast off. The quay badge and the logbook stay (trading, rigging a sail).
@@ -593,7 +593,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   bad tack (wind from port, `sailSide` < 0, 'a la mala') × `LATEEN_MALA` (0.85). (4) **Handling**: turning × `RIG_TURN`
   (1.3 / 1.25; the square's was 0.8), gathering way × `RIG_ACCEL` (0.7 / 1.4). **The current** (`CURRENT_DRIFT` 18 px/s (was 7; about a third of her top speed) × the local breeze, `boat.dfx/dfy`, added to her
   motion like the leeway): the wind carries her downwind whatever the sail does, so she must steer to make up for it; eased
-  in and out (`boat.driftK`), none at anchor, moored, in a whirlpool, while fishing or within `CURRENT_SHORE` (90 px) of any land (`onLand`), so it never
+  in and out (`boat.driftK`), none moored, in a whirlpool, while fishing under way (at anchor it acts, held by the line) or within `CURRENT_SHORE` (90 px) of any land (`onLand`), so it never
   pins her to a coast. **Made visible** by the sea's wavelets (`drawSea`): they drift downwind at max(14, 1.1 × `CURRENT_DRIFT`) × the breeze, darker (`WAVELET_BOLD` 1.5) and thicker (1.7). (Foam bits with dotted trails, `CURRENT_FLECKS`, were tried and dropped: they read as arrows.) (5) **Leeway** (`boat.lwx/lwy`, added to her motion): to
   leeward, × `RIG_LEEWAY` (0.35 / 0.08) × her speed, full close-hauled (≤50° off), none from 130°. (6) **Big waves**:
   surfing push and length × `RIG_SURF` (1.35 / 0.7, `boat.surfK`), damage × `RIG_WAVE_HIT` (0.6 / 1.4), the slew round
@@ -703,7 +703,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   rowing pace `ROW_SPEED`, turning `ROW_TURN_MULT` × quicker); once the sail could give more than `ROW_EXIT` it's set
   again and the oars come in. Never because of the anchor: while it's down (or going down) the sail stays up and the oars
   in; weighing it head to wind, the oars take her. Turning is easier in general (`TURN_RATE` = 1.2; was 0.6, doubled by Enrico); on the paddles × `ROW_TURN_MULT` (1.5; was 2, too fast after the doubling). To stop on a fish
-  bank, drop anchor (the nets go over after 0.25 s).
+  bank, drop anchor (the nets go over after 0.25 s; their animation: `NET_DROP` 0.9 s, `NET_HAUL` 0.6 s in Tuning, half a second quicker than 1.4 / 1.1).
   The boat gathers way slowly (`BOAT_ACCEL` = 0.4/1.2: the speed approaches its target at that rate, so it was divided by 1.2 when the top speed went up 20%, keeping the same push in px/s²; slowing down unchanged).
   Top speed is kept modest (`WIND_BOOST` = 0.768, cut to 80% of 0.96 by Enrico, ~42 px/s dead downwind in full wind; running dead downwind adds only up to +10%, `downwindBonus`).
   Oars never come out because of the anchor (nor while getting under way after weighing it).

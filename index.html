@@ -379,7 +379,10 @@
   const TUT_PAUSE = 1500;            // ms between one step and the next
   const TUT_COMPASS_T = 4500;        // ms the compass step lasts (no input needed)
   const TUT_DROP_WAIT = 3000, TUT_DROP_T = 3000;   // after the wheel: wait, then the optional drop-anchor tip for a while (ms)
-  const HUB_HOLD = 660;              // ms to hold the wheel's hub to drop or weigh anchor (back on the hub; was 160 there, before that 320, 500)
+  const HUB_HOLD = 330;              // ms to hold the wheel's hub to drop or weigh anchor (halved from 660; was 160 there, before that 320, 500)
+  const ANCHOR_RODE = 40;            // px of anchor line: at anchor the current still carries her, until the line comes taut round the anchor (a pivot)
+  const ANCHOR_PULL = 4;             // how hard a taut line pulls her back to its length against the current (a share of the overshoot a second)
+  const ANCHOR_SWING = 1.6;          // rad/s her bow swings round to face the anchor once the line is taut (no steering at anchor)
   const WEIGH_TIME = 0.45;           // seconds to get the anchor up before she's under way again (was 0.9)
   const ANCHOR_BITE = 8;             // how quickly the anchor stops her once it's down (rate a second; was 4)
 
@@ -413,6 +416,8 @@
   const RETRIM_FLOOR = 0.3;          // the least a badly trimmed sail still gives
   const LATEEN_TACK_DRIVE = 0.35;    // the lateen's drive while its yard swings across the mast on a change of tack
   const LATEEN_MALA = 0.85;          // the lateen's drive on its 'bad' tack ('a la mala': wind from port, the sail pressed against the mast)
+  const NET_DROP = 0.9;              // seconds the nets take to go over (was 1.4; with NET_HAUL half a second quicker in all)
+  const NET_HAUL = 0.6;              // seconds the haul takes (was 1.1)
   const CURRENT_DRIFT = 18;          // (was 7) px/s the current (the wind's push on the water) carries her downwind at full breeze, sail or no sail: steer to make up for it (none at anchor, moored, in a whirlpool or with the nets out)
   const WAVELET_BOLD = 1.5;          // how dark the sea's little wave crests are drawn (1 = as before); they drift with the current, so they show it
   const CURRENT_SHORE = 90;          // px: within this of any shore the current lets go (calm water by the coasts); it takes hold again out past it
@@ -458,6 +463,12 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The anchor needs half as long a press on the hub',
+      'At anchor the current still carries the boat until the anchor line comes taut: then it holds her and her bow swings round to face the anchor',
+      'No steering at anchor',
+      'The nets go over and come back half a second quicker',
+    ]},
+    {build: '2026-10-12 08:37', items: [
       'The Marconi sail is drawn as before again (the solid-sheet drawing is undone)',
     ]},
     {build: '2026-10-12 08:09', items: [
@@ -466,13 +477,8 @@
     {build: '2026-10-12 08:04', items: [
       'The sail swells out half as much as before when it draws at its best',
     ]},
-    {build: '2026-10-11 23:16', items: [
-      'Coastal towers reach less far (200 instead of 300)',
-      'Five slingshot shots bring a coastal tower down: it stops firing and stays a ruin',
-      'The Marconi sail is drawn as a solid sheet: however full it gets, you no longer see through it',
-    ]},
   ];
-  const BUILD = '2026-10-12 08:37';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-12 12:16';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -5041,6 +5047,7 @@
     const a = Math.atan2(y,x);
     if(hubHold && Math.hypot(x-hubHold.x, y-hubHold.y) > 9) hubHold = null;   // it's a turn of the wheel, not a press
     if(Math.hypot(x,y) < 14*WH_S){ wheelLast = a; return; } // too close to the hub: angle unreliable
+    if(anchored && weighT <= 0){ wheelLast = a; return; }    // at anchor the wheel doesn't steer
     const d = norm(a - wheelLast);
     wheelAngle = Math.max(-WHEEL_MAX, Math.min(WHEEL_MAX, wheelAngle + d));
     wheelLast = a;
@@ -5442,6 +5449,7 @@
 
   // anchor: drops and holds the boat where it is; press again to weigh it
   let anchored = false;
+  let anchorPt = null;                 // where the anchor lies on the bottom (ANCHOR_RODE: she swings round it)
 
   // weighing anchor takes a moment: the chain comes in (you hear it) and
   // only when it's aboard does the boat get under way again
@@ -5458,10 +5466,11 @@
     if(on){
       if(anchored && weighT <= 0) return;
       weighT = 0; anchored = true; anchorUI();
+      if(!moor) anchorPt = {x: boat.x + Math.cos(boat.angle)*14, y: boat.y + Math.sin(boat.angle)*14};   // let go off the bow
       Sfx.init(); Sfx.anchor(true); buzz([45,40,20,30,15]);
     } else {
       if(!anchored || weighT > 0) return;
-      if(instant){ anchored = false; anchorUI(); return; }
+      if(instant){ anchored = false; anchorPt = null; anchorUI(); return; }
       weighT = WEIGH_TIME;
       Sfx.init(); Sfx.anchor(false); buzz([10,25,10,25,10,25,10,25,10]);
     }
@@ -5470,7 +5479,7 @@
     if(weighT > 0){
       weighT -= dt;
       if(weighT <= 0){
-        weighT = 0; anchored = false; anchorUI();
+        weighT = 0; anchored = false; anchorPt = null; anchorUI();
         if(tut === 'anchor') tutNext('wheel');                                 // tutorial: now steer
       }
     }
@@ -6208,8 +6217,6 @@
   elTalk.addEventListener('click', e=>{ e.stopPropagation(); talkPress(); });
   const elGoTitle = document.getElementById('go-title');
   // ---------- Fishing ----------
-  const NET_DROP = 1.4;          // net deploying animation
-  const NET_HAUL = 1.1;          // hauling animation
   const NET_THROW_MIN = 24, NET_THROW_MAX = 46;   // how far the net is thrown, toward the middle of the bank
   let fishing = null;            // {bank, t, phase:'drop'|'wait'|'haul'|'cancel', ...}
   let settleT = 0;
@@ -8444,7 +8451,7 @@
       const step = Math.max(Math.abs(wheelAngle)*3.5, 0.8)*dt;
       wheelAngle = Math.abs(wheelAngle)<=step ? 0 : wheelAngle - Math.sign(wheelAngle)*step;
     }
-    if(!moor && !boat.whirl) boat.angle += TURN_RATE*rigK(RIG_TURN)*(sailLevel===SAIL_MIN || boat.rowing ? ROW_TURN_MULT : 1)*(wheelAngle/WHEEL_MAX)*dt;   // (RIG_TURN: the lateen nimble, the square clumsy)   // slow sail = nimble, safe handling
+    if(!moor && !boat.whirl && helmFree) boat.angle += TURN_RATE*rigK(RIG_TURN)*(sailLevel===SAIL_MIN || boat.rowing ? ROW_TURN_MULT : 1)*(wheelAngle/WHEEL_MAX)*dt;   // (RIG_TURN: the lateen nimble, the square clumsy)   // slow sail = nimble, safe handling
     wheelSound(dt);
     Sfx.ambient(dt, Math.min(1, boat.speed/MAX_SPEED));
     Sfx.rain(playing ? rainNear() : 0);
@@ -8601,7 +8608,7 @@
     }
     // the current: the wind sets the water moving, and it carries her downwind whatever the sail does
     {
-      const on = !anchored && !moor && !boat.whirl && !fishing && !onLand(boat.x, boat.y, CURRENT_SHORE) ? 1 : 0;   // (none close to a shore)
+      const on = !moor && !boat.whirl && (anchored || !fishing) && !onLand(boat.x, boat.y, CURRENT_SHORE) ? 1 : 0;   // (none close to a shore; at anchor it still carries her, the line holds her)
       boat.driftK += (on - boat.driftK)*Math.min(1, dt*0.8);       // (it takes hold slowly after weighing anchor, and lets go as the anchor bites)
       const v = CURRENT_DRIFT*localStrength*boat.driftK;
       boat.dfx = Math.cos(localWind + Math.PI)*v; boat.dfy = Math.sin(localWind + Math.PI)*v;
@@ -8742,6 +8749,17 @@
         boat.y += Math.sin(boat.angle)*boat.speed*dt + (boat.ky + boat.lwy + boat.dfy)*dt;
         const kd = Math.exp(-boat.kdamp*dt);              // rebound fades out
         boat.kx *= kd; boat.ky *= kd;
+        // at anchor the line is a pivot: once the current has carried her out to ANCHOR_RODE it pulls her back, and her bow swings to the anchor
+        if(anchored && !moor && anchorPt){
+          const dx = wdx(anchorPt.x, boat.x), dy = wdy(anchorPt.y, boat.y), d = Math.hypot(dx, dy);
+          if(d > ANCHOR_RODE*3){ anchorPt = {x: boat.x, y: boat.y}; }   // (carried far off some other way: the anchor drags and bites again where she is)
+          else if(d > ANCHOR_RODE){
+            const over = d - ANCHOR_RODE, k = Math.min(1, ANCHOR_PULL*dt);
+            boat.x += dx/d*over*k; boat.y += dy/d*over*k;
+            const want = Math.atan2(dy, dx), da = Math.atan2(Math.sin(want - boat.angle), Math.cos(want - boat.angle));
+            boat.angle += da*Math.min(1, ANCHOR_SWING*dt*Math.min(1, over/4 + 0.3));
+          }
+        }
       }
     }
 
