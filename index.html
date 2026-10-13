@@ -84,9 +84,10 @@
   const ROW_SPEED = 9;               // px/s on the oars (the old automatic oars)
   const MANUAL_OARS = true;          // the oars are rowed by hand: press the oar button (right) in rhythm, as its pointer comes round to the mark (false = the old automatic oars)
   const SPRING_PADDLES = true;       // the paddle wheels run off a wound spring: turn the crank (clockwise) to charge it, then they drive her on their own until it runs down; false = the old rhythmic oar button
+  const CRANK_BITE = 5.25;           // how quickly her speed catches up with the wheels' push (was 3.5, +50%; the oars keep 3.5)
   const CRANK_DIRECT = true;         // the crank drives the paddle wheels directly while it's turned (no spring to charge, no charge bar): keep cranking to go; false = the old wound spring
   const CRANK_FULL_RATE = 5;         // rad/s of cranking for the wheels' full push (6.3 = a turn a second); slower cranking, less push
-  const CRANK_EASE = 2.5;            // how quickly the wheels take up and let go as the cranking starts, changes or stops (higher = snappier)
+  const CRANK_EASE = 3.75;           // (was 2.5, +50%) how quickly the wheels take up and let go as the cranking starts, changes or stops (higher = snappier)
   const CRANK_MAX = 124;             // px: the crank is drawn as big as the corner allows without reaching the wheel, up to this (it was 84); its touch zone fills the corner
   const SPRING_TURNS = 1;            // full turns of the crank, in one go, that wind the spring right up (let go before and the winding is lost: start again)
   const SPRING_TIME = 15;            // seconds the wheels can drive her on a full spring (it only runs down while they're driving; was 30)
@@ -120,7 +121,7 @@
   const SLING_FIRE_PULL = 0.7;       // pull the pouch down this far (0..1) and it shoots by itself; let go before and nothing happens
   const SLING_NET_DIST = 55;         // px ahead of the bow a net lands (in the middle of the cone)
   const SLING_RELOAD = 0.9;          // seconds before the next stone is in the pouch
-  const SPRING_SPEED = 39.2;         // px/s the wheels give her (the spring rests while the sail drives her faster than this; was 19.6, doubled)
+  const SPRING_SPEED = 58.8;         // px/s the wheels give her (the spring rests while the sail drives her faster than this; was 39.2, +50%; before that 19.6)
   const OAR_START = 0.2;             // power the first press gives (0..1): she starts rowing, slowly
   const OAR_GOOD = 0.0;             // power a press right on time adds (the pointer at the mark)…
   const OAR_MISS = 0.04;             // …and a press too early or too late (a little)
@@ -475,6 +476,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The hand crank is 50% stronger (top speed on the paddles 39 -> 59 px/s) and she reaches it 50% sooner',
+    ]},
+    {build: '2026-10-12 23:04', items: [
       'The slingshot is an item in the Cargo: tap it to equip or stow it (stowed, the sling and the bow cannon are gone); it takes a slot',
     ]},
     {build: '2026-10-12 18:43', items: [
@@ -484,12 +488,8 @@
     {build: '2026-10-12 18:39', items: [
       'No more calm by the coasts: the wind no longer drops in the lee of land, and the current keeps carrying her right up to the shore',
     ]},
-    {build: '2026-10-12 18:25', items: [
-      'The steering wheel no longer knocks at every spoke as it turns (the soft rub and the thud at full lock stay)',
-      'Quicker: the land and shallows are drawn in one pass instead of four, the darker deep-water tint is skipped while there are no big waves, and the screen size is no longer re-measured every frame (drawing ~40% lighter)',
-    ]},
   ];
-  const BUILD = '2026-10-12 23:04';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-13 08:45';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -8720,7 +8720,7 @@
       const v = CURRENT_DRIFT*localStrength*boat.driftK;
       boat.dfx = Math.cos(localWind + Math.PI)*v; boat.dfy = Math.sin(localWind + Math.PI)*v;
     }
-    if(!anchored && boat.rowV > boat.speed) boat.speed += (boat.rowV - boat.speed)*Math.min(1, dt*3.5);   // the oars bite quickly
+    if(!anchored && boat.rowV > boat.speed) boat.speed += (boat.rowV - boat.speed)*Math.min(1, dt*(SPRING_PADDLES ? CRANK_BITE : 3.5));   // the oars bite quickly
 
     const hullR = boat.r*0.75;
     // ---- mooring at the home pier ----
