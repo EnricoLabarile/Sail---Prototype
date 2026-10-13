@@ -400,6 +400,7 @@
   const UI_TINT = 0.7;               // how much the interface takes on the day/night colours (0 = never, 1 = like the world)
   const CLOUD_ALPHA = 0.45, CLOUD_CORE = 0.88;   // clouds: see-through at the rim, denser in the middle
   const CLOUD_MODELS = 4;            // cloud shapes, shared by all the clouds in the sky (world)
+  const MAP_SIMPLE = true;          // the logbook's map is just the grid of squares, a dot where she is and a cross on the castaway (no coasts, no edge of what she has seen, no "You are in …"); false = the old chart
   const MAP_RES = 480;               // the sea chart in the logbook: its pixels a side (fewer = coarser)
   const ROOM_SEAMS = 0.3;            // the room map's seams dotted on the sea itself too: how dark (0 = not drawn)
   const ROOM_N = 9;                  // the room map in the logbook (Zelda 1 style): rooms a side, the world cut into ROOM_N × ROOM_N squares, home in the middle one
@@ -476,6 +477,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'A simpler map in the logbook: only the grid of squares, a dot where you are and a cross where the castaway waits (no coasts, no "You are in …")',
+    ]},
+    {build: '2026-10-13 08:45', items: [
       'The hand crank is 50% stronger (top speed on the paddles 39 -> 59 px/s) and she reaches it 50% sooner',
     ]},
     {build: '2026-10-12 23:04', items: [
@@ -485,11 +489,8 @@
       'The map in the logbook has a cross where the castaway is waiting (gone once they\'re aboard)',
       'The current lets go only right at the shore (1 px)',
     ]},
-    {build: '2026-10-12 18:39', items: [
-      'No more calm by the coasts: the wind no longer drops in the lee of land, and the current keeps carrying her right up to the shore',
-    ]},
   ];
-  const BUILD = '2026-10-13 08:45';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-13 13:39';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -1264,7 +1265,7 @@
   .rooms-svg .seam{stroke:var(--ink); stroke-width:.25; stroke-dasharray:.5 1; opacity:.55;}   /* the borders between the squares, dotted */
   .rooms-svg .lbl{fill:var(--ink); font:bold 3.2px Georgia, serif; opacity:.8;}
   #rooms-here{margin:6px 0 0; text-align:right; font-size:13px; font-style:italic;}
-  .rooms-svg .you{fill:var(--paper); stroke:var(--ink); stroke-width:.4; animation:roomBlink .8s steps(1) infinite;}
+  .rooms-svg .you{fill:var(--ink); stroke:var(--paper); stroke-width:.4; animation:roomBlink .8s steps(1) infinite;}
   @keyframes roomBlink{50%{opacity:0;}}
   /* a page being turned: a sheet swinging on the spine, the page it leaves on its front and the new one on its back */
   #shoplist .turn{position:absolute; z-index:4; transform-style:preserve-3d; pointer-events:none;}
@@ -8037,6 +8038,7 @@
   elRooms.setAttribute('viewBox', '0 0 ' + (FS + LM) + ' ' + (FS + LM));
   const elRoomsHere = document.getElementById('rooms-here');
   let roomHereShown = '';
+  if(MAP_SIMPLE) elRoomsHere.style.display = 'none';
   function renderRooms(){
     roomsShown = roomsVer;
     let h = '<title>'+TEXT.logbook.rooms+'</title><rect class="frame" x="'+(LM + .6)+'" y="'+(LM + .6)+'" width="'+(FS - 1.2)+'" height="'+(FS - 1.2)+'" rx="1.5"/>';
@@ -8045,7 +8047,7 @@
       h += '<text class="lbl" x="'+(LM - 1.2)+'" y="'+(RP + i*RS + RS/2 + 1.5)+'" text-anchor="end">'+(i + 1)+'</text>';
       if(i) h += '<line class="seam" x1="'+(RP + i*RS)+'" y1="'+RP+'" x2="'+(RP + i*RS)+'" y2="'+(RP + ROOM_N*RS)+'"/><line class="seam" x1="'+RP+'" y1="'+(RP + i*RS)+'" x2="'+(RP + ROOM_N*RS)+'" y2="'+(RP + i*RS)+'"/>';
     }
-    h += '<circle class="you" r="1"/>';
+    h += '<circle class="you" r="'+(MAP_SIMPLE ? 1.6 : 1)+'"/>';
     elRooms.innerHTML = h;
     layoutMap();
     paintRoomsChart();
@@ -8066,7 +8068,7 @@
   function layoutMap(){
     const pl = elList.querySelector('.page.left'), cs = getComputedStyle(pl);
     const w = pl.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-    const h = pl.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - 26;   // (room for "You are in …")
+    const h = pl.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - (MAP_SIMPLE ? 0 : 26);   // (room for "You are in …")
     const half = Math.max(40, Math.floor(Math.min(w, h/2)));
     for(const el of elList.querySelectorAll('.map-half')){ el.style.width = half + 'px'; el.style.height = 2*half + 'px'; }
   }
@@ -8076,7 +8078,7 @@
     dot.setAttribute('cx', x.toFixed(1)); dot.setAttribute('cy', y.toFixed(1));
     const dr = elRoomsR.querySelector('.you'); if(dr){ dr.setAttribute('cx', x.toFixed(1)); dr.setAttribute('cy', y.toFixed(1)); }
     const here = fmt(TEXT.logbook.roomHere, {cell: cellName(...roomOf(boat.x, boat.y))});
-    if(here !== roomHereShown){ roomHereShown = here; elRoomsHere.textContent = here; }
+    if(here !== roomHereShown){ roomHereShown = here; elRoomsHere.textContent = MAP_SIMPLE ? '' : here; }
   }
   function refreshList(){
     if(!elList.classList.contains('open')) return;
@@ -8222,10 +8224,12 @@
   function paintChart(out, N){
     N = Math.max(60, Math.min(MAP_RES, N)); const S = WORLD.w/N;
     if(N !== mapN){ mapN = N; mapLand = null; mapCv.width = mapCv.height = N; }
-    if(!mapLand){
+    if(!mapLand && !MAP_SIMPLE){
       mapLand = new Uint8Array(N*N);
       for(let j=0;j<N;j++) for(let i=0;i<N;i++) mapLand[j*N+i] = onLand((i+0.5)*S, (j+0.5)*S, 0) ? 1 : 0;
     }
+    if(MAP_SIMPLE){ mapCtx.fillStyle = '#fff'; mapCtx.fillRect(0, 0, N, N); }   // clean paper: no coasts, no fog
+    else {
     const im = mapCtx.createImageData(N, N), d = im.data;
     const seen = (i,j)=> explored[fci(Math.floor((((j+N)%N)+0.5)*S/FOG_CELL))*FOG_N + fci(Math.floor((((i+N)%N)+0.5)*S/FOG_CELL))];
     const land = (i,j)=> mapLand[((j+N)%N)*N + (i+N)%N];
@@ -8242,6 +8246,7 @@
       const q = (j*N+i)*4; d[q] = d[q+1] = d[q+2] = g; d[q+3] = 255;
     }
     mapCtx.putImageData(im, 0, 0);
+    }
     // the crosses from the messages in bottles: an ink X, wherever they are (seen or not)
     mapCtx.strokeStyle = '#000'; mapCtx.lineWidth = Math.max(1.5, N/120); mapCtx.lineCap = 'round';
     const xs = Math.max(3, N/50), ox = wrapX(START.x - WORLD.w/2), oy = wrapY(START.y - WORLD.h/2);   // (the squares start half a world west and north of home)

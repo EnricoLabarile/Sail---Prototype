@@ -455,6 +455,7 @@ which you must bring home by 19:00; the guests' mood goes up or down with how it
   them across, "Done" (the only button) moves them (popups "n stored" / "n taken aboard"); taking aboard more than the
   hold's free slots is refused ("No room in the hold"). Sails not rigged sit on the table too (`homeStore.sails`; one left at home
   is not aboard: `sailsInHold` skips it, so it takes no slot); the village markets never show them, so they can't be sold. Goods left at home are meant to count toward the end goal.
+- **Room map, simple now** (Enrico; `MAP_SIMPLE` true in Tuning): the chart under the grid is clean paper (no coasts, no edge of what she has seen: `paintChart` skips them), `#rooms-here` ("You are in …") hidden, the dot where she is an ink dot (r 1.6, blinking), and the castaway's ink cross (and any bottle's). Later (Enrico): a quest will mark its square with a symbol. The notes below describe the full chart (`MAP_SIMPLE` false).
 - **Room map** (Zelda 1 style; in `#cmp-slot`, the first spread's right page, where the compass was: the compass is
   hidden there for now, `#cmp-slot #compass{display:none}`, its code untouched): the world cut into `ROOM_N` (9, Tuning)
   × `ROOM_N` rooms with home in the middle one (`roomOf`; `rooms`, marked by `markRoom`, is still kept but no longer
