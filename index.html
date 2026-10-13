@@ -434,6 +434,7 @@
   const NET_HAUL = 0.6;              // seconds the haul takes (was 1.1)
   const CURRENT_DRIFT = 18;          // (was 7) px/s the current (the wind's push on the water) carries her downwind at full breeze, sail or no sail: steer to make up for it (none at anchor, moored, in a whirlpool or with the nets out)
   const WAVELET_BOLD = 1.5;          // how dark the sea's little wave crests are drawn (1 = as before); they drift with the current, so they show it
+  const CURRENT_CALM_T = 5;          // s after casting off from home or a village during which the current leaves her alone (Enrico), then it takes hold slowly
   const CURRENT_SHORE = 1;           // px: within this of any shore the current lets go (calm water by the coasts); 1 = it carries her right up to the shore (Enrico; was 90, then 0)
   const RIG_LEEWAY = {square: 0.35, lateen: 0.08, marconi: 0.05};   // she slips sideways to leeward at this × her speed close-hauled (less on a reach, none running free)
   const RIG_SURF = {square: 1.35, lateen: 0.7, marconi: 0.8};      // surfing a big wave: its push and how long it lasts ×
@@ -477,6 +478,9 @@
   // build, giving the old first group the BUILD time it had)
   const CHANGES = [
     {build: '', items: [
+      'The current leaves you alone for the first 5 seconds after you cast off from home or a village',
+    ]},
+    {build: '2026-10-13 13:39', items: [
       'A simpler map in the logbook: only the grid of squares, a dot where you are and a cross where the castaway waits (no coasts, no "You are in …")',
     ]},
     {build: '2026-10-13 08:45', items: [
@@ -485,12 +489,8 @@
     {build: '2026-10-12 23:04', items: [
       'The slingshot is an item in the Cargo: tap it to equip or stow it (stowed, the sling and the bow cannon are gone); it takes a slot',
     ]},
-    {build: '2026-10-12 18:43', items: [
-      'The map in the logbook has a cross where the castaway is waiting (gone once they\'re aboard)',
-      'The current lets go only right at the shore (1 px)',
-    ]},
   ];
-  const BUILD = '2026-10-13 13:39';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
+  const BUILD = '2026-10-13 18:31';   // when this file was last committed (Italian time), shown on the first screen; stamped by tools/hooks/pre-commit
 
   // ---------- Texts ----------
   // Every word the player reads, in one place, to author freely. Parts in
@@ -8720,7 +8720,8 @@
     }
     // the current: the wind sets the water moving, and it carries her downwind whatever the sail does
     {
-      const on = !moor && !boat.whirl && (anchored || !fishing) && !(CURRENT_SHORE > 0 && onLand(boat.x, boat.y, CURRENT_SHORE)) ? 1 : 0;   // (none close to a shore; at anchor it still carries her, the line holds her)
+      boat.calmT = Math.max(0, (boat.calmT || 0) - dt);
+      const on = !moor && !(boat.calmT > 0) && !boat.whirl && (anchored || !fishing) && !(CURRENT_SHORE > 0 && onLand(boat.x, boat.y, CURRENT_SHORE)) ? 1 : 0;   // (none close to a shore; at anchor it still carries her, the line holds her)
       boat.driftK += (on - boat.driftK)*Math.min(1, dt*0.8);       // (it takes hold slowly after weighing anchor, and lets go as the anchor bites)
       const v = CURRENT_DRIFT*localStrength*boat.driftK;
       boat.dfx = Math.cos(localWind + Math.PI)*v; boat.dfy = Math.sin(localWind + Math.PI)*v;
@@ -8784,6 +8785,7 @@
           boat.kdamp = 1.1;                         // …that fades slowly
           boat.speed = 3;
           moorLock = moor.pier; moor = null; closeDialog(); closeMarket();
+          boat.calmT = CURRENT_CALM_T;              // no current for a few seconds while she gets clear of the pier
           Sfx.thunk(0.25); buzz([10,40,30]);            // lines cast off
         }
       }
